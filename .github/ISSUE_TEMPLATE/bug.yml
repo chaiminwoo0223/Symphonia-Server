@@ -1,0 +1,32 @@
+name: "🐛 bug"
+description: 버그 및 오류 이슈 템플릿
+title: "[Bug] "
+labels: ["🐛 bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📌 이슈 내용 설명
+  - type: textarea
+    id: description
+    attributes:
+      label: 설명
+      description: 발생한 버그나 오류를 설명해주세요.
+      placeholder: 발생한 버그나 오류를 자세히 설명해주세요.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ## ✅ TODO
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일 목록
+      description: 해결하기 위한 작업 목록을 작성해주세요.
+      placeholder: |
+        - [ ] 작업 1
+        - [ ] 작업 2
+    validations:
+      required: true
