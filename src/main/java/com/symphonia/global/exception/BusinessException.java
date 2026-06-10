@@ -1,5 +1,6 @@
-package com.symphonia.global.exception.error;
+package com.symphonia.global.exception;
 
+import com.symphonia.global.exception.error.ErrorCode;
 import lombok.Getter;
 
 @Getter

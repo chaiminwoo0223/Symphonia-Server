@@ -1,6 +1,5 @@
-package com.symphonia.global.auth.domain.error;
+package com.symphonia.global.exception.error;
 
-import com.symphonia.global.exception.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
