@@ -16,7 +16,7 @@ public record StandardResponse<T>(
         return new StandardResponse<>(status.value(), null);
     }
 
-    public static StandardResponse<ErrorResponse> fail(HttpStatus status, ErrorResponse error) {
-        return new StandardResponse<>(status.value(), error);
+    public static StandardResponse<ErrorResponse> fail(HttpStatus status, ErrorResponse errorResponse) {
+        return new StandardResponse<>(status.value(), errorResponse);
     }
 }
