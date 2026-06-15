@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 
 @RequiredArgsConstructor
 public enum CommonErrorCode implements ErrorCode {
-
     // 400
     METHOD_ARGUMENT_NOT_VALID(HttpStatus.BAD_REQUEST, "요청 본문(JSON)의 값 유효성 검증에 실패했습니다."),
     METHOD_ARGUMENT_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "요청한 메서드 파라미터의 타입이 일치하지 않습니다."),
