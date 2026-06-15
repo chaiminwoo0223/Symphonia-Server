@@ -51,10 +51,9 @@ public class Member extends BaseTimeEntity {
                 .build();
     }
 
-    public Member update(MemberUpdateCommand command) {
+    public void update(MemberUpdateCommand command) {
         this.nickname = command.nickname();
         this.profileImage = command.profileImage();
-        return this;
     }
 
     public void delete() {

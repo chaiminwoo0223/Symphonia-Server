@@ -9,19 +9,19 @@ public enum MemberPolicy {
 
     public static void validateNotDeleted(Member member) {
         if (member.isDeleted()) {
-            throw new BusinessException(MemberErrorCode.MEMBER_ALREADY_DELETED);
+            throw BusinessException.from(MemberErrorCode.MEMBER_ALREADY_DELETED);
         }
     }
 
     public static void validateDeleted(Member member) {
         if (!member.isDeleted()) {
-            throw new BusinessException(MemberErrorCode.MEMBER_NOT_DELETED);
+            throw BusinessException.from(MemberErrorCode.MEMBER_NOT_DELETED);
         }
     }
 
     public static void validateNotDuplicated(boolean exists) {
         if (exists) {
-            throw new BusinessException(MemberErrorCode.MEMBER_ALREADY_EXISTS);
+            throw BusinessException.from(MemberErrorCode.MEMBER_ALREADY_EXISTS);
         }
     }
 }
