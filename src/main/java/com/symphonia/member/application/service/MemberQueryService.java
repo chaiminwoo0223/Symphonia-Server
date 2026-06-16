@@ -9,8 +9,10 @@ import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MemberQueryService {
     private final MemberRepository memberRepository;

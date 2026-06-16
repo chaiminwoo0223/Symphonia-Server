@@ -11,8 +11,10 @@ import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class MemberCommandService {
     private final MemberRepository memberRepository;
@@ -26,7 +28,7 @@ public class MemberCommandService {
     }
 
     public MemberResult update(Long memberId, MemberUpdateCommand command) {
-        Member member = getActive(memberId);
+        Member member = getActiveById(memberId);
 
         member.update(command);
 
@@ -34,18 +36,18 @@ public class MemberCommandService {
     }
 
     public void delete(Long memberId) {
-        Member member = getActive(memberId);
+        Member member = getActiveById(memberId);
 
         member.delete();
     }
 
     public void restore(Long memberId) {
-        Member member = getDeleted(memberId);
+        Member member = getDeletedById(memberId);
 
         member.restore();
     }
 
-    private Member getActive(Long memberId) {
+    private Member getActiveById(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
@@ -54,7 +56,7 @@ public class MemberCommandService {
         return member;
     }
 
-    private Member getDeleted(Long memberId) {
+    private Member getDeletedById(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
