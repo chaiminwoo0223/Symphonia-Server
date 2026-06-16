@@ -3,8 +3,10 @@ package com.symphonia.member.fixture;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+@Getter
 @RequiredArgsConstructor
 public enum MemberFixture {
     GOOGLE(

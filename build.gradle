@@ -50,3 +50,8 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.withType(Test).configureEach {
+	jvmArgs '-XX:+EnableDynamicAgentLoading'
+	jvmArgs '-Xshare:off'
+}
