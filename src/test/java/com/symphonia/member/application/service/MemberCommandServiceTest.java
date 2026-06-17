@@ -284,17 +284,19 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("삭제된 멤버를 복구하면 deletedAt이 null이 된다.")
-        void shouldClearDeletedAtWhenDeletedMemberRestored() {
+        @DisplayName("삭제된 멤버를 복구하면 MemberResult를 반환한다.")
+        void shouldReturnMemberResultWhenDeletedMemberRestored() {
             // given
             given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
                     .willReturn(Optional.of(deletedGoogleMember));
 
             // when
-            memberCommandService.restore(command);
+            MemberResult result = memberCommandService.restore(command);
 
             // then
             assertThat(deletedGoogleMember.isDeleted()).isFalse();
+            assertThat(result.socialId()).isEqualTo(deletedGoogleMember.getSocialId());
+            assertThat(result.socialProvider()).isEqualTo(deletedGoogleMember.getSocialProvider());
         }
     }
 
@@ -336,17 +338,19 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("삭제된 멤버를 복구하면 deletedAt이 null이 된다.")
-        void shouldClearDeletedAtWhenDeletedMemberRestored() {
+        @DisplayName("삭제된 멤버를 복구하면 MemberResult를 반환한다.")
+        void shouldReturnMemberResultWhenDeletedMemberRestored() {
             // given
             given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
                     .willReturn(Optional.of(deletedAppleMember));
 
             // when
-            memberCommandService.restore(command);
+            MemberResult result = memberCommandService.restore(command);
 
             // then
             assertThat(deletedAppleMember.isDeleted()).isFalse();
+            assertThat(result.socialId()).isEqualTo(deletedAppleMember.getSocialId());
+            assertThat(result.socialProvider()).isEqualTo(deletedAppleMember.getSocialProvider());
         }
     }
 }
