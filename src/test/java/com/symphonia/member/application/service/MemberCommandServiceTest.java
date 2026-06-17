@@ -3,6 +3,7 @@ package com.symphonia.member.application.service;
 import com.symphonia.UnitTest;
 import com.symphonia.global.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
+import com.symphonia.member.application.dto.command.MemberRestoreCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
@@ -11,6 +12,7 @@ import com.symphonia.member.domain.error.MemberErrorCode;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberCreateCommandFixture;
 import com.symphonia.member.fixture.MemberFixture;
+import com.symphonia.member.fixture.MemberRestoreCommandFixture;
 import com.symphonia.member.fixture.MemberUpdateCommandFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,13 +39,15 @@ class MemberCommandServiceTest extends UnitTest {
 
     private Member activeGoogleMember;
     private Member activeAppleMember;
-    private Member deletedMember;
+    private Member deletedGoogleMember;
+    private Member deletedAppleMember;
 
     @BeforeEach
     void setUp() {
         activeGoogleMember = MemberFixture.GOOGLE.toActive();
         activeAppleMember = MemberFixture.APPLE.toActive();
-        deletedMember = MemberFixture.GOOGLE.toDeleted();
+        deletedGoogleMember = MemberFixture.GOOGLE.toDeleted();
+        deletedAppleMember = MemberFixture.APPLE.toDeleted();
     }
 
     @Nested
@@ -146,7 +150,7 @@ class MemberCommandServiceTest extends UnitTest {
         @BeforeEach
         void setUp() {
             MemberUpdateCommandFixture commandFixture = new MemberUpdateCommandFixture();
-            command = commandFixture.build();
+            command = commandFixture.nickname("팬텀").profileImage("https://image.symphonia.com/profile/test").build();
         }
 
         @Test
@@ -169,7 +173,7 @@ class MemberCommandServiceTest extends UnitTest {
             // given
             Long deletedId = 1L;
             given(memberRepository.findById(deletedId))
-                    .willReturn(Optional.of(deletedMember));
+                    .willReturn(Optional.of(deletedGoogleMember));
 
             // when & then
             assertThatThrownBy(() -> memberCommandService.update(deletedId, command))
@@ -218,7 +222,7 @@ class MemberCommandServiceTest extends UnitTest {
             // given
             Long deletedId = 1L;
             given(memberRepository.findById(deletedId))
-                    .willReturn(Optional.of(deletedMember));
+                    .willReturn(Optional.of(deletedGoogleMember));
 
             // when & then
             assertThatThrownBy(() -> memberCommandService.delete(deletedId))
@@ -243,19 +247,25 @@ class MemberCommandServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("restore 메서드는")
-    class Restore {
+    @DisplayName("(GOOGLE) restore 메서드는")
+    class RestoreByGoogle {
+        private MemberRestoreCommand command;
+
+        @BeforeEach
+        void setUp() {
+            MemberRestoreCommandFixture commandFixture = new MemberRestoreCommandFixture(MemberFixture.GOOGLE);
+            command = commandFixture.build();
+        }
 
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
         void shouldThrowExceptionWhenMemberNotFound() {
             // given
-            Long unknownId = -1L;
-            given(memberRepository.findById(unknownId))
+            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.restore(unknownId))
+            assertThatThrownBy(() -> memberCommandService.restore(command))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
@@ -264,12 +274,11 @@ class MemberCommandServiceTest extends UnitTest {
         @DisplayName("삭제되지 않은 멤버를 복구하면 예외가 발생한다.")
         void shouldThrowExceptionWhenMemberNotDeleted() {
             // given
-            Long memberId = 1L;
-            given(memberRepository.findById(memberId))
+            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
                     .willReturn(Optional.of(activeGoogleMember));
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.restore(memberId))
+            assertThatThrownBy(() -> memberCommandService.restore(command))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_DELETED.getMessage());
         }
@@ -278,15 +287,66 @@ class MemberCommandServiceTest extends UnitTest {
         @DisplayName("삭제된 멤버를 복구하면 deletedAt이 null이 된다.")
         void shouldClearDeletedAtWhenDeletedMemberRestored() {
             // given
-            Long deletedId = 1L;
-            given(memberRepository.findById(deletedId))
-                    .willReturn(Optional.of(deletedMember));
+            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
+                    .willReturn(Optional.of(deletedGoogleMember));
 
             // when
-            memberCommandService.restore(deletedId);
+            memberCommandService.restore(command);
 
             // then
-            assertThat(deletedMember.isDeleted()).isFalse();
+            assertThat(deletedGoogleMember.isDeleted()).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("(APPLE) restore 메서드는")
+    class RestoreByApple {
+        private MemberRestoreCommand command;
+
+        @BeforeEach
+        void setUp() {
+            MemberRestoreCommandFixture commandFixture = new MemberRestoreCommandFixture(MemberFixture.APPLE);
+            command = commandFixture.build();
+        }
+
+        @Test
+        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+        void shouldThrowExceptionWhenMemberNotFound() {
+            // given
+            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> memberCommandService.restore(command))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("삭제되지 않은 멤버를 복구하면 예외가 발생한다.")
+        void shouldThrowExceptionWhenMemberNotDeleted() {
+            // given
+            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
+                    .willReturn(Optional.of(activeAppleMember));
+
+            // when & then
+            assertThatThrownBy(() -> memberCommandService.restore(command))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage(MemberErrorCode.MEMBER_NOT_DELETED.getMessage());
+        }
+
+        @Test
+        @DisplayName("삭제된 멤버를 복구하면 deletedAt이 null이 된다.")
+        void shouldClearDeletedAtWhenDeletedMemberRestored() {
+            // given
+            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
+                    .willReturn(Optional.of(deletedAppleMember));
+
+            // when
+            memberCommandService.restore(command);
+
+            // then
+            assertThat(deletedAppleMember.isDeleted()).isFalse();
         }
     }
 }
