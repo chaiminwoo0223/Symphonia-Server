@@ -2,6 +2,7 @@ package com.symphonia.member.application.service;
 
 import com.symphonia.global.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
+import com.symphonia.member.application.dto.command.MemberRestoreCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
@@ -41,10 +42,12 @@ public class MemberCommandService {
         member.delete();
     }
 
-    public void restore(Long memberId) {
-        Member member = getDeletedById(memberId);
+    public MemberResult restore(MemberRestoreCommand command) {
+        Member member = getDeletedBySocialLogin(command.socialProvider(), command.socialId());
 
         member.restore();
+
+        return MemberResult.from(member);
     }
 
     private Member getActiveById(Long memberId) {
@@ -56,8 +59,8 @@ public class MemberCommandService {
         return member;
     }
 
-    private Member getDeletedById(Long memberId) {
-        Member member = memberRepository.findById(memberId)
+    private Member getDeletedBySocialLogin(SocialProvider socialProvider, String socialId) {
+        Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
         MemberPolicy.validateDeleted(member);
