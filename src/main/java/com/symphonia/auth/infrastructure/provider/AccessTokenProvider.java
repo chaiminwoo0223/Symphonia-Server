@@ -1,7 +1,7 @@
 package com.symphonia.auth.infrastructure.provider;
 
 import com.symphonia.auth.domain.error.AuthErrorCode;
-import com.symphonia.global.config.properties.TokenProperties;
+import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -16,40 +16,20 @@ import java.util.Date;
 // 모바일: Response Body(JSON) → iOS Keychain / Android Keystore 저장
 // 클라이언트: Response Body(JSON), HttpOnly Secure Cookie(BFF 패턴) → XSS 공격 / CSRF 공격 차단
 @Component
-public class TokenProvider {
-    private final TokenProperties tokenProperties;
+public class AccessTokenProvider {
+    private final AccessTokenProperties accessTokenProperties;
     private final SecretKey secretKey;
 
-    public TokenProvider(TokenProperties tokenProperties) {
-        this.tokenProperties = tokenProperties;
-        this.secretKey = Keys.hmacShaKeyFor(tokenProperties.secret().getBytes());
+    public AccessTokenProvider(AccessTokenProperties accessTokenProperties) {
+        this.accessTokenProperties = accessTokenProperties;
+        this.secretKey = Keys.hmacShaKeyFor(accessTokenProperties.secret().getBytes());
     }
 
     private static final String ROLE_CLAIM = "role";
 
-    public String generateAccessToken(String memberId, String role) {
-        return generateToken(memberId, role, tokenProperties.accessExpirationTime());
-    }
-
-    public String getMemberId(String accessToken) {
-        return parseClaims(accessToken).getSubject();
-    }
-
-    public String getRole(String accessToken) {
-        return parseClaims(accessToken).get(ROLE_CLAIM, String.class);
-    }
-
-    public long getAccessTokenExpirationTime() {
-        return tokenProperties.accessExpirationTime();
-    }
-
-    public long getRefreshTokenExpirationTime() {
-        return tokenProperties.refreshExpirationTime();
-    }
-
-    private String generateToken(String memberId, String role, long expirationSeconds) {
+    public String generate(String memberId, String role) {
         Instant now = Instant.now();
-        Instant expiry = now.plusSeconds(expirationSeconds);
+        Instant expiry = now.plusSeconds(accessTokenProperties.expirationTime());
 
         return Jwts.builder()
                 .subject(memberId)
@@ -60,24 +40,36 @@ public class TokenProvider {
                 .compact();
     }
 
+    public String getMemberId(String accessToken) {
+        return parse(accessToken).getSubject();
+    }
+
+    public String getRole(String accessToken) {
+        return parse(accessToken).get(ROLE_CLAIM, String.class);
+    }
+
+    public long getExpirationTime() {
+        return accessTokenProperties.expirationTime();
+    }
+
     public boolean validate(String accessToken) {
         try {
-            parse(accessToken);
+            decode(accessToken);
             return true;
         } catch (Exception e) {
             return false;
         }
     }
 
-    private Claims parseClaims(String token) {
+    private Claims parse(String token) {
         try {
-            return parse(token).getPayload();
+            return decode(token).getPayload();
         } catch (Exception e) {
             throw BusinessException.from(AuthErrorCode.INVALID_JWT_TOKEN);
         }
     }
 
-    private Jws<Claims> parse(String token) {
+    private Jws<Claims> decode(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
