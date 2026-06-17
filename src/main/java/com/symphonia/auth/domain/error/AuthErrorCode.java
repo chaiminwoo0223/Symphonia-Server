@@ -1,10 +1,12 @@
-package com.symphonia.global.exception.error;
+package com.symphonia.auth.domain.error;
 
+import com.symphonia.global.exception.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @RequiredArgsConstructor
 public enum AuthErrorCode implements ErrorCode {
+
     // 400
     MISSING_REFRESH_TOKEN(HttpStatus.BAD_REQUEST, "리프레시 토큰이 누락되었습니다."),
 
