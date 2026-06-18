@@ -25,7 +25,7 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     }
 
     @Override
-    public void delete(String memberId) {
+    public void deleteByMemberId(String memberId) {
         refreshTokenRedisRepository.deleteByMemberId(memberId);
     }
 }

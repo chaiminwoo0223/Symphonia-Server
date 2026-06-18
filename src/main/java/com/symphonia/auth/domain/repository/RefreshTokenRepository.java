@@ -7,5 +7,5 @@ public interface RefreshTokenRepository {
 
     Optional<String> findMemberIdByValue(String value);
 
-    void delete(String memberId);
+    void deleteByMemberId(String memberId);
 }
