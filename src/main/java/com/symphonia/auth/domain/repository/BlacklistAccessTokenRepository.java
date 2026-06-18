@@ -1,9 +1,7 @@
 package com.symphonia.auth.domain.repository;
 
-import com.symphonia.auth.infrastructure.redis.BlacklistAccessToken;
-
 public interface BlacklistAccessTokenRepository {
-    void save(BlacklistAccessToken blacklistAccessToken);
+    void save(String accessToken, String memberId, Long expirationTime);
 
     boolean isBlacklisted(String accessToken);
 }
