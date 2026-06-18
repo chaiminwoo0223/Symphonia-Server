@@ -1,9 +1,13 @@
 package com.symphonia.auth.domain.repository;
 
-public interface RefreshTokenRepository {
-    void save(String memberId, String refreshToken);
+import com.symphonia.auth.infrastructure.redis.RefreshToken;
 
-    String find(String memberId);
+import java.util.Optional;
+
+public interface RefreshTokenRepository {
+    void save(RefreshToken refreshToken);
+
+    Optional<String> find(String memberId);
 
     void delete(String memberId);
 }
