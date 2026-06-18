@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface MemberRepository {
     Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId);
 
-    Optional<Member> findById(Long id);
+    Optional<Member> findById(Long memberId);
 
     Member save(Member member);
 

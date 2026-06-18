@@ -19,8 +19,8 @@ public class MemberRepositoryAdapter implements MemberRepository {
     }
 
     @Override
-    public Optional<Member> findById(Long id) {
-        return memberJpaRepository.findById(id);
+    public Optional<Member> findById(Long memberId) {
+        return memberJpaRepository.findById(memberId);
     }
 
     @Override
