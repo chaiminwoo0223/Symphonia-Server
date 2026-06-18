@@ -12,7 +12,9 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
 
     @Override
-    public void save(RefreshToken refreshToken) {
+    public void save(String memberId, String value, Long expirationTime) {
+        RefreshToken refreshToken = RefreshToken.of(memberId, value, expirationTime);
+
         refreshTokenRedisRepository.save(refreshToken);
     }
 

@@ -10,7 +10,9 @@ public class BlacklistAccessTokenRepositoryAdapter implements BlacklistAccessTok
     private final BlacklistAccessTokenRedisRepository blacklistAccessTokenRedisRepository;
 
     @Override
-    public void save(BlacklistAccessToken blacklistAccessToken) {
+    public void save(String accessToken, String memberId, Long expirationTime) {
+        BlacklistAccessToken blacklistAccessToken = BlacklistAccessToken.of(accessToken, memberId, expirationTime);
+
         blacklistAccessTokenRedisRepository.save(blacklistAccessToken);
     }
 
