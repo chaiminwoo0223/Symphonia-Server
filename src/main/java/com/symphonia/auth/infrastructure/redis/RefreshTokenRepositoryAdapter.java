@@ -12,20 +12,20 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
 
     @Override
-    public void save(String memberId, String value, Long expirationTime) {
-        RefreshToken refreshToken = RefreshToken.of(memberId, value, expirationTime);
+    public void save(String value, String memberId, Long expirationTime) {
+        RefreshToken refreshToken = RefreshToken.of(value, memberId, expirationTime);
 
         refreshTokenRedisRepository.save(refreshToken);
     }
 
     @Override
-    public Optional<String> find(String memberId) {
-        return refreshTokenRedisRepository.findById(memberId)
-                .map(RefreshToken::getValue);
+    public Optional<String> findMemberIdByValue(String value) {
+        return refreshTokenRedisRepository.findById(value)
+                .map(RefreshToken::getMemberId);
     }
 
     @Override
     public void delete(String memberId) {
-        refreshTokenRedisRepository.deleteById(memberId);
+        refreshTokenRedisRepository.deleteByMemberId(memberId);
     }
 }
