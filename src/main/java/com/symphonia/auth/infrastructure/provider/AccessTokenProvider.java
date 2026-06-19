@@ -48,8 +48,11 @@ public class AccessTokenProvider {
         return parse(accessToken).get(ROLE_CLAIM, String.class);
     }
 
-    public long getExpirationTime() {
-        return accessTokenProperties.expirationTime();
+    public long getRemainingTime(String accessToken) {
+        Date expiration = parse(accessToken).getExpiration();
+        long remaining = expiration.getTime() - System.currentTimeMillis();
+
+        return Math.max(remaining, 0) / 1000;
     }
 
     public boolean validate(String accessToken) {
