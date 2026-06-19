@@ -44,6 +44,10 @@ public class TokenService {
         refreshTokenRepository.delete(memberId);
     }
 
+    public void forceRevoke(String memberId) {
+        refreshTokenRepository.delete(memberId);
+    }
+
     private String getMemberIdByRefreshToken(String refreshToken) {
         return refreshTokenRepository.findMemberIdByValue(refreshToken)
                 .orElseThrow(() -> BusinessException.from(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
