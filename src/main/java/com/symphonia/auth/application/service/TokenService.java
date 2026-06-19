@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class TokenService {
-
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenProvider refreshTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -45,7 +44,7 @@ public class TokenService {
         refreshTokenRepository.delete(memberId);
     }
 
-    public String getMemberIdByRefreshToken(String refreshToken) {
+    private String getMemberIdByRefreshToken(String refreshToken) {
         return refreshTokenRepository.findMemberIdByValue(refreshToken)
                 .orElseThrow(() -> BusinessException.from(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
     }

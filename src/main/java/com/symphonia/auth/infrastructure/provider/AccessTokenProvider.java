@@ -64,18 +64,18 @@ public class AccessTokenProvider {
         }
     }
 
-    private Claims parse(String token) {
+    private Claims parse(String accessToken) {
         try {
-            return decode(token).getPayload();
+            return decode(accessToken).getPayload();
         } catch (Exception e) {
             throw BusinessException.from(AuthErrorCode.INVALID_JWT_TOKEN);
         }
     }
 
-    private Jws<Claims> decode(String token) {
+    private Jws<Claims> decode(String accessToken) {
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
-                .parseSignedClaims(token);
+                .parseSignedClaims(accessToken);
     }
 }
