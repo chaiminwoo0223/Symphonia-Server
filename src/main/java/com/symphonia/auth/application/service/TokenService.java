@@ -44,6 +44,7 @@ public class TokenService {
         refreshTokenRepository.delete(memberId);
     }
 
+    // 관리자 전용
     public void forceRevoke(String memberId) {
         refreshTokenRepository.delete(memberId);
     }
