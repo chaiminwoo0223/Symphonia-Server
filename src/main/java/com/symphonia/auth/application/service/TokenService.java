@@ -16,7 +16,7 @@ public class TokenService {
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenProvider refreshTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    private final BlacklistAccessTokenRepository blacklistAccessTokenRepository; 
 
     public TokenResult issue(String memberId, String role) {
         String accessToken = accessTokenProvider.generate(memberId, role);
