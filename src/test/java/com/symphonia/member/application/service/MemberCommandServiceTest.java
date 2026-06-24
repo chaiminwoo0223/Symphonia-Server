@@ -46,8 +46,8 @@ class MemberCommandServiceTest extends UnitTest {
     void setUp() {
         activeGoogleMember = MemberFixture.GOOGLE.toActive();
         activeAppleMember = MemberFixture.APPLE.toActive();
-        deletedGoogleMember = MemberFixture.GOOGLE.toDeleted();
-        deletedAppleMember = MemberFixture.APPLE.toDeleted();
+        deletedGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
+        deletedAppleMember = MemberFixture.APPLE.toWithdrawn();
     }
 
     @Nested

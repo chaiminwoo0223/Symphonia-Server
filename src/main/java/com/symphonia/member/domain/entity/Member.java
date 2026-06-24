@@ -1,8 +1,6 @@
 package com.symphonia.member.domain.entity;
 
 import com.symphonia.global.common.entity.BaseTimeEntity;
-import com.symphonia.member.application.dto.command.MemberCreateCommand;
-import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

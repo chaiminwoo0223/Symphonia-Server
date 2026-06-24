@@ -31,117 +31,121 @@ class MemberQueryServiceTest extends UnitTest {
     private MemberRepository memberRepository;
 
     private Member activeGoogleMember;
-    private Member deletedGoogleMember;
+    private Member withdrawnGoogleMember;
     private Member activeAppleMember;
-    private Member deletedAppleMember;
+    private Member withdrawnAppleMember;
 
     @BeforeEach
     void setUp() {
         activeGoogleMember = MemberFixture.GOOGLE.toActive();
-        deletedGoogleMember = MemberFixture.GOOGLE.toDeleted();
+        withdrawnGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
         activeAppleMember = MemberFixture.APPLE.toActive();
-        deletedAppleMember = MemberFixture.APPLE.toDeleted();
+        withdrawnAppleMember = MemberFixture.APPLE.toWithdrawn();
     }
 
     @Nested
-    @DisplayName("(GOOGLE) getActiveBySocialLogin 메서드는")
-    class GetActiveByGoogleLogin {
+    @DisplayName("getActiveBySocialLogin 메서드는")
+    class GetActiveBySocialLogin {
+        private static final String UNKNOWN_SOCIAL_ID = "xxx";
 
-        @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
-            // given
-            String unknownSocialId = "xxx";
-            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, unknownSocialId))
-                    .willReturn(Optional.empty());
+        @Nested
+        @DisplayName("SocialProvider가 GOOGLE인 경우")
+        class Google {
 
-            // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, unknownSocialId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            @Test
+            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            }
+
+            @Test
+            @DisplayName("탈퇴한 멤버를 조회하면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, withdrawnGoogleMember.getSocialId()))
+                        .willReturn(Optional.of(withdrawnGoogleMember));
+
+                // when & then
+                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, withdrawnGoogleMember.getSocialId()))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
+            }
+
+            @Test
+            @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenActiveMemberFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
+                        .willReturn(Optional.of(activeGoogleMember));
+
+                // when
+                MemberResult result = memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId());
+
+                // then
+                assertThat(result.socialId()).isEqualTo(activeGoogleMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
+                assertThat(result.email()).isEqualTo(activeGoogleMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(activeGoogleMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(activeGoogleMember.getSocialProvider());
+            }
         }
 
-        @Test
-        @DisplayName("삭제된 멤버를 조회하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyDeleted() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, deletedGoogleMember.getSocialId()))
-                    .willReturn(Optional.of(deletedGoogleMember));
+        @Nested
+        @DisplayName("SocialProvider가 APPLE인 경우")
+        class Apple {
 
-            // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, deletedGoogleMember.getSocialId()))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
-        }
+            @Test
+            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, UNKNOWN_SOCIAL_ID))
+                        .willReturn(Optional.empty());
 
-        @Test
-        @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenActiveMemberFound() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
-                    .willReturn(Optional.of(activeGoogleMember));
+                // when & then
+                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, UNKNOWN_SOCIAL_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            }
 
-            // when
-            MemberResult result = memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId());
+            @Test
+            @DisplayName("탈퇴한 멤버를 조회하면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, withdrawnAppleMember.getSocialId()))
+                        .willReturn(Optional.of(withdrawnAppleMember));
 
-            // then
-            assertThat(result.socialId()).isEqualTo(activeGoogleMember.getSocialId());
-            assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
-            assertThat(result.email()).isEqualTo(activeGoogleMember.getEmail());
-            assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
-            assertThat(result.role()).isEqualTo(activeGoogleMember.getRole());
-            assertThat(result.socialProvider()).isEqualTo(activeGoogleMember.getSocialProvider());
-        }
-    }
+                // when & then
+                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, withdrawnAppleMember.getSocialId()))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
+            }
 
-    @Nested
-    @DisplayName("(APPLE) getActiveBySocialLogin 메서드는")
-    class GetActiveByAppleLogin {
+            @Test
+            @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenActiveMemberFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
+                        .willReturn(Optional.of(activeAppleMember));
 
-        @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
-            // given
-            String unknownSocialId = "xxx";
-            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, unknownSocialId))
-                    .willReturn(Optional.empty());
+                // when
+                MemberResult result = memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId());
 
-            // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, unknownSocialId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-        }
-
-        @Test
-        @DisplayName("삭제된 멤버를 조회하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyDeleted() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, deletedAppleMember.getSocialId()))
-                    .willReturn(Optional.of(deletedAppleMember));
-
-            // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, deletedAppleMember.getSocialId()))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
-        }
-
-        @Test
-        @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenActiveMemberFound() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
-                    .willReturn(Optional.of(activeAppleMember));
-
-            // when
-            MemberResult result = memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId());
-
-            // then
-            assertThat(result.socialId()).isEqualTo(activeAppleMember.getSocialId());
-            assertThat(result.nickname()).isEqualTo(activeAppleMember.getNickname());
-            assertThat(result.email()).isEqualTo(activeAppleMember.getEmail());
-            assertThat(result.profileImage()).isEqualTo(activeAppleMember.getProfileImage());
-            assertThat(result.role()).isEqualTo(activeAppleMember.getRole());
-            assertThat(result.socialProvider()).isEqualTo(activeAppleMember.getSocialProvider());
+                // then
+                assertThat(result.socialId()).isEqualTo(activeAppleMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(activeAppleMember.getNickname());
+                assertThat(result.email()).isEqualTo(activeAppleMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(activeAppleMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(activeAppleMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(activeAppleMember.getSocialProvider());
+            }
         }
     }
 
@@ -169,7 +173,7 @@ class MemberQueryServiceTest extends UnitTest {
             // given
             Long withdrawnId = 1L;
             given(memberRepository.findById(withdrawnId))
-                    .willReturn(Optional.of(deletedGoogleMember));
+                    .willReturn(Optional.of(withdrawnGoogleMember));
 
             // when & then
             assertThatThrownBy(() -> memberQueryService.getActiveById(withdrawnId))
