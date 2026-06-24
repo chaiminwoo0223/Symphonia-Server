@@ -178,7 +178,7 @@ class MemberCommandServiceTest extends UnitTest {
             // when & then
             assertThatThrownBy(() -> memberCommandService.update(deletedId, command))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
@@ -227,7 +227,7 @@ class MemberCommandServiceTest extends UnitTest {
             // when & then
             assertThatThrownBy(() -> memberCommandService.delete(deletedId))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
@@ -280,7 +280,7 @@ class MemberCommandServiceTest extends UnitTest {
             // when & then
             assertThatThrownBy(() -> memberCommandService.restore(command))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_NOT_WITHDRAWN.getMessage());
         }
 
         @Test
@@ -334,7 +334,7 @@ class MemberCommandServiceTest extends UnitTest {
             // when & then
             assertThatThrownBy(() -> memberCommandService.restore(command))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_NOT_WITHDRAWN.getMessage());
         }
 
         @Test

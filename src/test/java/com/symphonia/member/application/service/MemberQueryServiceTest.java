@@ -71,7 +71,7 @@ class MemberQueryServiceTest extends UnitTest {
             // when & then
             assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, deletedGoogleMember.getSocialId()))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
@@ -122,7 +122,7 @@ class MemberQueryServiceTest extends UnitTest {
             // when & then
             assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, deletedAppleMember.getSocialId()))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
@@ -164,17 +164,17 @@ class MemberQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("삭제된 멤버를 조회하면 예외가 발생한다.")
+        @DisplayName("탈퇴한 멤버를 조회하면 예외가 발생한다.")
         void shouldThrowExceptionWhenMemberAlreadyDeleted() {
             // given
-            Long deletedId = 1L;
-            given(memberRepository.findById(deletedId))
+            Long withdrawnId = 1L;
+            given(memberRepository.findById(withdrawnId))
                     .willReturn(Optional.of(deletedGoogleMember));
 
             // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveById(deletedId))
+            assertThatThrownBy(() -> memberQueryService.getActiveById(withdrawnId))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_DELETED.getMessage());
+                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
