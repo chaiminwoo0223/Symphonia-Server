@@ -45,7 +45,7 @@ public enum MemberFixture {
     public Member toDeleted() {
         Member member = toActive();
 
-        member.delete();
+        member.withdraw();
 
         return member;
     }
