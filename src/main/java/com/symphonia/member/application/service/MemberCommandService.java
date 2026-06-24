@@ -54,7 +54,7 @@ public class MemberCommandService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        MemberPolicy.validateNotDeleted(member);
+        MemberPolicy.validateNotWithdrawn(member);
 
         return member;
     }
@@ -63,7 +63,7 @@ public class MemberCommandService {
         Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        MemberPolicy.validateDeleted(member);
+        MemberPolicy.validateWithdrawn(member);
 
         return member;
     }

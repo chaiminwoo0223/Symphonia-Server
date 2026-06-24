@@ -21,7 +21,7 @@ public class MemberQueryService {
         Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        MemberPolicy.validateNotDeleted(member);
+        MemberPolicy.validateNotWithdrawn(member);
 
         return MemberResult.from(member);
     }
@@ -30,7 +30,7 @@ public class MemberQueryService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        MemberPolicy.validateNotDeleted(member);
+        MemberPolicy.validateNotWithdrawn(member);
 
         return MemberResult.from(member);
     }
