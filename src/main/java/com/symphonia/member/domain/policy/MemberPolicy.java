@@ -9,13 +9,13 @@ public enum MemberPolicy {
 
     public static void validateNotDeleted(Member member) {
         if (member.isDeleted()) {
-            throw BusinessException.from(MemberErrorCode.MEMBER_ALREADY_DELETED);
+            throw BusinessException.from(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN);
         }
     }
 
     public static void validateDeleted(Member member) {
         if (!member.isDeleted()) {
-            throw BusinessException.from(MemberErrorCode.MEMBER_NOT_DELETED);
+            throw BusinessException.from(MemberErrorCode.MEMBER_NOT_WITHDRAWN);
         }
     }
 
