@@ -180,8 +180,10 @@ class TokenServiceTest extends UnitTest {
 
         @BeforeEach
         void setUp() {
-            given(accessTokenProvider.parseClaims(ACCESS_TOKEN))
-                    .willReturn(AccessTokenProvider.AccessTokenClaims.of(MEMBER_ID, ACCESS_TOKEN_REMAINING_TIME));
+            given(accessTokenProvider.getMemberId(ACCESS_TOKEN))
+                    .willReturn(MEMBER_ID);
+            given(accessTokenProvider.getRemainingTime(ACCESS_TOKEN))
+                    .willReturn(ACCESS_TOKEN_REMAINING_TIME);
         }
 
         @Test
