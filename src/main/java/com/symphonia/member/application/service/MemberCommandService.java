@@ -23,27 +23,28 @@ public class MemberCommandService {
     public MemberResult create(MemberCreateCommand command) {
         validateDuplicated(command.socialProvider(), command.socialId());
 
-        Member member = memberRepository.save(Member.of(command));
+        Member member = Member.of(command.socialId(), command.nickname(), command.email(), command.profileImage(), command.socialProvider());
+        Member savedMember = memberRepository.save(member);
 
-        return MemberResult.from(member);
+        return MemberResult.from(savedMember);
     }
 
     public MemberResult update(Long memberId, MemberUpdateCommand command) {
         Member member = getActiveById(memberId);
 
-        member.update(command);
+        member.update(command.nickname(), command.profileImage());
 
         return MemberResult.from(member);
     }
 
-    public void delete(Long memberId) {
+    public void withdraw(Long memberId) {
         Member member = getActiveById(memberId);
 
         member.withdraw();
     }
 
     public MemberResult restore(MemberRestoreCommand command) {
-        Member member = getDeletedBySocialLogin(command.socialProvider(), command.socialId());
+        Member member = getWithdrawnBySocialLogin(command.socialProvider(), command.socialId());
 
         member.restore();
 
@@ -59,7 +60,7 @@ public class MemberCommandService {
         return member;
     }
 
-    private Member getDeletedBySocialLogin(SocialProvider socialProvider, String socialId) {
+    private Member getWithdrawnBySocialLogin(SocialProvider socialProvider, String socialId) {
         Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
