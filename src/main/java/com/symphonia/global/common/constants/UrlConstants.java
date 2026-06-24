@@ -1,5 +1,7 @@
 package com.symphonia.global.common.constants;
 
+import java.util.List;
+
 public final class UrlConstants {
     private UrlConstants() {}
 
@@ -11,10 +13,11 @@ public final class UrlConstants {
 
     public static final String[] PERMIT_ALL_PATHS = {
             "/api/v1/auth/**",
+            "/api/v1/members/restore",
     };
 
-    public static final String[] CORS_ALLOWED_ORIGINS = {
+    public static final List<String> CORS_ALLOWED_ORIGINS = List.of(
             "http://localhost:3000",
-            "http://localhost:5173",
-    };
+            "http://localhost:5173"
+    );
 }
