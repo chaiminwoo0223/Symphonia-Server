@@ -41,3 +41,6 @@ out/
 
 ### ENV ###
 *.env
+
+### AI Config ###
+**/.ai
