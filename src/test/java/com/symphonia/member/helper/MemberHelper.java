@@ -16,6 +16,6 @@ public class MemberHelper {
     }
 
     public Member saveDeleted(MemberFixture fixture) {
-        return memberRepository.save(fixture.toDeleted());
+        return memberRepository.save(fixture.toWithdrawn());
     }
 }

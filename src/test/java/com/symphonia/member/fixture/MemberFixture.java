@@ -42,7 +42,7 @@ public enum MemberFixture {
                 .build();
     }
 
-    public Member toDeleted() {
+    public Member toWithdrawn() {
         Member member = toActive();
 
         member.withdraw();
