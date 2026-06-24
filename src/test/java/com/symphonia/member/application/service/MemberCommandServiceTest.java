@@ -38,107 +38,110 @@ class MemberCommandServiceTest extends UnitTest {
     private MemberRepository memberRepository;
 
     private Member activeGoogleMember;
+    private Member withdrawnGoogleMember;
     private Member activeAppleMember;
-    private Member deletedGoogleMember;
-    private Member deletedAppleMember;
+    private Member withdrawnAppleMember;
 
     @BeforeEach
     void setUp() {
         activeGoogleMember = MemberFixture.GOOGLE.toActive();
+        withdrawnGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
         activeAppleMember = MemberFixture.APPLE.toActive();
-        deletedGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
-        deletedAppleMember = MemberFixture.APPLE.toWithdrawn();
+        withdrawnAppleMember = MemberFixture.APPLE.toWithdrawn();
     }
 
     @Nested
-    @DisplayName("(GOOGLE) create 메서드는")
-    class CreateByGoogle {
-        private MemberCreateCommand command;
+    @DisplayName("create 메서드는")
+    class Create {
 
-        @BeforeEach
-        void setUp() {
-            MemberCreateCommandFixture commandFixture = new MemberCreateCommandFixture(MemberFixture.GOOGLE);
-            command = commandFixture.build();
+        @Nested
+        @DisplayName("SocialProvider가 GOOGLE인 경우")
+        class Google {
+            private MemberCreateCommand command;
+
+            @BeforeEach
+            void setUp() {
+                command = new MemberCreateCommandFixture(MemberFixture.GOOGLE).build();
+            }
+
+            @Test
+            @DisplayName("이미 가입된 멤버가 존재하면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberAlreadyExists() {
+                // given
+                given(memberRepository.existsBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
+                        .willReturn(true);
+
+                // when & then
+                assertThatThrownBy(() -> memberCommandService.create(command))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
+            }
+
+            @Test
+            @DisplayName("유효한 커맨드로 멤버를 생성하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenMemberCreatedWithValidCommand() {
+                // given
+                given(memberRepository.existsBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
+                        .willReturn(false);
+                given(memberRepository.save(any(Member.class)))
+                        .willReturn(activeGoogleMember);
+
+                // when
+                MemberResult result = memberCommandService.create(command);
+
+                // then
+                assertThat(result.socialId()).isEqualTo(activeGoogleMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
+                assertThat(result.email()).isEqualTo(activeGoogleMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(activeGoogleMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(activeGoogleMember.getSocialProvider());
+            }
         }
 
-        @Test
-        @DisplayName("이미 가입된 멤버가 존재하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyExists() {
-            // given
-            given(memberRepository.existsBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
-                    .willReturn(true);
+        @Nested
+        @DisplayName("SocialProvider가 APPLE인 경우")
+        class Apple {
+            private MemberCreateCommand command;
 
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.create(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
-        }
+            @BeforeEach
+            void setUp() {
+                command = new MemberCreateCommandFixture(MemberFixture.APPLE).build();
+            }
 
-        @Test
-        @DisplayName("유효한 커맨드로 멤버를 생성하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenMemberCreatedWithValidCommand() {
-            // given
-            given(memberRepository.existsBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
-                    .willReturn(false);
-            given(memberRepository.save(any(Member.class)))
-                    .willReturn(activeGoogleMember);
+            @Test
+            @DisplayName("이미 가입된 멤버가 존재하면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberAlreadyExists() {
+                // given
+                given(memberRepository.existsBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
+                        .willReturn(true);
 
-            // when
-            MemberResult result = memberCommandService.create(command);
+                // when & then
+                assertThatThrownBy(() -> memberCommandService.create(command))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
+            }
 
-            // then
-            assertThat(result.socialId()).isEqualTo(activeGoogleMember.getSocialId());
-            assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
-            assertThat(result.email()).isEqualTo(activeGoogleMember.getEmail());
-            assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
-            assertThat(result.role()).isEqualTo(activeGoogleMember.getRole());
-            assertThat(result.socialProvider()).isEqualTo(activeGoogleMember.getSocialProvider());
-        }
-    }
+            @Test
+            @DisplayName("유효한 커맨드로 멤버를 생성하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenMemberCreatedWithValidCommand() {
+                // given
+                given(memberRepository.existsBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
+                        .willReturn(false);
+                given(memberRepository.save(any(Member.class)))
+                        .willReturn(activeAppleMember);
 
-    @Nested
-    @DisplayName("(APPLE) create 메서드는")
-    class CreateByApple {
-        private MemberCreateCommand command;
+                // when
+                MemberResult result = memberCommandService.create(command);
 
-        @BeforeEach
-        void setUp() {
-            MemberCreateCommandFixture commandFixture = new MemberCreateCommandFixture(MemberFixture.APPLE);
-            command = commandFixture.build();
-        }
-
-        @Test
-        @DisplayName("이미 가입된 멤버가 존재하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyExists() {
-            // given
-            given(memberRepository.existsBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
-                    .willReturn(true);
-
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.create(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
-        }
-
-        @Test
-        @DisplayName("유효한 커맨드로 멤버를 생성하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenMemberCreatedWithValidCommand() {
-            // given
-            given(memberRepository.existsBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
-                    .willReturn(false);
-            given(memberRepository.save(any(Member.class)))
-                    .willReturn(activeAppleMember);
-
-            // when
-            MemberResult result = memberCommandService.create(command);
-
-            // then
-            assertThat(result.socialId()).isEqualTo(activeAppleMember.getSocialId());
-            assertThat(result.nickname()).isEqualTo(activeAppleMember.getNickname());
-            assertThat(result.email()).isEqualTo(activeAppleMember.getEmail());
-            assertThat(result.profileImage()).isEqualTo(activeAppleMember.getProfileImage());
-            assertThat(result.role()).isEqualTo(activeAppleMember.getRole());
-            assertThat(result.socialProvider()).isEqualTo(activeAppleMember.getSocialProvider());
+                // then
+                assertThat(result.socialId()).isEqualTo(activeAppleMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(activeAppleMember.getNickname());
+                assertThat(result.email()).isEqualTo(activeAppleMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(activeAppleMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(activeAppleMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(activeAppleMember.getSocialProvider());
+            }
         }
     }
 
@@ -149,8 +152,7 @@ class MemberCommandServiceTest extends UnitTest {
 
         @BeforeEach
         void setUp() {
-            MemberUpdateCommandFixture commandFixture = new MemberUpdateCommandFixture();
-            command = commandFixture.nickname("팬텀").profileImage("https://image.symphonia.com/profile/test").build();
+            command = new MemberUpdateCommandFixture().nickname("팬텀").profileImage("https://image.symphonia.com/profile/test").build();
         }
 
         @Test
@@ -168,15 +170,15 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("삭제된 멤버를 수정하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyDeleted() {
+        @DisplayName("탈퇴한 멤버를 수정하면 예외가 발생한다.")
+        void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
             // given
-            Long deletedId = 1L;
-            given(memberRepository.findById(deletedId))
-                    .willReturn(Optional.of(deletedGoogleMember));
+            Long withdrawnId = 1L;
+            given(memberRepository.findById(withdrawnId))
+                    .willReturn(Optional.of(withdrawnGoogleMember));
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.update(deletedId, command))
+            assertThatThrownBy(() -> memberCommandService.update(withdrawnId, command))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
@@ -199,8 +201,8 @@ class MemberCommandServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("delete 메서드는")
-    class Delete {
+    @DisplayName("withdraw 메서드는")
+    class Withdraw {
 
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
@@ -217,22 +219,22 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("삭제된 멤버를 삭제하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyDeleted() {
+        @DisplayName("탈퇴한 멤버를 탈퇴시키면 예외가 발생한다.")
+        void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
             // given
-            Long deletedId = 1L;
-            given(memberRepository.findById(deletedId))
-                    .willReturn(Optional.of(deletedGoogleMember));
+            Long withdrawnId = 1L;
+            given(memberRepository.findById(withdrawnId))
+                    .willReturn(Optional.of(withdrawnGoogleMember));
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.withdraw(deletedId))
+            assertThatThrownBy(() -> memberCommandService.withdraw(withdrawnId))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
-        @DisplayName("활성 멤버를 삭제하면 deletedAt이 설정된다.")
-        void shouldSetDeletedAtWhenActiveMemberDeleted() {
+        @DisplayName("활성 멤버가 탈퇴하면 deletedAt이 설정된다.")
+        void shouldSetDeletedAtWhenActiveMemberWithdrawn() {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId))
@@ -247,110 +249,113 @@ class MemberCommandServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("(GOOGLE) restore 메서드는")
-    class RestoreByGoogle {
-        private MemberRestoreCommand command;
+    @DisplayName("restore 메서드는")
+    class Restore {
 
-        @BeforeEach
-        void setUp() {
-            MemberRestoreCommandFixture commandFixture = new MemberRestoreCommandFixture(MemberFixture.GOOGLE);
-            command = commandFixture.build();
+        @Nested
+        @DisplayName("SocialProvider가 GOOGLE인 경우")
+        class Google {
+            private MemberRestoreCommand command;
+
+            @BeforeEach
+            void setUp() {
+                command = new MemberRestoreCommandFixture(MemberFixture.GOOGLE).build();
+            }
+
+            @Test
+            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> memberCommandService.restore(command))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            }
+
+            @Test
+            @DisplayName("탈퇴하지 않은 멤버를 복구하면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotWithdrawn() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
+                        .willReturn(Optional.of(activeGoogleMember));
+
+                // when & then
+                assertThatThrownBy(() -> memberCommandService.restore(command))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_WITHDRAWN.getMessage());
+            }
+
+            @Test
+            @DisplayName("탈퇴한 멤버를 복구하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenWithdrawnMemberRestored() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
+                        .willReturn(Optional.of(withdrawnGoogleMember));
+
+                // when
+                MemberResult result = memberCommandService.restore(command);
+
+                // then
+                assertThat(withdrawnGoogleMember.isDeleted()).isFalse();
+                assertThat(result.socialId()).isEqualTo(withdrawnGoogleMember.getSocialId());
+                assertThat(result.socialProvider()).isEqualTo(withdrawnGoogleMember.getSocialProvider());
+            }
         }
 
-        @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
-                    .willReturn(Optional.empty());
+        @Nested
+        @DisplayName("SocialProvider가 APPLE인 경우")
+        class Apple {
+            private MemberRestoreCommand command;
 
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.restore(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-        }
+            @BeforeEach
+            void setUp() {
+                command = new MemberRestoreCommandFixture(MemberFixture.APPLE).build();
+            }
 
-        @Test
-        @DisplayName("삭제되지 않은 멤버를 복구하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotDeleted() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
-                    .willReturn(Optional.of(activeGoogleMember));
+            @Test
+            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
+                        .willReturn(Optional.empty());
 
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.restore(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_WITHDRAWN.getMessage());
-        }
+                // when & then
+                assertThatThrownBy(() -> memberCommandService.restore(command))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            }
 
-        @Test
-        @DisplayName("삭제된 멤버를 복구하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenDeletedMemberRestored() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, command.socialId()))
-                    .willReturn(Optional.of(deletedGoogleMember));
+            @Test
+            @DisplayName("탈퇴하지 않은 멤버를 복구하면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotWithdrawn() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
+                        .willReturn(Optional.of(activeAppleMember));
 
-            // when
-            MemberResult result = memberCommandService.restore(command);
+                // when & then
+                assertThatThrownBy(() -> memberCommandService.restore(command))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_WITHDRAWN.getMessage());
+            }
 
-            // then
-            assertThat(deletedGoogleMember.isDeleted()).isFalse();
-            assertThat(result.socialId()).isEqualTo(deletedGoogleMember.getSocialId());
-            assertThat(result.socialProvider()).isEqualTo(deletedGoogleMember.getSocialProvider());
-        }
-    }
+            @Test
+            @DisplayName("탈퇴한 멤버를 복구하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenWithdrawnMemberRestored() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
+                        .willReturn(Optional.of(withdrawnAppleMember));
 
-    @Nested
-    @DisplayName("(APPLE) restore 메서드는")
-    class RestoreByApple {
-        private MemberRestoreCommand command;
+                // when
+                MemberResult result = memberCommandService.restore(command);
 
-        @BeforeEach
-        void setUp() {
-            MemberRestoreCommandFixture commandFixture = new MemberRestoreCommandFixture(MemberFixture.APPLE);
-            command = commandFixture.build();
-        }
-
-        @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
-                    .willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.restore(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-        }
-
-        @Test
-        @DisplayName("삭제되지 않은 멤버를 복구하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotDeleted() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
-                    .willReturn(Optional.of(activeAppleMember));
-
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.restore(command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_WITHDRAWN.getMessage());
-        }
-
-        @Test
-        @DisplayName("삭제된 멤버를 복구하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenDeletedMemberRestored() {
-            // given
-            given(memberRepository.findBySocialLogin(SocialProvider.APPLE, command.socialId()))
-                    .willReturn(Optional.of(deletedAppleMember));
-
-            // when
-            MemberResult result = memberCommandService.restore(command);
-
-            // then
-            assertThat(deletedAppleMember.isDeleted()).isFalse();
-            assertThat(result.socialId()).isEqualTo(deletedAppleMember.getSocialId());
-            assertThat(result.socialProvider()).isEqualTo(deletedAppleMember.getSocialProvider());
+                // then
+                assertThat(withdrawnAppleMember.isDeleted()).isFalse();
+                assertThat(result.socialId()).isEqualTo(withdrawnAppleMember.getSocialId());
+                assertThat(result.socialProvider()).isEqualTo(withdrawnAppleMember.getSocialProvider());
+            }
         }
     }
 }
