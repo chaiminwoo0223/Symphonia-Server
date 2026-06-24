@@ -40,20 +40,20 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false)
     private SocialProvider socialProvider;
 
-    public static Member of(MemberCreateCommand command) {
+    public static Member of(String socialId, String nickname, String email, String profileImage, SocialProvider socialProvider) {
         return Member.builder()
-                .socialId(command.socialId())
-                .nickname(command.nickname())
-                .email(command.email())
-                .profileImage(command.profileImage())
+                .socialId(socialId)
+                .nickname(nickname)
+                .email(email)
+                .profileImage(profileImage)
                 .role(Role.ROLE_MEMBER)
-                .socialProvider(command.socialProvider())
+                .socialProvider(socialProvider)
                 .build();
     }
 
-    public void update(MemberUpdateCommand command) {
-        this.nickname = command.nickname();
-        this.profileImage = command.profileImage();
+    public void update(String nickname, String profileImage) {
+        this.nickname = nickname;
+        this.profileImage = profileImage;
     }
 
     public void withdraw() {
