@@ -132,7 +132,7 @@ class TokenServiceTest extends UnitTest {
 
             @Test
             @DisplayName("기존 리프레시 토큰을 삭제한다.")
-            void shouldDeleteExistingRefreshToken() {
+            void shouldWithdrawExistingRefreshToken() {
                 // when
                 tokenService.reissue(REFRESH_TOKEN, ROLE);
 

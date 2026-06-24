@@ -56,7 +56,7 @@ public class Member extends BaseTimeEntity {
         this.profileImage = command.profileImage();
     }
 
-    public void delete() {
+    public void withdraw() {
         this.deletedAt = LocalDateTime.now();
     }
 

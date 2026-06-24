@@ -39,7 +39,7 @@ public class MemberCommandService {
     public void delete(Long memberId) {
         Member member = getActiveById(memberId);
 
-        member.delete();
+        member.withdraw();
     }
 
     public MemberResult restore(MemberRestoreCommand command) {
