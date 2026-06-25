@@ -152,7 +152,7 @@ class MemberCommandServiceTest extends UnitTest {
 
         @BeforeEach
         void setUp() {
-            command = new MemberUpdateCommandFixture().nickname("팬텀").profileImage("https://image.symphonia.com/profile/test").build();
+            command = new MemberUpdateCommandFixture().nickname("팬텀").build();
         }
 
         @Test
