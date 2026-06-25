@@ -32,7 +32,7 @@ public class MemberCommandService {
     public MemberResult update(Long memberId, MemberUpdateCommand command) {
         Member member = getActiveById(memberId);
 
-        member.update(command.nickname(), command.profileImage());
+        member.update(command.nickname());
 
         return MemberResult.from(member);
     }
