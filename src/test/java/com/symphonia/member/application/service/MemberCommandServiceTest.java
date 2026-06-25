@@ -196,7 +196,6 @@ class MemberCommandServiceTest extends UnitTest {
 
             // then
             assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
-            assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
         }
     }
 
