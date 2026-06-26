@@ -28,9 +28,7 @@ public class TokenService {
         return TokenResult.of(accessToken, refreshToken);
     }
 
-    public TokenResult reissue(String refreshToken, String role) {
-        String memberId = getMemberIdByRefreshToken(refreshToken);
-
+    public TokenResult reissue(String memberId, String role) {
         refreshTokenRepository.delete(memberId);
 
         return issue(memberId, role);
@@ -49,7 +47,7 @@ public class TokenService {
         refreshTokenRepository.delete(memberId);
     }
 
-    private String getMemberIdByRefreshToken(String refreshToken) {
+    public String getMemberId(String refreshToken) {
         return refreshTokenRepository.findMemberIdByValue(refreshToken)
                 .orElseThrow(() -> BusinessException.from(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
     }
