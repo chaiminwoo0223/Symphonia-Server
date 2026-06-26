@@ -100,77 +100,56 @@ class TokenServiceTest extends UnitTest {
     @DisplayName("reissue 메서드는")
     class Reissue {
 
-        @Test
-        @DisplayName("리프레시 토큰에 해당하는 멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenRefreshTokenNotFound() {
-            // given
-            String unknownRefreshToken = "unknown-refresh-token";
-            given(refreshTokenRepository.findMemberIdByValue(unknownRefreshToken))
-                    .willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> tokenService.reissue(unknownRefreshToken, ROLE))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+        @BeforeEach
+        void setUp() {
+            given(accessTokenProvider.generate(MEMBER_ID, ROLE))
+                    .willReturn(NEW_ACCESS_TOKEN);
+            given(refreshTokenProvider.generate())
+                    .willReturn(NEW_REFRESH_TOKEN);
+            given(refreshTokenProvider.getExpirationTime())
+                    .willReturn(REFRESH_TOKEN_EXPIRATION_TIME);
         }
 
-        @Nested
-        @DisplayName("리프레시 토큰에 해당하는 멤버를 찾으면")
-        class WhenMemberFound {
+        @Test
+        @DisplayName("기존 리프레시 토큰을 삭제한다.")
+        void shouldDeleteExistingRefreshTokenWhenReissued() {
+            // when
+            tokenService.reissue(MEMBER_ID, ROLE);
 
-            @BeforeEach
-            void setUp() {
-                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
-                        .willReturn(Optional.of(MEMBER_ID));
-                given(accessTokenProvider.generate(MEMBER_ID, ROLE))
-                        .willReturn(NEW_ACCESS_TOKEN);
-                given(refreshTokenProvider.generate())
-                        .willReturn(NEW_REFRESH_TOKEN);
-                given(refreshTokenProvider.getExpirationTime())
-                        .willReturn(REFRESH_TOKEN_EXPIRATION_TIME);
-            }
+            // then
+            verify(refreshTokenRepository).delete(MEMBER_ID);
+        }
 
-            @Test
-            @DisplayName("기존 리프레시 토큰을 삭제한다.")
-            void shouldWithdrawExistingRefreshToken() {
-                // when
-                tokenService.reissue(REFRESH_TOKEN, ROLE);
+        @Test
+        @DisplayName("새로운 엑세스 토큰과 새로운 리프레시 토큰을 생성한다.")
+        void shouldGenerateNewAccessTokenAndRefreshTokenWhenReissued() {
+            // when
+            tokenService.reissue(MEMBER_ID, ROLE);
 
-                // then
-                verify(refreshTokenRepository).delete(MEMBER_ID);
-            }
+            // then
+            verify(accessTokenProvider).generate(MEMBER_ID, ROLE);
+            verify(refreshTokenProvider).generate();
+        }
 
-            @Test
-            @DisplayName("새로운 엑세스 토큰과 새로운 리프레시 토큰을 생성한다.")
-            void shouldGenerateNewAccessTokenAndNewRefreshToken() {
-                // when
-                tokenService.reissue(REFRESH_TOKEN, ROLE);
+        @Test
+        @DisplayName("새로운 리프레시 토큰을 저장한다.")
+        void shouldSaveNewRefreshTokenWhenReissued() {
+            // when
+            tokenService.reissue(MEMBER_ID, ROLE);
 
-                // then
-                verify(accessTokenProvider).generate(MEMBER_ID, ROLE);
-                verify(refreshTokenProvider).generate();
-            }
+            // then
+            verify(refreshTokenRepository).save(NEW_REFRESH_TOKEN, MEMBER_ID, REFRESH_TOKEN_EXPIRATION_TIME);
+        }
 
-            @Test
-            @DisplayName("새로운 리프레시 토큰을 저장한다.")
-            void shouldSaveNewRefreshToken() {
-                // when
-                tokenService.reissue(REFRESH_TOKEN, ROLE);
+        @Test
+        @DisplayName("새로운 TokenResult를 반환한다.")
+        void shouldReturnNewTokenResultWhenReissued() {
+            // when
+            TokenResult result = tokenService.reissue(MEMBER_ID, ROLE);
 
-                // then
-                verify(refreshTokenRepository).save(NEW_REFRESH_TOKEN, MEMBER_ID, REFRESH_TOKEN_EXPIRATION_TIME);
-            }
-
-            @Test
-            @DisplayName("TokenResult를 반환한다.")
-            void shouldReturnTokenResult() {
-                // when
-                TokenResult result = tokenService.reissue(REFRESH_TOKEN, ROLE);
-
-                // then
-                assertThat(result.accessToken()).isEqualTo(NEW_ACCESS_TOKEN);
-                assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH_TOKEN);
-            }
+            // then
+            assertThat(result.accessToken()).isEqualTo(NEW_ACCESS_TOKEN);
+            assertThat(result.refreshToken()).isEqualTo(NEW_REFRESH_TOKEN);
         }
     }
 
@@ -188,7 +167,7 @@ class TokenServiceTest extends UnitTest {
 
         @Test
         @DisplayName("엑세스 토큰을 블랙리스트에 등록한다.")
-        void shouldRegisterAccessTokenToBlacklist() {
+        void shouldRegisterAccessTokenToBlacklistWhenRevoked() {
             // when
             tokenService.revoke(ACCESS_TOKEN);
 
@@ -198,7 +177,7 @@ class TokenServiceTest extends UnitTest {
 
         @Test
         @DisplayName("해당 멤버의 리프레시 토큰을 삭제한다.")
-        void shouldDeleteRefreshToken() {
+        void shouldDeleteRefreshTokenWhenRevoked() {
             // when
             tokenService.revoke(ACCESS_TOKEN);
 
@@ -219,6 +198,38 @@ class TokenServiceTest extends UnitTest {
 
             // then
             verify(refreshTokenRepository).delete(MEMBER_ID);
+        }
+    }
+
+    @Nested
+    @DisplayName("getMemberId 메서드는")
+    class GetMemberId {
+
+        @Test
+        @DisplayName("리프레시 토큰에 해당하는 memberId를 반환한다.")
+        void shouldReturnMemberIdWhenRefreshTokenFound() {
+            // given
+            given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                    .willReturn(Optional.of(MEMBER_ID));
+
+            // when
+            String result = tokenService.getMemberId(REFRESH_TOKEN);
+
+            // then
+            assertThat(result).isEqualTo(MEMBER_ID);
+        }
+
+        @Test
+        @DisplayName("리프레시 토큰에 해당하는 멤버가 없으면 예외가 발생한다.")
+        void shouldThrowExceptionWhenRefreshTokenNotFound() {
+            // given
+            given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> tokenService.getMemberId(REFRESH_TOKEN))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
         }
     }
 }
