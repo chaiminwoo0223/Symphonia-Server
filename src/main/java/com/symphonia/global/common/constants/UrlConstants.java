@@ -12,10 +12,8 @@ public final class UrlConstants {
     };
 
     public static final String[] PERMIT_ALL_PATHS = {
-            "/api/v1/auth/signup",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
-            "/api/v1/members/restore",
     };
 
     public static final List<String> CORS_ALLOWED_ORIGINS = List.of(
