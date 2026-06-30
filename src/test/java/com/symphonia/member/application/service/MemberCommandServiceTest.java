@@ -210,7 +210,7 @@ class MemberCommandServiceTest extends UnitTest {
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.withdraw(unknownId))
+            assertThatThrownBy(() -> memberCommandService.delete(unknownId))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
@@ -224,7 +224,7 @@ class MemberCommandServiceTest extends UnitTest {
                     .willReturn(Optional.of(withdrawnGoogleMember));
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.withdraw(withdrawnId))
+            assertThatThrownBy(() -> memberCommandService.delete(withdrawnId))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
@@ -238,7 +238,7 @@ class MemberCommandServiceTest extends UnitTest {
                     .willReturn(Optional.of(activeGoogleMember));
 
             // when
-            memberCommandService.withdraw(memberId);
+            memberCommandService.delete(memberId);
 
             // then
             assertThat(activeGoogleMember.isDeleted()).isTrue();

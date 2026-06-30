@@ -23,6 +23,6 @@ public interface MemberApi {
     ResponseEntity<StandardResponse<MemberUpdateResponse>> update(@AuthenticationPrincipal String memberId, @RequestBody MemberUpdateRequest request);
 
     @DeleteMapping("/me")
-    @Operation(summary = "멤버 탈퇴", description = "인증된 멤버를 탈퇴 처리합니다.")
-    ResponseEntity<StandardResponse<Void>> withdraw(@AuthenticationPrincipal String memberId);
+    @Operation(summary = "멤버 삭제", description = "인증된 멤버를 삭제합니다.")
+    ResponseEntity<StandardResponse<Void>> delete(@AuthenticationPrincipal String memberId);
 }
