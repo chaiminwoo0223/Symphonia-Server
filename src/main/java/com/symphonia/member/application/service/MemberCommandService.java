@@ -41,6 +41,6 @@ public class MemberCommandService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        member.withdraw();
+        memberRepository.delete(member);
     }
 }
