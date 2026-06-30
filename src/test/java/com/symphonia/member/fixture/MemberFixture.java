@@ -9,6 +9,14 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum MemberFixture {
+    KAKAO(
+            "kakao123",
+            "카카오 멤버",
+            "symphonia@kakao.com",
+            "https://image.symphonia.com/profile/kakao",
+            SocialProvider.KAKAO
+    ),
+
     GOOGLE(
             "google123",
             "구글 멤버",
