@@ -5,7 +5,6 @@ import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
-import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,16 +20,12 @@ public class MemberQueryService {
         Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        MemberPolicy.validateNotWithdrawn(member);
-
         return MemberResult.from(member);
     }
 
     public MemberResult getActiveById(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
-
-        MemberPolicy.validateNotWithdrawn(member);
 
         return MemberResult.from(member);
     }
