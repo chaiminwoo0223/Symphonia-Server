@@ -30,19 +30,58 @@ class MemberQueryServiceTest extends UnitTest {
     @Mock
     private MemberRepository memberRepository;
 
-    private Member activeGoogleMember;
-    private Member activeAppleMember;
+    private Member kakaoMember;
+    private Member googleMember;
+    private Member appleMember;
 
     @BeforeEach
     void setUp() {
-        activeGoogleMember = MemberFixture.GOOGLE.create();
-        activeAppleMember = MemberFixture.APPLE.create();
+        kakaoMember = MemberFixture.KAKAO.create();
+        googleMember = MemberFixture.GOOGLE.create();
+        appleMember = MemberFixture.APPLE.create();
     }
 
     @Nested
-    @DisplayName("getActiveBySocialLogin 메서드는")
-    class GetActiveBySocialLogin {
+    @DisplayName("getBySocialLogin 메서드는")
+    class GetBySocialLogin {
         private static final String UNKNOWN_SOCIAL_ID = "xxx";
+
+        @Nested
+        @DisplayName("SocialProvider가 KAKAO인 경우")
+        class KAKAO {
+
+            @Test
+            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            void shouldThrowExceptionWhenMemberNotFound() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.KAKAO, UNKNOWN_SOCIAL_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> memberQueryService.getBySocialLogin(SocialProvider.KAKAO, UNKNOWN_SOCIAL_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            }
+
+            @Test
+            @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenFoundBySocialLogin() {
+                // given
+                given(memberRepository.findBySocialLogin(SocialProvider.KAKAO, kakaoMember.getSocialId()))
+                        .willReturn(Optional.of(kakaoMember));
+
+                // when
+                MemberResult result = memberQueryService.getBySocialLogin(SocialProvider.KAKAO, kakaoMember.getSocialId());
+
+                // then
+                assertThat(result.socialId()).isEqualTo(kakaoMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(kakaoMember.getNickname());
+                assertThat(result.email()).isEqualTo(kakaoMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(kakaoMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(kakaoMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(kakaoMember.getSocialProvider());
+            }
+        }
 
         @Nested
         @DisplayName("SocialProvider가 GOOGLE인 경우")
@@ -56,28 +95,28 @@ class MemberQueryServiceTest extends UnitTest {
                         .willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
+                assertThatThrownBy(() -> memberQueryService.getBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
                         .isInstanceOf(BusinessException.class)
                         .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
             }
 
             @Test
-            @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
-            void shouldReturnMemberResultWhenActiveMemberFound() {
+            @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenFoundBySocialLogin() {
                 // given
-                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId()))
-                        .willReturn(Optional.of(activeGoogleMember));
+                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, googleMember.getSocialId()))
+                        .willReturn(Optional.of(googleMember));
 
                 // when
-                MemberResult result = memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, activeGoogleMember.getSocialId());
+                MemberResult result = memberQueryService.getBySocialLogin(SocialProvider.GOOGLE, googleMember.getSocialId());
 
                 // then
-                assertThat(result.socialId()).isEqualTo(activeGoogleMember.getSocialId());
-                assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
-                assertThat(result.email()).isEqualTo(activeGoogleMember.getEmail());
-                assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
-                assertThat(result.role()).isEqualTo(activeGoogleMember.getRole());
-                assertThat(result.socialProvider()).isEqualTo(activeGoogleMember.getSocialProvider());
+                assertThat(result.socialId()).isEqualTo(googleMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(googleMember.getNickname());
+                assertThat(result.email()).isEqualTo(googleMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(googleMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(googleMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(googleMember.getSocialProvider());
             }
         }
 
@@ -93,28 +132,28 @@ class MemberQueryServiceTest extends UnitTest {
                         .willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, UNKNOWN_SOCIAL_ID))
+                assertThatThrownBy(() -> memberQueryService.getBySocialLogin(SocialProvider.APPLE, UNKNOWN_SOCIAL_ID))
                         .isInstanceOf(BusinessException.class)
                         .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
             }
 
             @Test
-            @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
-            void shouldReturnMemberResultWhenActiveMemberFound() {
+            @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
+            void shouldReturnMemberResultWhenFoundBySocialLogin() {
                 // given
-                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId()))
-                        .willReturn(Optional.of(activeAppleMember));
+                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, appleMember.getSocialId()))
+                        .willReturn(Optional.of(appleMember));
 
                 // when
-                MemberResult result = memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, activeAppleMember.getSocialId());
+                MemberResult result = memberQueryService.getBySocialLogin(SocialProvider.APPLE, appleMember.getSocialId());
 
                 // then
-                assertThat(result.socialId()).isEqualTo(activeAppleMember.getSocialId());
-                assertThat(result.nickname()).isEqualTo(activeAppleMember.getNickname());
-                assertThat(result.email()).isEqualTo(activeAppleMember.getEmail());
-                assertThat(result.profileImage()).isEqualTo(activeAppleMember.getProfileImage());
-                assertThat(result.role()).isEqualTo(activeAppleMember.getRole());
-                assertThat(result.socialProvider()).isEqualTo(activeAppleMember.getSocialProvider());
+                assertThat(result.socialId()).isEqualTo(appleMember.getSocialId());
+                assertThat(result.nickname()).isEqualTo(appleMember.getNickname());
+                assertThat(result.email()).isEqualTo(appleMember.getEmail());
+                assertThat(result.profileImage()).isEqualTo(appleMember.getProfileImage());
+                assertThat(result.role()).isEqualTo(appleMember.getRole());
+                assertThat(result.socialProvider()).isEqualTo(appleMember.getSocialProvider());
             }
         }
     }
@@ -132,29 +171,29 @@ class MemberQueryServiceTest extends UnitTest {
                     .willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveById(unknownId))
+            assertThatThrownBy(() -> memberQueryService.getById(unknownId))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
 
         @Test
-        @DisplayName("ID로 활성 멤버를 조회하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenActiveMemberFound() {
+        @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
+        void shouldReturnMemberResultWhenFoundById() {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId))
-                    .willReturn(Optional.of(activeGoogleMember));
+                    .willReturn(Optional.of(googleMember));
 
             // when
-            MemberResult result = memberQueryService.getActiveById(memberId);
+            MemberResult result = memberQueryService.getById(memberId);
 
             // then
-            assertThat(result.socialId()).isEqualTo(activeGoogleMember.getSocialId());
-            assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
-            assertThat(result.email()).isEqualTo(activeGoogleMember.getEmail());
-            assertThat(result.profileImage()).isEqualTo(activeGoogleMember.getProfileImage());
-            assertThat(result.role()).isEqualTo(activeGoogleMember.getRole());
-            assertThat(result.socialProvider()).isEqualTo(activeGoogleMember.getSocialProvider());
+            assertThat(result.socialId()).isEqualTo(googleMember.getSocialId());
+            assertThat(result.nickname()).isEqualTo(googleMember.getNickname());
+            assertThat(result.email()).isEqualTo(googleMember.getEmail());
+            assertThat(result.profileImage()).isEqualTo(googleMember.getProfileImage());
+            assertThat(result.role()).isEqualTo(googleMember.getRole());
+            assertThat(result.socialProvider()).isEqualTo(googleMember.getSocialProvider());
         }
     }
 }

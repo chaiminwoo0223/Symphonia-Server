@@ -15,7 +15,7 @@ public class AuthFacade {
 
     public TokenResult reissue(String refreshToken) {
         String memberId = tokenService.getMemberId(refreshToken);
-        MemberResult result = memberQueryService.getActiveById(Long.parseLong(memberId));
+        MemberResult result = memberQueryService.getById(Long.parseLong(memberId));
 
         return tokenService.reissue(memberId, result.role().name());
     }
