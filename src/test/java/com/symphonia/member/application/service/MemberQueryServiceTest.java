@@ -48,7 +48,7 @@ class MemberQueryServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("SocialProvider가 KAKAO인 경우")
-        class KAKAO {
+        class Kakao {
 
             @Test
             @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
