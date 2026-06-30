@@ -13,4 +13,6 @@ public interface MemberRepository {
     Member save(Member member);
 
     boolean existsBySocialLogin(SocialProvider socialProvider, String socialId);
+
+    void delete(Member member);
 }

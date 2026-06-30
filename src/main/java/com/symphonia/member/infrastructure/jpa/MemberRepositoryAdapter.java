@@ -32,4 +32,9 @@ public class MemberRepositoryAdapter implements MemberRepository {
     public boolean existsBySocialLogin(SocialProvider socialProvider, String socialId) {
         return memberJpaRepository.existsBySocialProviderAndSocialId(socialProvider, socialId);
     }
+
+    @Override
+    public void delete(Member member) {
+        memberJpaRepository.delete(member);
+    }
 }
