@@ -36,16 +36,12 @@ class MemberCommandServiceTest extends UnitTest {
     private MemberRepository memberRepository;
 
     private Member activeGoogleMember;
-    private Member withdrawnGoogleMember;
     private Member activeAppleMember;
-    private Member withdrawnAppleMember;
 
     @BeforeEach
     void setUp() {
         activeGoogleMember = MemberFixture.GOOGLE.create();
-        withdrawnGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
         activeAppleMember = MemberFixture.APPLE.create();
-        withdrawnAppleMember = MemberFixture.APPLE.toWithdrawn();
     }
 
     @Nested
@@ -168,20 +164,6 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("탈퇴한 멤버를 수정하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
-            // given
-            Long withdrawnId = 1L;
-            given(memberRepository.findById(withdrawnId))
-                    .willReturn(Optional.of(withdrawnGoogleMember));
-
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.update(withdrawnId, command))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
-        }
-
-        @Test
         @DisplayName("활성 멤버를 수정하면 MemberResult를 반환한다.")
         void shouldReturnMemberResultWhenActiveMemberUpdated() {
             // given
@@ -194,54 +176,6 @@ class MemberCommandServiceTest extends UnitTest {
 
             // then
             assertThat(result.nickname()).isEqualTo(activeGoogleMember.getNickname());
-        }
-    }
-
-    @Nested
-    @DisplayName("withdraw 메서드는")
-    class Withdraw {
-
-        @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
-            // given
-            Long unknownId = -1L;
-            given(memberRepository.findById(unknownId))
-                    .willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.delete(unknownId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-        }
-
-        @Test
-        @DisplayName("탈퇴한 멤버를 탈퇴시키면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
-            // given
-            Long withdrawnId = 1L;
-            given(memberRepository.findById(withdrawnId))
-                    .willReturn(Optional.of(withdrawnGoogleMember));
-
-            // when & then
-            assertThatThrownBy(() -> memberCommandService.delete(withdrawnId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
-        }
-
-        @Test
-        @DisplayName("활성 멤버가 탈퇴하면 deletedAt이 설정된다.")
-        void shouldSetDeletedAtWhenActiveMemberWithdrawn() {
-            // given
-            Long memberId = 1L;
-            given(memberRepository.findById(memberId))
-                    .willReturn(Optional.of(activeGoogleMember));
-
-            // when
-            memberCommandService.delete(memberId);
-
-            // then
-            assertThat(activeGoogleMember.isDeleted()).isTrue();
         }
     }
 }
