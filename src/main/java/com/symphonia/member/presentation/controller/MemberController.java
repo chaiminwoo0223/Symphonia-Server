@@ -38,8 +38,8 @@ public class MemberController implements MemberApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<Void>> withdraw(String memberId) {
-        memberCommandService.withdraw(Long.parseLong(memberId));
+    public ResponseEntity<StandardResponse<Void>> delete(String memberId) {
+        memberCommandService.delete(Long.parseLong(memberId));
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));

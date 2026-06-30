@@ -36,7 +36,7 @@ public class MemberCommandService {
         return MemberResult.from(member);
     }
 
-    public void withdraw(Long memberId) {
+    public void delete(Long memberId) {
         Member member = getActiveById(memberId);
 
         member.withdraw();
