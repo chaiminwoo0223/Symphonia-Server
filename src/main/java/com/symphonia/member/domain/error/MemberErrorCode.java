@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 public enum MemberErrorCode implements ErrorCode {
     // 400
     MEMBER_ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "이미 탈퇴한 멤버입니다."),
-    MEMBER_NOT_WITHDRAWN(HttpStatus.BAD_REQUEST, "멤버가 탈퇴하지 않았습니다."),
 
     // 404
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "요창한 멤버를 찾을 수 없습니다."),
