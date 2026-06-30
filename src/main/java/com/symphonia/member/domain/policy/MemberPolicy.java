@@ -1,7 +1,6 @@
 package com.symphonia.member.domain.policy;
 
 import com.symphonia.global.exception.BusinessException;
-import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.error.MemberErrorCode;
 
 public enum MemberPolicy {
