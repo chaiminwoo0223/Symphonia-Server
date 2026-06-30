@@ -20,7 +20,8 @@ public class MemberCommandService {
     private final MemberRepository memberRepository;
 
     public MemberResult create(MemberCreateCommand command) {
-        validateDuplicated(command.socialProvider(), command.socialId());
+        boolean exists = memberRepository.existsBySocialLogin(command.socialProvider(), command.socialId());
+        MemberPolicy.validateNotDuplicated(exists);
 
         Member member = Member.of(command.socialId(), command.nickname(), command.email(), command.profileImage(), command.socialProvider());
         Member savedMember = memberRepository.save(member);
@@ -29,7 +30,8 @@ public class MemberCommandService {
     }
 
     public MemberResult update(Long memberId, MemberUpdateCommand command) {
-        Member member = getActiveById(memberId);
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
         member.update(command.nickname());
 
@@ -37,23 +39,9 @@ public class MemberCommandService {
     }
 
     public void delete(Long memberId) {
-        Member member = getActiveById(memberId);
-
-        member.withdraw();
-    }
-
-    private Member getActiveById(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        MemberPolicy.validateNotWithdrawn(member);
-
-        return member;
-    }
-
-    private void validateDuplicated(SocialProvider socialProvider, String socialId) {
-        boolean exists = memberRepository.existsBySocialLogin(socialProvider, socialId);
-
-        MemberPolicy.validateNotDuplicated(exists);
+        member.withdraw();
     }
 }
