@@ -5,7 +5,6 @@ import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
-import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
 import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;

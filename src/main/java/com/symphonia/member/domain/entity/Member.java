@@ -52,16 +52,4 @@ public class Member extends BaseTimeEntity {
     public void update(String nickname) {
         this.nickname = nickname;
     }
-
-    public void withdraw() {
-        this.deletedAt = LocalDateTime.now();
-    }
-
-    public void restore() {
-        this.deletedAt = null;
-    }
-
-    public boolean isDeleted() {
-        return deletedAt != null;
-    }
 }
