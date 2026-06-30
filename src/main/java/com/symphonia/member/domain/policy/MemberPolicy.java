@@ -13,12 +13,6 @@ public enum MemberPolicy {
         }
     }
 
-    public static void validateWithdrawn(Member member) {
-        if (!member.isDeleted()) {
-            throw BusinessException.from(MemberErrorCode.MEMBER_NOT_WITHDRAWN);
-        }
-    }
-
     public static void validateNotDuplicated(boolean exists) {
         if (exists) {
             throw BusinessException.from(MemberErrorCode.MEMBER_ALREADY_EXISTS);
