@@ -21,7 +21,7 @@ public class MemberController implements MemberApi {
 
     @Override
     public ResponseEntity<StandardResponse<MemberResponse>> get(String memberId) {
-        MemberResult result = memberQueryService.getActiveById(Long.parseLong(memberId));
+        MemberResult result = memberQueryService.getById(Long.parseLong(memberId));
         MemberResponse response = MemberResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
