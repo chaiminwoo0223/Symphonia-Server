@@ -2,7 +2,6 @@ package com.symphonia.member.application.service;
 
 import com.symphonia.global.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
-import com.symphonia.member.application.dto.command.MemberRestoreCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
@@ -43,28 +42,11 @@ public class MemberCommandService {
         member.withdraw();
     }
 
-    public MemberResult restore(MemberRestoreCommand command) {
-        Member member = getWithdrawnBySocialLogin(command.socialProvider(), command.socialId());
-
-        member.restore();
-
-        return MemberResult.from(member);
-    }
-
     private Member getActiveById(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
         MemberPolicy.validateNotWithdrawn(member);
-
-        return member;
-    }
-
-    private Member getWithdrawnBySocialLogin(SocialProvider socialProvider, String socialId) {
-        Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
-                .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
-
-        MemberPolicy.validateWithdrawn(member);
 
         return member;
     }
