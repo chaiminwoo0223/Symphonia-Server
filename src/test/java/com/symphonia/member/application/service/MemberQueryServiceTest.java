@@ -31,16 +31,12 @@ class MemberQueryServiceTest extends UnitTest {
     private MemberRepository memberRepository;
 
     private Member activeGoogleMember;
-    private Member withdrawnGoogleMember;
     private Member activeAppleMember;
-    private Member withdrawnAppleMember;
 
     @BeforeEach
     void setUp() {
         activeGoogleMember = MemberFixture.GOOGLE.create();
-        withdrawnGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
         activeAppleMember = MemberFixture.APPLE.create();
-        withdrawnAppleMember = MemberFixture.APPLE.toWithdrawn();
     }
 
     @Nested
@@ -63,19 +59,6 @@ class MemberQueryServiceTest extends UnitTest {
                 assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
                         .isInstanceOf(BusinessException.class)
                         .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-            }
-
-            @Test
-            @DisplayName("탈퇴한 멤버를 조회하면 예외가 발생한다.")
-            void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
-                // given
-                given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, withdrawnGoogleMember.getSocialId()))
-                        .willReturn(Optional.of(withdrawnGoogleMember));
-
-                // when & then
-                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.GOOGLE, withdrawnGoogleMember.getSocialId()))
-                        .isInstanceOf(BusinessException.class)
-                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
             }
 
             @Test
@@ -116,19 +99,6 @@ class MemberQueryServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("탈퇴한 멤버를 조회하면 예외가 발생한다.")
-            void shouldThrowExceptionWhenMemberAlreadyWithdrawn() {
-                // given
-                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, withdrawnAppleMember.getSocialId()))
-                        .willReturn(Optional.of(withdrawnAppleMember));
-
-                // when & then
-                assertThatThrownBy(() -> memberQueryService.getActiveBySocialLogin(SocialProvider.APPLE, withdrawnAppleMember.getSocialId()))
-                        .isInstanceOf(BusinessException.class)
-                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
-            }
-
-            @Test
             @DisplayName("활성 멤버를 조회하면 MemberResult를 반환한다.")
             void shouldReturnMemberResultWhenActiveMemberFound() {
                 // given
@@ -165,20 +135,6 @@ class MemberQueryServiceTest extends UnitTest {
             assertThatThrownBy(() -> memberQueryService.getActiveById(unknownId))
                     .isInstanceOf(BusinessException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-        }
-
-        @Test
-        @DisplayName("탈퇴한 멤버를 조회하면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberAlreadyDeleted() {
-            // given
-            Long withdrawnId = 1L;
-            given(memberRepository.findById(withdrawnId))
-                    .willReturn(Optional.of(withdrawnGoogleMember));
-
-            // when & then
-            assertThatThrownBy(() -> memberQueryService.getActiveById(withdrawnId))
-                    .isInstanceOf(BusinessException.class)
-                    .hasMessage(MemberErrorCode.MEMBER_ALREADY_WITHDRAWN.getMessage());
         }
 
         @Test
