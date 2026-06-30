@@ -42,9 +42,9 @@ class MemberCommandServiceTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        activeGoogleMember = MemberFixture.GOOGLE.toActive();
+        activeGoogleMember = MemberFixture.GOOGLE.create();
         withdrawnGoogleMember = MemberFixture.GOOGLE.toWithdrawn();
-        activeAppleMember = MemberFixture.APPLE.toActive();
+        activeAppleMember = MemberFixture.APPLE.create();
         withdrawnAppleMember = MemberFixture.APPLE.toWithdrawn();
     }
 

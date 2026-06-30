@@ -31,7 +31,7 @@ public enum MemberFixture {
     private final String profileImage;
     private final SocialProvider socialProvider;
 
-    public Member toActive() {
+    public Member create() {
         return Member.builder()
                 .socialId(socialId)
                 .nickname(nickname)
@@ -40,13 +40,5 @@ public enum MemberFixture {
                 .role(Role.ROLE_MEMBER)
                 .socialProvider(socialProvider)
                 .build();
-    }
-
-    public Member toWithdrawn() {
-        Member member = toActive();
-
-        member.withdraw();
-
-        return member;
     }
 }

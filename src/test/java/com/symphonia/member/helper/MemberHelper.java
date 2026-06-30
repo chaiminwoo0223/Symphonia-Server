@@ -11,11 +11,7 @@ import org.springframework.stereotype.Component;
 public class MemberHelper {
     private final MemberRepository memberRepository;
 
-    public Member saveActive(MemberFixture fixture) {
-        return memberRepository.save(fixture.toActive());
-    }
-
-    public Member saveWithdrawn(MemberFixture fixture) {
-        return memberRepository.save(fixture.toWithdrawn());
+    public Member save(MemberFixture fixture) {
+        return memberRepository.save(fixture.create());
     }
 }
