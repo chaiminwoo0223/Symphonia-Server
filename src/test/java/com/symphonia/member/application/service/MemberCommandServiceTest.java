@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 @DisplayName("MemberCommandService 단위 테스트")
 class MemberCommandServiceTest extends UnitTest {
@@ -211,8 +212,8 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("활성 멤버를 수정하면 MemberResult를 반환한다.")
-        void shouldReturnMemberResultWhenActiveMemberUpdated() {
+        @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
+        void shouldReturnMemberResultWhenMemberExists() {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId))
@@ -222,7 +223,41 @@ class MemberCommandServiceTest extends UnitTest {
             MemberResult result = memberCommandService.update(memberId, command);
 
             // then
-            assertThat(result.nickname()).isEqualTo(googleMember.getNickname());
+            assertThat(result.nickname()).isEqualTo(command.nickname());
+        }
+    }
+
+    @Nested
+    @DisplayName("delete 메서드는")
+    class Delete {
+
+        @Test
+        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+        void shouldThrowExceptionWhenMemberNotFound() {
+            // given
+            Long unknownId = -1L;
+            given(memberRepository.findById(unknownId))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> memberCommandService.delete(unknownId))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+        }
+
+        @Test
+        @DisplayName("멤버가 존재하면 멤버를 삭제한다.")
+        void shouldDeleteMemberWhenMemberExists() {
+            // given
+            Long memberId = 1L;
+            given(memberRepository.findById(memberId))
+                    .willReturn(Optional.of(googleMember));
+
+            // when
+            memberCommandService.delete(memberId);
+
+            // then
+            then(memberRepository).should().delete(googleMember);
         }
     }
 }
