@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.auth.helper.AuthTestHelper;
+import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.auth.presentation.dto.request.RefreshRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
@@ -25,7 +25,7 @@ class AuthControllerTest extends IntegrationTest {
     private static final Long REFRESH_TOKEN_EXPIRATION_TIME = 3600L;
 
     @Autowired private MemberHelper memberHelper;
-    @Autowired private AuthTestHelper authTestHelper;
+    @Autowired private AuthHelper authHelper;
     @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
 
@@ -90,7 +90,7 @@ class AuthControllerTest extends IntegrationTest {
             // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
             String accessToken =
-                    authTestHelper.generateAccessToken(
+                    authHelper.generateAccessToken(
                             String.valueOf(member.getId()), member.getRole().name());
 
             // when & then
@@ -98,7 +98,7 @@ class AuthControllerTest extends IntegrationTest {
                             post("/api/v1/auth/logout")
                                     .header(
                                             HttpHeaders.AUTHORIZATION,
-                                            authTestHelper.bearerHeader(accessToken)))
+                                            authHelper.bearerHeader(accessToken)))
                     .andExpect(status().isNoContent());
             assertThat(blacklistAccessTokenRepository.isBlacklisted(accessToken)).isTrue();
         }

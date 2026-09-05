@@ -34,7 +34,7 @@ description: Load when writing or modifying tests. JUnit5/Mockito/Testcontainers
 | 조건 레벨 `@Nested` | `When` + 조건(PascalCase). **조건이 여러 갈래로 나뉠 때만** 사용 | `WhenMemberNotFound` |
 | 테스트 메서드(리프) | `should` + 기대동작. **조건 레벨 `@Nested`가 이미 있으면 조건을 반복하지 않는다.** 조건 레벨 없이 단일 케이스만 테스트한다면 `should[기대동작]When[조건]`을 그대로 쓴다 | 조건 있음: `shouldThrowException()` · 조건 없음: `shouldReturnMemberWhenIdExists()` |
 | Fixture | `*Fixture`는 도메인 객체/Command 등 **데이터** 생성을 전담한다 | `MemberFixture` |
-| Helper | `*Helper`는 인증 토큰 발급, MockMvc 요청 빌드, 공통 assertion 등 **행동/절차**를 전담한다. 하나의 `*Helper` = 하나의 관심사 (범용 유틸리티 클래스 금지) | `AuthTestHelper`, `MockMvcRequestHelper` |
+| Helper | `*Helper`는 인증 토큰 발급, MockMvc 요청 빌드, 공통 assertion 등 **행동/절차**를 전담한다. 하나의 `*Helper` = 하나의 관심사 (범용 유틸리티 클래스 금지) | `AuthHelper`, `MockMvcRequestHelper` |
 
 ## 구조
 
@@ -81,6 +81,6 @@ class MemberServiceTest {
 
 Fixture가 "데이터"를 만든다면, Helper는 여러 테스트에서 반복되는 "행동·절차"를 캡슐화한다. 이 둘을 섞으면(예: Fixture가 HTTP 요청까지 수행) 책임이 흐려지므로 분리한다.
 
-- 예: 인증이 필요한 통합 테스트의 토큰 발급/헤더 세팅(`AuthTestHelper`), 반복되는 MockMvc 요청 빌더(`MockMvcRequestHelper`), 공통 응답 검증(`ResponseAssertHelper`).
+- 예: 인증이 필요한 통합 테스트의 토큰 발급/헤더 세팅(`AuthHelper`), 반복되는 MockMvc 요청 빌더(`MockMvcRequestHelper`), 공통 응답 검증(`ResponseAssertHelper`).
 - **`Helper` 접미사가 "만능 유틸리티 클래스"의 핑계가 되지 않게 한다.** 클린코드에서 `Util`/`Manager`처럼 책임이 불분명한 이름을 지양하는 것과 같은 이유로, 하나의 `*Helper`는 하나의 관심사만 다룬다. 인증 Helper와 요청 빌드 Helper를 하나로 합치지 않는다.
 - `*Fixture`와 마찬가지로 도메인별 `helper` 패키지(각 모듈의 `src/test`)에 둔다.
