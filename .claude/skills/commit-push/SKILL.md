@@ -14,6 +14,8 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 - `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
 - `git status`로 `.env`가 스테이징에 포함되지 않았는지 확인한다 (`.env` 커밋 금지는 Profiles 규칙과 동일).
 - 포맷은 `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 적용한다(Spotless + Google Java Format, `code-style` 스킬 참고). 수동으로 신경 쓸 필요는 없다.
+- `.claude/hooks/check-commit-issue-number.sh`(PreToolUse)가 `feat/<이슈번호>` 브랜치에서 커밋 메시지의 `[#이슈번호]`가 브랜치 번호와 다르거나 없으면 커밋 자체를 막는다. 수동으로 이슈 번호를 맞춰 볼 필요 없이 훅이 강제한다.
+- `.claude/hooks/check-develop-hotfix-commit.sh`(PreToolUse)가 `develop`에서 `[HotFix]` 태그 없는 직접 커밋을 막는다.
 
 ## 커밋 단위
 
@@ -27,6 +29,8 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 - 하위 항목이 있을 경우 `* type: 설명` 형식으로 나열.
 - 한국어 사용 가능.
 - **모호한 제목은 금지한다.** 예: "구조 개선" ❌ → 실제 변경 대상을 명시한다 (예: "MemberService 트랜잭션 경계 정리").
+- **하나의 브랜치·PR·이슈 번호로 관리한다(2026-09-05 결정).** `feat/<이슈번호>` 브랜치에서는 그 브랜치의 이슈 번호만 커밋에 쓴다. 다른 이슈 번호(예: 별도로 만든 후속 작업 이슈)는 그 이슈용 브랜치를 새로 파서 별도 PR로 처리하고, 지금 브랜치에 섞지 않는다.
+- **`develop`의 긴급 수정은 `[HotFix] type: 설명` 형식을 쓴다(이슈 번호 없음, 2026-09-05 결정).** `develop`은 원래 PR 병합으로만 통합하는 브랜치라 직접 커밋은 이 긴급 대응에만 한정한다. 일반 기능/수정 작업은 `feat/<이슈번호>` 브랜치를 새로 파서 PR로 병합한다.
 
 ### 예시
 
