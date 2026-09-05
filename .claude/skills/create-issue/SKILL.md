@@ -18,7 +18,7 @@ description: Load when creating a GitHub issue. 이슈 템플릿 타입 매핑, 
 | 리팩토링 | `refactor.yml` | `[Refactor] ` | `♻️ refactor` |
 | 설정 | `chore.yml` | `[Chore] ` | `⚙️ chore` |
 | 성능 개선 | `performance.yml` | `[Performance] ` | `⚡️ performance` |
-| 문서화 | `documentation.yml` | `[Documentation] ` | `📄 documentation` |
+| 문서화 | `docs.yml` | `[Docs] ` | `📄 docs` |
 
 - 6개 템플릿 모두 필드 구성이 동일하다. `설명`(무엇을 왜 하는지)과 `할 일 목록`(체크박스 TODO) 두 필드를 요구하며, 둘 다 필수 항목이다. 
 - 정확한 제목 접두사와 라벨 문자열은 위 표를 신뢰하되, 템플릿 파일이 바뀌었을 가능성에 대비해 실제 생성 전에 해당 `.yml` 파일의 `title`/`labels` 값을 다시 확인한다.
