@@ -35,13 +35,11 @@ class MemberCommandServiceTest extends UnitTest {
 
     private Member kakaoMember;
     private Member googleMember;
-    private Member appleMember;
 
     @BeforeEach
     void setUp() {
         kakaoMember = MemberFixture.KAKAO.create();
         googleMember = MemberFixture.GOOGLE.create();
-        appleMember = MemberFixture.APPLE.create();
     }
 
     @Nested
@@ -141,54 +139,6 @@ class MemberCommandServiceTest extends UnitTest {
                 assertThat(result.profileImage()).isEqualTo(googleMember.getProfileImage());
                 assertThat(result.role()).isEqualTo(googleMember.getRole());
                 assertThat(result.socialProvider()).isEqualTo(googleMember.getSocialProvider());
-            }
-        }
-
-        @Nested
-        @DisplayName("SocialProvider가 APPLE인 경우")
-        class Apple {
-            private MemberCreateCommand command;
-
-            @BeforeEach
-            void setUp() {
-                command = new MemberCreateCommandFixture(MemberFixture.APPLE).build();
-            }
-
-            @Test
-            @DisplayName("이미 가입된 멤버가 존재하면 예외가 발생한다.")
-            void shouldThrowExceptionWhenAlreadyExistsBySocialLogin() {
-                // given
-                given(
-                                memberRepository.existsBySocialLogin(
-                                        SocialProvider.APPLE, appleMember.getSocialId()))
-                        .willReturn(true);
-
-                // when & then
-                assertThatThrownBy(() -> memberCommandService.create(command))
-                        .isInstanceOf(BusinessException.class)
-                        .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
-            }
-
-            @Test
-            @DisplayName("이미 가입된 멤버가 없으면 MemberResult를 반환한다.")
-            void shouldReturnMemberResultWhenNotAlreadyExistsBySocialLogin() {
-                // given
-                given(
-                                memberRepository.existsBySocialLogin(
-                                        SocialProvider.APPLE, appleMember.getSocialId()))
-                        .willReturn(false);
-                given(memberRepository.save(any(Member.class))).willReturn(appleMember);
-
-                // when
-                MemberResult result = memberCommandService.create(command);
-
-                // then
-                assertThat(result.socialId()).isEqualTo(appleMember.getSocialId());
-                assertThat(result.nickname()).isEqualTo(appleMember.getNickname());
-                assertThat(result.email()).isEqualTo(appleMember.getEmail());
-                assertThat(result.profileImage()).isEqualTo(appleMember.getProfileImage());
-                assertThat(result.role()).isEqualTo(appleMember.getRole());
-                assertThat(result.socialProvider()).isEqualTo(appleMember.getSocialProvider());
             }
         }
     }

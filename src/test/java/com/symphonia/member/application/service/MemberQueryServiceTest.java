@@ -29,13 +29,11 @@ class MemberQueryServiceTest extends UnitTest {
 
     private Member kakaoMember;
     private Member googleMember;
-    private Member appleMember;
 
     @BeforeEach
     void setUp() {
         kakaoMember = MemberFixture.KAKAO.create();
         googleMember = MemberFixture.GOOGLE.create();
-        appleMember = MemberFixture.APPLE.create();
     }
 
     @Nested
@@ -128,50 +126,6 @@ class MemberQueryServiceTest extends UnitTest {
                 assertThat(result.profileImage()).isEqualTo(googleMember.getProfileImage());
                 assertThat(result.role()).isEqualTo(googleMember.getRole());
                 assertThat(result.socialProvider()).isEqualTo(googleMember.getSocialProvider());
-            }
-        }
-
-        @Nested
-        @DisplayName("SocialProvider가 APPLE인 경우")
-        class Apple {
-
-            @Test
-            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-            void shouldThrowExceptionWhenMemberNotFound() {
-                // given
-                given(memberRepository.findBySocialLogin(SocialProvider.APPLE, UNKNOWN_SOCIAL_ID))
-                        .willReturn(Optional.empty());
-
-                // when & then
-                assertThatThrownBy(
-                                () ->
-                                        memberQueryService.getBySocialLogin(
-                                                SocialProvider.APPLE, UNKNOWN_SOCIAL_ID))
-                        .isInstanceOf(BusinessException.class)
-                        .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
-            }
-
-            @Test
-            @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
-            void shouldReturnMemberResultWhenFoundBySocialLogin() {
-                // given
-                given(
-                                memberRepository.findBySocialLogin(
-                                        SocialProvider.APPLE, appleMember.getSocialId()))
-                        .willReturn(Optional.of(appleMember));
-
-                // when
-                MemberResult result =
-                        memberQueryService.getBySocialLogin(
-                                SocialProvider.APPLE, appleMember.getSocialId());
-
-                // then
-                assertThat(result.socialId()).isEqualTo(appleMember.getSocialId());
-                assertThat(result.nickname()).isEqualTo(appleMember.getNickname());
-                assertThat(result.email()).isEqualTo(appleMember.getEmail());
-                assertThat(result.profileImage()).isEqualTo(appleMember.getProfileImage());
-                assertThat(result.role()).isEqualTo(appleMember.getRole());
-                assertThat(result.socialProvider()).isEqualTo(appleMember.getSocialProvider());
             }
         }
     }

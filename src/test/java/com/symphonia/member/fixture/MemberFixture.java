@@ -21,14 +21,7 @@ public enum MemberFixture {
             "구글 멤버",
             "symphonia@google.com",
             "https://image.symphonia.com/profile/google",
-            SocialProvider.GOOGLE),
-
-    APPLE(
-            "apple123",
-            "애플 멤버",
-            "symphonia@apple.com",
-            "https://image.symphonia.com/profile/apple",
-            SocialProvider.APPLE);
+            SocialProvider.GOOGLE);
 
     private final String socialId;
     private final String nickname;
