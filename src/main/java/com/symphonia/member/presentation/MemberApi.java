@@ -14,15 +14,16 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Member API", description = "멤버 API")
 public interface MemberApi {
 
-    @GetMapping("/me")
-    @Operation(summary = "멤버 조회", description = "인증된 멤버의 정보를 조회합니다.")
-    ResponseEntity<StandardResponse<MemberResponse>> get(@AuthenticationPrincipal String memberId);
+  @GetMapping("/me")
+  @Operation(summary = "멤버 조회", description = "인증된 멤버의 정보를 조회합니다.")
+  ResponseEntity<StandardResponse<MemberResponse>> get(@AuthenticationPrincipal String memberId);
 
-    @PatchMapping("/me")
-    @Operation(summary = "멤버 수정", description = "인증된 멤버의 정보를 수정합니다.")
-    ResponseEntity<StandardResponse<MemberUpdateResponse>> update(@AuthenticationPrincipal String memberId, @RequestBody MemberUpdateRequest request);
+  @PatchMapping("/me")
+  @Operation(summary = "멤버 수정", description = "인증된 멤버의 정보를 수정합니다.")
+  ResponseEntity<StandardResponse<MemberUpdateResponse>> update(
+      @AuthenticationPrincipal String memberId, @RequestBody MemberUpdateRequest request);
 
-    @DeleteMapping("/me")
-    @Operation(summary = "멤버 삭제", description = "인증된 멤버를 삭제합니다.")
-    ResponseEntity<StandardResponse<Void>> delete(@AuthenticationPrincipal String memberId);
+  @DeleteMapping("/me")
+  @Operation(summary = "멤버 삭제", description = "인증된 멤버를 삭제합니다.")
+  ResponseEntity<StandardResponse<Void>> delete(@AuthenticationPrincipal String memberId);
 }

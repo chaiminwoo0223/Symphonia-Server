@@ -10,17 +10,17 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AuthFacade {
-    private final TokenService tokenService;
-    private final MemberQueryService memberQueryService;
+  private final TokenService tokenService;
+  private final MemberQueryService memberQueryService;
 
-    public TokenResult reissue(String refreshToken) {
-        String memberId = tokenService.getMemberId(refreshToken);
-        MemberResult result = memberQueryService.getById(Long.parseLong(memberId));
+  public TokenResult reissue(String refreshToken) {
+    String memberId = tokenService.getMemberId(refreshToken);
+    MemberResult result = memberQueryService.getById(Long.parseLong(memberId));
 
-        return tokenService.reissue(memberId, result.role().name());
-    }
+    return tokenService.reissue(memberId, result.role().name());
+  }
 
-    public void revoke(String accessToken) {
-        tokenService.revoke(accessToken);
-    }
+  public void revoke(String accessToken) {
+    tokenService.revoke(accessToken);
+  }
 }

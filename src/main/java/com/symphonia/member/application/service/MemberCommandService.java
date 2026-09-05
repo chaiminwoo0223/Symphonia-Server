@@ -16,31 +16,42 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 @RequiredArgsConstructor
 public class MemberCommandService {
-    private final MemberRepository memberRepository;
+  private final MemberRepository memberRepository;
 
-    public MemberResult create(MemberCreateCommand command) {
-        boolean exists = memberRepository.existsBySocialLogin(command.socialProvider(), command.socialId());
-        MemberPolicy.validateNotDuplicated(exists);
+  public MemberResult create(MemberCreateCommand command) {
+    boolean exists =
+        memberRepository.existsBySocialLogin(command.socialProvider(), command.socialId());
+    MemberPolicy.validateNotDuplicated(exists);
 
-        Member member = Member.of(command.socialId(), command.nickname(), command.email(), command.profileImage(), command.socialProvider());
-        Member savedMember = memberRepository.save(member);
+    Member member =
+        Member.of(
+            command.socialId(),
+            command.nickname(),
+            command.email(),
+            command.profileImage(),
+            command.socialProvider());
+    Member savedMember = memberRepository.save(member);
 
-        return MemberResult.from(savedMember);
-    }
+    return MemberResult.from(savedMember);
+  }
 
-    public MemberResult update(Long memberId, MemberUpdateCommand command) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+  public MemberResult update(Long memberId, MemberUpdateCommand command) {
+    Member member =
+        memberRepository
+            .findById(memberId)
+            .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        member.update(command.nickname());
+    member.update(command.nickname());
 
-        return MemberResult.from(member);
-    }
+    return MemberResult.from(member);
+  }
 
-    public void delete(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+  public void delete(Long memberId) {
+    Member member =
+        memberRepository
+            .findById(memberId)
+            .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        memberRepository.delete(member);
-    }
+    memberRepository.delete(member);
+  }
 }

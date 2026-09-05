@@ -16,10 +16,7 @@ import tools.jackson.databind.ObjectMapper;
 @Transactional
 public abstract class IntegrationTest {
 
-    @Autowired
-    protected MockMvc mockMvc;
+  @Autowired protected MockMvc mockMvc;
 
-    @Autowired
-    protected ObjectMapper objectMapper;
+  @Autowired protected ObjectMapper objectMapper;
 }
-

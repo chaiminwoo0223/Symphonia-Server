@@ -13,42 +13,43 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class TokenService {
-    private final AccessTokenProvider accessTokenProvider;
-    private final RefreshTokenProvider refreshTokenProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+  private final AccessTokenProvider accessTokenProvider;
+  private final RefreshTokenProvider refreshTokenProvider;
+  private final RefreshTokenRepository refreshTokenRepository;
+  private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
 
-    public TokenResult issue(String memberId, String role) {
-        String accessToken = accessTokenProvider.generate(memberId, role);
-        String refreshToken = refreshTokenProvider.generate();
-        long refreshTokenExpirationTime = refreshTokenProvider.getExpirationTime();
+  public TokenResult issue(String memberId, String role) {
+    String accessToken = accessTokenProvider.generate(memberId, role);
+    String refreshToken = refreshTokenProvider.generate();
+    long refreshTokenExpirationTime = refreshTokenProvider.getExpirationTime();
 
-        refreshTokenRepository.save(refreshToken, memberId, refreshTokenExpirationTime);
+    refreshTokenRepository.save(refreshToken, memberId, refreshTokenExpirationTime);
 
-        return TokenResult.of(accessToken, refreshToken);
-    }
+    return TokenResult.of(accessToken, refreshToken);
+  }
 
-    public TokenResult reissue(String memberId, String role) {
-        refreshTokenRepository.delete(memberId);
+  public TokenResult reissue(String memberId, String role) {
+    refreshTokenRepository.delete(memberId);
 
-        return issue(memberId, role);
-    }
+    return issue(memberId, role);
+  }
 
-    public void revoke(String accessToken) {
-        String memberId = accessTokenProvider.getMemberId(accessToken);
-        long accessTokenRemainingTime = accessTokenProvider.getRemainingTime(accessToken);
+  public void revoke(String accessToken) {
+    String memberId = accessTokenProvider.getMemberId(accessToken);
+    long accessTokenRemainingTime = accessTokenProvider.getRemainingTime(accessToken);
 
-        blacklistAccessTokenRepository.save(accessToken, memberId, accessTokenRemainingTime);
-        refreshTokenRepository.delete(memberId);
-    }
+    blacklistAccessTokenRepository.save(accessToken, memberId, accessTokenRemainingTime);
+    refreshTokenRepository.delete(memberId);
+  }
 
-    // 관리자 전용
-    public void forceRevoke(String memberId) {
-        refreshTokenRepository.delete(memberId);
-    }
+  // 관리자 전용
+  public void forceRevoke(String memberId) {
+    refreshTokenRepository.delete(memberId);
+  }
 
-    public String getMemberId(String refreshToken) {
-        return refreshTokenRepository.findMemberIdByValue(refreshToken)
-                .orElseThrow(() -> BusinessException.from(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
-    }
+  public String getMemberId(String refreshToken) {
+    return refreshTokenRepository
+        .findMemberIdByValue(refreshToken)
+        .orElseThrow(() -> BusinessException.from(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
+  }
 }

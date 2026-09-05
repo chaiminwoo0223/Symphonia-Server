@@ -12,19 +12,17 @@ import org.springframework.data.redis.core.TimeToLive;
 @RedisHash("blacklist_access_token")
 public class BlacklistAccessToken {
 
-    @Id
-    private String accessToken;
+  @Id private String accessToken;
 
-    private String memberId;
+  private String memberId;
 
-    @TimeToLive
-    private Long expirationTime;
+  @TimeToLive private Long expirationTime;
 
-    public static BlacklistAccessToken of(String accessToken, String memberId, Long expirationTime) {
-        return BlacklistAccessToken.builder()
-                .accessToken(accessToken)
-                .memberId(memberId)
-                .expirationTime(expirationTime)
-                .build();
-    }
+  public static BlacklistAccessToken of(String accessToken, String memberId, Long expirationTime) {
+    return BlacklistAccessToken.builder()
+        .accessToken(accessToken)
+        .memberId(memberId)
+        .expirationTime(expirationTime)
+        .build();
+  }
 }

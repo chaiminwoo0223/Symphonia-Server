@@ -1,10 +1,7 @@
 package com.symphonia.auth.application.dto.result;
 
-public record TokenResult(
-        String accessToken,
-        String refreshToken
-) {
-    public static TokenResult of(String accessToken, String refreshToken) {
-        return new TokenResult(accessToken, refreshToken);
-    }
+public record TokenResult(String accessToken, String refreshToken) {
+  public static TokenResult of(String accessToken, String refreshToken) {
+    return new TokenResult(accessToken, refreshToken);
+  }
 }

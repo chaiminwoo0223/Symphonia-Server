@@ -10,17 +10,16 @@ import org.testcontainers.utility.DockerImageName;
 @TestConfiguration(proxyBeanMethods = false)
 class TestcontainersConfiguration {
 
-	@Bean
-	@ServiceConnection
-    MySQLContainer mysqlContainer() {
-		return new MySQLContainer(DockerImageName.parse("mysql:latest"));
-	}
+  @Bean
+  @ServiceConnection
+  MySQLContainer mysqlContainer() {
+    return new MySQLContainer(DockerImageName.parse("mysql:latest"));
+  }
 
-	@Bean
-	@ServiceConnection(name = "redis")
-	@SuppressWarnings("resource")
-	GenericContainer<?> redisContainer() {
-		return new GenericContainer<>(DockerImageName.parse("redis:latest")).withExposedPorts(6379);
-	}
-
+  @Bean
+  @ServiceConnection(name = "redis")
+  @SuppressWarnings("resource")
+  GenericContainer<?> redisContainer() {
+    return new GenericContainer<>(DockerImageName.parse("redis:latest")).withExposedPorts(6379);
+  }
 }
