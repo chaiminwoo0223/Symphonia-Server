@@ -24,6 +24,9 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
 
     @Override
     public void delete(String memberId) {
-        refreshTokenRedisRepository.deleteByMemberId(memberId);
+        // deleteByMemberId 파생 쿼리는 @Indexed 필드 기반 삭제를 실제로 수행하지 않아
+        // findAllByMemberId + deleteAll로 대체한다(2026-09-05, RefreshTokenRepositoryImplTest에서 발견).
+        refreshTokenRedisRepository.deleteAll(
+                refreshTokenRedisRepository.findAllByMemberId(memberId));
     }
 }
