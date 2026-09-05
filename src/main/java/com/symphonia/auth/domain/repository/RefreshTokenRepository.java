@@ -3,9 +3,9 @@ package com.symphonia.auth.domain.repository;
 import java.util.Optional;
 
 public interface RefreshTokenRepository {
-  void save(String value, String memberId, Long expirationTime);
+    void save(String value, String memberId, Long expirationTime);
 
-  Optional<String> findMemberIdByValue(String value);
+    Optional<String> findMemberIdByValue(String value);
 
-  void delete(String memberId);
+    void delete(String memberId);
 }

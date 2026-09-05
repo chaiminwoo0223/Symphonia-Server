@@ -5,13 +5,13 @@ import com.symphonia.member.domain.entity.SocialProvider;
 import java.util.Optional;
 
 public interface MemberRepository {
-  Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId);
+    Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId);
 
-  Optional<Member> findById(Long memberId);
+    Optional<Member> findById(Long memberId);
 
-  Member save(Member member);
+    Member save(Member member);
 
-  boolean existsBySocialLogin(SocialProvider socialProvider, String socialId);
+    boolean existsBySocialLogin(SocialProvider socialProvider, String socialId);
 
-  void delete(Member member);
+    void delete(Member member);
 }

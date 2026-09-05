@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
-  private final ErrorResponseWriter errorResponseWriter;
+    private final ErrorResponseWriter errorResponseWriter;
 
-  @Override
-  public void commence(
-      @NonNull HttpServletRequest request,
-      @NonNull HttpServletResponse response,
-      @NonNull AuthenticationException authException)
-      throws IOException {
-    errorResponseWriter.send(response, AuthErrorCode.UNAUTHENTICATED);
-  }
+    @Override
+    public void commence(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull AuthenticationException authException)
+            throws IOException {
+        errorResponseWriter.send(response, AuthErrorCode.UNAUTHENTICATED);
+    }
 }

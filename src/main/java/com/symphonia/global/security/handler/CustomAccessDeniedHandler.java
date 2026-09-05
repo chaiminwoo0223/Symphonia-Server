@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
-  private final ErrorResponseWriter errorResponseWriter;
+    private final ErrorResponseWriter errorResponseWriter;
 
-  @Override
-  public void handle(
-      @NonNull HttpServletRequest request,
-      @NonNull HttpServletResponse response,
-      @NonNull AccessDeniedException accessDeniedException)
-      throws IOException {
-    errorResponseWriter.send(response, AuthErrorCode.ACCESS_DENIED);
-  }
+    @Override
+    public void handle(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull AccessDeniedException accessDeniedException)
+            throws IOException {
+        errorResponseWriter.send(response, AuthErrorCode.ACCESS_DENIED);
+    }
 }

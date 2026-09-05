@@ -3,9 +3,9 @@ package com.symphonia.global.exception.error;
 import org.springframework.http.HttpStatus;
 
 public interface ErrorCode {
-  HttpStatus getStatus();
+    HttpStatus getStatus();
 
-  String getCode();
+    String getCode();
 
-  String getMessage();
+    String getMessage();
 }

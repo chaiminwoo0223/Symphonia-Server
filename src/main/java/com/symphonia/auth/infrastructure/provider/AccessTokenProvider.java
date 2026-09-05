@@ -16,62 +16,62 @@ import org.springframework.stereotype.Component;
 // 클라이언트: Response Body(JSON), HttpOnly Secure Cookie(BFF 패턴) → XSS 공격 / CSRF 공격 차단
 @Component
 public class AccessTokenProvider {
-  private final AccessTokenProperties accessTokenProperties;
-  private final SecretKey secretKey;
+    private final AccessTokenProperties accessTokenProperties;
+    private final SecretKey secretKey;
 
-  public AccessTokenProvider(AccessTokenProperties accessTokenProperties) {
-    this.accessTokenProperties = accessTokenProperties;
-    this.secretKey = Keys.hmacShaKeyFor(accessTokenProperties.secret().getBytes());
-  }
-
-  private static final String ROLE_CLAIM = "role";
-
-  public String generate(String memberId, String role) {
-    Instant now = Instant.now();
-    Instant expiry = now.plusSeconds(accessTokenProperties.expirationTime());
-
-    return Jwts.builder()
-        .subject(memberId)
-        .claim(ROLE_CLAIM, role)
-        .issuedAt(Date.from(now))
-        .expiration(Date.from(expiry))
-        .signWith(secretKey)
-        .compact();
-  }
-
-  public String getMemberId(String accessToken) {
-    return parse(accessToken).getSubject();
-  }
-
-  public String getRole(String accessToken) {
-    return parse(accessToken).get(ROLE_CLAIM, String.class);
-  }
-
-  public long getRemainingTime(String accessToken) {
-    Date expiration = parse(accessToken).getExpiration();
-    long remaining = expiration.getTime() - System.currentTimeMillis();
-
-    return Math.max(remaining, 0) / 1000;
-  }
-
-  public boolean validate(String accessToken) {
-    try {
-      decode(accessToken);
-      return true;
-    } catch (Exception e) {
-      return false;
+    public AccessTokenProvider(AccessTokenProperties accessTokenProperties) {
+        this.accessTokenProperties = accessTokenProperties;
+        this.secretKey = Keys.hmacShaKeyFor(accessTokenProperties.secret().getBytes());
     }
-  }
 
-  private Claims parse(String accessToken) {
-    try {
-      return decode(accessToken).getPayload();
-    } catch (Exception e) {
-      throw BusinessException.from(AuthErrorCode.INVALID_JWT_TOKEN);
+    private static final String ROLE_CLAIM = "role";
+
+    public String generate(String memberId, String role) {
+        Instant now = Instant.now();
+        Instant expiry = now.plusSeconds(accessTokenProperties.expirationTime());
+
+        return Jwts.builder()
+                .subject(memberId)
+                .claim(ROLE_CLAIM, role)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .signWith(secretKey)
+                .compact();
     }
-  }
 
-  private Jws<Claims> decode(String accessToken) {
-    return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(accessToken);
-  }
+    public String getMemberId(String accessToken) {
+        return parse(accessToken).getSubject();
+    }
+
+    public String getRole(String accessToken) {
+        return parse(accessToken).get(ROLE_CLAIM, String.class);
+    }
+
+    public long getRemainingTime(String accessToken) {
+        Date expiration = parse(accessToken).getExpiration();
+        long remaining = expiration.getTime() - System.currentTimeMillis();
+
+        return Math.max(remaining, 0) / 1000;
+    }
+
+    public boolean validate(String accessToken) {
+        try {
+            decode(accessToken);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Claims parse(String accessToken) {
+        try {
+            return decode(accessToken).getPayload();
+        } catch (Exception e) {
+            throw BusinessException.from(AuthErrorCode.INVALID_JWT_TOKEN);
+        }
+    }
+
+    private Jws<Claims> decode(String accessToken) {
+        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(accessToken);
+    }
 }

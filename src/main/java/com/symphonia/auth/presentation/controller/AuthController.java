@@ -15,23 +15,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 public class AuthController implements AuthApi {
-  private final AuthFacade authFacade;
+    private final AuthFacade authFacade;
 
-  @Override
-  public ResponseEntity<StandardResponse<TokenResponse>> refresh(RefreshRequest request) {
-    TokenResult result = authFacade.reissue(request.refreshToken());
-    TokenResponse response = TokenResponse.from(result);
+    @Override
+    public ResponseEntity<StandardResponse<TokenResponse>> refresh(RefreshRequest request) {
+        TokenResult result = authFacade.reissue(request.refreshToken());
+        TokenResponse response = TokenResponse.from(result);
 
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(StandardResponse.success(HttpStatus.OK, response));
-  }
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
+    }
 
-  @Override
-  public ResponseEntity<StandardResponse<Void>> logout(Authentication authentication) {
-    String accessToken = (String) authentication.getCredentials();
-    authFacade.revoke(accessToken);
+    @Override
+    public ResponseEntity<StandardResponse<Void>> logout(Authentication authentication) {
+        String accessToken = (String) authentication.getCredentials();
+        authFacade.revoke(accessToken);
 
-    return ResponseEntity.status(HttpStatus.NO_CONTENT)
-        .body(StandardResponse.success(HttpStatus.NO_CONTENT));
-  }
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(StandardResponse.success(HttpStatus.NO_CONTENT));
+    }
 }
