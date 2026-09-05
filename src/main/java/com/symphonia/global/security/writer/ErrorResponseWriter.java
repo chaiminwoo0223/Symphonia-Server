@@ -13,12 +13,12 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 @RequiredArgsConstructor
 public class ErrorResponseWriter {
-  private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-  public void send(HttpServletResponse response, ErrorCode errorCode) throws IOException {
-    response.setStatus(errorCode.getStatus().value());
-    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    response.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.of(errorCode)));
-  }
+    public void send(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(errorCode.getStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.of(errorCode)));
+    }
 }

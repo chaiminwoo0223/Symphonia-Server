@@ -21,49 +21,49 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-  private final AccessTokenProvider accessTokenProvider;
-  private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    private final AccessTokenProvider accessTokenProvider;
+    private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
 
-  private static final String BEARER_PREFIX = "Bearer ";
+    private static final String BEARER_PREFIX = "Bearer ";
 
-  @Override
-  protected void doFilterInternal(
-      @NonNull HttpServletRequest request,
-      @NonNull HttpServletResponse response,
-      @NonNull FilterChain filterChain)
-      throws ServletException, IOException {
-    String accessToken = extractBearerToken(request);
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
+        String accessToken = extractBearerToken(request);
 
-    if (StringUtils.hasText(accessToken) && isValidToken(accessToken)) {
-      setAuthentication(accessToken);
+        if (StringUtils.hasText(accessToken) && isValidToken(accessToken)) {
+            setAuthentication(accessToken);
+        }
+
+        filterChain.doFilter(request, response);
     }
 
-    filterChain.doFilter(request, response);
-  }
-
-  private boolean isValidToken(String accessToken) {
-    return accessTokenProvider.validate(accessToken)
-        && !blacklistAccessTokenRepository.isBlacklisted(accessToken);
-  }
-
-  private void setAuthentication(String accessToken) {
-    String memberId = accessTokenProvider.getMemberId(accessToken);
-    String role = accessTokenProvider.getRole(accessToken);
-
-    List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
-    UsernamePasswordAuthenticationToken authentication =
-        new UsernamePasswordAuthenticationToken(memberId, accessToken, authorities);
-
-    SecurityContextHolder.getContext().setAuthentication(authentication);
-  }
-
-  private String extractBearerToken(HttpServletRequest request) {
-    String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-
-    if (!StringUtils.hasText(header) || !header.startsWith(BEARER_PREFIX)) {
-      return null;
+    private boolean isValidToken(String accessToken) {
+        return accessTokenProvider.validate(accessToken)
+                && !blacklistAccessTokenRepository.isBlacklisted(accessToken);
     }
 
-    return header.substring(BEARER_PREFIX.length()).trim();
-  }
+    private void setAuthentication(String accessToken) {
+        String memberId = accessTokenProvider.getMemberId(accessToken);
+        String role = accessTokenProvider.getRole(accessToken);
+
+        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(memberId, accessToken, authorities);
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private String extractBearerToken(HttpServletRequest request) {
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+        if (!StringUtils.hasText(header) || !header.startsWith(BEARER_PREFIX)) {
+            return null;
+        }
+
+        return header.substring(BEARER_PREFIX.length()).trim();
+    }
 }

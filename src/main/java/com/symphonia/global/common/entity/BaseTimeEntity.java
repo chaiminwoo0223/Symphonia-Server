@@ -17,12 +17,12 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass // 자식 엔티티 테이블에 BaseTimeEntity 필드를 컬럼으로 매핑
 @EntityListeners(
-    AuditingEntityListener.class) // @CreatedDate, @LastModifiedDate 자동 주입을 위한 Auditing 리스너 등록
+        AuditingEntityListener.class) // @CreatedDate, @LastModifiedDate 자동 주입을 위한 Auditing 리스너 등록
 public abstract class BaseTimeEntity {
 
-  @CreatedDate
-  @Column(updatable = false)
-  protected LocalDateTime createdAt;
+    @CreatedDate
+    @Column(updatable = false)
+    protected LocalDateTime createdAt;
 
-  @LastModifiedDate protected LocalDateTime updatedAt;
+    @LastModifiedDate protected LocalDateTime updatedAt;
 }

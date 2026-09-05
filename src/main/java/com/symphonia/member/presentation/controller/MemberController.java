@@ -16,34 +16,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 public class MemberController implements MemberApi {
-  private final MemberQueryService memberQueryService;
-  private final MemberCommandService memberCommandService;
+    private final MemberQueryService memberQueryService;
+    private final MemberCommandService memberCommandService;
 
-  @Override
-  public ResponseEntity<StandardResponse<MemberResponse>> get(String memberId) {
-    MemberResult result = memberQueryService.getById(Long.parseLong(memberId));
-    MemberResponse response = MemberResponse.from(result);
+    @Override
+    public ResponseEntity<StandardResponse<MemberResponse>> get(String memberId) {
+        MemberResult result = memberQueryService.getById(Long.parseLong(memberId));
+        MemberResponse response = MemberResponse.from(result);
 
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(StandardResponse.success(HttpStatus.OK, response));
-  }
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
+    }
 
-  @Override
-  public ResponseEntity<StandardResponse<MemberUpdateResponse>> update(
-      String memberId, MemberUpdateRequest request) {
-    MemberResult result =
-        memberCommandService.update(Long.parseLong(memberId), request.toCommand());
-    MemberUpdateResponse response = MemberUpdateResponse.from(result);
+    @Override
+    public ResponseEntity<StandardResponse<MemberUpdateResponse>> update(
+            String memberId, MemberUpdateRequest request) {
+        MemberResult result =
+                memberCommandService.update(Long.parseLong(memberId), request.toCommand());
+        MemberUpdateResponse response = MemberUpdateResponse.from(result);
 
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(StandardResponse.success(HttpStatus.OK, response));
-  }
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
+    }
 
-  @Override
-  public ResponseEntity<StandardResponse<Void>> delete(String memberId) {
-    memberCommandService.delete(Long.parseLong(memberId));
+    @Override
+    public ResponseEntity<StandardResponse<Void>> delete(String memberId) {
+        memberCommandService.delete(Long.parseLong(memberId));
 
-    return ResponseEntity.status(HttpStatus.NO_CONTENT)
-        .body(StandardResponse.success(HttpStatus.NO_CONTENT));
-  }
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(StandardResponse.success(HttpStatus.NO_CONTENT));
+    }
 }

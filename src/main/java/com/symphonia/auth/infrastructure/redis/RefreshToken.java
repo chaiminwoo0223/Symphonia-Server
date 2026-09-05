@@ -13,18 +13,18 @@ import org.springframework.data.redis.core.index.Indexed;
 @RedisHash("refresh_token")
 public class RefreshToken {
 
-  @Id private String value;
+    @Id private String value;
 
-  @Indexed // Spring Data Redis가 자동으로 역색인 key 추가 저장
-  private String memberId;
+    @Indexed // Spring Data Redis가 자동으로 역색인 key 추가 저장
+    private String memberId;
 
-  @TimeToLive private Long expirationTime;
+    @TimeToLive private Long expirationTime;
 
-  public static RefreshToken of(String value, String memberId, Long expirationTime) {
-    return RefreshToken.builder()
-        .value(value)
-        .memberId(memberId)
-        .expirationTime(expirationTime)
-        .build();
-  }
+    public static RefreshToken of(String value, String memberId, Long expirationTime) {
+        return RefreshToken.builder()
+                .value(value)
+                .memberId(memberId)
+                .expirationTime(expirationTime)
+                .build();
+    }
 }

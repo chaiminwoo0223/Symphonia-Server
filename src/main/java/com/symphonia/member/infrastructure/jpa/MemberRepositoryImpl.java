@@ -10,30 +10,30 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class MemberRepositoryImpl implements MemberRepository {
-  private final MemberJpaRepository memberJpaRepository;
+    private final MemberJpaRepository memberJpaRepository;
 
-  @Override
-  public Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId) {
-    return memberJpaRepository.findBySocialProviderAndSocialId(socialProvider, socialId);
-  }
+    @Override
+    public Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId) {
+        return memberJpaRepository.findBySocialProviderAndSocialId(socialProvider, socialId);
+    }
 
-  @Override
-  public Optional<Member> findById(Long memberId) {
-    return memberJpaRepository.findById(memberId);
-  }
+    @Override
+    public Optional<Member> findById(Long memberId) {
+        return memberJpaRepository.findById(memberId);
+    }
 
-  @Override
-  public Member save(Member member) {
-    return memberJpaRepository.save(member);
-  }
+    @Override
+    public Member save(Member member) {
+        return memberJpaRepository.save(member);
+    }
 
-  @Override
-  public boolean existsBySocialLogin(SocialProvider socialProvider, String socialId) {
-    return memberJpaRepository.existsBySocialProviderAndSocialId(socialProvider, socialId);
-  }
+    @Override
+    public boolean existsBySocialLogin(SocialProvider socialProvider, String socialId) {
+        return memberJpaRepository.existsBySocialProviderAndSocialId(socialProvider, socialId);
+    }
 
-  @Override
-  public void delete(Member member) {
-    memberJpaRepository.delete(member);
-  }
+    @Override
+    public void delete(Member member) {
+        memberJpaRepository.delete(member);
+    }
 }
