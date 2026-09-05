@@ -1,0 +1,2 @@
+access-token:
+  secret: test-only-fixed-jwt-secret-for-symphonia-integration-tests-do-not-use-in-prod
