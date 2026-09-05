@@ -14,19 +14,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class MemberQueryService {
-    private final MemberRepository memberRepository;
+  private final MemberRepository memberRepository;
 
-    public MemberResult getBySocialLogin(SocialProvider socialProvider, String socialId) {
-        Member member = memberRepository.findBySocialLogin(socialProvider, socialId)
-                .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+  public MemberResult getBySocialLogin(SocialProvider socialProvider, String socialId) {
+    Member member =
+        memberRepository
+            .findBySocialLogin(socialProvider, socialId)
+            .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        return MemberResult.from(member);
-    }
+    return MemberResult.from(member);
+  }
 
-    public MemberResult getById(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+  public MemberResult getById(Long memberId) {
+    Member member =
+        memberRepository
+            .findById(memberId)
+            .orElseThrow(() -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
-        return MemberResult.from(member);
-    }
+    return MemberResult.from(member);
+  }
 }

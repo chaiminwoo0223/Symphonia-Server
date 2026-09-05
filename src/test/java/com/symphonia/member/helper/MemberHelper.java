@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class MemberHelper {
-    private final MemberRepository memberRepository;
+  private final MemberRepository memberRepository;
 
-    public Member save(MemberFixture fixture) {
-        return memberRepository.save(fixture.create());
-    }
+  public Member save(MemberFixture fixture) {
+    return memberRepository.save(fixture.create());
+  }
 }
