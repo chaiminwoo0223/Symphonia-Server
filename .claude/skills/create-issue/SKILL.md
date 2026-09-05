@@ -32,6 +32,7 @@ description: Load when creating a GitHub issue. 이슈 템플릿 타입 매핑, 
    gh issue create \
      --title "[Feature] <제목>" \
      --label "✨ feature" \
+     --assignee @me \
      --body "$(cat <<'EOF'
    ## 📌 이슈 내용 설명
    <설명>
@@ -43,6 +44,7 @@ description: Load when creating a GitHub issue. 이슈 템플릿 타입 매핑, 
    )"
    ```
    타입에 맞게 `--title` 접두사, `--label`, 헤더 아래 내용을 위 매핑표대로 바꾼다.
+   `--assignee`는 기본적으로 `@me`(이슈를 만드는 사람, 즉 `gh` 인증 계정)를 쓴다. 사용자가 다른 사람에게 할당해달라고 명시하면 그 사람의 GitHub 사용자명으로 바꾼다 (예: `--assignee chaiminwoo0223`). 여러 명에게 할당하려면 `--assignee`를 반복하거나 쉼표로 나열한다.
 4. 생성된 이슈 번호를 사용자에게 알린다. 이 번호는 이후 브랜치명(`feat/#이슈번호`, `git-workflow` 참고)과 커밋 메시지(`[#이슈번호] type: 설명`, `commit-push` 참고)에 쓰인다.
 
 ## 예시
@@ -81,3 +83,4 @@ description: Load when creating a GitHub issue. 이슈 템플릿 타입 매핑, 
 - 템플릿 구조(섹션 제목, 필수 필드)를 임의로 바꾸지 않는다.
 - 제목과 본문 모두 한국어로 작성한다.
 - `설정` 타입 이슈는 `chore` 라벨을 쓴다 (`feat`가 아니다). 제목·설명에서는 "구현"보다 "구성"이라는 표현을 우선한다.
+- **이슈는 기본적으로 만든 사람에게 할당한다(`--assignee @me`).** 사용자가 다른 사람에게 할당하라고 명시적으로 요청한 경우에만 그 사람으로 바꾼다.
