@@ -48,7 +48,7 @@ class MemberCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("SocialProvider가 KAKAO인 경우")
-        class Kakao {
+        class WhenSocialProviderIsKakao {
             private MemberCreateCommand command;
 
             @BeforeEach
@@ -96,7 +96,7 @@ class MemberCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("SocialProvider가 GOOGLE인 경우")
-        class Google {
+        class WhenSocialProviderIsGoogle {
             private MemberCreateCommand command;
 
             @BeforeEach
