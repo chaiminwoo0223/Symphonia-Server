@@ -14,7 +14,7 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 | 브랜치 | 용도 |
 |---|---|
 | `main` | 운영 배포 |
-| `develop` | 통합 (PR 대상) |
+| `develop` | 통합 (PR 대상). 직접 커밋은 긴급 `[HotFix]` 대응에만 허용 (`commit-push` 스킬 참고) |
 | `feat/#이슈번호` | 기능 개발 (`develop`에서 분기) |
 
 ## Commit & Push
