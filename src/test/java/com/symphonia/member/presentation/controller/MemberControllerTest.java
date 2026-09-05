@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
-import com.symphonia.auth.helper.AuthTestHelper;
+import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
@@ -22,7 +22,7 @@ import org.springframework.http.MediaType;
 class MemberControllerTest extends IntegrationTest {
 
     @Autowired private MemberHelper memberHelper;
-    @Autowired private AuthTestHelper authTestHelper;
+    @Autowired private AuthHelper authHelper;
 
     @Nested
     @DisplayName("GET /api/v1/members/me는")
@@ -102,9 +102,9 @@ class MemberControllerTest extends IntegrationTest {
 
     private String generateBearerToken(Member member) {
         String accessToken =
-                authTestHelper.generateAccessToken(
+                authHelper.generateAccessToken(
                         String.valueOf(member.getId()), member.getRole().name());
 
-        return authTestHelper.bearerHeader(accessToken);
+        return authHelper.bearerHeader(accessToken);
     }
 }

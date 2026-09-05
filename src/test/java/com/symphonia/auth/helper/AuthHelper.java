@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class AuthTestHelper {
+public class AuthHelper {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final AccessTokenProvider accessTokenProvider;
