@@ -12,7 +12,7 @@ description: Load when creating a pull request. PR 대상/제목/본문 구성 �
 ## 규칙
 
 - PR 대상은 항상 `develop`이다.
-- 제목 포맷은 `[Type] 설명`이다. 이슈 번호는 제목에 넣지 않는다. 이슈 연결은 본문의 `closes #이슈번호`만으로 한다. `Type`은 `create-issue` 스킬의 타입 표(Feature/Bug/Refactor/Chore/Performance/Documentation)를 그대로 쓴다. 여러 유형이 섞였으면 가장 비중이 큰 변경의 타입을 대표로 쓴다.
+- 제목 포맷은 `[Type] 설명`이다. 이슈 번호는 제목에 넣지 않는다. 이슈 연결은 본문의 `closes #이슈번호`만으로 한다. `Type`은 `create-issue` 스킬의 타입 표(Feature/Bug/Refactor/Chore/Performance/Docs)를 그대로 쓴다. 여러 유형이 섞였으면 가장 비중이 큰 변경의 타입을 대표로 쓴다.
 - 본문은 `.github/PULL_REQUEST_TEMPLATE.md` 구조(PR 유형 체크박스 → 작업 내용 → 관련 이슈 → 추가 사항)를 그대로 따른다. 구분선(`---`)과 섹션 순서를 임의로 바꾸지 않는다.
 
 ## 절차
