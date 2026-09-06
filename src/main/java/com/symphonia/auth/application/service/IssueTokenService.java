@@ -5,7 +5,7 @@ import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
 import com.symphonia.auth.infrastructure.provider.RefreshTokenProvider;
-import com.symphonia.global.common.annotation.CommandService;
+import com.symphonia.common.annotation.CommandService;
 import lombok.RequiredArgsConstructor;
 
 @CommandService

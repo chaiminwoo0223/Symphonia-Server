@@ -2,7 +2,7 @@ package com.symphonia.auth.application.service;
 
 import com.symphonia.auth.application.usecase.ForceRevokeUseCase;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.global.common.annotation.CommandService;
+import com.symphonia.common.annotation.CommandService;
 import lombok.RequiredArgsConstructor;
 
 @CommandService

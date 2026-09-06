@@ -1,4 +1,4 @@
-package com.symphonia.global.exception.response;
+package com.symphonia.common.exception.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

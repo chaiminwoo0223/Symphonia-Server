@@ -1,6 +1,6 @@
 package com.symphonia.member.presentation.controller;
 
-import com.symphonia.global.common.response.StandardResponse;
+import com.symphonia.common.response.StandardResponse;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.service.MemberCommandService;
 import com.symphonia.member.application.service.MemberQueryService;

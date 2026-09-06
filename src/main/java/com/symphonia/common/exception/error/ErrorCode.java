@@ -1,4 +1,4 @@
-package com.symphonia.global.exception.error;
+package com.symphonia.common.exception.error;
 
 import org.springframework.http.HttpStatus;
 

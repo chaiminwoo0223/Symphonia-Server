@@ -1,7 +1,7 @@
 package com.symphonia.global.security.writer;
 
-import com.symphonia.global.exception.error.ErrorCode;
-import com.symphonia.global.exception.response.ErrorResponse;
+import com.symphonia.common.exception.error.ErrorCode;
+import com.symphonia.common.exception.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

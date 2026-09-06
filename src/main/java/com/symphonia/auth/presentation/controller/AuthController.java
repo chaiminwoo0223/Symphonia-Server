@@ -6,7 +6,7 @@ import com.symphonia.auth.application.usecase.ReissueUseCase;
 import com.symphonia.auth.presentation.AuthApi;
 import com.symphonia.auth.presentation.dto.request.RefreshRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
-import com.symphonia.global.common.response.StandardResponse;
+import com.symphonia.common.response.StandardResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

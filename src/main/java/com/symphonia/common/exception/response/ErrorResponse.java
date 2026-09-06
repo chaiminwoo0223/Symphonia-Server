@@ -1,7 +1,7 @@
-package com.symphonia.global.exception.response;
+package com.symphonia.common.exception.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.symphonia.global.exception.error.ErrorCode;
+import com.symphonia.common.exception.error.ErrorCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 

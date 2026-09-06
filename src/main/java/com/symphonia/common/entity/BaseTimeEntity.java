@@ -1,4 +1,4 @@
-package com.symphonia.global.common.entity;
+package com.symphonia.common.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

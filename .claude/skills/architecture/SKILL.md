@@ -23,7 +23,8 @@ com.symphonia
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체, 1 UseCase = 1 Service (예: RefreshUseCase/RefreshService, LogoutUseCase/LogoutService)
 │   ├── presentation/
 │   └── infrastructure/    # Redis 기반 RefreshToken/BlacklistAccessToken 구현, JPA 엔티티
-└── common/                # 공통 예외(AppException 등), 응답 포맷(StandardResponse), CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation), 설정
+├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
+└── global/                # 기술 부트스트랩: Security/JPA/Redis/Swagger 설정 (config), 인증 필터·핸들러 (security)
 ```
 
 > 도메인 모델과 JPA 엔티티는 완전히 분리한다. `domain`은 영속성 기술을 전혀 알지 못한다. Domain↔JPA 변환은 기본적으로 `*JpaEntity`의 정적 팩토리 메서드(`from(도메인객체)`, `toDomain()`)로 처리한다. 같은 변환을 여러 곳에서 재사용하거나 필드 매핑이 단순 대입을 넘어 계산·검증을 포함하게 되는 시점에만 별도 `*Mapper` 클래스로 분리한다 (YAGNI: 호출자가 하나뿐인 단순 매핑에 별도 클래스를 미리 만들지 않는다).
@@ -37,6 +38,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 ```
 
 `domain`은 다른 어떤 계층에도 의존하지 않는다. Spring, JPA를 포함한 프레임워크 임포트를 전면 금지한다. `domain → infrastructure` 참조는 금지된 방향이다.
+
+`domain`/`application` 계층은 공유 커널인 `common`만 참조하고, 기술 부트스트랩인 `global`(config/security)은 참조하지 않는다. `global`은 오직 Spring 설정·필터 wiring 목적으로만 `common`을 참조할 수 있다.
 
 ## 계층별 역할
 

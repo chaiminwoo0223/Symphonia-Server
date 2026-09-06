@@ -1,6 +1,6 @@
 package com.symphonia.member.presentation;
 
-import com.symphonia.global.common.response.StandardResponse;
+import com.symphonia.common.response.StandardResponse;
 import com.symphonia.member.presentation.dto.request.MemberUpdateRequest;
 import com.symphonia.member.presentation.dto.response.MemberResponse;
 import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;

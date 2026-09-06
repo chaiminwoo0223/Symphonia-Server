@@ -1,10 +1,10 @@
-package com.symphonia.global.exception.handler;
+package com.symphonia.common.exception.handler;
 
-import com.symphonia.global.common.response.StandardResponse;
-import com.symphonia.global.exception.BusinessException;
-import com.symphonia.global.exception.error.CommonErrorCode;
-import com.symphonia.global.exception.error.ErrorCode;
-import com.symphonia.global.exception.response.ErrorResponse;
+import com.symphonia.common.exception.BusinessException;
+import com.symphonia.common.exception.error.CommonErrorCode;
+import com.symphonia.common.exception.error.ErrorCode;
+import com.symphonia.common.exception.response.ErrorResponse;
+import com.symphonia.common.response.StandardResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

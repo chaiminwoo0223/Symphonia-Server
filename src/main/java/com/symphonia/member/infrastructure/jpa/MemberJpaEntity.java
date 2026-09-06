@@ -1,6 +1,6 @@
 package com.symphonia.member.infrastructure.jpa;
 
-import com.symphonia.global.common.entity.BaseTimeEntity;
+import com.symphonia.common.entity.BaseTimeEntity;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
