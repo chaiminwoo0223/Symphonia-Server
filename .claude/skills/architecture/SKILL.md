@@ -17,7 +17,7 @@ com.symphonia
 │   ├── domain/            # 순수 도메인 모델(Member), 도메인 서비스, MemberRepository 인터페이스
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체, Command (예: MemberQueryService, MemberCommandService, Query/Command 레벨)
 │   ├── presentation/      # Controller, *Api 인터페이스, Request/Response DTO
-│   └── infrastructure/    # MemberRepository 구현체, MemberJpaEntity, Domain↔JPA 매퍼
+│   └── infrastructure/    # MemberRepository 구현체, MemberJpaEntity(Domain↔JPA 변환은 from()/toDomain() 정적 팩토리 메서드)
 ├── auth/
 │   ├── domain/
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체, 1 UseCase = 1 Service (예: RefreshUseCase/RefreshService, LogoutUseCase/LogoutService)
@@ -26,7 +26,7 @@ com.symphonia
 └── common/                # 공통 예외(AppException 등), 응답 포맷(StandardResponse), CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation), 설정
 ```
 
-> 도메인 모델과 JPA 엔티티는 완전히 분리한다. `infrastructure`에 `*JpaEntity` + Domain↔JPA 매퍼를 두고, `domain`은 영속성 기술을 전혀 알지 못한다.
+> 도메인 모델과 JPA 엔티티는 완전히 분리한다. `domain`은 영속성 기술을 전혀 알지 못한다. Domain↔JPA 변환은 기본적으로 `*JpaEntity`의 정적 팩토리 메서드(`from(도메인객체)`, `toDomain()`)로 처리한다. 같은 변환을 여러 곳에서 재사용하거나 필드 매핑이 단순 대입을 넘어 계산·검증을 포함하게 되는 시점에만 별도 `*Mapper` 클래스로 분리한다 (YAGNI: 호출자가 하나뿐인 단순 매핑에 별도 클래스를 미리 만들지 않는다).
 > 현재 도메인은 2개(`member`, `auth`)뿐이라 별도 `shared` 패키지는 아직 두지 않는다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 3번째 도메인이 늘거나, 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 재검토한다.
 
 ## 계층 의존 방향
@@ -45,7 +45,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository` 인터페이스. 비즈니스 로직이 실제로 사는 곳 |
 | `application` | `*UseCase` 인터페이스 + `*Service` 구현체(`@CommandService`/`@QueryService`). 오케스트레이션만 담당 |
 | `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` DTO |
-| `infrastructure` | `*RepositoryImpl`(`*Repository` 구현체), `*JpaEntity`, Domain↔JPA 매퍼, Redis 등 외부 연동 |
+| `infrastructure` | `*RepositoryImpl`(`*Repository` 구현체), `*JpaEntity`(Domain↔JPA 변환용 `from()`/`toDomain()` 포함), Redis 등 외부 연동 |
 
 ## 계층별 타입 어휘 (Layer Type Vocabulary)
 
@@ -57,7 +57,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | Application (조회) | 단일 식별자면 원시값, 그 외엔 `*Query` | `*Result` | `*UseCase` 인터페이스 시그니처 |
 | Application (쓰기) | `*Command` | `*Result` 또는 `void`(반환값이 불필요한 경우, 예: 삭제) | `*UseCase` 인터페이스 시그니처 |
 | Domain | 원시값 | 도메인 객체 | 도메인 팩토리 메서드/생성자 |
-| Infrastructure | 도메인 객체 | `*JpaEntity` | Domain↔JPA 매퍼 |
+| Infrastructure | 도메인 객체 | `*JpaEntity` | `*JpaEntity.from()`/`toDomain()` (재사용·비단순 매핑 시에만 별도 `*Mapper`) |
 
 - `*Result`는 도메인 엔티티를 감싸지 않는다. 도메인 필드를 평탄화한 별도 DTO로 만들어 도메인 객체가 Application 계층 밖으로 새어나가지 않게 한다. **크로스 도메인으로 주고받을 때도 이 `*Result`가 그대로 계약 역할을 한다.** 예를 들어 `RefreshService`가 `member.GetMemberUseCase`를 호출해 받는 것도 `MemberResult`다.
 - 조회(Query) 파라미터가 단일 식별자(ID, code 등 원시값 하나)면 감싸지 않고 그대로 받는다. 파라미터가 2개 이상이거나 필터·정렬·페이징처럼 확장 가능성이 있는 조건이면 `*Query`로 감싼다 (단일 식별자까지 감싸는 건 계층 응집도보다 보일러플레이트 비용이 더 크다).
