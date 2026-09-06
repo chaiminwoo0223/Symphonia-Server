@@ -92,7 +92,8 @@
 com.symphonia
 ├── member/     {domain, application, presentation, infrastructure}
 ├── auth/       {domain, application, presentation, infrastructure}
-└── common/     공통 예외, 응답 포맷, CQRS 트랜잭션 애노테이션, 설정
+├── common/     공통 예외, 응답 포맷, BaseTimeEntity, CQRS 트랜잭션 애노테이션 (공유 커널: domain/application도 참조)
+└── global/     Security, JPA/Redis/Swagger 설정 등 기술 부트스트랩 (domain/application은 참조하지 않음)
 ```
 
 > 계층 역할, 계층별 타입 어휘, 크로스 도메인 규칙 등 상세는 `architecture` 스킬 참고.

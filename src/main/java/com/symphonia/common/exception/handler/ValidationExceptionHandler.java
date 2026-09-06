@@ -1,10 +1,10 @@
-package com.symphonia.global.exception.handler;
+package com.symphonia.common.exception.handler;
 
-import com.symphonia.global.common.response.StandardResponse;
-import com.symphonia.global.exception.error.CommonErrorCode;
-import com.symphonia.global.exception.error.ErrorCode;
-import com.symphonia.global.exception.response.ErrorResponse;
-import com.symphonia.global.exception.response.ValidationErrorResponse;
+import com.symphonia.common.exception.error.CommonErrorCode;
+import com.symphonia.common.exception.error.ErrorCode;
+import com.symphonia.common.exception.response.ErrorResponse;
+import com.symphonia.common.exception.response.ValidationErrorResponse;
+import com.symphonia.common.response.StandardResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;

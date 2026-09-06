@@ -10,7 +10,7 @@ import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.global.exception.BusinessException;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
 import com.symphonia.member.domain.entity.Role;

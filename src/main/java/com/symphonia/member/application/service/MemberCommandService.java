@@ -1,7 +1,7 @@
 package com.symphonia.member.application.service;
 
-import com.symphonia.global.common.annotation.CommandService;
-import com.symphonia.global.exception.BusinessException;
+import com.symphonia.common.annotation.CommandService;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;

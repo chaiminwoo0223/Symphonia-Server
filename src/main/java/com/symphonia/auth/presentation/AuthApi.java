@@ -2,7 +2,7 @@ package com.symphonia.auth.presentation;
 
 import com.symphonia.auth.presentation.dto.request.RefreshRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
-import com.symphonia.global.common.response.StandardResponse;
+import com.symphonia.common.response.StandardResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

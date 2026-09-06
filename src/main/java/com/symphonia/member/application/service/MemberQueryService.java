@@ -1,7 +1,7 @@
 package com.symphonia.member.application.service;
 
-import com.symphonia.global.common.annotation.QueryService;
-import com.symphonia.global.exception.BusinessException;
+import com.symphonia.common.annotation.QueryService;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
 import com.symphonia.member.domain.entity.Member;

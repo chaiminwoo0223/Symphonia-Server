@@ -1,4 +1,4 @@
-package com.symphonia.global.common.annotation;
+package com.symphonia.common.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

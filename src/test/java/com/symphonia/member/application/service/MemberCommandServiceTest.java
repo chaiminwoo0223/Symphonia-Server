@@ -7,7 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
-import com.symphonia.global.exception.BusinessException;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;

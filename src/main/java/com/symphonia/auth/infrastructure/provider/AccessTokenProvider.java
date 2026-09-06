@@ -1,8 +1,8 @@
 package com.symphonia.auth.infrastructure.provider;
 
 import com.symphonia.auth.domain.error.AuthErrorCode;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.global.config.properties.AccessTokenProperties;
-import com.symphonia.global.exception.BusinessException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;

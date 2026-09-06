@@ -1,6 +1,6 @@
-package com.symphonia.global.common.response;
+package com.symphonia.common.response;
 
-import com.symphonia.global.exception.response.ErrorResponse;
+import com.symphonia.common.exception.response.ErrorResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.http.HttpStatus;
 

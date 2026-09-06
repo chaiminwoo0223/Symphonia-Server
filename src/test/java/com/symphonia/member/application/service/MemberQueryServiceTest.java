@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
-import com.symphonia.global.exception.BusinessException;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
