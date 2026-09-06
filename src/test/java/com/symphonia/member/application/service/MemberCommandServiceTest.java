@@ -172,12 +172,14 @@ class MemberCommandServiceTest extends UnitTest {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId)).willReturn(Optional.of(googleMember));
+            given(memberRepository.save(googleMember)).willReturn(googleMember);
 
             // when
             MemberResult result = memberCommandService.update(memberId, command);
 
             // then
             assertThat(result.nickname()).isEqualTo(command.nickname());
+            then(memberRepository).should().save(googleMember);
         }
     }
 
