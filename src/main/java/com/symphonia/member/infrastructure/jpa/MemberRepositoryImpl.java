@@ -14,17 +14,21 @@ public class MemberRepositoryImpl implements MemberRepository {
 
     @Override
     public Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId) {
-        return memberJpaRepository.findBySocialProviderAndSocialId(socialProvider, socialId);
+        return memberJpaRepository
+                .findBySocialProviderAndSocialId(socialProvider, socialId)
+                .map(MemberMapper::toDomain);
     }
 
     @Override
     public Optional<Member> findById(Long memberId) {
-        return memberJpaRepository.findById(memberId);
+        return memberJpaRepository.findById(memberId).map(MemberMapper::toDomain);
     }
 
     @Override
     public Member save(Member member) {
-        return memberJpaRepository.save(member);
+        MemberJpaEntity savedEntity = memberJpaRepository.save(MemberMapper.toEntity(member));
+
+        return MemberMapper.toDomain(savedEntity);
     }
 
     @Override
@@ -34,6 +38,6 @@ public class MemberRepositoryImpl implements MemberRepository {
 
     @Override
     public void delete(Member member) {
-        memberJpaRepository.delete(member);
+        memberJpaRepository.deleteById(member.getId());
     }
 }

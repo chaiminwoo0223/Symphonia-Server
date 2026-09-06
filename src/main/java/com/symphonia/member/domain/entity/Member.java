@@ -1,45 +1,23 @@
 package com.symphonia.member.domain.entity;
 
-import com.symphonia.global.common.entity.BaseTimeEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
-@Entity
 @Getter
-@SuperBuilder
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Member extends BaseTimeEntity {
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class Member {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String socialId;
-
-    @Column(nullable = false)
     private String nickname;
-
-    @Column(nullable = false)
     private String email;
-
     private String profileImage;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private SocialProvider socialProvider;
 
     public static Member of(

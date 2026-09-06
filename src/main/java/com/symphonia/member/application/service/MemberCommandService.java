@@ -41,8 +41,9 @@ public class MemberCommandService {
                                 () -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
 
         member.update(command.nickname());
+        Member updatedMember = memberRepository.save(member);
 
-        return MemberResult.from(member);
+        return MemberResult.from(updatedMember);
     }
 
     public void delete(Long memberId) {
