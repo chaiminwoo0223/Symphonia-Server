@@ -18,7 +18,7 @@
 |---|---|---|
 | `CLAUDE.md` | 매니페스트 | 뭐가 있고 언제 로드하는지만 담는다. 디테일은 절대 넣지 않는 작고 안정적인 라우터다 |
 | `settings.json` | 보안/거버넌스 게이트 | 위험 명령 차단·승인 조건을 규칙으로 강제 (LLM 판단에 맡기지 않음) |
-| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 현재 7개 작성됨: `block-main-commit.sh`(main 브랜치 직접 커밋 차단), `check-commit-issue-number.sh`(feat/<이슈번호> 브랜치에서 커밋 메시지의 이슈 번호 불일치 차단), `check-develop-hotfix-commit.sh`(develop에서 [HotFix] 태그 없는 직접 커밋 차단), `pre-push-check.sh`(git push 전 check-all.sh 게이트), `post-edit-format.sh`(Java 파일 편집 후 Spotless 자동 포맷), `check-writing-style.sh`(응답 종료 시 글쓰기 스타일 검사), `stop-eof-newline.sh`(세션 종료 시 EOF 개행 자동 보정) |
+| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 현재 8개 작성됨: `block-main-commit.sh`(main 브랜치 직접 커밋 차단), `check-commit-issue-number.sh`(<type>/<이슈번호> 브랜치에서 커밋 메시지의 이슈 번호 불일치 차단), `check-commit-type-consistency.sh`(커밋 메시지 안에 서로 다른 type이 섞이면 차단), `check-develop-hotfix-commit.sh`(develop에서 [HotFix] 태그 없는 직접 커밋 차단), `pre-push-check.sh`(git push 전 check-all.sh 게이트), `post-edit-format.sh`(Java 파일 편집 후 Spotless 자동 포맷), `check-writing-style.sh`(응답 종료 시 글쓰기 스타일 검사), `stop-eof-newline.sh`(세션 종료 시 EOF 개행 자동 보정) |
 | `.claude/commands/*` (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점 |
 | 서브에이전트 (`domain-scaffolder`, `code-reviewer`, `test-*`) | Service | 격리된 컨텍스트에서 여러 단계를 조율 |
 | `.claude/skills/<name>/SKILL.md` | SRP 컴포넌트 | 하나의 지식 영역 = 그 규칙의 단일 소스 |

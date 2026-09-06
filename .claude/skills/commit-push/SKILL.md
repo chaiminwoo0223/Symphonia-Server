@@ -14,7 +14,8 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 - `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
 - `git status`로 `.env`가 스테이징에 포함되지 않았는지 확인한다 (`.env` 커밋 금지는 Profiles 규칙과 동일).
 - 포맷은 `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 적용한다(Spotless + Google Java Format, `code-style` 스킬 참고). 수동으로 신경 쓸 필요는 없다.
-- `.claude/hooks/check-commit-issue-number.sh`(PreToolUse)가 `feat/<이슈번호>` 브랜치에서 커밋 메시지의 `[#이슈번호]`가 브랜치 번호와 다르거나 없으면 커밋 자체를 막는다. 수동으로 이슈 번호를 맞춰 볼 필요 없이 훅이 강제한다.
+- `.claude/hooks/check-commit-issue-number.sh`(PreToolUse)가 `<type>/<이슈번호>` 브랜치(`feat/9`, `refactor/22`, `chore/29` 등)에서 커밋 메시지의 `[#이슈번호]`가 브랜치 번호와 다르거나 없으면 커밋 자체를 막는다. 수동으로 이슈 번호를 맞춰 볼 필요 없이 훅이 강제한다.
+- `.claude/hooks/check-commit-type-consistency.sh`(PreToolUse, 2026-09-06 추가)가 커밋 메시지 안의 상단 `[#이슈번호] type:`과 하위 `* type:` 불릿들의 type이 서로 다르면 커밋을 막는다. "같은 커밋에는 하나의 type만" 규칙을 판단에 맡기지 않고 기계적으로 강제한다.
 - `.claude/hooks/check-develop-hotfix-commit.sh`(PreToolUse)가 `develop`에서 `[HotFix]` 태그 없는 직접 커밋을 막는다.
 
 ## 커밋 단위
