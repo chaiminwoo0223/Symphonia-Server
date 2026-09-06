@@ -16,6 +16,11 @@
           },
           {
             "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-commit-type-consistency.sh",
+            "timeout": 15
+          },
+          {
+            "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-develop-hotfix-commit.sh",
             "timeout": 15
           },
