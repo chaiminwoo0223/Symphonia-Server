@@ -1,6 +1,7 @@
 package com.symphonia.member.infrastructure.jpa;
 
 import com.symphonia.global.common.entity.BaseTimeEntity;
+import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
 import jakarta.persistence.Column;
@@ -43,4 +44,28 @@ public class MemberJpaEntity extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SocialProvider socialProvider;
+
+    public static MemberJpaEntity from(Member member) {
+        return MemberJpaEntity.builder()
+                .id(member.getId())
+                .socialId(member.getSocialId())
+                .nickname(member.getNickname())
+                .email(member.getEmail())
+                .profileImage(member.getProfileImage())
+                .role(member.getRole())
+                .socialProvider(member.getSocialProvider())
+                .build();
+    }
+
+    public Member toDomain() {
+        return Member.builder()
+                .id(id)
+                .socialId(socialId)
+                .nickname(nickname)
+                .email(email)
+                .profileImage(profileImage)
+                .role(role)
+                .socialProvider(socialProvider)
+                .build();
+    }
 }

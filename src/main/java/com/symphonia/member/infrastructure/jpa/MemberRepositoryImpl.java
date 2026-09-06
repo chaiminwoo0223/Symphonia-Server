@@ -16,19 +16,19 @@ public class MemberRepositoryImpl implements MemberRepository {
     public Optional<Member> findBySocialLogin(SocialProvider socialProvider, String socialId) {
         return memberJpaRepository
                 .findBySocialProviderAndSocialId(socialProvider, socialId)
-                .map(MemberMapper::toDomain);
+                .map(MemberJpaEntity::toDomain);
     }
 
     @Override
     public Optional<Member> findById(Long memberId) {
-        return memberJpaRepository.findById(memberId).map(MemberMapper::toDomain);
+        return memberJpaRepository.findById(memberId).map(MemberJpaEntity::toDomain);
     }
 
     @Override
     public Member save(Member member) {
-        MemberJpaEntity savedEntity = memberJpaRepository.save(MemberMapper.toEntity(member));
+        MemberJpaEntity savedEntity = memberJpaRepository.save(MemberJpaEntity.from(member));
 
-        return MemberMapper.toDomain(savedEntity);
+        return savedEntity.toDomain();
     }
 
     @Override
