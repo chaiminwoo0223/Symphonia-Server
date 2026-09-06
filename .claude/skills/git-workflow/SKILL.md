@@ -15,7 +15,7 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 |---|---|
 | `main` | 운영 배포 |
 | `develop` | 통합 (PR 대상). 직접 커밋은 긴급 `[HotFix]` 대응에만 허용 (`commit-push` 스킬 참고) |
-| `feat/#이슈번호` | 기능 개발 (`develop`에서 분기) |
+| `<type>/#이슈번호` | 이슈 작업 (`develop`에서 분기). 접두어는 그 작업의 주된 커밋 type을 그대로 쓴다 (예: `feat/9`, `refactor/22`, `chore/29`) |
 
 ## Commit & Push
 
@@ -27,4 +27,4 @@ PR 대상, 제목·본문 구성, 생성 절차는 `create-pr` 스킬 참고. PR
 
 ## GitHub 이슈
 
-GitHub 이슈 생성 규칙(템플릿 매핑, 제목·라벨, 표현 규칙, 생성 절차)은 `create-issue` 스킬 참고. 브랜치명(`feat/#이슈번호`)과 커밋 메시지(`[#이슈번호] type: 설명`)는 그렇게 생성된 이슈 번호를 그대로 쓴다.
+GitHub 이슈 생성 규칙(템플릿 매핑, 제목·라벨, 표현 규칙, 생성 절차)은 `create-issue` 스킬 참고. 브랜치명(`<type>/#이슈번호`)과 커밋 메시지(`[#이슈번호] type: 설명`)는 그렇게 생성된 이슈 번호를 그대로 쓴다.
