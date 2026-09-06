@@ -1,5 +1,6 @@
 package com.symphonia.member.application.service;
 
+import com.symphonia.global.common.annotation.CommandService;
 import com.symphonia.global.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
@@ -9,11 +10,8 @@ import com.symphonia.member.domain.error.MemberErrorCode;
 import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-@Service
-@Transactional
+@CommandService
 @RequiredArgsConstructor
 public class MemberCommandService {
     private final MemberRepository memberRepository;
