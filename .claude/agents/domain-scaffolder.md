@@ -27,7 +27,7 @@ Symphonia 프로젝트의 도메인 스캐폴딩 전담 에이전트다.
 - Service가 `*Request`를 직접 받거나 도메인 엔티티·`*JpaEntity`를 그대로 반환하지 않는다.
 - 1 `*UseCase` = 1 `*Service` 기본 원칙 (판단 기준은 `architecture` 스킬 참고).
 - Repository는 인터페이스(`domain`)+구현체(`infrastructure`) 분리.
-- `RuntimeException`을 직접 throw하지 않는다. `error-handling` 스킬의 `AppException` 체계를 따른다.
+- `RuntimeException`을 직접 throw하지 않는다. `error-handling` 스킬의 `BusinessException` 계층 체계를 따른다.
 
 ## 완료 후
 

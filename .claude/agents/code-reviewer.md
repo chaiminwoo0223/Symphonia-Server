@@ -29,8 +29,8 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] Repository·외부 연동이 인터페이스+구현체로 분리되어 있는지
 - [ ] 1 `*UseCase` = 1 `*Service` 원칙, 크로스 도메인 조율이 대상 `*UseCase` 직접 의존으로 되어 있는지 (Facade 없이)
 - [ ] 트랜잭션 경계가 `@CommandService`/`@QueryService` 클래스 단위로 선언되어 있는지 (메서드 단위 `@Transactional` 없는지)
-- [ ] 커스텀 예외가 공통 베이스 예외(`AppException`) 하위 + 에러코드(`*ErrorCode`)로 관리되는지
-- [ ] `GlobalExceptionHandler`가 `AppException`만 캐치하고 `errorCode.status`로 HTTP status를 결정하는지
+- [ ] 커스텀 예외가 공통 베이스 예외(`BusinessException`) 하위 + 에러코드(`*ErrorCode`)로 관리되는지
+- [ ] `GlobalExceptionHandler`가 `BusinessException`만 캐치하고 `errorCode.getStatus()`로 HTTP status를 결정하는지
 
 ## Review-Result Format
 
