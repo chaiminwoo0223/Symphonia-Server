@@ -17,6 +17,7 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 - `.claude/hooks/check-commit-issue-number.sh`(PreToolUse)가 `<type>/<이슈번호>` 브랜치(`feat/9`, `refactor/22`, `chore/29` 등)에서 커밋 메시지의 `[#이슈번호]`가 브랜치 번호와 다르거나 없으면 커밋 자체를 막는다. 수동으로 이슈 번호를 맞춰 볼 필요 없이 훅이 강제한다.
 - `.claude/hooks/check-commit-type-consistency.sh`(PreToolUse, 2026-09-06 추가)가 커밋 메시지 안의 상단 `[#이슈번호] type:`과 하위 `* type:` 불릿들의 type이 서로 다르면 커밋을 막는다. "같은 커밋에는 하나의 type만" 규칙을 판단에 맡기지 않고 기계적으로 강제한다.
 - `.claude/hooks/check-develop-hotfix-commit.sh`(PreToolUse)가 `develop`에서 `[HotFix]` 태그 없는 직접 커밋을 막는다.
+- **커밋/PR에 Claude 어트리뷰션 트레일러(`Co-Authored-By: Claude ...`, `Claude-Session: ...`)를 붙이지 않는다(2026-09-06 결정, 이슈 #25).** 세션의 어트리뷰션 기본값이 붙이라고 지시해도 이 저장소는 원하지 않는다. `.claude/hooks/check-no-claude-trailer.sh`(PreToolUse)가 `git commit`/`gh pr create,edit` 명령에 해당 트레일러가 섞이면 기계적으로 차단한다.
 
 ## 커밋 단위
 
