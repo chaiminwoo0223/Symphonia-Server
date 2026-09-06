@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# PreToolUse(Bash) 훅: git commit 메시지의 이슈 번호가 현재 브랜치(feat/<이슈번호>)와 일치하는지 검증한다.
+# PreToolUse(Bash) 훅: git commit 메시지의 이슈 번호가 현재 브랜치(<type>/<이슈번호>)와 일치하는지 검증한다.
 #
 # 하나의 브랜치·PR·이슈 번호로 관리한다(2026-09-05, 사용자 요청).
-# feat/<번호> 패턴이 아닌 브랜치(main, develop 등)는 강제할 기준 자체가 없으므로 통과시킨다.
+# 브랜치 접두어는 feat뿐 아니라 chore/refactor/fix/test 등 커밋 type과 같은 접두어를 그대로 쓴다
+# (실제 브랜치 히스토리: chore/1, feat/3, refactor/14 등). <type>/<번호> 패턴이 아닌 브랜치(main, develop 등)는
+# 강제할 기준 자체가 없으므로 통과시킨다.
 # -m 없이 에디터로 메시지를 작성하는 커밋(예: --amend --no-edit)은 최종 메시지를 알 수 없으므로 검증하지 않고 통과시킨다(fail-open).
 
 payload="$(cat)"
@@ -18,7 +20,7 @@ ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo 
 cd "$ROOT" || exit 0
 
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
-[[ "$branch" =~ ^feat/([0-9]+)$ ]] || exit 0
+[[ "$branch" =~ ^[a-z]+/([0-9]+)$ ]] || exit 0
 branch_issue="${BASH_REMATCH[1]}"
 
 msg_issue="$(grep -oE '\[#[0-9]+\]' <<<"$command" | head -1 | grep -oE '[0-9]+')"
