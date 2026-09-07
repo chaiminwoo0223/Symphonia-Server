@@ -3,10 +3,9 @@ package com.symphonia.auth.application.service;
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.ReissueUseCase;
-import com.symphonia.auth.domain.error.AuthErrorCode;
+import com.symphonia.auth.domain.exception.RefreshTokenNotFoundException;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +22,7 @@ public class ReissueService implements ReissueUseCase {
         String memberId =
                 refreshTokenRepository
                         .findMemberIdByValue(refreshToken)
-                        .orElseThrow(
-                                () ->
-                                        BusinessException.from(
-                                                AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
+                        .orElseThrow(RefreshTokenNotFoundException::new);
         MemberResult member = getMemberUseCase.getById(Long.parseLong(memberId));
 
         refreshTokenRepository.delete(memberId);
