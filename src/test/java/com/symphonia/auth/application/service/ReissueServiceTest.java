@@ -9,8 +9,8 @@ import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.domain.error.AuthErrorCode;
+import com.symphonia.auth.domain.exception.RefreshTokenNotFoundException;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
 import com.symphonia.member.domain.entity.Role;
@@ -100,7 +100,7 @@ class ReissueServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> reissueService.reissue(REFRESH_TOKEN))
-                        .isInstanceOf(BusinessException.class)
+                        .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
         }
