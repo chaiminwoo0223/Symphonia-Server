@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
-import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
+import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import java.util.Optional;
@@ -57,7 +57,7 @@ class MemberQueryServiceTest extends UnitTest {
                                 () ->
                                         memberQueryService.getBySocialLogin(
                                                 SocialProvider.KAKAO, UNKNOWN_SOCIAL_ID))
-                        .isInstanceOf(BusinessException.class)
+                        .isInstanceOf(MemberNotFoundException.class)
                         .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
             }
 
@@ -101,7 +101,7 @@ class MemberQueryServiceTest extends UnitTest {
                                 () ->
                                         memberQueryService.getBySocialLogin(
                                                 SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
-                        .isInstanceOf(BusinessException.class)
+                        .isInstanceOf(MemberNotFoundException.class)
                         .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
             }
 
@@ -143,7 +143,7 @@ class MemberQueryServiceTest extends UnitTest {
 
             // when & then
             assertThatThrownBy(() -> memberQueryService.getById(unknownId))
-                    .isInstanceOf(BusinessException.class)
+                    .isInstanceOf(MemberNotFoundException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
 

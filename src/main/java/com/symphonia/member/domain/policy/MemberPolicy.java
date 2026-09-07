@@ -1,14 +1,13 @@
 package com.symphonia.member.domain.policy;
 
-import com.symphonia.common.exception.BusinessException;
-import com.symphonia.member.domain.error.MemberErrorCode;
+import com.symphonia.member.domain.exception.MemberAlreadyExistsException;
 
 public enum MemberPolicy {
     ;
 
     public static void validateNotDuplicated(boolean exists) {
         if (exists) {
-            throw BusinessException.from(MemberErrorCode.MEMBER_ALREADY_EXISTS);
+            throw new MemberAlreadyExistsException();
         }
     }
 }
