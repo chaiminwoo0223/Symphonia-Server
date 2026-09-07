@@ -19,7 +19,8 @@ description: Load when writing or modifying tests. JUnit5/Mockito/Testcontainers
 
 | 계층 | 검증 대상 | 베이스 클래스 |
 |---|---|---|
-| `infrastructure` (Repository) | JPA 쿼리 반환값 정확성 | `RepositoryTest` (`@DataJpaTest` + Testcontainers) |
+| `infrastructure` (JPA Repository) | JPA 쿼리 반환값 정확성 | `RepositoryTest` (`@DataJpaTest` + Testcontainers) |
+| `infrastructure` (Redis Repository) | Redis 저장/조회 정확성 | `RedisRepositoryTest` (`@DataRedisTest` + Testcontainers) |
 | `application` (Service) | 비즈니스 로직 수행 여부 | `UnitTest` (`MockitoExtension`) |
 | `presentation` (Controller) | 요청/응답, 인증/인가, 예외 매핑 | `IntegrationTest` (`@SpringBootTest` + `@AutoConfigureMockMvc`) |
 
