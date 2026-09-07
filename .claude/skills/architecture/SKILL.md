@@ -91,9 +91,9 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - **쿠키 기반 인증 제약**: CORS `Access-Control-Allow-Credentials: true` 필요 → Origin 와일드카드(`*`) 사용 불가, 허용 오리진 명시 필수. CSRF는 리프레시 토큰 쿠키에 `SameSite=Strict` 적용으로 방어(별도 CSRF 토큰 없음). 쿠키 `Path`는 재발급 엔드포인트로 제한 권장.
 - **YAGNI**: 안 쓰는 에러 코드·검증기·추상화는 주저 없이 제거.
 
-## 응답 포맷 (미확정, 열린 항목)
+## 응답 포맷
 
-`StandardResponse<T>`가 모든 응답을 감싸며 `boolean ok`, `T data`를 기본 필드로 갖는다. **추가 필드(에러 코드, 타임스탬프 등) 구성은 아직 확정되지 않았다.** 이 부분을 다루는 작업 전에 먼저 사용자에게 확인한다.
+`StandardResponse<T>`(`common.response`)가 모든 응답을 감싼다. 필드는 `boolean ok`, `int status`(HTTP 상태 코드), `T data`로 확정되어 있다. 성공 응답은 `StandardResponse.success(status, data)`(반환값 없는 성공은 `data` 없는 오버로드), 에러 응답은 `StandardResponse.fail(status, ErrorResponse)` 정적 팩토리로 생성한다.
 
 ## 정적분석 도구 미도입 사유
 

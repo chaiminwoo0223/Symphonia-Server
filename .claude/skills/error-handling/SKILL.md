@@ -25,7 +25,7 @@ Symphonia는 단일 모듈이라 todakun처럼 `common-web` 모듈을 따로 두
 
 **핸들러가 2개인 이유**: `GlobalExceptionHandler`는 도메인 비즈니스 예외(`BusinessException`)와 예상 못한 500(catch-all)만 담당하고, `ValidationExceptionHandler`는 스프링이 던지는 프레임워크 예외(Bean Validation, 파라미터, URL 등)만 담당한다. 관심사가 다르므로 핸들러를 하나로 합치지 않는다.
 
-> ⚠️ **목표 설계, 아직 코드에는 없음 (2026-09-06 결정)**: 아래 "예외 계층"은 목표 설계다. 지금 실제 코드는 `BusinessException`을 서브클래싱하지 않는 단일 클래스로 두고 어디서나 `BusinessException.from(errorCode)`로 직접 던진다. 공통 5종 예외 클래스와 도메인별 구체 예외를 실제로 추가하고 기존 `BusinessException.from(...)` 호출부를 교체하는 건 별도 이슈의 구현 작업이다. 새 도메인을 스캐폴딩하거나 예외 관련 코드를 새로 작성할 때는 이 문서 기준(계층 구조)으로 작성하고, 아직 마이그레이션되지 않은 기존 `member`/`auth` 코드를 참고할 땐 거기 남아있는 `BusinessException.from(...)` 호출을 정답으로 여기지 않는다.
+> **구현 완료 (2026-09-07, 이슈 #35)**: 아래 "예외 계층"은 목표 설계가 아니라 실제 코드 상태다. `BusinessException.from(...)`은 더 이상 존재하지 않으며, `member`/`auth` 모두 공통 5종 예외(`BadRequestException` 등)와 도메인별 구체 예외(`MemberNotFoundException`, `RefreshTokenNotFoundException` 등)를 실제로 쓰고 있다. 새 도메인을 스캐폴딩하거나 예외 관련 코드를 새로 작성할 때 `member`/`auth`의 기존 구체 예외 클래스를 그대로 참고 구현으로 삼아도 된다.
 
 ## 예외 계층
 
