@@ -7,13 +7,14 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
-import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
+import com.symphonia.member.domain.exception.MemberAlreadyExistsException;
+import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberCreateCommandFixture;
 import com.symphonia.member.fixture.MemberFixture;
@@ -67,7 +68,7 @@ class MemberCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> memberCommandService.create(command))
-                        .isInstanceOf(BusinessException.class)
+                        .isInstanceOf(MemberAlreadyExistsException.class)
                         .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
             }
 
@@ -115,7 +116,7 @@ class MemberCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> memberCommandService.create(command))
-                        .isInstanceOf(BusinessException.class)
+                        .isInstanceOf(MemberAlreadyExistsException.class)
                         .hasMessage(MemberErrorCode.MEMBER_ALREADY_EXISTS.getMessage());
             }
 
@@ -162,7 +163,7 @@ class MemberCommandServiceTest extends UnitTest {
 
             // when & then
             assertThatThrownBy(() -> memberCommandService.update(unknownId, command))
-                    .isInstanceOf(BusinessException.class)
+                    .isInstanceOf(MemberNotFoundException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
 
@@ -196,7 +197,7 @@ class MemberCommandServiceTest extends UnitTest {
 
             // when & then
             assertThatThrownBy(() -> memberCommandService.delete(unknownId))
-                    .isInstanceOf(BusinessException.class)
+                    .isInstanceOf(MemberNotFoundException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
 

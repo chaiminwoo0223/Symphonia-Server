@@ -1,12 +1,11 @@
 package com.symphonia.member.application.service;
 
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.domain.entity.Member;
-import com.symphonia.member.domain.error.MemberErrorCode;
+import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,10 +34,7 @@ public class MemberCommandService {
 
     public MemberResult update(Long memberId, MemberUpdateCommand command) {
         Member member =
-                memberRepository
-                        .findById(memberId)
-                        .orElseThrow(
-                                () -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+                memberRepository.findById(memberId).orElseThrow(MemberNotFoundException::new);
 
         member.update(command.nickname());
         Member updatedMember = memberRepository.save(member);
@@ -48,10 +44,7 @@ public class MemberCommandService {
 
     public void delete(Long memberId) {
         Member member =
-                memberRepository
-                        .findById(memberId)
-                        .orElseThrow(
-                                () -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+                memberRepository.findById(memberId).orElseThrow(MemberNotFoundException::new);
 
         memberRepository.delete(member);
     }

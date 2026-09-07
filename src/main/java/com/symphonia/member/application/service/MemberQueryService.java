@@ -1,12 +1,11 @@
 package com.symphonia.member.application.service;
 
 import com.symphonia.common.annotation.QueryService;
-import com.symphonia.common.exception.BusinessException;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
-import com.symphonia.member.domain.error.MemberErrorCode;
+import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -19,8 +18,7 @@ public class MemberQueryService implements GetMemberUseCase {
         Member member =
                 memberRepository
                         .findBySocialLogin(socialProvider, socialId)
-                        .orElseThrow(
-                                () -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+                        .orElseThrow(MemberNotFoundException::new);
 
         return MemberResult.from(member);
     }
@@ -28,10 +26,7 @@ public class MemberQueryService implements GetMemberUseCase {
     @Override
     public MemberResult getById(Long memberId) {
         Member member =
-                memberRepository
-                        .findById(memberId)
-                        .orElseThrow(
-                                () -> BusinessException.from(MemberErrorCode.MEMBER_NOT_FOUND));
+                memberRepository.findById(memberId).orElseThrow(MemberNotFoundException::new);
 
         return MemberResult.from(member);
     }
