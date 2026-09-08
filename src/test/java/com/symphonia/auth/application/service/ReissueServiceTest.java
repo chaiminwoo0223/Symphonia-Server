@@ -58,7 +58,7 @@ class ReissueServiceTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
-                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                given(refreshTokenRepository.consume(REFRESH_TOKEN))
                         .willReturn(Optional.of(String.valueOf(MEMBER_ID)));
                 given(getMemberUseCase.getById(MEMBER_ID)).willReturn(member);
                 given(issueTokenUseCase.issue(String.valueOf(MEMBER_ID), member.role().name()))
@@ -88,15 +88,14 @@ class ReissueServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("리프레시 토큰에 해당하는 멤버가 없는 경우")
-        class WhenRefreshTokenNotFound {
+        @DisplayName("리프레시 토큰을 소비하지 못한 경우 (멤버 없음 또는 동시 요청 경합)")
+        class WhenRefreshTokenConsumeFails {
 
             @Test
             @DisplayName("예외가 발생한다.")
             void shouldThrowException() {
                 // given
-                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
-                        .willReturn(Optional.empty());
+                given(refreshTokenRepository.consume(REFRESH_TOKEN)).willReturn(Optional.empty());
 
                 // when & then
                 assertThatThrownBy(() -> reissueService.reissue(REFRESH_TOKEN))

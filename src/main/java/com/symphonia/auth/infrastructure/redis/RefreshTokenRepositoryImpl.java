@@ -1,14 +1,23 @@
 package com.symphonia.auth.infrastructure.redis;
 
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
+import java.time.Duration;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
 public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
+
+    private static final String CONSUME_LOCK_KEY_PREFIX = "refresh_token:consume:";
+
+    // 재발급 한 건이 처리되는 데 걸리는 시간보다 넉넉히 크게 잡은 값으로, 락 해제를 별도로 구현하지 않고 TTL 만료에 맡긴다.
+    private static final Duration CONSUME_LOCK_TTL = Duration.ofSeconds(5);
+
     private final RefreshTokenRedisRepository refreshTokenRedisRepository;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     public void save(String value, String memberId, Long expirationTime) {
@@ -20,6 +29,20 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     @Override
     public Optional<String> findMemberIdByValue(String value) {
         return refreshTokenRedisRepository.findById(value).map(RefreshToken::getMemberId);
+    }
+
+    // 동일 토큰의 동시 재사용을 막기 위해 SET NX로 소비 권한을 선점한 요청만 조회를 진행한다.
+    @Override
+    public Optional<String> consume(String value) {
+        Boolean acquired =
+                redisTemplate
+                        .opsForValue()
+                        .setIfAbsent(CONSUME_LOCK_KEY_PREFIX + value, "1", CONSUME_LOCK_TTL);
+        if (!Boolean.TRUE.equals(acquired)) {
+            return Optional.empty();
+        }
+
+        return findMemberIdByValue(value);
     }
 
     @Override
