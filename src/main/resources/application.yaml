@@ -17,3 +17,4 @@ access-token:
 
 refresh-token:
   expiration-time: ${REFRESH_TOKEN_EXPIRATION_TIME:604800}
+  cookie-secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}

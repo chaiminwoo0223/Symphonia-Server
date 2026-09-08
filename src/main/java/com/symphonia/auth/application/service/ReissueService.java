@@ -8,6 +8,7 @@ import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
 @CommandService
@@ -20,8 +21,8 @@ public class ReissueService implements ReissueUseCase {
     @Override
     public TokenResult reissue(String refreshToken) {
         String memberId =
-                refreshTokenRepository
-                        .findMemberIdByValue(refreshToken)
+                Optional.ofNullable(refreshToken)
+                        .flatMap(refreshTokenRepository::findMemberIdByValue)
                         .orElseThrow(RefreshTokenNotFoundException::new);
         MemberResult member = getMemberUseCase.getById(Long.parseLong(memberId));
 
