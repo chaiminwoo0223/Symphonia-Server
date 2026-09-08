@@ -51,6 +51,68 @@ class RefreshTokenRepositoryImplTest extends RedisRepositoryTest {
     }
 
     @Nested
+    @DisplayName("consume 메서드는")
+    class Consume {
+
+        @Nested
+        @DisplayName("존재하는 토큰인 경우")
+        class WhenTokenExists {
+
+            // consume()이 거는 락은 짧은 TTL 동안 남아있으므로, 다른 Consume 테스트와 값을 공유하지 않는다.
+            private static final String CONSUMABLE_VALUE = "consumable-refresh-token-value";
+
+            @Test
+            @DisplayName("멤버 ID를 반환한다")
+            void shouldReturnMemberId() {
+                // given
+                refreshTokenRepository.save(CONSUMABLE_VALUE, MEMBER_ID, EXPIRATION_TIME);
+
+                // when
+                Optional<String> result = refreshTokenRepository.consume(CONSUMABLE_VALUE);
+
+                // then
+                assertThat(result).contains(MEMBER_ID);
+            }
+        }
+
+        @Nested
+        @DisplayName("존재하지 않는 토큰인 경우")
+        class WhenTokenNotExists {
+
+            @Test
+            @DisplayName("빈 Optional을 반환한다")
+            void shouldReturnEmpty() {
+                // when
+                Optional<String> result = refreshTokenRepository.consume("unknown");
+
+                // then
+                assertThat(result).isEmpty();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 토큰이 이미 소비 중인 경우")
+        class WhenTokenAlreadyBeingConsumed {
+
+            private static final String ANOTHER_VALUE = "another-refresh-token-value";
+
+            @Test
+            @DisplayName("빈 Optional을 반환한다")
+            void shouldReturnEmpty() {
+                // given
+                refreshTokenRepository.save(ANOTHER_VALUE, MEMBER_ID, EXPIRATION_TIME);
+                refreshTokenRepository.consume(ANOTHER_VALUE);
+
+                // when
+                Optional<String> result = refreshTokenRepository.consume(ANOTHER_VALUE);
+
+                // then
+                assertThat(result).isEmpty();
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("delete 메서드는")
     class Delete {
 

@@ -22,7 +22,7 @@ public class ReissueService implements ReissueUseCase {
     public TokenResult reissue(String refreshToken) {
         String memberId =
                 Optional.ofNullable(refreshToken)
-                        .flatMap(refreshTokenRepository::findMemberIdByValue)
+                        .flatMap(refreshTokenRepository::consume)
                         .orElseThrow(RefreshTokenNotFoundException::new);
         MemberResult member = getMemberUseCase.getById(Long.parseLong(memberId));
 
