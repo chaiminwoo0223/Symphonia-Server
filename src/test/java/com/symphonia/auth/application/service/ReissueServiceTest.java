@@ -104,5 +104,19 @@ class ReissueServiceTest extends UnitTest {
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
         }
+
+        @Nested
+        @DisplayName("리프레시 토큰 자체가 없는 경우")
+        class WhenRefreshTokenAbsent {
+
+            @Test
+            @DisplayName("예외가 발생한다.")
+            void shouldThrowException() {
+                // when & then
+                assertThatThrownBy(() -> reissueService.reissue(null))
+                        .isInstanceOf(RefreshTokenNotFoundException.class)
+                        .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+            }
+        }
     }
 }
