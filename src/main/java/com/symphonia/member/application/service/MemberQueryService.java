@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 public class MemberQueryService implements GetMemberUseCase {
     private final MemberRepository memberRepository;
 
+    @Override
     public MemberResult getBySocialLogin(SocialProvider socialProvider, String socialId) {
         Member member =
                 memberRepository
