@@ -1,19 +1,32 @@
 package com.symphonia.auth.presentation;
 
 import com.symphonia.auth.presentation.cookie.CookieProvider;
+import com.symphonia.auth.presentation.dto.request.LoginRequest;
+import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
 import com.symphonia.common.response.StandardResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Auth API", description = "인증 API")
 public interface AuthApi {
+
+    @PostMapping("/signup")
+    @Operation(summary = "회원가입", description = "소셜 로그인 인가 코드로 회원가입을 처리하고 토큰을 발급합니다.")
+    ResponseEntity<StandardResponse<TokenResponse>> signup(
+            @Valid @RequestBody SignupRequest request);
+
+    @PostMapping("/login")
+    @Operation(summary = "로그인", description = "소셜 로그인 인가 코드로 로그인을 처리하고 토큰을 발급합니다.")
+    ResponseEntity<StandardResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request);
 
     @PostMapping("/refresh")
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰 쿠키로 새로운 엑세스 토큰과 리프레시 토큰을 재발급합니다.")
