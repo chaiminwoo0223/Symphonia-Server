@@ -7,6 +7,4 @@ public record OAuthMemberResult(
         String nickname,
         String email,
         String profileImage,
-        SocialProvider socialProvider
-) {
-}
+        SocialProvider socialProvider) {}
