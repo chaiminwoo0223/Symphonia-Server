@@ -1,17 +1,24 @@
 package com.symphonia.auth.presentation.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
+import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
+import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.auth.presentation.cookie.CookieProvider;
+import com.symphonia.auth.presentation.dto.request.LoginRequest;
+import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.member.domain.entity.Member;
+import com.symphonia.member.domain.entity.SocialProvider;
+import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import jakarta.servlet.http.Cookie;
@@ -20,16 +27,235 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 class AuthControllerTest extends IntegrationTest {
 
     private static final String COOKIE_NAME = CookieProvider.COOKIE_NAME;
     private static final Long REFRESH_TOKEN_EXPIRATION_TIME = 3600L;
+    private static final String AUTH_CODE = "auth-code";
 
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
     @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    @Autowired private MemberRepository memberRepository;
+
+    @MockitoBean(name = "kakao")
+    private SocialClient kakaoSocialClient;
+
+    @MockitoBean(name = "google")
+    private SocialClient googleSocialClient;
+
+    @Nested
+    @DisplayName("POST /api/v1/auth/signup은")
+    class Signup {
+
+        @Nested
+        @DisplayName("지원하는 provider의 유효한 인가 코드인 경우")
+        class WhenAuthorizationCodeIsValid {
+
+            @Test
+            @DisplayName("멤버를 생성하고 201과 함께 토큰을 반환한다")
+            void shouldCreateMemberAndReturnToken() throws Exception {
+                // given
+                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                        .willReturn(SocialIdentityFixture.KAKAO.create());
+                SignupRequest request = new SignupRequest("kakao", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.accessToken").exists())
+                        .andExpect(cookie().exists(COOKIE_NAME));
+                assertThat(
+                                memberRepository.existsBySocialLogin(
+                                        SocialProvider.KAKAO,
+                                        SocialIdentityFixture.KAKAO.getSocialId()))
+                        .isTrue();
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 가입된 소셜 계정인 경우")
+        class WhenSocialAccountAlreadyRegistered {
+
+            @Test
+            @DisplayName("409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                memberHelper.save(MemberFixture.KAKAO);
+                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                        .willReturn(SocialIdentityFixture.KAKAO.create());
+                SignupRequest request = new SignupRequest("kakao", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isConflict());
+            }
+        }
+
+        @Nested
+        @DisplayName("지원하지 않는 provider인 경우")
+        class WhenProviderUnsupported {
+
+            @Test
+            @DisplayName("400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                SignupRequest request = new SignupRequest("naver", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+        }
+
+        @Nested
+        @DisplayName("provider 또는 code가 빈 문자열인 경우")
+        class WhenRequestFieldBlank {
+
+            @Test
+            @DisplayName("provider가 비어 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenProviderBlank() throws Exception {
+                // given
+                SignupRequest request = new SignupRequest("", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("code가 비어 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenCodeBlank() throws Exception {
+                // given
+                SignupRequest request = new SignupRequest("kakao", "");
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/auth/login은")
+    class Login {
+
+        @Nested
+        @DisplayName("가입된 소셜 계정인 경우")
+        class WhenMemberRegistered {
+
+            @Test
+            @DisplayName("200과 함께 토큰을 반환한다")
+            void shouldReturnToken() throws Exception {
+                // given
+                memberHelper.save(MemberFixture.KAKAO);
+                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                        .willReturn(SocialIdentityFixture.KAKAO.create());
+                LoginRequest request = new LoginRequest("kakao", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.accessToken").exists())
+                        .andExpect(cookie().exists(COOKIE_NAME));
+            }
+        }
+
+        @Nested
+        @DisplayName("가입되지 않은 소셜 계정인 경우")
+        class WhenMemberNotRegistered {
+
+            @Test
+            @DisplayName("404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                        .willReturn(SocialIdentityFixture.KAKAO.create());
+                LoginRequest request = new LoginRequest("kakao", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isNotFound());
+            }
+        }
+
+        @Nested
+        @DisplayName("지원하지 않는 provider인 경우")
+        class WhenProviderUnsupported {
+
+            @Test
+            @DisplayName("400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                LoginRequest request = new LoginRequest("naver", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+        }
+
+        @Nested
+        @DisplayName("provider 또는 code가 빈 문자열인 경우")
+        class WhenRequestFieldBlank {
+
+            @Test
+            @DisplayName("provider가 비어 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenProviderBlank() throws Exception {
+                // given
+                LoginRequest request = new LoginRequest("", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("code가 비어 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenCodeBlank() throws Exception {
+                // given
+                LoginRequest request = new LoginRequest("kakao", "");
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+        }
+    }
 
     @Nested
     @DisplayName("POST /api/v1/auth/refresh는")
