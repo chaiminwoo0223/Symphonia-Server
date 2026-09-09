@@ -5,6 +5,4 @@ public record SocialIdentity(
         String nickname,
         String email,
         String profileImage,
-        String socialProvider
-) {
-}
+        String socialProvider) {}
