@@ -4,6 +4,7 @@ import com.symphonia.common.annotation.CommandService;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
+import com.symphonia.member.application.usecase.CreateMemberUseCase;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.policy.MemberPolicy;
@@ -12,9 +13,10 @@ import lombok.RequiredArgsConstructor;
 
 @CommandService
 @RequiredArgsConstructor
-public class MemberCommandService {
+public class MemberCommandService implements CreateMemberUseCase {
     private final MemberRepository memberRepository;
 
+    @Override
     public MemberResult create(MemberCreateCommand command) {
         boolean exists =
                 memberRepository.existsBySocialLogin(command.socialProvider(), command.socialId());
