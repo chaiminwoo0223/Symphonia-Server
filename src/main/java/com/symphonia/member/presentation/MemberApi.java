@@ -6,6 +6,7 @@ import com.symphonia.member.presentation.dto.response.MemberResponse;
 import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,7 +26,8 @@ public interface MemberApi {
     @PatchMapping("/me")
     @Operation(summary = "멤버 수정", description = "인증된 멤버의 정보를 수정합니다.")
     ResponseEntity<StandardResponse<MemberUpdateResponse>> update(
-            @AuthenticationPrincipal String memberId, @RequestBody MemberUpdateRequest request);
+            @AuthenticationPrincipal String memberId,
+            @Valid @RequestBody MemberUpdateRequest request);
 
     @DeleteMapping("/me")
     @Operation(summary = "멤버 삭제", description = "인증된 멤버를 삭제합니다.")
