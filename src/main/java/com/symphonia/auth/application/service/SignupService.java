@@ -7,7 +7,6 @@ import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.CreateMemberUseCase;
 import lombok.RequiredArgsConstructor;
@@ -23,14 +22,7 @@ public class SignupService implements SignupUseCase {
     public TokenResult signup(SignupCommand command) {
         OAuthMemberResult identity =
                 exchangeSocialCodeUseCase.exchange(command.provider(), command.code());
-        MemberResult member =
-                createMemberUseCase.create(
-                        new MemberCreateCommand(
-                                identity.socialId(),
-                                identity.nickname(),
-                                identity.email(),
-                                identity.profileImage(),
-                                identity.socialProvider()));
+        MemberResult member = createMemberUseCase.create(identity.toMemberCreateCommand());
 
         return issueTokenUseCase.issue(String.valueOf(member.id()), member.role().name());
     }
