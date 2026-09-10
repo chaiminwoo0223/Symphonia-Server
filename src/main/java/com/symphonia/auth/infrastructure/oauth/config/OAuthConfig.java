@@ -20,7 +20,6 @@ import org.springframework.web.client.RestClient;
 @Configuration
 @EnableConfigurationProperties({KakaoOAuthProperties.class, GoogleOAuthProperties.class})
 public class OAuthConfig {
-
     // 소셜 제공자 응답 지연이 서버 스레드를 붙잡아 두지 않도록 명시적으로 제한한다.
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);

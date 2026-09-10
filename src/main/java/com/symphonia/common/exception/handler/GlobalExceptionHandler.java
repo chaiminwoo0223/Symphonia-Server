@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
     // BusinessException 처리 (도메인 비즈니스 규칙 위반)
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<StandardResponse<ErrorResponse>> handleBusinessException(

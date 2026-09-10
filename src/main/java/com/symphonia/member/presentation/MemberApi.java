@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/api/v1/members")
 @Tag(name = "Member API", description = "멤버 API")
 public interface MemberApi {
-
     @GetMapping("/me")
     @Operation(summary = "멤버 조회", description = "인증된 멤버의 정보를 조회합니다.")
     ResponseEntity<StandardResponse<MemberResponse>> get(@AuthenticationPrincipal String memberId);

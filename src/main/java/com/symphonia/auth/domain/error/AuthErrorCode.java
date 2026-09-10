@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 
 @RequiredArgsConstructor
 public enum AuthErrorCode implements ErrorCode {
-
     // 400
     UNSUPPORTED_SOCIAL_PROVIDER(HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인 제공자입니다."),
     INVALID_AUTHORIZATION_CODE(HttpStatus.BAD_REQUEST, "만료되었거나 유효하지 않은 인가 코드입니다."),

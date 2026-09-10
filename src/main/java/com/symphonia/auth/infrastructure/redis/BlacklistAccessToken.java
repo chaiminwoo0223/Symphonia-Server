@@ -15,7 +15,6 @@ import org.springframework.data.redis.core.TimeToLive;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @RedisHash("blacklist_access_token")
 public class BlacklistAccessToken {
-
     @Id private String accessToken;
 
     private String memberId;
