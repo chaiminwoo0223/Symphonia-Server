@@ -24,6 +24,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] `application`에서 `*Request`/`*Response` DTO를 임포트하는지
 - [ ] 다른 도메인의 구현체·infrastructure·Repository를 직접 참조하는지
 - [ ] `*Result`가 도메인 엔티티를 직접 감싸거나 그대로 노출하는지
+- [ ] Service/Controller 등 호출부가 DTO(`*Command`/`*Result`/`*Request`/`*Response`)를 `new`로 필드 나열해 직접 조립하는지 (DTO 자신의 `from`/`of`/`to*` 팩토리 메서드로 대체되어야 함), 크로스 도메인 변환이면 그 팩토리가 기존 의존 방향과 같은 쪽에 있는지
 
 ### ✅ 필수
 - [ ] `*Service`가 `*UseCase` 구현체인지, `*Controller`가 `*Api` 구현체인지
