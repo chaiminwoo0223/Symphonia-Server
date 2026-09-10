@@ -5,6 +5,8 @@ import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.CreateMemberUseCase;
+import com.symphonia.member.application.usecase.DeleteMemberUseCase;
+import com.symphonia.member.application.usecase.UpdateMemberUseCase;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.policy.MemberPolicy;
@@ -13,7 +15,8 @@ import lombok.RequiredArgsConstructor;
 
 @CommandService
 @RequiredArgsConstructor
-public class MemberCommandService implements CreateMemberUseCase {
+public class MemberCommandService
+        implements CreateMemberUseCase, UpdateMemberUseCase, DeleteMemberUseCase {
     private final MemberRepository memberRepository;
 
     @Override
@@ -34,6 +37,7 @@ public class MemberCommandService implements CreateMemberUseCase {
         return MemberResult.from(savedMember);
     }
 
+    @Override
     public MemberResult update(Long memberId, MemberUpdateCommand command) {
         Member member =
                 memberRepository.findById(memberId).orElseThrow(MemberNotFoundException::new);
@@ -44,6 +48,7 @@ public class MemberCommandService implements CreateMemberUseCase {
         return MemberResult.from(updatedMember);
     }
 
+    @Override
     public void delete(Long memberId) {
         Member member =
                 memberRepository.findById(memberId).orElseThrow(MemberNotFoundException::new);
