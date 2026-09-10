@@ -2,6 +2,7 @@ package com.symphonia.global.config;
 
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
+import com.symphonia.global.constants.UrlConstants;
 import com.symphonia.global.security.filter.JwtAuthenticationFilter;
 import com.symphonia.global.security.handler.CustomAccessDeniedHandler;
 import com.symphonia.global.security.handler.CustomAuthenticationEntryPoint;
