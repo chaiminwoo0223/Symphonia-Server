@@ -1,4 +1,4 @@
-package com.symphonia.global.config;
+package com.symphonia.global.constants;
 
 import java.util.List;
 
