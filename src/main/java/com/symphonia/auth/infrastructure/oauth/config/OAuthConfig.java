@@ -43,7 +43,8 @@ public class OAuthConfig {
 
     // withPublicKey() 기반 디코더로 동일한 검증기 조합을 재사용할 수 있도록
     // (예: 실제 네트워크 없이 검증하는 테스트) 별도 메서드로 분리한다.
-    static OAuth2TokenValidator<Jwt> googleIdTokenValidator(GoogleOAuthProperties properties) {
+    public static OAuth2TokenValidator<Jwt> googleIdTokenValidator(
+            GoogleOAuthProperties properties) {
         OAuth2TokenValidator<Jwt> issuerValidator =
                 JwtValidators.createDefaultWithIssuer(properties.issuer());
         OAuth2TokenValidator<Jwt> audienceValidator =
