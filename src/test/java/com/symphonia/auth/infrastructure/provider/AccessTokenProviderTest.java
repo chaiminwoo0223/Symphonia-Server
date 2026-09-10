@@ -31,7 +31,7 @@ class AccessTokenProviderTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("Generate")
+    @DisplayName("generate 메서드는")
     class Generate {
 
         @Test
@@ -47,7 +47,7 @@ class AccessTokenProviderTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("GetMemberId")
+    @DisplayName("getMemberId 메서드는")
     class GetMemberId {
 
         @Test
@@ -61,7 +61,7 @@ class AccessTokenProviderTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("Validate")
+    @DisplayName("validate 메서드는")
     class Validate {
 
         @Nested

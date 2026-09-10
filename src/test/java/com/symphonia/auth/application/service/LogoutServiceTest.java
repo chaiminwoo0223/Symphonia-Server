@@ -30,7 +30,7 @@ class LogoutServiceTest extends UnitTest {
     private static final long ACCESS_TOKEN_REMAINING_TIME = 3600L;
 
     @Nested
-    @DisplayName("Logout")
+    @DisplayName("logout 메서드는")
     class Logout {
 
         @BeforeEach

@@ -131,8 +131,8 @@ class MemberQueryServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("getActiveById 메서드는")
-    class GetActiveById {
+    @DisplayName("getById 메서드는")
+    class GetById {
 
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")

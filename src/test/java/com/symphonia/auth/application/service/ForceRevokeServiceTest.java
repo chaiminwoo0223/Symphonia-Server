@@ -20,7 +20,7 @@ class ForceRevokeServiceTest extends UnitTest {
     private static final String MEMBER_ID = "1";
 
     @Nested
-    @DisplayName("ForceRevoke")
+    @DisplayName("forceRevoke 메서드는")
     class ForceRevoke {
 
         @Test

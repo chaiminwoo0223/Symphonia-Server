@@ -37,7 +37,7 @@ class MemberControllerTest extends IntegrationTest {
             void shouldReturnMember() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
-                String token = generateBearerToken(member);
+                String token = authHelper.bearerTokenFor(member);
 
                 // when & then
                 mockMvc.perform(get("/api/v1/members/me").header(HttpHeaders.AUTHORIZATION, token))
@@ -69,7 +69,7 @@ class MemberControllerTest extends IntegrationTest {
         void shouldUpdateNickname() throws Exception {
             // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
-            String token = generateBearerToken(member);
+            String token = authHelper.bearerTokenFor(member);
             MemberUpdateRequest request = new MemberUpdateRequest("새로운 닉네임");
 
             // when & then
@@ -92,19 +92,11 @@ class MemberControllerTest extends IntegrationTest {
         void shouldDeleteMember() throws Exception {
             // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
-            String token = generateBearerToken(member);
+            String token = authHelper.bearerTokenFor(member);
 
             // when & then
             mockMvc.perform(delete("/api/v1/members/me").header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isNoContent());
         }
-    }
-
-    private String generateBearerToken(Member member) {
-        String accessToken =
-                authHelper.generateAccessToken(
-                        String.valueOf(member.getId()), member.getRole().name());
-
-        return authHelper.bearerHeader(accessToken);
     }
 }

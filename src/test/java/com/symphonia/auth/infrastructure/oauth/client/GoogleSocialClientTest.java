@@ -5,13 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
-import com.symphonia.auth.domain.exception.InvalidAuthorizationCodeException;
 import com.symphonia.auth.domain.exception.SocialAuthenticationFailedException;
 import com.symphonia.auth.domain.exception.SocialMemberInfoFetchFailedException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
@@ -103,18 +100,9 @@ class GoogleSocialClientTest extends UnitTest {
         @DisplayName("토큰 교환에 실패한 경우")
         class WhenTokenExchangeFails {
 
-            @Test
-            @DisplayName("서버 오류 응답이면 예외가 발생한다.")
-            void shouldThrowExceptionWhenServerError() {
-                // given
-                mockServer.expect(requestTo(TOKEN_URI)).andRespond(withServerError());
-
-                // when & then
-                assertThatThrownBy(() -> googleSocialClient.authenticate(CODE))
-                        .isInstanceOf(SocialAuthenticationFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_EXCHANGE_FAILED.getMessage());
-            }
-
+            // 서버 오류·인가 코드 무효 분기는 Kakao/Google이 공유하는 AuthorizationCodeClient의 책임이라
+            // AuthorizationCodeClientTest에서 검증한다.
+            // 여기서는 이 SocialClient만의 관심사인 "id_token 누락" 분기만 확인한다.
             @Test
             @DisplayName("id_token이 없는 응답이면 예외가 발생한다.")
             void shouldThrowExceptionWhenIdTokenMissing() {
@@ -127,18 +115,6 @@ class GoogleSocialClientTest extends UnitTest {
                 assertThatThrownBy(() -> googleSocialClient.authenticate(CODE))
                         .isInstanceOf(SocialAuthenticationFailedException.class)
                         .hasMessage(AuthErrorCode.OAUTH_TOKEN_EXCHANGE_FAILED.getMessage());
-            }
-
-            @Test
-            @DisplayName("만료되었거나 이미 사용된 인가 코드(4xx)면 예외가 발생한다.")
-            void shouldThrowExceptionWhenAuthorizationCodeInvalid() {
-                // given
-                mockServer.expect(requestTo(TOKEN_URI)).andRespond(withBadRequest());
-
-                // when & then
-                assertThatThrownBy(() -> googleSocialClient.authenticate(CODE))
-                        .isInstanceOf(InvalidAuthorizationCodeException.class)
-                        .hasMessage(AuthErrorCode.INVALID_AUTHORIZATION_CODE.getMessage());
             }
         }
 

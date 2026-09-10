@@ -13,8 +13,8 @@ import com.symphonia.auth.domain.exception.RefreshTokenNotFoundException;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
-import com.symphonia.member.domain.entity.Role;
-import com.symphonia.member.domain.entity.SocialProvider;
+import com.symphonia.member.fixture.MemberFixture;
+import com.symphonia.member.fixture.MemberResultFixture;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,21 +40,14 @@ class RefreshServiceTest extends UnitTest {
     private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
 
     @Nested
-    @DisplayName("Refresh")
+    @DisplayName("refresh 메서드는")
     class Refresh {
 
         @Nested
         @DisplayName("리프레시 토큰에 해당하는 멤버가 존재하는 경우")
         class WhenRefreshTokenExists {
             private final MemberResult member =
-                    new MemberResult(
-                            MEMBER_ID,
-                            "socialId",
-                            "nickname",
-                            "email",
-                            "profileImage",
-                            Role.ROLE_MEMBER,
-                            SocialProvider.KAKAO);
+                    new MemberResultFixture(MemberFixture.KAKAO).id(MEMBER_ID).build();
 
             @BeforeEach
             void setUp() {
