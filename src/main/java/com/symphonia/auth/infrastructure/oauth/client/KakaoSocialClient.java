@@ -29,7 +29,7 @@ public class KakaoSocialClient implements SocialClient {
 
     private String exchangeAccessToken(String code) {
         KakaoTokenResponse response =
-                OAuthTokenExchanger.exchange(
+                AuthorizationCodeClient.exchange(
                         restClient,
                         properties.tokenUri(),
                         properties.clientId(),

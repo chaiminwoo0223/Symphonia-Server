@@ -9,10 +9,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-final class OAuthTokenExchanger {
+final class AuthorizationCodeClient {
     private static final String AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code";
 
-    private OAuthTokenExchanger() {}
+    private AuthorizationCodeClient() {}
 
     public static <T> T exchange(
             RestClient restClient,

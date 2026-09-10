@@ -30,7 +30,7 @@ public class GoogleSocialClient implements SocialClient {
 
     private String exchangeIdToken(String code) {
         GoogleTokenResponse response =
-                OAuthTokenExchanger.exchange(
+                AuthorizationCodeClient.exchange(
                         restClient,
                         properties.tokenUri(),
                         properties.clientId(),
