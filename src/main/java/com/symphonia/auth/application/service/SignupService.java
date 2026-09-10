@@ -20,9 +20,9 @@ public class SignupService implements SignupUseCase {
 
     @Override
     public TokenResult signup(SignupCommand command) {
-        OAuthMemberResult identity =
+        OAuthMemberResult result =
                 exchangeSocialCodeUseCase.exchange(command.provider(), command.code());
-        MemberResult member = createMemberUseCase.create(identity.toMemberCreateCommand());
+        MemberResult member = createMemberUseCase.create(result.toMemberCreateCommand());
 
         return issueTokenUseCase.issue(String.valueOf(member.id()), member.role().name());
     }
