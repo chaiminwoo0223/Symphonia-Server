@@ -2,7 +2,7 @@ package com.symphonia.auth.application.service;
 
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
-import com.symphonia.auth.application.usecase.ReissueUseCase;
+import com.symphonia.auth.application.usecase.RefreshUseCase;
 import com.symphonia.auth.domain.exception.RefreshTokenNotFoundException;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.common.annotation.CommandService;
@@ -13,13 +13,13 @@ import lombok.RequiredArgsConstructor;
 
 @CommandService
 @RequiredArgsConstructor
-public class ReissueService implements ReissueUseCase {
+public class RefreshService implements RefreshUseCase {
     private final RefreshTokenRepository refreshTokenRepository;
     private final IssueTokenUseCase issueTokenUseCase;
     private final GetMemberUseCase getMemberUseCase;
 
     @Override
-    public TokenResult reissue(String refreshToken) {
+    public TokenResult refresh(String refreshToken) {
         String memberId =
                 Optional.ofNullable(refreshToken)
                         .flatMap(refreshTokenRepository::consume)

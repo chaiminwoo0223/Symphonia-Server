@@ -3,7 +3,7 @@ package com.symphonia.auth.presentation.controller;
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.LoginUseCase;
 import com.symphonia.auth.application.usecase.LogoutUseCase;
-import com.symphonia.auth.application.usecase.ReissueUseCase;
+import com.symphonia.auth.application.usecase.RefreshUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
 import com.symphonia.auth.presentation.AuthApi;
 import com.symphonia.auth.presentation.cookie.CookieProvider;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController implements AuthApi {
     private final SignupUseCase signupUseCase;
     private final LoginUseCase loginUseCase;
-    private final ReissueUseCase reissueUseCase;
+    private final RefreshUseCase refreshUseCase;
     private final LogoutUseCase logoutUseCase;
     private final CookieProvider cookieProvider;
 
@@ -52,7 +52,7 @@ public class AuthController implements AuthApi {
 
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> refresh(String refreshToken) {
-        TokenResult result = reissueUseCase.reissue(refreshToken);
+        TokenResult result = refreshUseCase.refresh(refreshToken);
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = cookieProvider.create(result.refreshToken());
 

@@ -23,10 +23,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
-@DisplayName("ReissueService 단위 테스트")
-class ReissueServiceTest extends UnitTest {
+@DisplayName("RefreshService 단위 테스트")
+class RefreshServiceTest extends UnitTest {
 
-    @InjectMocks private ReissueService reissueService;
+    @InjectMocks private RefreshService refreshService;
 
     @Mock private RefreshTokenRepository refreshTokenRepository;
 
@@ -40,8 +40,8 @@ class ReissueServiceTest extends UnitTest {
     private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
 
     @Nested
-    @DisplayName("Reissue")
-    class Reissue {
+    @DisplayName("Refresh")
+    class Refresh {
 
         @Nested
         @DisplayName("리프레시 토큰에 해당하는 멤버가 존재하는 경우")
@@ -69,7 +69,7 @@ class ReissueServiceTest extends UnitTest {
             @DisplayName("기존 리프레시 토큰을 삭제한다.")
             void shouldDeleteExistingRefreshToken() {
                 // when
-                reissueService.reissue(REFRESH_TOKEN);
+                refreshService.refresh(REFRESH_TOKEN);
 
                 // then
                 verify(refreshTokenRepository).delete(String.valueOf(MEMBER_ID));
@@ -79,7 +79,7 @@ class ReissueServiceTest extends UnitTest {
             @DisplayName("새로운 TokenResult를 반환한다.")
             void shouldReturnNewTokenResult() {
                 // when
-                TokenResult result = reissueService.reissue(REFRESH_TOKEN);
+                TokenResult result = refreshService.refresh(REFRESH_TOKEN);
 
                 // then
                 assertThat(result.accessToken()).isEqualTo(NEW_ACCESS_TOKEN);
@@ -98,7 +98,7 @@ class ReissueServiceTest extends UnitTest {
                 given(refreshTokenRepository.consume(REFRESH_TOKEN)).willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> reissueService.reissue(REFRESH_TOKEN))
+                assertThatThrownBy(() -> refreshService.refresh(REFRESH_TOKEN))
                         .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
@@ -112,7 +112,7 @@ class ReissueServiceTest extends UnitTest {
             @DisplayName("예외가 발생한다.")
             void shouldThrowException() {
                 // when & then
-                assertThatThrownBy(() -> reissueService.reissue(null))
+                assertThatThrownBy(() -> refreshService.refresh(null))
                         .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
