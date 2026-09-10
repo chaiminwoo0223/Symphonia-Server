@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
-
     private static final String CONSUME_LOCK_KEY_PREFIX = "refresh_token:consume:";
 
     // 재발급 한 건이 처리되는 데 걸리는 시간보다 넉넉히 크게 잡은 값으로, 락 해제를 별도로 구현하지 않고 TTL 만료에 맡긴다.

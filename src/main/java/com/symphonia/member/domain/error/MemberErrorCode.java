@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 
 @RequiredArgsConstructor
 public enum MemberErrorCode implements ErrorCode {
-
     // 404
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 멤버를 찾을 수 없습니다."),
 

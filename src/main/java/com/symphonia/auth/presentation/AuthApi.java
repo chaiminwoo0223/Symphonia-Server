@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Auth API", description = "인증 API")
 public interface AuthApi {
-
     @PostMapping("/signup")
     @Operation(summary = "회원가입", description = "소셜 로그인 인가 코드로 회원가입을 처리하고 토큰을 발급합니다.")
     ResponseEntity<StandardResponse<TokenResponse>> signup(

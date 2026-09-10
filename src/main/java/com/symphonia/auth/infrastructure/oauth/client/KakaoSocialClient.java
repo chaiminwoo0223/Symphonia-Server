@@ -19,7 +19,6 @@ import org.springframework.web.client.RestClientException;
 @Component("kakao")
 @RequiredArgsConstructor
 public class KakaoSocialClient implements SocialClient {
-
     private static final String GRANT_TYPE = "authorization_code";
     private static final String BEARER_PREFIX = "Bearer ";
 

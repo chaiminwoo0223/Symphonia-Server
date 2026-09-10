@@ -16,7 +16,6 @@ import org.springframework.data.redis.core.index.Indexed;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @RedisHash("refresh_token")
 public class RefreshToken {
-
     @Id private String value;
 
     @Indexed // Spring Data Redis가 자동으로 역색인 key 추가 저장

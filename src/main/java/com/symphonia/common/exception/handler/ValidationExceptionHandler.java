@@ -32,7 +32,6 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
-
     // ResponseEntityExceptionHandler가 처리하는 모든 예외 공통 처리
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(

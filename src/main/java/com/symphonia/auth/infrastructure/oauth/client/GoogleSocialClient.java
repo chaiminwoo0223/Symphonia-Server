@@ -21,7 +21,6 @@ import org.springframework.web.client.RestClientException;
 @Component("google")
 @RequiredArgsConstructor
 public class GoogleSocialClient implements SocialClient {
-
     private static final String SOCIAL_PROVIDER = "GOOGLE";
     private static final String GRANT_TYPE = "authorization_code";
 

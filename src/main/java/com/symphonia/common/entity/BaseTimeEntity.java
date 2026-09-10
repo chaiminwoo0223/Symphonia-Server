@@ -19,7 +19,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @EntityListeners(
         AuditingEntityListener.class) // @CreatedDate, @LastModifiedDate 자동 주입을 위한 Auditing 리스너 등록
 public abstract class BaseTimeEntity {
-
     @CreatedDate
     @Column(updatable = false)
     protected LocalDateTime createdAt;
