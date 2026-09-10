@@ -1,4 +1,4 @@
-package com.symphonia.global.common.constants;
+package com.symphonia.common.constants;
 
 public final class HttpConstants {
     private HttpConstants() {}
