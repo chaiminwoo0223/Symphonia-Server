@@ -24,7 +24,7 @@ class CookieProviderTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("Create")
+    @DisplayName("create 메서드는")
     class Create {
 
         @Test
@@ -44,7 +44,7 @@ class CookieProviderTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("Expire")
+    @DisplayName("expire 메서드는")
     class Expire {
 
         @Test

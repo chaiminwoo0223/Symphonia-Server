@@ -17,9 +17,10 @@ import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.CreateMemberUseCase;
 import com.symphonia.member.domain.entity.Role;
-import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
 import com.symphonia.member.domain.exception.MemberAlreadyExistsException;
+import com.symphonia.member.fixture.MemberFixture;
+import com.symphonia.member.fixture.MemberResultFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -50,12 +51,7 @@ class SignupServiceTest extends UnitTest {
     class Signup {
         private final SignupCommand command = new SignupCommand(PROVIDER, CODE);
         private final OAuthMemberResult oAuthMemberResult =
-                new OAuthMemberResult(
-                        SocialIdentityFixture.KAKAO.getSocialId(),
-                        SocialIdentityFixture.KAKAO.getNickname(),
-                        SocialIdentityFixture.KAKAO.getEmail(),
-                        SocialIdentityFixture.KAKAO.getProfileImage(),
-                        SocialProvider.KAKAO);
+                OAuthMemberResult.from(SocialIdentityFixture.KAKAO.create());
 
         @BeforeEach
         void setUp() {
@@ -66,14 +62,7 @@ class SignupServiceTest extends UnitTest {
         @DisplayName("소셜 계정이 아직 가입되지 않은 경우")
         class WhenMemberNotExists {
             private final MemberResult memberResult =
-                    new MemberResult(
-                            MEMBER_ID,
-                            oAuthMemberResult.socialId(),
-                            oAuthMemberResult.nickname(),
-                            oAuthMemberResult.email(),
-                            oAuthMemberResult.profileImage(),
-                            Role.ROLE_MEMBER,
-                            SocialProvider.KAKAO);
+                    new MemberResultFixture(MemberFixture.KAKAO).id(MEMBER_ID).build();
 
             @BeforeEach
             void setUp() {

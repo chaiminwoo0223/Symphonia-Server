@@ -34,7 +34,7 @@ class IssueTokenServiceTest extends UnitTest {
     private static final long REFRESH_TOKEN_EXPIRATION_TIME = 1209600L;
 
     @Nested
-    @DisplayName("Issue")
+    @DisplayName("issue 메서드는")
     class Issue {
 
         @BeforeEach

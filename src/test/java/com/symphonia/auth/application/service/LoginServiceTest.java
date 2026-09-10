@@ -18,6 +18,8 @@ import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
 import com.symphonia.member.domain.exception.MemberNotFoundException;
+import com.symphonia.member.fixture.MemberFixture;
+import com.symphonia.member.fixture.MemberResultFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,12 +49,7 @@ class LoginServiceTest extends UnitTest {
     class Login {
         private final LoginCommand command = new LoginCommand(PROVIDER, CODE);
         private final OAuthMemberResult oAuthMemberResult =
-                new OAuthMemberResult(
-                        SocialIdentityFixture.KAKAO.getSocialId(),
-                        SocialIdentityFixture.KAKAO.getNickname(),
-                        SocialIdentityFixture.KAKAO.getEmail(),
-                        SocialIdentityFixture.KAKAO.getProfileImage(),
-                        SocialProvider.KAKAO);
+                OAuthMemberResult.from(SocialIdentityFixture.KAKAO.create());
 
         @BeforeEach
         void setUp() {
@@ -63,14 +60,7 @@ class LoginServiceTest extends UnitTest {
         @DisplayName("소셜 계정으로 가입된 멤버가 존재하는 경우")
         class WhenMemberExists {
             private final MemberResult memberResult =
-                    new MemberResult(
-                            MEMBER_ID,
-                            oAuthMemberResult.socialId(),
-                            oAuthMemberResult.nickname(),
-                            oAuthMemberResult.email(),
-                            oAuthMemberResult.profileImage(),
-                            Role.ROLE_MEMBER,
-                            SocialProvider.KAKAO);
+                    new MemberResultFixture(MemberFixture.KAKAO).id(MEMBER_ID).build();
 
             @BeforeEach
             void setUp() {
