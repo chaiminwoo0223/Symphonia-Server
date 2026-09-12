@@ -4,6 +4,7 @@ import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
 import com.symphonia.global.constants.UrlConstants;
 import com.symphonia.global.security.filter.JwtAuthenticationFilter;
+import com.symphonia.global.security.filter.RateLimitFilter;
 import com.symphonia.global.security.handler.CustomAccessDeniedHandler;
 import com.symphonia.global.security.handler.CustomAuthenticationEntryPoint;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableConfigurationProperties({AccessTokenProperties.class, RefreshTokenProperties.class})
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
@@ -56,7 +58,8 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .authenticated())
                 .addFilterBefore(
-                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -66,6 +69,16 @@ public class SecurityConfig {
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration() {
         FilterRegistrationBean<JwtAuthenticationFilter> registration =
                 new FilterRegistrationBean<>(jwtAuthenticationFilter);
+        registration.setEnabled(false);
+
+        return registration;
+    }
+
+    // 서블릿 필터 체인 이중 등록 방지
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
+        FilterRegistrationBean<RateLimitFilter> registration =
+                new FilterRegistrationBean<>(rateLimitFilter);
         registration.setEnabled(false);
 
         return registration;
