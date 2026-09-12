@@ -27,11 +27,11 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
     private static final String KAKAO = "kakao";
     private static final String GOOGLE = "google";
 
+    private ExchangeSocialCodeService exchangeSocialCodeService;
+
     @Mock private SocialClient kakaoSocialClient;
 
     @Mock private SocialClient googleSocialClient;
-
-    private ExchangeSocialCodeService exchangeSocialCodeService;
 
     @BeforeEach
     void setUp() {
