@@ -34,20 +34,20 @@ public class AuditLogRecorder {
     }
 
     private record AuditLogEntry(Event event, Source source, User user, String detail) {
-        static AuditLogEntry of(
+        private static AuditLogEntry of(
                 AuditEvent event, boolean success, String ip, String actorId, String detail) {
             return new AuditLogEntry(
                     Event.of(event, success), new Source(ip), new User(actorId), detail);
         }
 
-        record Event(String action, String outcome) {
-            static Event of(AuditEvent event, boolean success) {
+        private record Event(String action, String outcome) {
+            private static Event of(AuditEvent event, boolean success) {
                 return new Event(event.name(), success ? "success" : "failure");
             }
         }
 
-        record Source(String ip) {}
+        private record Source(String ip) {}
 
-        record User(String id) {}
+        private record User(String id) {}
     }
 }
