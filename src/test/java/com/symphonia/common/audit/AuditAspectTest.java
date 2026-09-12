@@ -6,18 +6,14 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
+import java.util.Optional;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 @DisplayName("AuditAspect 단위 테스트")
 class AuditAspectTest extends UnitTest {
@@ -28,6 +24,8 @@ class AuditAspectTest extends UnitTest {
 
     @Mock private AuditLogRecorder auditLogRecorder;
 
+    @Mock private ActorIdResolver actorIdResolver;
+
     @Mock private ProceedingJoinPoint joinPoint;
 
     @Mock private Audited audited;
@@ -35,11 +33,6 @@ class AuditAspectTest extends UnitTest {
     private record Command(String ip) implements HasIp {}
 
     private record Result(String actorId) implements HasActorId {}
-
-    @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
-    }
 
     @Nested
     @DisplayName("audit 메서드는")
@@ -52,88 +45,64 @@ class AuditAspectTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("대상 메서드가 정상적으로 반환된 경우")
-        class WhenTargetMethodSucceeds {
+        @DisplayName("반환값이 HasActorId를 구현하는 경우 (로그인/가입/재발급 성공)")
+        class WhenResultHasActorId {
 
-            @Nested
-            @DisplayName("인증된 SecurityContext가 없는 경우")
-            class WhenSecurityContextAbsent {
-
-                @BeforeEach
-                void setUp() throws Throwable {
-                    given(joinPoint.proceed()).willReturn(new Result("member-1"));
-                }
-
-                @Test
-                @DisplayName("반환값의 actorId로 성공 감사 로그를 남기고 반환값을 그대로 돌려준다")
-                void shouldRecordSuccessWithActorIdFromResult() throws Throwable {
-                    // when
-                    Object result = auditAspect.audit(joinPoint, audited);
-
-                    // then
-                    then(auditLogRecorder)
-                            .should()
-                            .record(AuditEvent.LOGIN, true, IP, "member-1", null);
-                    assertThat(result).isEqualTo(new Result("member-1"));
-                }
+            @BeforeEach
+            void setUp() throws Throwable {
+                given(joinPoint.proceed()).willReturn(new Result("new-actor"));
             }
 
-            @Nested
-            @DisplayName("인증된 SecurityContext가 있는 경우")
-            class WhenSecurityContextPresent {
+            @Test
+            @DisplayName("ActorIdResolver를 조회하지 않고 반환값의 actorId로 성공 감사 로그를 남긴다")
+            void shouldRecordSuccessUsingResultActorIdWithoutConsultingResolver() throws Throwable {
+                // when
+                Object result = auditAspect.audit(joinPoint, audited);
 
-                @BeforeEach
-                void setUp() throws Throwable {
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(
-                                    new UsernamePasswordAuthenticationToken(
-                                            "member-2",
-                                            "access-token",
-                                            java.util.List.of(
-                                                    new SimpleGrantedAuthority("ROLE_MEMBER"))));
-                    given(joinPoint.proceed()).willReturn(new Result("member-1"));
-                }
+                // then
+                then(auditLogRecorder)
+                        .should()
+                        .record(AuditEvent.LOGIN, true, IP, "new-actor", null);
+                then(actorIdResolver).shouldHaveNoInteractions();
+                assertThat(result).isEqualTo(new Result("new-actor"));
+            }
+        }
 
-                @Test
-                @DisplayName("반환값이 아닌 SecurityContext의 principal을 actorId로 기록한다")
-                void shouldRecordSuccessWithActorIdFromSecurityContext() throws Throwable {
-                    // when
-                    auditAspect.audit(joinPoint, audited);
+        @Nested
+        @DisplayName("반환값이 HasActorId를 구현하지 않는 경우 (로그아웃처럼 void인 흐름)")
+        class WhenResultDoesNotHaveActorId {
 
-                    // then
-                    then(auditLogRecorder)
-                            .should()
-                            .record(AuditEvent.LOGIN, true, IP, "member-2", null);
-                }
+            @BeforeEach
+            void setUp() throws Throwable {
+                given(joinPoint.proceed()).willReturn(null);
             }
 
-            @Nested
-            @DisplayName("SecurityContext가 익명 인증인 경우")
-            class WhenSecurityContextAnonymous {
+            @Test
+            @DisplayName("ActorIdResolver가 신원을 찾으면 그 값으로 성공 감사 로그를 남긴다")
+            void shouldFallBackToActorIdResolverWhenPresent() throws Throwable {
+                // given
+                given(actorIdResolver.resolve()).willReturn(Optional.of("context-actor"));
 
-                @BeforeEach
-                void setUp() throws Throwable {
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(
-                                    new AnonymousAuthenticationToken(
-                                            "key",
-                                            "anonymousUser",
-                                            java.util.List.of(
-                                                    new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
-                    given(joinPoint.proceed()).willReturn(new Result("member-1"));
-                }
+                // when
+                auditAspect.audit(joinPoint, audited);
 
-                @Test
-                @DisplayName("익명 인증을 무시하고 반환값의 actorId로 기록한다")
-                void shouldIgnoreAnonymousAuthentication() throws Throwable {
-                    // when
-                    auditAspect.audit(joinPoint, audited);
+                // then
+                then(auditLogRecorder)
+                        .should()
+                        .record(AuditEvent.LOGIN, true, IP, "context-actor", null);
+            }
 
-                    // then
-                    then(auditLogRecorder)
-                            .should()
-                            .record(AuditEvent.LOGIN, true, IP, "member-1", null);
-                }
+            @Test
+            @DisplayName("ActorIdResolver도 신원을 못 찾으면 actorId 없이 성공 감사 로그를 남긴다")
+            void shouldRecordNullActorIdWhenResolverEmpty() throws Throwable {
+                // given
+                given(actorIdResolver.resolve()).willReturn(Optional.empty());
+
+                // when
+                auditAspect.audit(joinPoint, audited);
+
+                // then
+                then(auditLogRecorder).should().record(AuditEvent.LOGIN, true, IP, null, null);
             }
         }
 
@@ -146,10 +115,11 @@ class AuditAspectTest extends UnitTest {
             @BeforeEach
             void setUp() throws Throwable {
                 given(joinPoint.proceed()).willThrow(exception);
+                given(actorIdResolver.resolve()).willReturn(Optional.empty());
             }
 
             @Test
-            @DisplayName("actorId 없이 실패 감사 로그를 남기고 예외를 그대로 전파한다")
+            @DisplayName("ActorIdResolver로 actorId를 채워 실패 감사 로그를 남기고 예외를 그대로 전파한다")
             void shouldRecordFailureAndPropagateException() {
                 // when & then
                 assertThatThrownBy(() -> auditAspect.audit(joinPoint, audited)).isSameAs(exception);
