@@ -13,7 +13,7 @@ description: Load when handling exceptions/errors. BusinessException 계층(공�
 |---|---|---|
 | `ErrorCode` (인터페이스) | `common.exception.error` | `getStatus()`(HttpStatus)·`getCode()`·`getMessage()` 계약. 도메인/공통 에러 코드 enum이 구현 |
 | `BusinessException` | `common.exception` | 모든 비즈니스 예외의 베이스. `errorCode: ErrorCode`를 갖는다. **서브클래싱을 전제로 한다** (아래 "예외 계층" 참고) |
-| 공통 예외 (`BadRequestException` 등) | `common.exception` | HTTP 상태별 얇은 래퍼: `BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException` |
+| 공통 예외 (`BadRequestException` 등) | `common.exception` | HTTP 상태별 얇은 래퍼: `BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException`/`InternalServerException` |
 | 도메인 구체 예외 (`MemberNotFoundException` 등) | 각 도메인의 `domain/exception` 패키지 | 공통 예외를 상속해 에러 코드를 고정한 도메인 전용 예외 |
 | 도메인 `*ErrorCode` (enum) | 각 도메인의 `domain/error` 패키지 | `ErrorCode` 구현. 도메인별 에러 정의 (`MemberErrorCode`, `AuthErrorCode`) |
 | `CommonErrorCode` (enum) | `common.exception.error` | 도메인 무관 공통 에러 코드. 주로 프레임워크 예외를 매핑하는 데 쓴다 |
@@ -25,15 +25,18 @@ Symphonia는 단일 모듈이라 todakun처럼 `common-web` 모듈을 따로 두
 
 **핸들러가 2개인 이유**: `GlobalExceptionHandler`는 도메인 비즈니스 예외(`BusinessException`)와 예상 못한 500(catch-all)만 담당하고, `ValidationExceptionHandler`는 스프링이 던지는 프레임워크 예외(Bean Validation, 파라미터, URL 등)만 담당한다. 관심사가 다르므로 핸들러를 하나로 합치지 않는다.
 
-> **구현 완료 (2026-09-07, 이슈 #35)**: 아래 "예외 계층"은 목표 설계가 아니라 실제 코드 상태다. `BusinessException.from(...)`은 더 이상 존재하지 않으며, `member`/`auth` 모두 공통 5종 예외(`BadRequestException` 등)와 도메인별 구체 예외(`MemberNotFoundException`, `RefreshTokenNotFoundException` 등)를 실제로 쓰고 있다. 새 도메인을 스캐폴딩하거나 예외 관련 코드를 새로 작성할 때 `member`/`auth`의 기존 구체 예외 클래스를 그대로 참고 구현으로 삼아도 된다.
+> **구현 완료 (2026-09-07, 이슈 #35)**: 아래 "예외 계층"은 목표 설계가 아니라 실제 코드 상태다. `BusinessException.from(...)`은 더 이상 존재하지 않으며, `member`/`auth` 모두 공통 예외(`BadRequestException` 등)와 도메인별 구체 예외(`MemberNotFoundException`, `RefreshTokenNotFoundException` 등)를 실제로 쓰고 있다. 새 도메인을 스캐폴딩하거나 예외 관련 코드를 새로 작성할 때 `member`/`auth`의 기존 구체 예외 클래스를 그대로 참고 구현으로 삼아도 된다.
+>
+> **`InternalServerException` 추가 (2026-09-12)**: 처음에는 공통 예외가 4xx 5종(`BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException`)뿐이었고, 500에 대응하는 공통 예외가 없어 `SocialAuthenticationFailedException`/`SocialMemberInfoFetchFailedException`이 `BusinessException`을 직접 상속했다. 여기에 `AccessTokenHashingFailedException`(체크 예외라 컴파일러가 강제로 잡게 만들지만 SHA-256처럼 실제로는 발생할 수 없는 JVM 불변조건 위반을 언체크로 바꾸는 방어적 분기)이 같은 패턴으로 세 번째 추가되면서, "예외적인 경우"라던 케이스 자체가 반복되는 패턴이 됐다(rule of three). 그래서 400/401/403/404/409와 동일하게 500도 공통 래퍼로 승격해 세 클래스 모두 `InternalServerException`을 상속하도록 통일했다.
 
 ## 예외 계층
 
 ```
 BusinessException (common.exception, errorCode: ErrorCode)
-├── BadRequestException / UnauthorizedException / ForbiddenException / NotFoundException / ConflictException (common.exception)
-│     └── MemberNotFoundException 등: 도메인별 구체 예외 ({domain}/domain/exception)
-└── (공통 5종 중 맞는 게 없는 예외적인 경우에만 도메인이 BusinessException을 직접 상속한다. 기본은 공통 5종 중 하나를 상속하는 것이다)
+├── BadRequestException / UnauthorizedException / ForbiddenException / NotFoundException / ConflictException / InternalServerException (common.exception)
+│     ├── MemberNotFoundException 등: 도메인별 구체 예외 ({domain}/domain/exception)
+│     └── SocialAuthenticationFailedException / SocialMemberInfoFetchFailedException / AccessTokenHashingFailedException: InternalServerException(500)을 상속하는 도메인별 구체 예외
+└── (공통 6종 중에도 맞는 상태 코드가 없는 경우에만 도메인이 BusinessException을 직접 상속한다. 기본은 공통 6종 중 하나를 상속하는 것이다)
 ```
 
 공통 예외는 상태 하나만 대표하는 얇은 래퍼다. 필드나 로직을 추가하지 않는다. `BusinessException`의 생성자는 `protected`로 열어 공통 예외만 상속할 수 있게 하고, 도메인은 공통 예외를 상속해 에러 코드를 생성자에서 고정한다 (호출부가 매번 `ErrorCode`를 넘기지 않는다).
@@ -115,11 +118,12 @@ public enum MemberErrorCode implements ErrorCode {
   - 그 외 `ResponseEntityExceptionHandler`가 처리하는 나머지 예외는 `handleExceptionInternal`에서 500 `INTERNAL_SERVER_ERROR`로 공통 처리
 - **필드별 검증 에러는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 보고**한다. 여러 필드가 동시에 실패해도 각각 리포트된다.
 - 4xx는 `warn`, 5xx는 `error`(스택트레이스 포함)로 로깅한다.
+  - 단, **`BusinessException`(서브클래스 포함)은 이 규칙의 예외**다. `GlobalExceptionHandler.handleBusinessException`은 상태와 무관하게 무조건 `warn`(스택트레이스 없음)으로 로깅한다 — `InternalServerException`을 상속한 500 도메인 예외(`SocialAuthenticationFailedException` 등)도 마찬가지다. `BusinessException` 계열은 "코드가 의도를 갖고 명명한 실패"라 스택트레이스보다 어떤 도메인 실패인지가 중요하다는 전제이므로, 진짜 디버깅이 필요한, 도메인 코드로 명명할 의미가 없는 예상 못 한 500(버그, 알 수 없는 장애 등)은 `BusinessException` 계열로 감싸지 말고 그냥 던져서 catch-all의 `error` 로깅 경로를 타게 한다.
 
 ## 원칙
 
-- `RuntimeException`을 직접 throw하지 않는다. 항상 `BusinessException`의 서브클래스(공통 5종 또는 도메인별 구체 예외)를 사용한다.
-- **도메인 실패는 반드시 공통 5종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다.
+- `RuntimeException`을 직접 throw하지 않는다. 항상 `BusinessException`의 서브클래스(공통 6종 또는 도메인별 구체 예외)를 사용한다.
+- **도메인 실패는 반드시 공통 6종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_SERVER_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다. 체크 예외를 언체크로 바꿔야만 하는 "도달 불가능한" 방어적 분기도 마찬가지다 — `InternalServerException`을 상속한 도메인별 구체 예외를 만든다(예: `BlacklistAccessTokenRepositoryImpl.hash`의 `NoSuchAlgorithmException` → `AccessTokenHashingFailedException`, `AuthErrorCode.ACCESS_TOKEN_HASHING_FAILED`).
 - HTTP status는 **오직 `ErrorCode.getStatus()`를 통해서만** 표현한다. 핸들러나 예외 클래스에 하드코딩하지 않는다.
 - 예외 메시지는 한국어로 작성한다.
 - Controller 계층에서 비즈니스 예외를 직접 catch하지 않는다.
