@@ -1,6 +1,5 @@
 package com.symphonia.member.application.service;
 
-import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
@@ -19,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 public class MemberCommandService
         implements CreateMemberUseCase, UpdateMemberUseCase, DeleteMemberUseCase {
     private final MemberRepository memberRepository;
-    private final LogoutUseCase logoutUseCase;
 
     @Override
     public MemberResult create(MemberCreateCommand command) {
@@ -51,11 +49,10 @@ public class MemberCommandService
     }
 
     @Override
-    public void delete(Long memberId, String accessToken) {
+    public void delete(Long memberId) {
         Member member =
                 memberRepository.findById(memberId).orElseThrow(MemberNotFoundException::new);
 
         memberRepository.delete(member);
-        logoutUseCase.logout(accessToken);
     }
 }
