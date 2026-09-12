@@ -18,12 +18,7 @@ public class AuditLogRecorder {
 
     public void record(
             AuditEvent event, boolean success, String ip, String actorId, String detail) {
-        AuditLogEntry entry =
-                new AuditLogEntry(
-                        new AuditLogEntry.Event(event.name(), success ? "success" : "failure"),
-                        new AuditLogEntry.Source(ip),
-                        new AuditLogEntry.User(actorId),
-                        detail);
+        AuditLogEntry entry = AuditLogEntry.of(event, success, ip, actorId, detail);
 
         AUDIT_LOGGER.info(toJson(entry));
     }
@@ -39,7 +34,17 @@ public class AuditLogRecorder {
     }
 
     private record AuditLogEntry(Event event, Source source, User user, String detail) {
-        record Event(String action, String outcome) {}
+        static AuditLogEntry of(
+                AuditEvent event, boolean success, String ip, String actorId, String detail) {
+            return new AuditLogEntry(
+                    Event.of(event, success), new Source(ip), new User(actorId), detail);
+        }
+
+        record Event(String action, String outcome) {
+            static Event of(AuditEvent event, boolean success) {
+                return new Event(event.name(), success ? "success" : "failure");
+            }
+        }
 
         record Source(String ip) {}
 
