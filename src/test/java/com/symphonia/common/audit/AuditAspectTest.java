@@ -19,6 +19,8 @@ import org.mockito.Mock;
 class AuditAspectTest extends UnitTest {
 
     private static final String IP = "127.0.0.1";
+    private static final String NEW_ACTOR_ID = "new-actor";
+    private static final String CONTEXT_ACTOR_ID = "context-actor";
 
     @InjectMocks private AuditAspect auditAspect;
 
@@ -37,34 +39,36 @@ class AuditAspectTest extends UnitTest {
     @Nested
     @DisplayName("audit 메서드는")
     class Audit {
+        private final Command command = new Command(IP);
 
         @BeforeEach
         void setUp() {
             given(audited.action()).willReturn(AuditAction.LOGIN);
-            given(joinPoint.getArgs()).willReturn(new Object[] {new Command(IP)});
+            given(joinPoint.getArgs()).willReturn(new Object[] {command});
         }
 
         @Nested
         @DisplayName("반환값이 HasActorId를 구현하는 경우 (로그인/가입/재발급 성공)")
         class WhenResultHasActorId {
+            private final Result result = new Result(NEW_ACTOR_ID);
 
             @BeforeEach
             void setUp() throws Throwable {
-                given(joinPoint.proceed()).willReturn(new Result("new-actor"));
+                given(joinPoint.proceed()).willReturn(result);
             }
 
             @Test
             @DisplayName("ActorIdResolver를 조회하지 않고 반환값의 actorId로 성공 감사 로그를 남긴다")
             void shouldRecordSuccessUsingResultActorIdWithoutConsultingResolver() throws Throwable {
                 // when
-                Object result = auditAspect.audit(joinPoint, audited);
+                Object actual = auditAspect.audit(joinPoint, audited);
 
                 // then
                 then(auditLogRecorder)
                         .should()
-                        .record(AuditAction.LOGIN, true, IP, "new-actor", null);
+                        .record(AuditAction.LOGIN, true, IP, NEW_ACTOR_ID, null);
                 then(actorIdResolver).shouldHaveNoInteractions();
-                assertThat(result).isEqualTo(new Result("new-actor"));
+                assertThat(actual).isEqualTo(result);
             }
         }
 
@@ -81,7 +85,7 @@ class AuditAspectTest extends UnitTest {
             @DisplayName("ActorIdResolver가 신원을 찾으면 그 값으로 성공 감사 로그를 남긴다")
             void shouldFallBackToActorIdResolverWhenPresent() throws Throwable {
                 // given
-                given(actorIdResolver.resolve()).willReturn(Optional.of("context-actor"));
+                given(actorIdResolver.resolve()).willReturn(Optional.of(CONTEXT_ACTOR_ID));
 
                 // when
                 auditAspect.audit(joinPoint, audited);
@@ -89,7 +93,7 @@ class AuditAspectTest extends UnitTest {
                 // then
                 then(auditLogRecorder)
                         .should()
-                        .record(AuditAction.LOGIN, true, IP, "context-actor", null);
+                        .record(AuditAction.LOGIN, true, IP, CONTEXT_ACTOR_ID, null);
             }
 
             @Test
@@ -109,7 +113,6 @@ class AuditAspectTest extends UnitTest {
         @Nested
         @DisplayName("대상 메서드가 예외를 던진 경우")
         class WhenTargetMethodThrows {
-
             private final RuntimeException exception = new RuntimeException("실패 원인");
 
             @BeforeEach
@@ -123,7 +126,9 @@ class AuditAspectTest extends UnitTest {
             void shouldRecordFailureAndPropagateException() {
                 // when & then
                 assertThatThrownBy(() -> auditAspect.audit(joinPoint, audited)).isSameAs(exception);
-                then(auditLogRecorder).should().record(AuditAction.LOGIN, false, IP, null, "실패 원인");
+                then(auditLogRecorder)
+                        .should()
+                        .record(AuditAction.LOGIN, false, IP, null, exception.getMessage());
             }
         }
     }
