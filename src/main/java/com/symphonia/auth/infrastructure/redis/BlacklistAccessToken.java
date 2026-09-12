@@ -15,16 +15,16 @@ import org.springframework.data.redis.core.TimeToLive;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @RedisHash("blacklist_access_token")
 public class BlacklistAccessToken {
-    @Id private String accessToken;
+    @Id private String accessTokenHash;
 
     private String memberId;
 
     @TimeToLive private Long expirationTime;
 
     public static BlacklistAccessToken of(
-            String accessToken, String memberId, Long expirationTime) {
+            String accessTokenHash, String memberId, Long expirationTime) {
         return BlacklistAccessToken.builder()
-                .accessToken(accessToken)
+                .accessTokenHash(accessTokenHash)
                 .memberId(memberId)
                 .expirationTime(expirationTime)
                 .build();
