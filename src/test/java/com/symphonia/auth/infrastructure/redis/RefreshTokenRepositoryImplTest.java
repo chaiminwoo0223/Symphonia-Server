@@ -19,6 +19,7 @@ class RefreshTokenRepositoryImplTest extends RedisRepositoryTest {
     private static final Long EXPIRATION_TIME = 3600L;
 
     @Autowired private RefreshTokenRepository refreshTokenRepository;
+    @Autowired private RefreshTokenRedisRepository refreshTokenRedisRepository;
 
     @Nested
     @DisplayName("save 메서드는")
@@ -32,6 +33,16 @@ class RefreshTokenRepositoryImplTest extends RedisRepositoryTest {
 
             // then
             assertThat(refreshTokenRepository.findMemberIdByValue(VALUE)).contains(MEMBER_ID);
+        }
+
+        @Test
+        @DisplayName("원본 토큰 값이 아니라 해시된 값을 키로 저장한다")
+        void shouldPersistHashedValueInsteadOfRawValue() {
+            // when
+            refreshTokenRepository.save(VALUE, MEMBER_ID, EXPIRATION_TIME);
+
+            // then
+            assertThat(refreshTokenRedisRepository.existsById(VALUE)).isFalse();
         }
     }
 
