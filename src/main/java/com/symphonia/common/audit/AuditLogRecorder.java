@@ -32,22 +32,4 @@ public class AuditLogRecorder {
             return entry.toString();
         }
     }
-
-    private record AuditLogEntry(Event event, Source source, User user, String detail) {
-        private static AuditLogEntry of(
-                AuditEvent event, boolean success, String ip, String actorId, String detail) {
-            return new AuditLogEntry(
-                    Event.of(event, success), new Source(ip), new User(actorId), detail);
-        }
-
-        private record Event(String action, String outcome) {
-            private static Event of(AuditEvent event, boolean success) {
-                return new Event(event.name(), success ? "success" : "failure");
-            }
-        }
-
-        private record Source(String ip) {}
-
-        private record User(String id) {}
-    }
 }
