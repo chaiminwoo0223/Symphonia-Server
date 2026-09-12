@@ -339,5 +339,17 @@ class AuthControllerTest extends IntegrationTest {
                     .andExpect(cookie().maxAge(COOKIE_NAME, 0));
             assertThat(blacklistAccessTokenRepository.isBlacklisted(accessToken)).isTrue();
         }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // when & then
+                mockMvc.perform(post("/api/v1/auth/logout")).andExpect(status().isUnauthorized());
+            }
+        }
     }
 }

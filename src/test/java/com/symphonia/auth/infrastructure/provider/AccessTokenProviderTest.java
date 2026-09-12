@@ -61,8 +61,44 @@ class AccessTokenProviderTest extends UnitTest {
     }
 
     @Nested
+    @DisplayName("getRemainingTime 메서드는")
+    class GetRemainingTime {
+
+        @Test
+        @DisplayName("토큰 만료까지 남은 시간을 초 단위로 반환한다.")
+        void shouldReturnRemainingSecondsUntilExpiration() {
+            // given
+            String accessToken = accessTokenProvider.generate(MEMBER_ID, ROLE);
+
+            // when
+            long remainingTime = accessTokenProvider.getRemainingTime(accessToken);
+
+            // then
+            assertThat(remainingTime).isBetween(EXPIRATION_TIME - 2, EXPIRATION_TIME);
+        }
+    }
+
+    @Nested
     @DisplayName("validate 메서드는")
     class Validate {
+
+        @Nested
+        @DisplayName("유효한 토큰인 경우")
+        class WhenTokenIsValid {
+
+            @Test
+            @DisplayName("true를 반환한다.")
+            void shouldReturnTrue() {
+                // given
+                String validToken = accessTokenProvider.generate(MEMBER_ID, ROLE);
+
+                // when
+                boolean result = accessTokenProvider.validate(validToken);
+
+                // then
+                assertThat(result).isTrue();
+            }
+        }
 
         @Nested
         @DisplayName("만료된 토큰인 경우")
