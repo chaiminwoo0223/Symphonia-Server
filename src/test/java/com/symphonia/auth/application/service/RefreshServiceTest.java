@@ -26,6 +26,11 @@ import org.mockito.Mock;
 @DisplayName("RefreshService 단위 테스트")
 class RefreshServiceTest extends UnitTest {
 
+    private static final Long MEMBER_ID = 1L;
+    private static final String REFRESH_TOKEN = "refresh-token";
+    private static final String NEW_ACCESS_TOKEN = "new-access-token";
+    private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
+
     @InjectMocks private RefreshService refreshService;
 
     @Mock private RefreshTokenRepository refreshTokenRepository;
@@ -33,11 +38,6 @@ class RefreshServiceTest extends UnitTest {
     @Mock private IssueTokenUseCase issueTokenUseCase;
 
     @Mock private GetMemberUseCase getMemberUseCase;
-
-    private static final Long MEMBER_ID = 1L;
-    private static final String REFRESH_TOKEN = "refresh-token";
-    private static final String NEW_ACCESS_TOKEN = "new-access-token";
-    private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
 
     @Nested
     @DisplayName("refresh 메서드는")

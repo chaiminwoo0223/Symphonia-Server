@@ -33,10 +33,10 @@ class GoogleSocialClientTest extends UnitTest {
     private static final String CODE = "auth-code";
     private static final String ID_TOKEN = "id-token-value";
 
-    @Mock private JwtDecoder googleIdTokenDecoder;
-
     private MockRestServiceServer mockServer;
     private GoogleSocialClient googleSocialClient;
+
+    @Mock private JwtDecoder googleIdTokenDecoder;
 
     @BeforeEach
     void setUp() {

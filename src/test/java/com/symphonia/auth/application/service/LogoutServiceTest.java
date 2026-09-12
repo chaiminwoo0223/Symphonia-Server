@@ -17,6 +17,10 @@ import org.mockito.Mock;
 @DisplayName("LogoutService 단위 테스트")
 class LogoutServiceTest extends UnitTest {
 
+    private static final String MEMBER_ID = "1";
+    private static final String ACCESS_TOKEN = "access-token";
+    private static final long ACCESS_TOKEN_REMAINING_TIME = 3600L;
+
     @InjectMocks private LogoutService logoutService;
 
     @Mock private AccessTokenProvider accessTokenProvider;
@@ -24,10 +28,6 @@ class LogoutServiceTest extends UnitTest {
     @Mock private RefreshTokenRepository refreshTokenRepository;
 
     @Mock private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
-
-    private static final String MEMBER_ID = "1";
-    private static final String ACCESS_TOKEN = "access-token";
-    private static final long ACCESS_TOKEN_REMAINING_TIME = 3600L;
 
     @Nested
     @DisplayName("logout 메서드는")
