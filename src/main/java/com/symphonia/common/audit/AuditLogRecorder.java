@@ -17,8 +17,8 @@ public class AuditLogRecorder {
     private final ObjectMapper objectMapper;
 
     public void record(
-            AuditEvent event, boolean success, String ip, String actorId, String detail) {
-        AuditLogEntry entry = AuditLogEntry.of(event, success, ip, actorId, detail);
+            AuditAction action, boolean success, String ip, String actorId, String detail) {
+        AuditLogEntry entry = AuditLogEntry.of(action, success, ip, actorId, detail);
 
         AUDIT_LOGGER.info(toJson(entry));
     }

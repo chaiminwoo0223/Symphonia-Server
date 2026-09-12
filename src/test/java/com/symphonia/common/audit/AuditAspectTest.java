@@ -40,7 +40,7 @@ class AuditAspectTest extends UnitTest {
 
         @BeforeEach
         void setUp() {
-            given(audited.event()).willReturn(AuditEvent.LOGIN);
+            given(audited.action()).willReturn(AuditAction.LOGIN);
             given(joinPoint.getArgs()).willReturn(new Object[] {new Command(IP)});
         }
 
@@ -62,7 +62,7 @@ class AuditAspectTest extends UnitTest {
                 // then
                 then(auditLogRecorder)
                         .should()
-                        .record(AuditEvent.LOGIN, true, IP, "new-actor", null);
+                        .record(AuditAction.LOGIN, true, IP, "new-actor", null);
                 then(actorIdResolver).shouldHaveNoInteractions();
                 assertThat(result).isEqualTo(new Result("new-actor"));
             }
@@ -89,7 +89,7 @@ class AuditAspectTest extends UnitTest {
                 // then
                 then(auditLogRecorder)
                         .should()
-                        .record(AuditEvent.LOGIN, true, IP, "context-actor", null);
+                        .record(AuditAction.LOGIN, true, IP, "context-actor", null);
             }
 
             @Test
@@ -102,7 +102,7 @@ class AuditAspectTest extends UnitTest {
                 auditAspect.audit(joinPoint, audited);
 
                 // then
-                then(auditLogRecorder).should().record(AuditEvent.LOGIN, true, IP, null, null);
+                then(auditLogRecorder).should().record(AuditAction.LOGIN, true, IP, null, null);
             }
         }
 
@@ -123,7 +123,7 @@ class AuditAspectTest extends UnitTest {
             void shouldRecordFailureAndPropagateException() {
                 // when & then
                 assertThatThrownBy(() -> auditAspect.audit(joinPoint, audited)).isSameAs(exception);
-                then(auditLogRecorder).should().record(AuditEvent.LOGIN, false, IP, null, "실패 원인");
+                then(auditLogRecorder).should().record(AuditAction.LOGIN, false, IP, null, "실패 원인");
             }
         }
     }

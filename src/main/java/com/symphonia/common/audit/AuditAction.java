@@ -1,6 +1,6 @@
 package com.symphonia.common.audit;
 
-public enum AuditEvent {
+public enum AuditAction {
     LOGIN,
     SIGNUP,
     LOGOUT,
