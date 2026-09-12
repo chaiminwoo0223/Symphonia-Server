@@ -11,6 +11,7 @@ import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -40,8 +41,10 @@ public class MemberController implements MemberApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<Void>> delete(String memberId) {
-        memberCommandService.delete(Long.parseLong(memberId));
+    public ResponseEntity<StandardResponse<Void>> delete(
+            String memberId, Authentication authentication) {
+        String accessToken = (String) authentication.getCredentials();
+        memberCommandService.delete(Long.parseLong(memberId), accessToken);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));

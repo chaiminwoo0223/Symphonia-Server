@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,5 +31,6 @@ public interface MemberApi {
 
     @DeleteMapping("/me")
     @Operation(summary = "멤버 삭제", description = "인증된 멤버를 삭제합니다.")
-    ResponseEntity<StandardResponse<Void>> delete(@AuthenticationPrincipal String memberId);
+    ResponseEntity<StandardResponse<Void>> delete(
+            @AuthenticationPrincipal String memberId, Authentication authentication);
 }
