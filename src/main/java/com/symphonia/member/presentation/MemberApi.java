@@ -6,6 +6,7 @@ import com.symphonia.member.presentation.dto.response.MemberResponse;
 import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,5 +33,7 @@ public interface MemberApi {
     @DeleteMapping("/me")
     @Operation(summary = "멤버 삭제", description = "인증된 멤버를 삭제합니다.")
     ResponseEntity<StandardResponse<Void>> delete(
-            @AuthenticationPrincipal String memberId, Authentication authentication);
+            @AuthenticationPrincipal String memberId,
+            Authentication authentication,
+            HttpServletRequest httpRequest);
 }

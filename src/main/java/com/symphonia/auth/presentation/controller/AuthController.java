@@ -1,5 +1,7 @@
 package com.symphonia.auth.presentation.controller;
 
+import com.symphonia.auth.application.dto.command.LogoutCommand;
+import com.symphonia.auth.application.dto.command.RefreshCommand;
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.LoginUseCase;
 import com.symphonia.auth.application.usecase.LogoutUseCase;
@@ -11,6 +13,7 @@ import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
 import com.symphonia.common.response.StandardResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,8 +32,9 @@ public class AuthController implements AuthApi {
     private final CookieProvider cookieProvider;
 
     @Override
-    public ResponseEntity<StandardResponse<TokenResponse>> signup(SignupRequest request) {
-        TokenResult result = signupUseCase.signup(request.toCommand());
+    public ResponseEntity<StandardResponse<TokenResponse>> signup(
+            SignupRequest request, HttpServletRequest httpRequest) {
+        TokenResult result = signupUseCase.signup(request.toCommand(extractIp(httpRequest)));
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = cookieProvider.create(result.refreshToken());
 
@@ -40,8 +44,9 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<TokenResponse>> login(LoginRequest request) {
-        TokenResult result = loginUseCase.login(request.toCommand());
+    public ResponseEntity<StandardResponse<TokenResponse>> login(
+            LoginRequest request, HttpServletRequest httpRequest) {
+        TokenResult result = loginUseCase.login(request.toCommand(extractIp(httpRequest)));
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = cookieProvider.create(result.refreshToken());
 
@@ -51,8 +56,10 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<TokenResponse>> refresh(String refreshToken) {
-        TokenResult result = refreshUseCase.refresh(refreshToken);
+    public ResponseEntity<StandardResponse<TokenResponse>> refresh(
+            String refreshToken, HttpServletRequest httpRequest) {
+        RefreshCommand command = new RefreshCommand(refreshToken, extractIp(httpRequest));
+        TokenResult result = refreshUseCase.refresh(command);
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = cookieProvider.create(result.refreshToken());
 
@@ -62,13 +69,19 @@ public class AuthController implements AuthApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<Void>> logout(Authentication authentication) {
+    public ResponseEntity<StandardResponse<Void>> logout(
+            Authentication authentication, HttpServletRequest httpRequest) {
         String accessToken = (String) authentication.getCredentials();
-        logoutUseCase.logout(accessToken);
+        LogoutCommand command = new LogoutCommand(accessToken, extractIp(httpRequest));
+        logoutUseCase.logout(command);
         ResponseCookie cookie = cookieProvider.expire();
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));
+    }
+
+    private String extractIp(HttpServletRequest request) {
+        return request.getRemoteAddr();
     }
 }

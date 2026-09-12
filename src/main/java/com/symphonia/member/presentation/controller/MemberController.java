@@ -1,5 +1,6 @@
 package com.symphonia.member.presentation.controller;
 
+import com.symphonia.auth.application.dto.command.LogoutCommand;
 import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.member.application.dto.result.MemberResult;
@@ -9,6 +10,7 @@ import com.symphonia.member.presentation.MemberApi;
 import com.symphonia.member.presentation.dto.request.MemberUpdateRequest;
 import com.symphonia.member.presentation.dto.response.MemberResponse;
 import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,10 +46,10 @@ public class MemberController implements MemberApi {
 
     @Override
     public ResponseEntity<StandardResponse<Void>> delete(
-            String memberId, Authentication authentication) {
+            String memberId, Authentication authentication, HttpServletRequest httpRequest) {
         String accessToken = (String) authentication.getCredentials();
         memberCommandService.delete(Long.parseLong(memberId));
-        logoutUseCase.logout(accessToken);
+        logoutUseCase.logout(new LogoutCommand(accessToken, httpRequest.getRemoteAddr()));
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));

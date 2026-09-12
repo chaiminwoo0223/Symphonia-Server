@@ -23,6 +23,6 @@ public class IssueTokenService implements IssueTokenUseCase {
 
         refreshTokenRepository.save(refreshToken, memberId, refreshTokenExpirationTime);
 
-        return TokenResult.of(accessToken, refreshToken);
+        return TokenResult.of(accessToken, refreshToken, memberId);
     }
 }

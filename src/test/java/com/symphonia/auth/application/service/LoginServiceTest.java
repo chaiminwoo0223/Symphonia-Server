@@ -32,6 +32,7 @@ class LoginServiceTest extends UnitTest {
 
     private static final String PROVIDER = "kakao";
     private static final String CODE = "auth-code";
+    private static final String IP = "127.0.0.1";
     private static final Long MEMBER_ID = 1L;
     private static final String ACCESS_TOKEN = "access-token";
     private static final String REFRESH_TOKEN = "refresh-token";
@@ -47,7 +48,7 @@ class LoginServiceTest extends UnitTest {
     @Nested
     @DisplayName("login 메서드는")
     class Login {
-        private final LoginCommand command = new LoginCommand(PROVIDER, CODE);
+        private final LoginCommand command = new LoginCommand(PROVIDER, CODE, IP);
         private final OAuthMemberResult oAuthMemberResult =
                 OAuthMemberResult.from(SocialIdentityFixture.KAKAO.create());
 
@@ -69,7 +70,9 @@ class LoginServiceTest extends UnitTest {
                                         SocialProvider.KAKAO, oAuthMemberResult.socialId()))
                         .willReturn(memberResult);
                 given(issueTokenUseCase.issue(String.valueOf(MEMBER_ID), Role.ROLE_MEMBER.name()))
-                        .willReturn(TokenResult.of(ACCESS_TOKEN, REFRESH_TOKEN));
+                        .willReturn(
+                                TokenResult.of(
+                                        ACCESS_TOKEN, REFRESH_TOKEN, String.valueOf(MEMBER_ID)));
             }
 
             @Test

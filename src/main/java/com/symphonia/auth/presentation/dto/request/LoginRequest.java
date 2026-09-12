@@ -9,7 +9,7 @@ public record LoginRequest(
         @NotBlank @Size(max = 20) @Schema(description = "소셜 로그인 제공자 (kakao, google)")
                 String provider,
         @NotBlank @Size(max = 1000) @Schema(description = "소셜 로그인 인가 코드") String code) {
-    public LoginCommand toCommand() {
-        return new LoginCommand(provider, code);
+    public LoginCommand toCommand(String ip) {
+        return new LoginCommand(provider, code, ip);
     }
 }
