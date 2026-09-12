@@ -40,7 +40,7 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode statusCode,
             @NonNull WebRequest request) {
-        log.warn("[ExceptionInternal] message={}", ex.getMessage());
+        log.error("[ExceptionInternal] message={}", ex.getMessage(), ex);
 
         return super.handleExceptionInternal(
                 ex,
