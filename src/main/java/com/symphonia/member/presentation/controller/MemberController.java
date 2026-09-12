@@ -49,7 +49,7 @@ public class MemberController implements MemberApi {
             String memberId, Authentication authentication, HttpServletRequest httpRequest) {
         String accessToken = (String) authentication.getCredentials();
         memberCommandService.delete(Long.parseLong(memberId));
-        logoutUseCase.logout(new LogoutCommand(accessToken, httpRequest.getRemoteAddr()));
+        logoutUseCase.logout(LogoutCommand.of(accessToken, httpRequest.getRemoteAddr()));
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));

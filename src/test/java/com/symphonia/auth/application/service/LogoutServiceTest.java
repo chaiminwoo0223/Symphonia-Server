@@ -46,7 +46,7 @@ class LogoutServiceTest extends UnitTest {
         @DisplayName("엑세스 토큰을 블랙리스트에 등록한다.")
         void shouldRegisterAccessTokenToBlacklistWhenLoggedOut() {
             // when
-            logoutService.logout(new LogoutCommand(ACCESS_TOKEN, IP));
+            logoutService.logout(LogoutCommand.of(ACCESS_TOKEN, IP));
 
             // then
             verify(blacklistAccessTokenRepository)
@@ -57,7 +57,7 @@ class LogoutServiceTest extends UnitTest {
         @DisplayName("해당 멤버의 리프레시 토큰을 삭제한다.")
         void shouldDeleteRefreshTokenWhenLoggedOut() {
             // when
-            logoutService.logout(new LogoutCommand(ACCESS_TOKEN, IP));
+            logoutService.logout(LogoutCommand.of(ACCESS_TOKEN, IP));
 
             // then
             verify(refreshTokenRepository).delete(MEMBER_ID);
