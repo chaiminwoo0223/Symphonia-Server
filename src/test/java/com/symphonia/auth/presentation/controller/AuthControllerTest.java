@@ -10,7 +10,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
-import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.auth.presentation.cookie.CookieProvider;
@@ -33,12 +32,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class AuthControllerTest extends IntegrationTest {
 
     private static final String COOKIE_NAME = CookieProvider.COOKIE_NAME;
-    private static final Long REFRESH_TOKEN_EXPIRATION_TIME = 3600L;
     private static final String AUTH_CODE = "auth-code";
 
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
-    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
     @Autowired private MemberRepository memberRepository;
 
@@ -270,16 +267,12 @@ class AuthControllerTest extends IntegrationTest {
             void shouldReturnAccessTokenAndRotateCookie() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
-                String refreshTokenValue = "refresh-token-value";
-                refreshTokenRepository.save(
-                        refreshTokenValue,
-                        String.valueOf(member.getId()),
-                        REFRESH_TOKEN_EXPIRATION_TIME);
+                String refreshToken = authHelper.issueRefreshTokenFor(member);
 
                 // when & then
                 mockMvc.perform(
                                 post("/api/v1/auth/refresh")
-                                        .cookie(new Cookie(COOKIE_NAME, refreshTokenValue)))
+                                        .cookie(new Cookie(COOKIE_NAME, refreshToken)))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.accessToken").exists())
                         .andExpect(cookie().exists(COOKIE_NAME))
