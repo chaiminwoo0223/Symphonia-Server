@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
+import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
@@ -33,6 +34,7 @@ class MemberCommandServiceTest extends UnitTest {
     @InjectMocks private MemberCommandService memberCommandService;
 
     @Mock private MemberRepository memberRepository;
+    @Mock private LogoutUseCase logoutUseCase;
 
     private Member kakaoMember;
     private Member googleMember;
@@ -188,6 +190,8 @@ class MemberCommandServiceTest extends UnitTest {
     @DisplayName("delete 메서드는")
     class Delete {
 
+        private static final String ACCESS_TOKEN = "access-token-value";
+
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
         void shouldThrowExceptionWhenMemberNotFound() {
@@ -196,23 +200,24 @@ class MemberCommandServiceTest extends UnitTest {
             given(memberRepository.findById(unknownId)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.delete(unknownId))
+            assertThatThrownBy(() -> memberCommandService.delete(unknownId, ACCESS_TOKEN))
                     .isInstanceOf(MemberNotFoundException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
         }
 
         @Test
-        @DisplayName("멤버가 존재하면 멤버를 삭제한다.")
-        void shouldDeleteMemberWhenMemberExists() {
+        @DisplayName("멤버가 존재하면 멤버를 삭제하고 로그아웃 처리한다.")
+        void shouldDeleteMemberAndLogoutWhenMemberExists() {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId)).willReturn(Optional.of(googleMember));
 
             // when
-            memberCommandService.delete(memberId);
+            memberCommandService.delete(memberId, ACCESS_TOKEN);
 
             // then
             then(memberRepository).should().delete(googleMember);
+            then(logoutUseCase).should().logout(ACCESS_TOKEN);
         }
     }
 }
