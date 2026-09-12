@@ -19,6 +19,9 @@ public enum AuthErrorCode implements ErrorCode {
     // 403
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 부족합니다."),
 
+    // 429
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+
     // 500
     OAUTH_TOKEN_EXCHANGE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 토큰 교환에 실패했습니다."),
     OAUTH_MEMBER_INFO_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 사용자 정보 조회에 실패했습니다."),
