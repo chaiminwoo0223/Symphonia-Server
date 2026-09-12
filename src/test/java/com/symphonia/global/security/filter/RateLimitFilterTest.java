@@ -25,6 +25,8 @@ import org.springframework.data.redis.core.ValueOperations;
 class RateLimitFilterTest extends UnitTest {
 
     private static final String IP = "127.0.0.1";
+    private static final String LOGIN_PATH = "/api/v1/auth/login";
+    private static final String LOGIN_KEY = "rate-limit:" + LOGIN_PATH + ":" + IP;
 
     @InjectMocks private RateLimitFilter rateLimitFilter;
 
@@ -66,81 +68,74 @@ class RateLimitFilterTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("요청 경로가 rate limit 대상인 경우")
-        class WhenPathLimited {
+        @DisplayName("해당 윈도우의 첫 요청인 경우")
+        class WhenFirstRequestInWindow {
 
             @BeforeEach
             void setUp() {
-                given(request.getRequestURI()).willReturn("/api/v1/auth/login");
+                given(request.getRequestURI()).willReturn(LOGIN_PATH);
                 given(request.getRemoteAddr()).willReturn(IP);
                 given(redisTemplate.opsForValue()).willReturn(valueOperations);
+                given(valueOperations.increment(LOGIN_KEY)).willReturn(1L);
             }
 
-            @Nested
-            @DisplayName("해당 윈도우의 첫 요청인 경우")
-            class WhenFirstRequestInWindow {
+            @Test
+            @DisplayName("카운터에 만료 시간을 설정하고 다음 필터로 통과시킨다")
+            void shouldSetExpirationAndPassThrough() throws Exception {
+                // when
+                rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-                @BeforeEach
-                void setUp() {
-                    given(valueOperations.increment("rate-limit:/api/v1/auth/login:" + IP))
-                            .willReturn(1L);
-                }
+                // then
+                verify(redisTemplate).expire(LOGIN_KEY, Duration.ofMinutes(1));
+                verify(filterChain).doFilter(request, response);
+            }
+        }
 
-                @Test
-                @DisplayName("카운터에 만료 시간을 설정하고 다음 필터로 통과시킨다")
-                void shouldSetExpirationAndPassThrough() throws Exception {
-                    // when
-                    rateLimitFilter.doFilterInternal(request, response, filterChain);
+        @Nested
+        @DisplayName("요청 횟수가 임계값 이내인 경우")
+        class WhenWithinLimit {
 
-                    // then
-                    verify(redisTemplate)
-                            .expire("rate-limit:/api/v1/auth/login:" + IP, Duration.ofMinutes(1));
-                    verify(filterChain).doFilter(request, response);
-                }
+            @BeforeEach
+            void setUp() {
+                given(request.getRequestURI()).willReturn(LOGIN_PATH);
+                given(request.getRemoteAddr()).willReturn(IP);
+                given(redisTemplate.opsForValue()).willReturn(valueOperations);
+                given(valueOperations.increment(LOGIN_KEY)).willReturn(5L);
             }
 
-            @Nested
-            @DisplayName("요청 횟수가 임계값 이내인 경우")
-            class WhenWithinLimit {
+            @Test
+            @DisplayName("다음 필터로 통과시킨다")
+            void shouldPassThrough() throws Exception {
+                // when
+                rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-                @BeforeEach
-                void setUp() {
-                    given(valueOperations.increment("rate-limit:/api/v1/auth/login:" + IP))
-                            .willReturn(5L);
-                }
+                // then
+                verify(filterChain).doFilter(request, response);
+                verify(errorResponseWriter, never()).send(any(), any());
+            }
+        }
 
-                @Test
-                @DisplayName("다음 필터로 통과시킨다")
-                void shouldPassThrough() throws Exception {
-                    // when
-                    rateLimitFilter.doFilterInternal(request, response, filterChain);
+        @Nested
+        @DisplayName("요청 횟수가 임계값을 초과한 경우")
+        class WhenLimitExceeded {
 
-                    // then
-                    verify(filterChain).doFilter(request, response);
-                    verify(errorResponseWriter, never()).send(any(), any());
-                }
+            @BeforeEach
+            void setUp() {
+                given(request.getRequestURI()).willReturn(LOGIN_PATH);
+                given(request.getRemoteAddr()).willReturn(IP);
+                given(redisTemplate.opsForValue()).willReturn(valueOperations);
+                given(valueOperations.increment(LOGIN_KEY)).willReturn(6L);
             }
 
-            @Nested
-            @DisplayName("요청 횟수가 임계값을 초과한 경우")
-            class WhenLimitExceeded {
+            @Test
+            @DisplayName("429 에러 응답을 직접 작성하고 다음 필터로 진행하지 않는다")
+            void shouldWriteErrorResponseAndStopChain() throws Exception {
+                // when
+                rateLimitFilter.doFilterInternal(request, response, filterChain);
 
-                @BeforeEach
-                void setUp() {
-                    given(valueOperations.increment("rate-limit:/api/v1/auth/login:" + IP))
-                            .willReturn(6L);
-                }
-
-                @Test
-                @DisplayName("429 에러 응답을 직접 작성하고 다음 필터로 진행하지 않는다")
-                void shouldWriteErrorResponseAndStopChain() throws Exception {
-                    // when
-                    rateLimitFilter.doFilterInternal(request, response, filterChain);
-
-                    // then
-                    verify(errorResponseWriter).send(response, AuthErrorCode.RATE_LIMIT_EXCEEDED);
-                    verify(filterChain, never()).doFilter(any(), any());
-                }
+                // then
+                verify(errorResponseWriter).send(response, AuthErrorCode.RATE_LIMIT_EXCEEDED);
+                verify(filterChain, never()).doFilter(any(), any());
             }
         }
     }
