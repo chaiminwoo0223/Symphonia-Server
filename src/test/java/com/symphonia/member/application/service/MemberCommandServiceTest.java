@@ -8,8 +8,10 @@ import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
 import com.symphonia.member.application.dto.command.MemberCreateCommand;
+import com.symphonia.member.application.dto.command.MemberDeleteCommand;
 import com.symphonia.member.application.dto.command.MemberUpdateCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
+import com.symphonia.member.application.event.MemberDeletedEvent;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.error.MemberErrorCode;
@@ -24,15 +26,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("MemberCommandService 단위 테스트")
 class MemberCommandServiceTest extends UnitTest {
 
+    private static final String ACCESS_TOKEN = "access-token";
+    private static final String IP = "127.0.0.1";
+
     @InjectMocks private MemberCommandService memberCommandService;
 
     @Mock private MemberRepository memberRepository;
+
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private Member kakaoMember;
     private Member googleMember;
@@ -194,25 +203,35 @@ class MemberCommandServiceTest extends UnitTest {
             // given
             Long unknownId = -1L;
             given(memberRepository.findById(unknownId)).willReturn(Optional.empty());
+            MemberDeleteCommand command = MemberDeleteCommand.of(unknownId, ACCESS_TOKEN, IP);
 
             // when & then
-            assertThatThrownBy(() -> memberCommandService.delete(unknownId))
+            assertThatThrownBy(() -> memberCommandService.delete(command))
                     .isInstanceOf(MemberNotFoundException.class)
                     .hasMessage(MemberErrorCode.MEMBER_NOT_FOUND.getMessage());
+            then(eventPublisher).shouldHaveNoInteractions();
         }
 
         @Test
-        @DisplayName("멤버가 존재하면 멤버를 삭제한다.")
-        void shouldDeleteMemberWhenMemberExists() {
+        @DisplayName("멤버가 존재하면 멤버를 삭제하고 MemberDeletedEvent를 발행한다.")
+        void shouldDeleteMemberAndPublishEventWhenMemberExists() {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId)).willReturn(Optional.of(googleMember));
+            MemberDeleteCommand command = MemberDeleteCommand.of(memberId, ACCESS_TOKEN, IP);
 
             // when
-            memberCommandService.delete(memberId);
+            memberCommandService.delete(command);
 
             // then
             then(memberRepository).should().delete(googleMember);
+            ArgumentCaptor<MemberDeletedEvent> eventCaptor =
+                    ArgumentCaptor.forClass(MemberDeletedEvent.class);
+            then(eventPublisher).should().publishEvent(eventCaptor.capture());
+            MemberDeletedEvent event = eventCaptor.getValue();
+            assertThat(event.memberId()).isEqualTo(memberId);
+            assertThat(event.accessToken()).isEqualTo(ACCESS_TOKEN);
+            assertThat(event.ip()).isEqualTo(IP);
         }
     }
 }
