@@ -24,6 +24,8 @@ import org.mockito.Mock;
 class ExchangeSocialCodeServiceTest extends UnitTest {
 
     private static final String CODE = "auth-code";
+    private static final String KAKAO = "kakao";
+    private static final String GOOGLE = "google";
 
     @Mock private SocialClient kakaoSocialClient;
 
@@ -35,7 +37,7 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
     void setUp() {
         exchangeSocialCodeService =
                 new ExchangeSocialCodeService(
-                        Map.of("kakao", kakaoSocialClient, "google", googleSocialClient));
+                        Map.of(KAKAO, kakaoSocialClient, GOOGLE, googleSocialClient));
     }
 
     @Nested
@@ -54,7 +56,7 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
                 given(kakaoSocialClient.authenticate(CODE)).willReturn(identity);
 
                 // when
-                OAuthMemberResult result = exchangeSocialCodeService.exchange("kakao", CODE);
+                OAuthMemberResult result = exchangeSocialCodeService.exchange(KAKAO, CODE);
 
                 // then
                 assertThat(result.socialId()).isEqualTo(identity.socialId());
@@ -92,7 +94,7 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
                 given(googleSocialClient.authenticate(CODE)).willReturn(identity);
 
                 // when
-                OAuthMemberResult result = exchangeSocialCodeService.exchange("google", CODE);
+                OAuthMemberResult result = exchangeSocialCodeService.exchange(GOOGLE, CODE);
 
                 // then
                 assertThat(result.socialId()).isEqualTo(identity.socialId());

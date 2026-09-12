@@ -19,6 +19,12 @@ import org.mockito.Mock;
 @DisplayName("IssueTokenService 단위 테스트")
 class IssueTokenServiceTest extends UnitTest {
 
+    private static final String MEMBER_ID = "1";
+    private static final String ROLE = "ROLE_USER";
+    private static final String ACCESS_TOKEN = "access-token";
+    private static final String REFRESH_TOKEN = "refresh-token";
+    private static final long REFRESH_TOKEN_EXPIRATION_TIME = 1209600L;
+
     @InjectMocks private IssueTokenService issueTokenService;
 
     @Mock private AccessTokenProvider accessTokenProvider;
@@ -26,12 +32,6 @@ class IssueTokenServiceTest extends UnitTest {
     @Mock private RefreshTokenProvider refreshTokenProvider;
 
     @Mock private RefreshTokenRepository refreshTokenRepository;
-
-    private static final String MEMBER_ID = "1";
-    private static final String ROLE = "ROLE_USER";
-    private static final String ACCESS_TOKEN = "access-token";
-    private static final String REFRESH_TOKEN = "refresh-token";
-    private static final long REFRESH_TOKEN_EXPIRATION_TIME = 1209600L;
 
     @Nested
     @DisplayName("issue 메서드는")

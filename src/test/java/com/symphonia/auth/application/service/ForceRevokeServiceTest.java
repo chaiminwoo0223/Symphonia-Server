@@ -13,11 +13,11 @@ import org.mockito.Mock;
 @DisplayName("ForceRevokeService 단위 테스트")
 class ForceRevokeServiceTest extends UnitTest {
 
+    private static final String MEMBER_ID = "1";
+
     @InjectMocks private ForceRevokeService forceRevokeService;
 
     @Mock private RefreshTokenRepository refreshTokenRepository;
-
-    private static final String MEMBER_ID = "1";
 
     @Nested
     @DisplayName("forceRevoke 메서드는")

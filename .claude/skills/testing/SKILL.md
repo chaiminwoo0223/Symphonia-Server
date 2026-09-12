@@ -65,6 +65,27 @@ class MemberServiceTest {
 }
 ```
 
+## 필드 선언 순서
+
+테스트 클래스 상단 필드는 **상수 → `@InjectMocks` → `@Mock`** 순서로 고정한다. 
+상수(`private static final`)를 가장 먼저 두는 건 static이 instance보다 먼저 온다는 일반 Java 컨벤션을 따른 것이고, `@InjectMocks`를 `@Mock`보다 먼저 두는 건 "지금 무엇을 검증하는 테스트인지"(SUT)가 그 협력자들보다 먼저 보여야 읽기 쉽기 때문이다. 
+이 순서는 파일 전체뿐 아니라 중첩 스코프에도 그대로 적용한다. 
+즉 `@Nested` 안에 그 블록에서만 쓰는 상수를 선언할 때도 그 블록의 다른 필드/설정보다 위에 둔다. 
+SUT를 생성자 인자 문제 등으로 Mockito가 `@InjectMocks`로 자동 조립하지 못해 `@BeforeEach`에서 직접 생성하는 경우에도, 이름표만 없을 뿐 그 필드가 SUT라는 사실은 같다. 이때도 그 SUT 필드를 `@Mock` 필드보다 먼저 둔다.
+
+```java
+class LoginServiceTest extends UnitTest {
+
+    private static final String PROVIDER = "kakao";
+    private static final String CODE = "auth-code";
+
+    @InjectMocks private LoginService loginService;
+
+    @Mock private ExchangeSocialCodeUseCase exchangeSocialCodeUseCase;
+    @Mock private GetMemberUseCase getMemberUseCase;
+}
+```
+
 ## Mockito Strict Stubbing
 
 - `@BeforeEach` 공유 스텁은 **모든 테스트가 소비하는 가장 좁은 `@Nested` 스코프**에 배치한다. 상위 스코프에 두면 일부 테스트에서 미사용 스텁으로 strict-stubbing 검증에 걸린다.
