@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
+import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
@@ -81,6 +82,52 @@ class MemberControllerTest extends IntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.nickname").value("새로운 닉네임"));
         }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // given
+                MemberUpdateRequest request = new MemberUpdateRequest("새로운 닉네임");
+
+                // when & then
+                mockMvc.perform(
+                                patch("/api/v1/members/me")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isUnauthorized());
+            }
+        }
+
+        @Nested
+        @DisplayName("닉네임이 빈 값인 경우")
+        class WhenNicknameBlank {
+
+            @Test
+            @DisplayName("400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                MemberUpdateRequest request = new MemberUpdateRequest("");
+
+                // when & then
+                mockMvc.perform(
+                                patch("/api/v1/members/me")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.ok").value(false))
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("nickname"));
+            }
+        }
     }
 
     @Nested
@@ -97,6 +144,18 @@ class MemberControllerTest extends IntegrationTest {
             // when & then
             mockMvc.perform(delete("/api/v1/members/me").header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isNoContent());
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // when & then
+                mockMvc.perform(delete("/api/v1/members/me")).andExpect(status().isUnauthorized());
+            }
         }
     }
 }
