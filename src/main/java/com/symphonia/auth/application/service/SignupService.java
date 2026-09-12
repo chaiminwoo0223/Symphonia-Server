@@ -7,7 +7,7 @@ import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.common.audit.AuditEvent;
+import com.symphonia.common.audit.AuditAction;
 import com.symphonia.common.audit.Audited;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.CreateMemberUseCase;
@@ -21,7 +21,7 @@ public class SignupService implements SignupUseCase {
     private final IssueTokenUseCase issueTokenUseCase;
 
     @Override
-    @Audited(event = AuditEvent.SIGNUP)
+    @Audited(action = AuditAction.SIGNUP)
     public TokenResult signup(SignupCommand command) {
         OAuthMemberResult result =
                 exchangeSocialCodeUseCase.exchange(command.provider(), command.code());

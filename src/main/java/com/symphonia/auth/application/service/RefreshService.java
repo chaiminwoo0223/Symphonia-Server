@@ -7,7 +7,7 @@ import com.symphonia.auth.application.usecase.RefreshUseCase;
 import com.symphonia.auth.domain.exception.RefreshTokenNotFoundException;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.common.audit.AuditEvent;
+import com.symphonia.common.audit.AuditAction;
 import com.symphonia.common.audit.Audited;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
@@ -22,7 +22,7 @@ public class RefreshService implements RefreshUseCase {
     private final GetMemberUseCase getMemberUseCase;
 
     @Override
-    @Audited(event = AuditEvent.TOKEN_REFRESH)
+    @Audited(action = AuditAction.TOKEN_REFRESH)
     public TokenResult refresh(RefreshCommand command) {
         String memberId =
                 Optional.ofNullable(command.refreshToken())

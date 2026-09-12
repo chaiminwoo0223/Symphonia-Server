@@ -22,13 +22,13 @@ public class AuditAspect {
             Object result = joinPoint.proceed();
             String actorId = resolveActorId(result).orElseGet(this::resolveActorIdFromContext);
 
-            auditLogRecorder.record(audited.event(), true, ip, actorId, null);
+            auditLogRecorder.record(audited.action(), true, ip, actorId, null);
 
             return result;
         } catch (Throwable throwable) {
             String actorId = resolveActorIdFromContext();
 
-            auditLogRecorder.record(audited.event(), false, ip, actorId, throwable.getMessage());
+            auditLogRecorder.record(audited.action(), false, ip, actorId, throwable.getMessage());
 
             throw throwable;
         }

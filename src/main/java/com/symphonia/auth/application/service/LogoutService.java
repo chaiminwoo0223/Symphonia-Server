@@ -6,7 +6,7 @@ import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.common.audit.AuditEvent;
+import com.symphonia.common.audit.AuditAction;
 import com.symphonia.common.audit.Audited;
 import lombok.RequiredArgsConstructor;
 
@@ -18,7 +18,7 @@ public class LogoutService implements LogoutUseCase {
     private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
 
     @Override
-    @Audited(event = AuditEvent.LOGOUT)
+    @Audited(action = AuditAction.LOGOUT)
     public void logout(LogoutCommand command) {
         String accessToken = command.accessToken();
         String memberId = accessTokenProvider.getMemberId(accessToken);
