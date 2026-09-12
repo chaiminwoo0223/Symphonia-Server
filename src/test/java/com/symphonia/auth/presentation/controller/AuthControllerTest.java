@@ -150,6 +150,39 @@ class AuthControllerTest extends IntegrationTest {
                         .andExpect(status().isBadRequest());
             }
         }
+
+        @Nested
+        @DisplayName("provider 또는 code가 길이 상한을 초과한 경우")
+        class WhenRequestFieldTooLong {
+
+            @Test
+            @DisplayName("provider가 20자를 초과하면 400을 반환한다")
+            void shouldReturnBadRequestWhenProviderTooLong() throws Exception {
+                // given
+                SignupRequest request = new SignupRequest("a".repeat(21), AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("code가 1000자를 초과하면 400을 반환한다")
+            void shouldReturnBadRequestWhenCodeTooLong() throws Exception {
+                // given
+                SignupRequest request = new SignupRequest("kakao", "a".repeat(1001));
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+        }
     }
 
     @Nested
@@ -243,6 +276,39 @@ class AuthControllerTest extends IntegrationTest {
             void shouldReturnBadRequestWhenCodeBlank() throws Exception {
                 // given
                 LoginRequest request = new LoginRequest("kakao", "");
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+        }
+
+        @Nested
+        @DisplayName("provider 또는 code가 길이 상한을 초과한 경우")
+        class WhenRequestFieldTooLong {
+
+            @Test
+            @DisplayName("provider가 20자를 초과하면 400을 반환한다")
+            void shouldReturnBadRequestWhenProviderTooLong() throws Exception {
+                // given
+                LoginRequest request = new LoginRequest("a".repeat(21), AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("code가 1000자를 초과하면 400을 반환한다")
+            void shouldReturnBadRequestWhenCodeTooLong() throws Exception {
+                // given
+                LoginRequest request = new LoginRequest("kakao", "a".repeat(1001));
 
                 // when & then
                 mockMvc.perform(
