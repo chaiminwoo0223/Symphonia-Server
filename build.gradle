@@ -49,6 +49,10 @@ dependencies {
 
 	// Google ID Token(JWKS) 서명 검증
 	implementation 'org.springframework.security:spring-security-oauth2-jose'
+
+	// AuditAspect(@Aspect, @Around)가 사용하는 AspectJ 애노테이션 파서.
+	// spring-security 전이 의존성으로 우연히 들어와 있던 것을 명시적 의존성으로 승격.
+	implementation 'org.aspectj:aspectjweaver'
 }
 
 spotless {
