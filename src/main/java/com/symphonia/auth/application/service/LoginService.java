@@ -7,6 +7,8 @@ import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.LoginUseCase;
 import com.symphonia.common.annotation.CommandService;
+import com.symphonia.common.audit.AuditEvent;
+import com.symphonia.common.audit.Audited;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,7 @@ public class LoginService implements LoginUseCase {
     private final IssueTokenUseCase issueTokenUseCase;
 
     @Override
+    @Audited(event = AuditEvent.LOGIN)
     public TokenResult login(LoginCommand command) {
         OAuthMemberResult identity =
                 exchangeSocialCodeUseCase.exchange(command.provider(), command.code());

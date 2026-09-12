@@ -2,4 +2,4 @@ package com.symphonia.auth.application.dto.command;
 
 import com.symphonia.common.audit.HasIp;
 
-public record SignupCommand(String provider, String code, String ip) implements HasIp {}
+public record LogoutCommand(String accessToken, String ip) implements HasIp {}

@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
+import com.symphonia.auth.application.dto.command.RefreshCommand;
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.domain.error.AuthErrorCode;
@@ -30,6 +31,7 @@ class RefreshServiceTest extends UnitTest {
     private static final String REFRESH_TOKEN = "refresh-token";
     private static final String NEW_ACCESS_TOKEN = "new-access-token";
     private static final String NEW_REFRESH_TOKEN = "new-refresh-token";
+    private static final String IP = "127.0.0.1";
 
     @InjectMocks private RefreshService refreshService;
 
@@ -55,14 +57,18 @@ class RefreshServiceTest extends UnitTest {
                         .willReturn(Optional.of(String.valueOf(MEMBER_ID)));
                 given(getMemberUseCase.getById(MEMBER_ID)).willReturn(member);
                 given(issueTokenUseCase.issue(String.valueOf(MEMBER_ID), member.role().name()))
-                        .willReturn(TokenResult.of(NEW_ACCESS_TOKEN, NEW_REFRESH_TOKEN));
+                        .willReturn(
+                                TokenResult.of(
+                                        NEW_ACCESS_TOKEN,
+                                        NEW_REFRESH_TOKEN,
+                                        String.valueOf(MEMBER_ID)));
             }
 
             @Test
             @DisplayName("기존 리프레시 토큰을 삭제한다.")
             void shouldDeleteExistingRefreshToken() {
                 // when
-                refreshService.refresh(REFRESH_TOKEN);
+                refreshService.refresh(new RefreshCommand(REFRESH_TOKEN, IP));
 
                 // then
                 verify(refreshTokenRepository).delete(String.valueOf(MEMBER_ID));
@@ -72,7 +78,7 @@ class RefreshServiceTest extends UnitTest {
             @DisplayName("새로운 TokenResult를 반환한다.")
             void shouldReturnNewTokenResult() {
                 // when
-                TokenResult result = refreshService.refresh(REFRESH_TOKEN);
+                TokenResult result = refreshService.refresh(new RefreshCommand(REFRESH_TOKEN, IP));
 
                 // then
                 assertThat(result.accessToken()).isEqualTo(NEW_ACCESS_TOKEN);
@@ -91,7 +97,8 @@ class RefreshServiceTest extends UnitTest {
                 given(refreshTokenRepository.consume(REFRESH_TOKEN)).willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> refreshService.refresh(REFRESH_TOKEN))
+                assertThatThrownBy(
+                                () -> refreshService.refresh(new RefreshCommand(REFRESH_TOKEN, IP)))
                         .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
@@ -105,7 +112,7 @@ class RefreshServiceTest extends UnitTest {
             @DisplayName("예외가 발생한다.")
             void shouldThrowException() {
                 // when & then
-                assertThatThrownBy(() -> refreshService.refresh(null))
+                assertThatThrownBy(() -> refreshService.refresh(new RefreshCommand(null, IP)))
                         .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
