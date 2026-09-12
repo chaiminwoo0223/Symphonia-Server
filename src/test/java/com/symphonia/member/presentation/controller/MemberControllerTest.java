@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
+import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
+import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.application.event.MemberDeletedEvent;
@@ -23,6 +25,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.test.context.transaction.TestTransaction;
 
 @RecordApplicationEvents
 class MemberControllerTest extends IntegrationTest {
@@ -30,6 +33,8 @@ class MemberControllerTest extends IntegrationTest {
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
     @Autowired private ApplicationEvents applicationEvents;
+    @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
 
     @Nested
     @DisplayName("GET /api/v1/members/me는")
@@ -162,6 +167,31 @@ class MemberControllerTest extends IntegrationTest {
                                 assertThat(event.memberId()).isEqualTo(member.getId());
                                 assertThat(event.accessToken()).isEqualTo(accessToken);
                             });
+        }
+
+        @Test
+        @DisplayName("멤버 삭제가 커밋되면 액세스 토큰을 블랙리스트에 등록하고 리프레시 토큰을 삭제한다")
+        void shouldBlacklistAccessTokenAndDeleteRefreshTokenWhenCommitted() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String accessToken =
+                    authHelper.generateAccessToken(
+                            String.valueOf(member.getId()), member.getRole().name());
+            String refreshToken = authHelper.issueRefreshTokenFor(member);
+
+            // when
+            mockMvc.perform(
+                            delete("/api/v1/members/me")
+                                    .header(
+                                            HttpHeaders.AUTHORIZATION,
+                                            authHelper.bearerHeader(accessToken)))
+                    .andExpect(status().isNoContent());
+            TestTransaction.flagForCommit();
+            TestTransaction.end();
+
+            // then
+            assertThat(blacklistAccessTokenRepository.isBlacklisted(accessToken)).isTrue();
+            assertThat(refreshTokenRepository.findMemberIdByValue(refreshToken)).isEmpty();
         }
 
         @Nested
