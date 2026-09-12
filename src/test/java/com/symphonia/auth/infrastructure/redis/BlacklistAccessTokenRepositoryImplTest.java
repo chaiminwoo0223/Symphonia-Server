@@ -18,6 +18,7 @@ class BlacklistAccessTokenRepositoryImplTest extends RedisRepositoryTest {
     private static final Long EXPIRATION_TIME = 3600L;
 
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    @Autowired private BlacklistAccessTokenRedisRepository blacklistAccessTokenRedisRepository;
 
     @Nested
     @DisplayName("save 메서드는")
@@ -31,6 +32,16 @@ class BlacklistAccessTokenRepositoryImplTest extends RedisRepositoryTest {
 
             // then
             assertThat(blacklistAccessTokenRepository.isBlacklisted(ACCESS_TOKEN)).isTrue();
+        }
+
+        @Test
+        @DisplayName("원본 토큰 값이 아니라 해시된 값을 키로 저장한다")
+        void shouldPersistHashedValueInsteadOfRawValue() {
+            // when
+            blacklistAccessTokenRepository.save(ACCESS_TOKEN, MEMBER_ID, EXPIRATION_TIME);
+
+            // then
+            assertThat(blacklistAccessTokenRedisRepository.existsById(ACCESS_TOKEN)).isFalse();
         }
     }
 
