@@ -1,5 +1,6 @@
 package com.symphonia.auth.infrastructure.redis;
 
+import com.symphonia.auth.domain.exception.AccessTokenHashingFailedException;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -36,7 +37,7 @@ public class BlacklistAccessTokenRepositoryImpl implements BlacklistAccessTokenR
 
             return HexFormat.of().formatHex(hashedBytes);
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(HASH_ALGORITHM + " algorithm not available", e);
+            throw new AccessTokenHashingFailedException();
         }
     }
 }

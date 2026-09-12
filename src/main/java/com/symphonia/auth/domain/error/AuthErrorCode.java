@@ -22,6 +22,7 @@ public enum AuthErrorCode implements ErrorCode {
     // 500
     OAUTH_TOKEN_EXCHANGE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 토큰 교환에 실패했습니다."),
     OAUTH_MEMBER_INFO_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 사용자 정보 조회에 실패했습니다."),
+    ACCESS_TOKEN_HASHING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "액세스 토큰 해싱에 실패했습니다."),
     ;
 
     private final HttpStatus status;
