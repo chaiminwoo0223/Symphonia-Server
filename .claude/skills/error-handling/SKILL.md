@@ -117,7 +117,7 @@ public enum MemberErrorCode implements ErrorCode {
   - `HttpRequestMethodNotSupportedException` → 405 `METHOD_NOT_ALLOWED`
   - 그 외 `ResponseEntityExceptionHandler`가 처리하는 나머지 예외는 `handleExceptionInternal`에서 500 `INTERNAL_SERVER_ERROR`로 공통 처리
 - **필드별 검증 에러는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 보고**한다. 여러 필드가 동시에 실패해도 각각 리포트된다.
-- 4xx는 `warn`, 5xx는 `error`(스택트레이스 포함)로 로깅한다.
+- 4xx는 `warn`, 5xx는 `error`(스택트레이스 포함)로 로깅한다. `ValidationExceptionHandler.handleExceptionInternal`(그 외 프레임워크 예외의 500 폴백 경로)도 이 원칙에 맞춰 `log.error(..., ex)`로 스택트레이스를 남긴다(2026-09-12 수정 — 이전에는 `log.warn`으로 스택트레이스 없이 조용히 묻혔다).
   - 단, **`BusinessException`(서브클래스 포함)은 이 규칙의 예외**다. `GlobalExceptionHandler.handleBusinessException`은 상태와 무관하게 무조건 `warn`(스택트레이스 없음)으로 로깅한다 — `InternalServerException`을 상속한 500 도메인 예외(`SocialAuthenticationFailedException` 등)도 마찬가지다. `BusinessException` 계열은 "코드가 의도를 갖고 명명한 실패"라 스택트레이스보다 어떤 도메인 실패인지가 중요하다는 전제이므로, 진짜 디버깅이 필요한, 도메인 코드로 명명할 의미가 없는 예상 못 한 500(버그, 알 수 없는 장애 등)은 `BusinessException` 계열로 감싸지 말고 그냥 던져서 catch-all의 `error` 로깅 경로를 타게 한다.
 
 ## 원칙
