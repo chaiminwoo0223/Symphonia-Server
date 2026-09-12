@@ -68,7 +68,7 @@ class RefreshServiceTest extends UnitTest {
             @DisplayName("기존 리프레시 토큰을 삭제한다.")
             void shouldDeleteExistingRefreshToken() {
                 // when
-                refreshService.refresh(new RefreshCommand(REFRESH_TOKEN, IP));
+                refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP));
 
                 // then
                 verify(refreshTokenRepository).delete(String.valueOf(MEMBER_ID));
@@ -78,7 +78,7 @@ class RefreshServiceTest extends UnitTest {
             @DisplayName("새로운 TokenResult를 반환한다.")
             void shouldReturnNewTokenResult() {
                 // when
-                TokenResult result = refreshService.refresh(new RefreshCommand(REFRESH_TOKEN, IP));
+                TokenResult result = refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP));
 
                 // then
                 assertThat(result.accessToken()).isEqualTo(NEW_ACCESS_TOKEN);
@@ -98,7 +98,7 @@ class RefreshServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(
-                                () -> refreshService.refresh(new RefreshCommand(REFRESH_TOKEN, IP)))
+                                () -> refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP)))
                         .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
@@ -112,7 +112,7 @@ class RefreshServiceTest extends UnitTest {
             @DisplayName("예외가 발생한다.")
             void shouldThrowException() {
                 // when & then
-                assertThatThrownBy(() -> refreshService.refresh(new RefreshCommand(null, IP)))
+                assertThatThrownBy(() -> refreshService.refresh(RefreshCommand.of(null, IP)))
                         .isInstanceOf(RefreshTokenNotFoundException.class)
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }

@@ -58,7 +58,7 @@ public class AuthController implements AuthApi {
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> refresh(
             String refreshToken, HttpServletRequest httpRequest) {
-        RefreshCommand command = new RefreshCommand(refreshToken, extractIp(httpRequest));
+        RefreshCommand command = RefreshCommand.of(refreshToken, extractIp(httpRequest));
         TokenResult result = refreshUseCase.refresh(command);
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = cookieProvider.create(result.refreshToken());
@@ -72,7 +72,7 @@ public class AuthController implements AuthApi {
     public ResponseEntity<StandardResponse<Void>> logout(
             Authentication authentication, HttpServletRequest httpRequest) {
         String accessToken = (String) authentication.getCredentials();
-        LogoutCommand command = new LogoutCommand(accessToken, extractIp(httpRequest));
+        LogoutCommand command = LogoutCommand.of(accessToken, extractIp(httpRequest));
         logoutUseCase.logout(command);
         ResponseCookie cookie = cookieProvider.expire();
 
