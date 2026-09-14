@@ -1,6 +1,6 @@
 ---
 name: new-feature
-description: 기존 도메인(member/auth)에 새 기능(UseCase → Service → Api → Controller)을 추가한다
+description: 기존 도메인에 새 기능(UseCase → Service → Api → Controller)을 추가한다
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
