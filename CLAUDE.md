@@ -1,6 +1,8 @@
 # Symphonia
 
-웹 클라이언트 대상 Spring Boot API 서버. 베이스 패키지: `com.symphonia`
+- 술, 안주, 음악을 조합해 추천하는 페어링 서비스이다.
+- 웹 클라이언트를 대상으로 하는 Spring Boot API 서버로 제공된다.
+- 베이스 패키지는 `com.symphonia`이다.
 
 ## Claude 협업 규칙 (필독)
 
