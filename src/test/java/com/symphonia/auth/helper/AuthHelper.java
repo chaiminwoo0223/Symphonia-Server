@@ -5,13 +5,12 @@ import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
 import com.symphonia.auth.infrastructure.provider.RefreshTokenProvider;
 import com.symphonia.member.domain.entity.Member;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class AuthHelper {
-
-    private static final String BEARER_PREFIX = "Bearer ";
 
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenProvider refreshTokenProvider;
@@ -22,7 +21,10 @@ public class AuthHelper {
     }
 
     public String bearerHeader(String accessToken) {
-        return BEARER_PREFIX + accessToken;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        return headers.getFirst(HttpHeaders.AUTHORIZATION);
     }
 
     public String bearerTokenFor(Member member) {
