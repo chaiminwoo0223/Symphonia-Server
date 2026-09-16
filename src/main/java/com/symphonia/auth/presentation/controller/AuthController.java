@@ -7,7 +7,7 @@ import com.symphonia.auth.application.usecase.LoginUseCase;
 import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.auth.application.usecase.RefreshUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
-import com.symphonia.auth.presentation.AuthApi;
+import com.symphonia.auth.presentation.api.AuthApi;
 import com.symphonia.auth.presentation.cookie.CookieProvider;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
