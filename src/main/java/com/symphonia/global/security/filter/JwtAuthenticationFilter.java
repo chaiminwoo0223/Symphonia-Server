@@ -2,7 +2,6 @@ package com.symphonia.global.security.filter;
 
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
-import com.symphonia.common.constants.HttpConstants;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +21,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final AccessTokenProvider accessTokenProvider;
     private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
 
@@ -59,10 +60,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private String extractBearerToken(HttpServletRequest request) {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (!(StringUtils.hasText(header) && header.startsWith(HttpConstants.BEARER_PREFIX))) {
+        if (!(StringUtils.hasText(header) && header.startsWith(BEARER_PREFIX))) {
             return null;
         }
 
-        return header.substring(HttpConstants.BEARER_PREFIX.length()).trim();
+        return header.substring(BEARER_PREFIX.length()).trim();
     }
 }

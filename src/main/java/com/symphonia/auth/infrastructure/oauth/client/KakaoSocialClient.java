@@ -7,9 +7,7 @@ import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.auth.infrastructure.oauth.client.response.KakaoTokenResponse;
 import com.symphonia.auth.infrastructure.oauth.client.response.KakaoUserInfoResponse;
 import com.symphonia.auth.infrastructure.oauth.config.properties.KakaoOAuthProperties;
-import com.symphonia.common.constants.HttpConstants;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -50,9 +48,7 @@ public class KakaoSocialClient implements SocialClient {
                     restClient
                             .get()
                             .uri(properties.userInfoUri())
-                            .header(
-                                    HttpHeaders.AUTHORIZATION,
-                                    HttpConstants.BEARER_PREFIX + accessToken)
+                            .headers(headers -> headers.setBearerAuth(accessToken))
                             .retrieve()
                             .body(KakaoUserInfoResponse.class);
 

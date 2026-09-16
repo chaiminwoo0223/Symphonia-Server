@@ -3,7 +3,6 @@ package com.symphonia.auth.helper;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
 import com.symphonia.auth.infrastructure.provider.RefreshTokenProvider;
-import com.symphonia.common.constants.HttpConstants;
 import com.symphonia.member.domain.entity.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -11,6 +10,8 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class AuthHelper {
+
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final AccessTokenProvider accessTokenProvider;
     private final RefreshTokenProvider refreshTokenProvider;
@@ -21,7 +22,7 @@ public class AuthHelper {
     }
 
     public String bearerHeader(String accessToken) {
-        return HttpConstants.BEARER_PREFIX + accessToken;
+        return BEARER_PREFIX + accessToken;
     }
 
     public String bearerTokenFor(Member member) {
