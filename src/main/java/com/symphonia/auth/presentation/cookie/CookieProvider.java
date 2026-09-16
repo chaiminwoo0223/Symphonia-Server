@@ -1,5 +1,6 @@
 package com.symphonia.auth.presentation.cookie;
 
+import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CookieProvider {
     public static final String COOKIE_NAME = "refresh_token";
-    private static final String COOKIE_PATH = "/api/v1/auth/refresh";
+    private static final String COOKIE_PATH = AuthEndpoints.REFRESH;
 
     private final RefreshTokenProperties refreshTokenProperties;
 
