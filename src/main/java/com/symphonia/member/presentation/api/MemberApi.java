@@ -1,4 +1,4 @@
-package com.symphonia.member.presentation;
+package com.symphonia.member.presentation.api;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.member.presentation.dto.request.MemberUpdateRequest;

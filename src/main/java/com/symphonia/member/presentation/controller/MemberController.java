@@ -5,7 +5,7 @@ import com.symphonia.member.application.dto.command.MemberDeleteCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.service.MemberCommandService;
 import com.symphonia.member.application.service.MemberQueryService;
-import com.symphonia.member.presentation.MemberApi;
+import com.symphonia.member.presentation.api.MemberApi;
 import com.symphonia.member.presentation.dto.request.MemberUpdateRequest;
 import com.symphonia.member.presentation.dto.response.MemberResponse;
 import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;
