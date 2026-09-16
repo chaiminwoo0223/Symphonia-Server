@@ -47,12 +47,13 @@
 | 커밋 전 검증, 커밋 단위, 커밋 메시지 포맷, push 규칙과 게이트 훅 동작 | `commit-push` |
 | GitHub 이슈 생성 | `create-issue` |
 | Pull Request 생성 | `create-pr` |
+| 설계 논의에서 여러 대안 중 하나로 결론이 났을 때, 그 결정을 어디에/어떻게 기록할지 | `design-decision` |
 | 새 도메인 스캐폴딩 | `/new-domain` |
 | 기존 도메인에 기능 추가 | `/new-feature` |
 | PR 전 전체 검증 | `/run-checks` |
 
 > 도메인 스캐폴딩은 `domain-scaffolder`, 코드 리뷰는 `code-reviewer`, 테스트 작성은 `test-writer`, 실패 테스트 원인 진단(수정 제외)은 `test-validator` 에이전트에 위임한다.
-> `architecture`/`testing`/`git-workflow`/`commit-push`/`error-handling`/`create-issue`/`create-pr`/`code-style` 스킬은 작성 완료. `domain-scaffolder`/`code-reviewer`/`test-writer`/`test-validator` 에이전트와 `/new-domain`/`/new-feature`/`/run-checks` 커맨드, `check-all.sh`도 작성 완료.
+> `architecture`/`testing`/`git-workflow`/`commit-push`/`error-handling`/`create-issue`/`create-pr`/`code-style`/`design-decision` 스킬은 작성 완료. `domain-scaffolder`/`code-reviewer`/`test-writer`/`test-validator` 에이전트와 `/new-domain`/`/new-feature`/`/run-checks` 커맨드, `check-all.sh`도 작성 완료.
 
 ## 핵심 제약 (Critical Constraints)
 

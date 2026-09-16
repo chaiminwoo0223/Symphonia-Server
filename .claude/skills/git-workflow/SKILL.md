@@ -15,7 +15,7 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 |---|---|
 | `main` | 운영 배포 |
 | `develop` | 통합 (PR 대상). 직접 커밋은 긴급 `[HotFix]` 대응에만 허용 (`commit-push` 스킬 참고) |
-| `<type>/#이슈번호` | 이슈 작업 (`develop`에서 분기). 접두어는 그 작업의 주된 커밋 type을 그대로 쓴다 (예: `feat/9`, `refactor/22`, `chore/29`) |
+| `<type>/이슈번호` | 이슈 작업 (`develop`에서 분기). 접두어는 그 작업의 주된 커밋 type을 그대로 쓴다 (예: `feat/9`, `refactor/22`, `chore/29`). 이슈 번호 앞에 `#`을 붙이지 않는다 — `check-commit-issue-number.sh`의 브랜치 매칭 정규식(`^[a-z]+/([0-9]+)$`)도 `#` 없는 형식만 인식한다 |
 
 ## Commit & Push
 

@@ -61,7 +61,7 @@ description: Load when creating a pull request. PR 대상/제목/본문 구성 �
 
 ## 예시
 
-실제 발급된 Performance 타입 PR이다. 작업 내용을 이모지 소제목으로 나누고, 그 아래 중첩 불릿으로 세부 변경을 적고, 개선 효과는 표로 제시하는 형태를 그대로 따른다.
+다른 프로젝트에서 실제로 썼던 Performance 타입 PR 형식이다(Symphonia의 실제 이슈·PR 이력이 아니다 — `SajuChart`, `PartnerSajuSummary` 등은 Symphonia에 존재하지 않는 클래스다). 작업 내용을 이모지 소제목으로 나누고, 그 아래 중첩 불릿으로 세부 변경을 적고, 개선 효과는 표로 제시하는 형태만 그대로 따르고 클래스명·이슈 번호는 실제 작업 내용으로 바꿔 쓴다.
 
 ```markdown
 [Performance] 상대방 사주 목록 조회 N+1 쿼리 개선
