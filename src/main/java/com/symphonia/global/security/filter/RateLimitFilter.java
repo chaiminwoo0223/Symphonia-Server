@@ -1,7 +1,7 @@
 package com.symphonia.global.security.filter;
 
 import com.symphonia.auth.domain.error.AuthErrorCode;
-import com.symphonia.global.constants.UrlConstants;
+import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.global.security.writer.ErrorResponseWriter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,9 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final Map<String, Integer> LIMIT_BY_PATH =
             Map.of(
-                    UrlConstants.SIGNUP_PATH, 5,
-                    UrlConstants.LOGIN_PATH, 5,
-                    UrlConstants.REFRESH_PATH, 10);
+                    AuthEndpoints.SIGNUP, 5,
+                    AuthEndpoints.LOGIN, 5,
+                    AuthEndpoints.REFRESH, 10);
     private static final Duration WINDOW = Duration.ofMinutes(1);
     private static final String KEY_PREFIX = "rate-limit:";
 

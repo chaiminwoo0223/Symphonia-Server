@@ -14,28 +14,26 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 
-@RequestMapping("/api/v1/auth")
 @Tag(name = "Auth API", description = "인증 API")
 public interface AuthApi {
-    @PostMapping("/signup")
+    @PostMapping(AuthEndpoints.SIGNUP)
     @Operation(summary = "회원가입", description = "소셜 로그인 인가 코드로 회원가입을 처리하고 토큰을 발급합니다.")
     ResponseEntity<StandardResponse<TokenResponse>> signup(
             @Valid @RequestBody SignupRequest request, HttpServletRequest httpRequest);
 
-    @PostMapping("/login")
+    @PostMapping(AuthEndpoints.LOGIN)
     @Operation(summary = "로그인", description = "소셜 로그인 인가 코드로 로그인을 처리하고 토큰을 발급합니다.")
     ResponseEntity<StandardResponse<TokenResponse>> login(
             @Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest);
 
-    @PostMapping("/refresh")
+    @PostMapping(AuthEndpoints.REFRESH)
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰 쿠키로 새로운 엑세스 토큰과 리프레시 토큰을 재발급합니다.")
     ResponseEntity<StandardResponse<TokenResponse>> refresh(
             @CookieValue(name = CookieProvider.COOKIE_NAME, required = false) String refreshToken,
             HttpServletRequest httpRequest);
 
-    @PostMapping("/logout")
+    @PostMapping(AuthEndpoints.LOGOUT)
     @Operation(summary = "로그아웃", description = "인증된 멤버를 로그아웃 처리합니다.")
     ResponseEntity<StandardResponse<Void>> logout(
             Authentication authentication, HttpServletRequest httpRequest);

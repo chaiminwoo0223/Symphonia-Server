@@ -1,8 +1,9 @@
 package com.symphonia.global.config;
 
+import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.global.config.properties.AccessTokenProperties;
+import com.symphonia.global.config.properties.CorsProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
-import com.symphonia.global.constants.UrlConstants;
 import com.symphonia.global.security.filter.JwtAuthenticationFilter;
 import com.symphonia.global.security.filter.RateLimitFilter;
 import com.symphonia.global.security.handler.CustomAccessDeniedHandler;
@@ -27,12 +28,24 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableWebSecurity
 @Configuration
 @RequiredArgsConstructor
-@EnableConfigurationProperties({AccessTokenProperties.class, RefreshTokenProperties.class})
+@EnableConfigurationProperties({
+    AccessTokenProperties.class,
+    RefreshTokenProperties.class,
+    CorsProperties.class
+})
 public class SecurityConfig {
+    private static final String[] SWAGGER_PATHS = {
+        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
+    };
+    private static final String[] PERMIT_ALL_PATHS = {
+        AuthEndpoints.SIGNUP, AuthEndpoints.LOGIN, AuthEndpoints.REFRESH
+    };
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final RateLimitFilter rateLimitFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final CorsProperties corsProperties;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -51,9 +64,9 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers(UrlConstants.SWAGGER_PATHS)
+                                        .requestMatchers(SWAGGER_PATHS)
                                         .permitAll()
-                                        .requestMatchers(UrlConstants.PERMIT_ALL_PATHS)
+                                        .requestMatchers(PERMIT_ALL_PATHS)
                                         .permitAll()
                                         .anyRequest()
                                         .authenticated())
@@ -87,7 +100,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(UrlConstants.CORS_ALLOWED_ORIGINS);
+        configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(CorsConfiguration.ALL));
