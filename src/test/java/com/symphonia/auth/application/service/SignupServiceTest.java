@@ -13,7 +13,7 @@ import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
-import com.symphonia.member.application.dto.command.MemberCreateCommand;
+import com.symphonia.member.application.dto.command.CreateMemberCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.CreateMemberUseCase;
 import com.symphonia.member.domain.entity.Role;
@@ -67,7 +67,7 @@ class SignupServiceTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
-                given(createMemberUseCase.create(any(MemberCreateCommand.class)))
+                given(createMemberUseCase.create(any(CreateMemberCommand.class)))
                         .willReturn(memberResult);
                 given(issueTokenUseCase.issue(String.valueOf(MEMBER_ID), Role.ROLE_MEMBER.name()))
                         .willReturn(
@@ -76,16 +76,16 @@ class SignupServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("OAuthMemberResult로 구성한 MemberCreateCommand로 멤버 생성을 요청한다.")
+            @DisplayName("OAuthMemberResult로 구성한 CreateMemberCommand로 멤버 생성을 요청한다.")
             void shouldCreateMemberWithMappedCommand() {
                 // when
                 signupService.signup(command);
 
                 // then
-                ArgumentCaptor<MemberCreateCommand> captor =
-                        ArgumentCaptor.forClass(MemberCreateCommand.class);
+                ArgumentCaptor<CreateMemberCommand> captor =
+                        ArgumentCaptor.forClass(CreateMemberCommand.class);
                 then(createMemberUseCase).should().create(captor.capture());
-                MemberCreateCommand captured = captor.getValue();
+                CreateMemberCommand captured = captor.getValue();
                 assertThat(captured.socialId()).isEqualTo(oAuthMemberResult.socialId());
                 assertThat(captured.nickname()).isEqualTo(oAuthMemberResult.nickname());
                 assertThat(captured.email()).isEqualTo(oAuthMemberResult.email());
@@ -116,7 +116,7 @@ class SignupServiceTest extends UnitTest {
             @DisplayName("예외가 그대로 전파된다.")
             void shouldPropagateException() {
                 // given
-                given(createMemberUseCase.create(any(MemberCreateCommand.class)))
+                given(createMemberUseCase.create(any(CreateMemberCommand.class)))
                         .willThrow(new MemberAlreadyExistsException());
 
                 // when & then

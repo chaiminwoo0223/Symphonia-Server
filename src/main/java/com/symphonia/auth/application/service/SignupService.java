@@ -25,7 +25,7 @@ public class SignupService implements SignupUseCase {
     public TokenResult signup(SignupCommand command) {
         OAuthMemberResult result =
                 exchangeSocialCodeUseCase.exchange(command.provider(), command.code());
-        MemberResult member = createMemberUseCase.create(result.toMemberCreateCommand());
+        MemberResult member = createMemberUseCase.create(result.toCreateMemberCommand());
 
         return issueTokenUseCase.issue(String.valueOf(member.id()), member.role().name());
     }

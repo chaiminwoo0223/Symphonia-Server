@@ -1,14 +1,14 @@
 package com.symphonia.member.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
-import com.symphonia.member.application.dto.command.MemberDeleteCommand;
+import com.symphonia.member.application.dto.command.DeleteMemberCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.service.MemberCommandService;
 import com.symphonia.member.application.service.MemberQueryService;
 import com.symphonia.member.presentation.api.MemberApi;
-import com.symphonia.member.presentation.dto.request.MemberUpdateRequest;
+import com.symphonia.member.presentation.dto.request.UpdateMemberRequest;
 import com.symphonia.member.presentation.dto.response.MemberResponse;
-import com.symphonia.member.presentation.dto.response.MemberUpdateResponse;
+import com.symphonia.member.presentation.dto.response.UpdateMemberResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -32,11 +32,11 @@ public class MemberController implements MemberApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<MemberUpdateResponse>> update(
-            String memberId, MemberUpdateRequest request) {
+    public ResponseEntity<StandardResponse<UpdateMemberResponse>> update(
+            String memberId, UpdateMemberRequest request) {
         MemberResult result =
                 memberCommandService.update(Long.parseLong(memberId), request.toCommand());
-        MemberUpdateResponse response = MemberUpdateResponse.from(result);
+        UpdateMemberResponse response = UpdateMemberResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));
@@ -46,8 +46,8 @@ public class MemberController implements MemberApi {
     public ResponseEntity<StandardResponse<Void>> delete(
             String memberId, Authentication authentication, HttpServletRequest httpRequest) {
         String accessToken = (String) authentication.getCredentials();
-        MemberDeleteCommand command =
-                MemberDeleteCommand.of(
+        DeleteMemberCommand command =
+                DeleteMemberCommand.of(
                         Long.parseLong(memberId), accessToken, httpRequest.getRemoteAddr());
         memberCommandService.delete(command);
 
