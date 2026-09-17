@@ -16,7 +16,7 @@ import com.symphonia.member.application.event.MemberDeletedEvent;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
-import com.symphonia.member.presentation.dto.request.MemberUpdateRequest;
+import com.symphonia.member.presentation.dto.request.UpdateMemberRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -82,7 +82,7 @@ class MemberControllerTest extends IntegrationTest {
             // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
             String token = authHelper.bearerTokenFor(member);
-            MemberUpdateRequest request = new MemberUpdateRequest("새로운 닉네임");
+            UpdateMemberRequest request = new UpdateMemberRequest("새로운 닉네임");
 
             // when & then
             mockMvc.perform(
@@ -102,7 +102,7 @@ class MemberControllerTest extends IntegrationTest {
             @DisplayName("401을 반환한다")
             void shouldReturnUnauthorized() throws Exception {
                 // given
-                MemberUpdateRequest request = new MemberUpdateRequest("새로운 닉네임");
+                UpdateMemberRequest request = new UpdateMemberRequest("새로운 닉네임");
 
                 // when & then
                 mockMvc.perform(
@@ -123,7 +123,7 @@ class MemberControllerTest extends IntegrationTest {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 String token = authHelper.bearerTokenFor(member);
-                MemberUpdateRequest request = new MemberUpdateRequest("");
+                UpdateMemberRequest request = new UpdateMemberRequest("");
 
                 // when & then
                 mockMvc.perform(

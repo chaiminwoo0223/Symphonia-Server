@@ -1,7 +1,7 @@
 package com.symphonia.auth.application.dto.result;
 
 import com.symphonia.auth.domain.identity.SocialIdentity;
-import com.symphonia.member.application.dto.command.MemberCreateCommand;
+import com.symphonia.member.application.dto.command.CreateMemberCommand;
 import com.symphonia.member.domain.entity.SocialProvider;
 
 public record OAuthMemberResult(
@@ -19,7 +19,7 @@ public record OAuthMemberResult(
                 SocialProvider.valueOf(identity.socialProvider()));
     }
 
-    public MemberCreateCommand toMemberCreateCommand() {
-        return new MemberCreateCommand(socialId, nickname, email, profileImage, socialProvider);
+    public CreateMemberCommand toCreateMemberCommand() {
+        return new CreateMemberCommand(socialId, nickname, email, profileImage, socialProvider);
     }
 }

@@ -7,9 +7,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
-import com.symphonia.member.application.dto.command.MemberCreateCommand;
-import com.symphonia.member.application.dto.command.MemberDeleteCommand;
-import com.symphonia.member.application.dto.command.MemberUpdateCommand;
+import com.symphonia.member.application.dto.command.CreateMemberCommand;
+import com.symphonia.member.application.dto.command.DeleteMemberCommand;
+import com.symphonia.member.application.dto.command.UpdateMemberCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.event.MemberDeletedEvent;
 import com.symphonia.member.domain.entity.Member;
@@ -18,9 +18,9 @@ import com.symphonia.member.domain.error.MemberErrorCode;
 import com.symphonia.member.domain.exception.MemberAlreadyExistsException;
 import com.symphonia.member.domain.exception.MemberNotFoundException;
 import com.symphonia.member.domain.repository.MemberRepository;
-import com.symphonia.member.fixture.MemberCreateCommandFixture;
+import com.symphonia.member.fixture.CreateMemberCommandFixture;
 import com.symphonia.member.fixture.MemberFixture;
-import com.symphonia.member.fixture.MemberUpdateCommandFixture;
+import com.symphonia.member.fixture.UpdateMemberCommandFixture;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,11 +59,11 @@ class MemberCommandServiceTest extends UnitTest {
         @Nested
         @DisplayName("SocialProvider가 KAKAO인 경우")
         class WhenSocialProviderIsKakao {
-            private MemberCreateCommand command;
+            private CreateMemberCommand command;
 
             @BeforeEach
             void setUp() {
-                command = new MemberCreateCommandFixture(MemberFixture.KAKAO).build();
+                command = new CreateMemberCommandFixture(MemberFixture.KAKAO).build();
             }
 
             @Test
@@ -107,11 +107,11 @@ class MemberCommandServiceTest extends UnitTest {
         @Nested
         @DisplayName("SocialProvider가 GOOGLE인 경우")
         class WhenSocialProviderIsGoogle {
-            private MemberCreateCommand command;
+            private CreateMemberCommand command;
 
             @BeforeEach
             void setUp() {
-                command = new MemberCreateCommandFixture(MemberFixture.GOOGLE).build();
+                command = new CreateMemberCommandFixture(MemberFixture.GOOGLE).build();
             }
 
             @Test
@@ -156,11 +156,11 @@ class MemberCommandServiceTest extends UnitTest {
     @Nested
     @DisplayName("update 메서드는")
     class Update {
-        private MemberUpdateCommand command;
+        private UpdateMemberCommand command;
 
         @BeforeEach
         void setUp() {
-            command = new MemberUpdateCommandFixture().nickname("팬텀").build();
+            command = new UpdateMemberCommandFixture().nickname("팬텀").build();
         }
 
         @Test
@@ -203,7 +203,7 @@ class MemberCommandServiceTest extends UnitTest {
             // given
             Long unknownId = -1L;
             given(memberRepository.findById(unknownId)).willReturn(Optional.empty());
-            MemberDeleteCommand command = MemberDeleteCommand.of(unknownId, ACCESS_TOKEN, IP);
+            DeleteMemberCommand command = DeleteMemberCommand.of(unknownId, ACCESS_TOKEN, IP);
 
             // when & then
             assertThatThrownBy(() -> memberCommandService.delete(command))
@@ -218,7 +218,7 @@ class MemberCommandServiceTest extends UnitTest {
             // given
             Long memberId = 1L;
             given(memberRepository.findById(memberId)).willReturn(Optional.of(googleMember));
-            MemberDeleteCommand command = MemberDeleteCommand.of(memberId, ACCESS_TOKEN, IP);
+            DeleteMemberCommand command = DeleteMemberCommand.of(memberId, ACCESS_TOKEN, IP);
 
             // when
             memberCommandService.delete(command);

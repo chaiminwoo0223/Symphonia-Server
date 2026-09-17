@@ -1,7 +1,7 @@
 package com.symphonia.member.application.usecase;
 
-import com.symphonia.member.application.dto.command.MemberDeleteCommand;
+import com.symphonia.member.application.dto.command.DeleteMemberCommand;
 
 public interface DeleteMemberUseCase {
-    void delete(MemberDeleteCommand command);
+    void delete(DeleteMemberCommand command);
 }
