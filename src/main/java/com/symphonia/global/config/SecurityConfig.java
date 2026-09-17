@@ -8,6 +8,7 @@ import com.symphonia.global.security.filter.JwtAuthenticationFilter;
 import com.symphonia.global.security.filter.RateLimitFilter;
 import com.symphonia.global.security.handler.CustomAccessDeniedHandler;
 import com.symphonia.global.security.handler.CustomAuthenticationEntryPoint;
+import com.symphonia.pairing.presentation.PairingEndpoints;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -38,7 +39,7 @@ public class SecurityConfig {
         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
     };
     private static final String[] PERMIT_ALL_PATHS = {
-        AuthEndpoints.SIGNUP, AuthEndpoints.LOGIN, AuthEndpoints.REFRESH
+        AuthEndpoints.SIGNUP, AuthEndpoints.LOGIN, AuthEndpoints.REFRESH, PairingEndpoints.RECOMMEND
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
