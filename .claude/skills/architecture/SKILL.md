@@ -25,7 +25,7 @@ com.symphonia
 │   └── infrastructure/    # Redis 기반 RefreshToken/BlacklistAccessToken 구현, JPA 엔티티
 ├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45)
 │   ├── domain/            # 순수 도메인 모델(Drink, Anju, MusicMood, Pairing), FlavorProfile/MoodProfile/Occasion 값 객체, PairingFeedback, *Repository 인터페이스
-│   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (RecommendPairingUseCase/RecommendPairingService, SubmitPairingFeedbackUseCase/SubmitPairingFeedbackService)
+│   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨)
 │   ├── presentation/
 │   └── infrastructure/    # DrinkRepository/AnjuRepository/PairingFeedbackRepository 구현체, JPA 엔티티
 ├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
