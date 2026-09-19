@@ -46,7 +46,7 @@ class MemberQueryServiceTest extends UnitTest {
         class WhenSocialProviderIsKakao {
 
             @Test
-            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            @DisplayName("멤버를 찾을 수 없으면 MemberNotFoundException이 발생한다.")
             void shouldThrowMemberNotFoundException() {
                 // given
                 given(memberRepository.findBySocialLogin(SocialProvider.KAKAO, UNKNOWN_SOCIAL_ID))
@@ -90,7 +90,7 @@ class MemberQueryServiceTest extends UnitTest {
         class WhenSocialProviderIsGoogle {
 
             @Test
-            @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+            @DisplayName("멤버를 찾을 수 없으면 MemberNotFoundException이 발생한다.")
             void shouldThrowMemberNotFoundException() {
                 // given
                 given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
@@ -135,7 +135,7 @@ class MemberQueryServiceTest extends UnitTest {
     class GetById {
 
         @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+        @DisplayName("멤버를 찾을 수 없으면 MemberNotFoundException이 발생한다.")
         void shouldThrowMemberNotFoundException() {
             // given
             Long unknownId = -1L;
