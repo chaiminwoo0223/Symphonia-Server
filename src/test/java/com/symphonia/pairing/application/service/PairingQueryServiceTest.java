@@ -146,10 +146,7 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     DrinkFixture.BALANCED.create(),
                                     DrinkFixture.HIGH_ABV_BALANCED.create()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
+            givenSingleLightAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
@@ -186,10 +183,7 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     DrinkFixture.BALANCED.create(),
                                     DrinkFixture.NON_ALCOHOLIC_BALANCED.create()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
+            givenSingleLightAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND,
@@ -230,8 +224,7 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.LIGHT_BALANCED.create(),
                                     AnjuFixture.PEANUT_ALLERGY.create()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
+            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND,
@@ -267,6 +260,17 @@ class PairingQueryServiceTest extends UnitTest {
                                     MusicMoodFixture.FORMAL_JAZZ.create(),
                                     MusicMoodFixture.CASUAL_ACOUSTIC.create(),
                                     MusicMoodFixture.CELEBRATORY_DANCE.create()));
+        }
+
+        private void givenSingleLightAnjuAndCasualAcousticMusicMood() {
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
+            givenCasualAcousticMusicMood();
+        }
+
+        private void givenCasualAcousticMusicMood() {
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
         }
     }
 }
