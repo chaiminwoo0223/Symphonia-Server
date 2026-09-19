@@ -26,7 +26,7 @@ class MusicMoodRepositoryImplTest extends RepositoryTest {
 
         @Test
         @DisplayName("저장된 모든 MusicMood를 반환한다")
-        void shouldReturnAllMusicMoods() {
+        void shouldReturnMusicMoods() {
             // given
             MusicMoodJpaEntity saved =
                     musicMoodJpaRepository.save(

@@ -37,45 +37,50 @@ class IssueTokenServiceTest extends UnitTest {
     @DisplayName("issue 메서드는")
     class Issue {
 
-        @BeforeEach
-        void setUp() {
-            given(accessTokenProvider.generate(MEMBER_ID, ROLE)).willReturn(ACCESS_TOKEN);
-            given(refreshTokenProvider.generate()).willReturn(REFRESH_TOKEN);
-            given(refreshTokenProvider.getExpirationTime())
-                    .willReturn(REFRESH_TOKEN_EXPIRATION_TIME);
-        }
+        @Nested
+        @DisplayName("정상적으로 토큰을 발급하는 경우")
+        class WhenIssued {
 
-        @Test
-        @DisplayName("엑세스 토큰과 리프레시 토큰을 생성한다.")
-        void shouldGenerateAccessTokenAndRefreshTokenWhenIssued() {
-            // when
-            issueTokenService.issue(MEMBER_ID, ROLE);
+            @BeforeEach
+            void setUp() {
+                given(accessTokenProvider.generate(MEMBER_ID, ROLE)).willReturn(ACCESS_TOKEN);
+                given(refreshTokenProvider.generate()).willReturn(REFRESH_TOKEN);
+                given(refreshTokenProvider.getExpirationTime())
+                        .willReturn(REFRESH_TOKEN_EXPIRATION_TIME);
+            }
 
-            // then
-            verify(accessTokenProvider).generate(MEMBER_ID, ROLE);
-            verify(refreshTokenProvider).generate();
-        }
+            @Test
+            @DisplayName("엑세스 토큰과 리프레시 토큰을 생성한다.")
+            void shouldGenerateAccessTokenAndRefreshToken() {
+                // when
+                issueTokenService.issue(MEMBER_ID, ROLE);
 
-        @Test
-        @DisplayName("생성한 리프레시 토큰을 저장한다.")
-        void shouldSaveRefreshTokenWhenIssued() {
-            // when
-            issueTokenService.issue(MEMBER_ID, ROLE);
+                // then
+                verify(accessTokenProvider).generate(MEMBER_ID, ROLE);
+                verify(refreshTokenProvider).generate();
+            }
 
-            // then
-            verify(refreshTokenRepository)
-                    .save(REFRESH_TOKEN, MEMBER_ID, REFRESH_TOKEN_EXPIRATION_TIME);
-        }
+            @Test
+            @DisplayName("생성한 리프레시 토큰을 저장한다.")
+            void shouldSaveRefreshToken() {
+                // when
+                issueTokenService.issue(MEMBER_ID, ROLE);
 
-        @Test
-        @DisplayName("TokenResult를 반환한다.")
-        void shouldReturnTokenResultWhenIssued() {
-            // when
-            TokenResult result = issueTokenService.issue(MEMBER_ID, ROLE);
+                // then
+                verify(refreshTokenRepository)
+                        .save(REFRESH_TOKEN, MEMBER_ID, REFRESH_TOKEN_EXPIRATION_TIME);
+            }
 
-            // then
-            assertThat(result.accessToken()).isEqualTo(ACCESS_TOKEN);
-            assertThat(result.refreshToken()).isEqualTo(REFRESH_TOKEN);
+            @Test
+            @DisplayName("TokenResult를 반환한다.")
+            void shouldReturnTokenResult() {
+                // when
+                TokenResult result = issueTokenService.issue(MEMBER_ID, ROLE);
+
+                // then
+                assertThat(result.accessToken()).isEqualTo(ACCESS_TOKEN);
+                assertThat(result.refreshToken()).isEqualTo(REFRESH_TOKEN);
+            }
         }
     }
 }

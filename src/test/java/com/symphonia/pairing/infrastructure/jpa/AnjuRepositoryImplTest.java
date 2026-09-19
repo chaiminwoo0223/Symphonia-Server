@@ -26,7 +26,7 @@ class AnjuRepositoryImplTest extends RepositoryTest {
 
         @Test
         @DisplayName("저장된 모든 Anju를 반환한다")
-        void shouldReturnAllAnjus() {
+        void shouldReturnAnjus() {
             // given
             AnjuJpaEntity saved =
                     anjuJpaRepository.save(

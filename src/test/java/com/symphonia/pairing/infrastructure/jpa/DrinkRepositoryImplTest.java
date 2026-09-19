@@ -26,7 +26,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
 
         @Test
         @DisplayName("저장된 모든 Drink를 반환한다")
-        void shouldReturnAllDrinks() {
+        void shouldReturnDrinks() {
             // given
             DrinkJpaEntity saved =
                     drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SOJU.create()));
