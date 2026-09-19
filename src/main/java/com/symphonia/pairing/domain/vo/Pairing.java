@@ -17,6 +17,7 @@ public class Pairing {
     private static final double MOOD_WEIGHT = 0.4;
     private static final double LIGHT_ANJU_PENALTY = 0.1;
     private static final int LIGHT_ANJU_RICHNESS_THRESHOLD = 3;
+    private static final double NON_ALCOHOLIC_MISMATCH_PENALTY = 0.2;
     private static final int RECOMMENDATION_LIMIT = 5;
 
     private final Drink drink;
@@ -57,6 +58,10 @@ public class Pairing {
         if (occasion.prefersLightAnju()
                 && anju.getFlavorProfile().getRichness() > LIGHT_ANJU_RICHNESS_THRESHOLD) {
             score -= LIGHT_ANJU_PENALTY;
+        }
+
+        if (occasion.requiresNonAlcoholicOption() && !drink.isNonAlcoholic()) {
+            score -= NON_ALCOHOLIC_MISMATCH_PENALTY;
         }
 
         return Math.max(0, score);

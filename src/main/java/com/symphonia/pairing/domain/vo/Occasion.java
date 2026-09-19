@@ -1,5 +1,6 @@
 package com.symphonia.pairing.domain.vo;
 
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,9 +11,20 @@ import lombok.NoArgsConstructor;
 public class Occasion {
     private RelationshipType relationshipType;
     private MoodType moodType;
+    private Set<AttendeeConstraint> attendeeConstraints;
 
     public static Occasion of(RelationshipType relationshipType, MoodType moodType) {
-        return new Occasion(relationshipType, moodType);
+        return of(relationshipType, moodType, Set.of());
+    }
+
+    public static Occasion of(
+            RelationshipType relationshipType,
+            MoodType moodType,
+            Set<AttendeeConstraint> attendeeConstraints) {
+        return new Occasion(
+                relationshipType,
+                moodType,
+                attendeeConstraints == null ? Set.of() : attendeeConstraints);
     }
 
     public MoodProfile toMoodProfile() {
@@ -27,5 +39,11 @@ public class Occasion {
 
     public boolean prefersLightAnju() {
         return relationshipType.prefersLightAnju() || moodType == MoodType.FORMAL;
+    }
+
+    public boolean requiresNonAlcoholicOption() {
+        return attendeeConstraints.contains(AttendeeConstraint.DRIVER)
+                || attendeeConstraints.contains(AttendeeConstraint.PREGNANT)
+                || attendeeConstraints.contains(AttendeeConstraint.NON_DRINKER);
     }
 }

@@ -67,5 +67,21 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("nonAlcoholic 값을 포함해 Drink를 반환한다")
+        void shouldReturnDrinkWithNonAlcoholicFlag() {
+            // given
+            DrinkJpaEntity saved =
+                    drinkJpaRepository.save(
+                            DrinkJpaEntity.from(DrinkFixture.NON_ALCOHOLIC_BALANCED.create()));
+
+            // when
+            Optional<Drink> result = drinkRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().isNonAlcoholic()).isTrue();
+        }
     }
 }

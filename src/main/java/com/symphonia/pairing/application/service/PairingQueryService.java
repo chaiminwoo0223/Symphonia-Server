@@ -24,7 +24,9 @@ public class PairingQueryService implements RecommendPairingUseCase {
 
     @Override
     public List<PairingResult> recommend(RecommendPairingQuery query) {
-        Occasion occasion = Occasion.of(query.relationshipType(), query.moodType());
+        Occasion occasion =
+                Occasion.of(
+                        query.relationshipType(), query.moodType(), query.attendeeConstraints());
 
         List<Drink> drinks = drinkRepository.findAll();
         List<Anju> anjus = anjuRepository.findAll();
