@@ -108,7 +108,7 @@ class LoginServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외가 그대로 전파된다.")
-            void shouldPropagateException() {
+            void shouldPropagateMemberNotFoundException() {
                 // given
                 given(
                                 getMemberUseCase.getBySocialLogin(
