@@ -18,8 +18,6 @@ import lombok.RequiredArgsConstructor;
 @QueryService
 @RequiredArgsConstructor
 public class PairingQueryService implements RecommendPairingUseCase {
-    private static final int TOP_N = 5;
-
     private final DrinkRepository drinkRepository;
     private final AnjuRepository anjuRepository;
     private final MusicMoodRepository musicMoodRepository;
@@ -33,7 +31,6 @@ public class PairingQueryService implements RecommendPairingUseCase {
         List<MusicMood> musicMoods = musicMoodRepository.findAll();
 
         return Pairing.recommend(drinks, anjus, musicMoods, occasion).stream()
-                .limit(TOP_N)
                 .map(PairingResult::from)
                 .toList();
     }

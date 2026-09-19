@@ -17,6 +17,7 @@ public class Pairing {
     private static final double MOOD_WEIGHT = 0.4;
     private static final double LIGHT_ANJU_PENALTY = 0.1;
     private static final int LIGHT_ANJU_RICHNESS_THRESHOLD = 3;
+    private static final int RECOMMENDATION_LIMIT = 5;
 
     private final Drink drink;
     private final Anju anju;
@@ -40,6 +41,7 @@ public class Pairing {
 
         return pairings.stream()
                 .sorted(Comparator.comparingDouble(Pairing::getScore).reversed())
+                .limit(RECOMMENDATION_LIMIT)
                 .toList();
     }
 
