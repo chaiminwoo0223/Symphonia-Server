@@ -36,6 +36,9 @@ public class Pairing {
                 continue;
             }
             for (Anju anju : anjus) {
+                if (occasion.hasAllergyConflict(anju)) {
+                    continue;
+                }
                 for (MusicMood musicMood : musicMoods) {
                     pairings.add(of(drink, anju, musicMood, occasion));
                 }

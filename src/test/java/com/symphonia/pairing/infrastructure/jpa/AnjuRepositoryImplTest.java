@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
+import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import java.util.List;
 import java.util.Optional;
@@ -68,6 +69,21 @@ class AnjuRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("allergyTypes 값을 포함해 Anju를 반환한다")
+        void shouldReturnAnjuWithAllergyTypes() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.PEANUT_ALLERGY.create()));
+
+            // when
+            Optional<Anju> result = anjuRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getAllergyTypes()).containsExactly(AllergyType.PEANUT);
         }
     }
 }
