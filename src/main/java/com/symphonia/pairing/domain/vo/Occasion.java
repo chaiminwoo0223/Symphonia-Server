@@ -15,10 +15,6 @@ public class Occasion {
     private Set<AttendeeConstraint> attendeeConstraints;
     private Set<AllergyType> attendeeAllergies;
 
-    public static Occasion of(RelationshipType relationshipType, MoodType moodType) {
-        return of(relationshipType, moodType, Set.of(), Set.of());
-    }
-
     public static Occasion of(
             RelationshipType relationshipType,
             MoodType moodType,

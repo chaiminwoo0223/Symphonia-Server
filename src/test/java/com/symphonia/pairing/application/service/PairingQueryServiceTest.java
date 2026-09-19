@@ -104,7 +104,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             RelationshipType relationshipType = RelationshipType.FRIEND;
             MoodType moodType = MoodType.FORMAL;
-            Occasion occasion = Occasion.of(relationshipType, moodType);
+            Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
             MusicMood musicMood = MusicMoodFixture.FORMAL_JAZZ.create(occasion.toMoodProfile());
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BALANCED.create()));
             given(anjuRepository.findAll())
