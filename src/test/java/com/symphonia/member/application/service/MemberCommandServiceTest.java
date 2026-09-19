@@ -68,7 +68,7 @@ class MemberCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외가 발생한다.")
-            void shouldThrowException() {
+            void shouldThrowMemberAlreadyExistsException() {
                 // given
                 given(
                                 memberRepository.existsBySocialLogin(
@@ -122,7 +122,7 @@ class MemberCommandServiceTest extends UnitTest {
 
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
+        void shouldThrowMemberNotFoundException() {
             // given
             Long unknownId = -1L;
             given(memberRepository.findById(unknownId)).willReturn(Optional.empty());
@@ -156,7 +156,7 @@ class MemberCommandServiceTest extends UnitTest {
 
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
+        void shouldThrowMemberNotFoundException() {
             // given
             Long unknownId = -1L;
             given(memberRepository.findById(unknownId)).willReturn(Optional.empty());

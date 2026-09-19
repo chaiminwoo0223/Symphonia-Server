@@ -47,7 +47,7 @@ class MemberQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-            void shouldThrowExceptionWhenMemberNotFound() {
+            void shouldThrowMemberNotFoundException() {
                 // given
                 given(memberRepository.findBySocialLogin(SocialProvider.KAKAO, UNKNOWN_SOCIAL_ID))
                         .willReturn(Optional.empty());
@@ -91,7 +91,7 @@ class MemberQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-            void shouldThrowExceptionWhenMemberNotFound() {
+            void shouldThrowMemberNotFoundException() {
                 // given
                 given(memberRepository.findBySocialLogin(SocialProvider.GOOGLE, UNKNOWN_SOCIAL_ID))
                         .willReturn(Optional.empty());
@@ -136,7 +136,7 @@ class MemberQueryServiceTest extends UnitTest {
 
         @Test
         @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
-        void shouldThrowExceptionWhenMemberNotFound() {
+        void shouldThrowMemberNotFoundException() {
             // given
             Long unknownId = -1L;
             given(memberRepository.findById(unknownId)).willReturn(Optional.empty());
