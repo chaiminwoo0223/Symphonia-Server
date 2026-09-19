@@ -111,7 +111,7 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
         class WhenProviderIsUnsupported {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("UnsupportedSocialProviderException이 발생한다.")
             void shouldThrowUnsupportedSocialProviderException() {
                 // when & then
                 assertThatThrownBy(() -> exchangeSocialCodeService.exchange("naver", CODE))

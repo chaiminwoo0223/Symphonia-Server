@@ -91,7 +91,7 @@ class RefreshServiceTest extends UnitTest {
         class WhenRefreshTokenConsumeFails {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("RefreshTokenNotFoundException이 발생한다.")
             void shouldThrowRefreshTokenNotFoundException() {
                 // given
                 given(refreshTokenRepository.consume(REFRESH_TOKEN)).willReturn(Optional.empty());
@@ -109,7 +109,7 @@ class RefreshServiceTest extends UnitTest {
         class WhenRefreshTokenAbsent {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("RefreshTokenNotFoundException이 발생한다.")
             void shouldThrowRefreshTokenNotFoundException() {
                 // when & then
                 assertThatThrownBy(() -> refreshService.refresh(RefreshCommand.of(null, IP)))

@@ -107,7 +107,7 @@ class LoginServiceTest extends UnitTest {
         class WhenMemberNotFound {
 
             @Test
-            @DisplayName("예외가 그대로 전파된다.")
+            @DisplayName("MemberNotFoundException이 그대로 전파된다.")
             void shouldPropagateMemberNotFoundException() {
                 // given
                 given(
