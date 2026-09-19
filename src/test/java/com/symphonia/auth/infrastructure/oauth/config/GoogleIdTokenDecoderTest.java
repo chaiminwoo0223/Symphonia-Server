@@ -86,7 +86,7 @@ class GoogleIdTokenDecoderTest {
 
             @Test
             @DisplayName("예외가 발생한다.")
-            void shouldThrowException() {
+            void shouldThrowJwtException() {
                 // given
                 String token =
                         signedToken(
@@ -103,7 +103,7 @@ class GoogleIdTokenDecoderTest {
 
             @Test
             @DisplayName("예외가 발생한다.")
-            void shouldThrowException() {
+            void shouldThrowJwtException() {
                 // given
                 String token =
                         signedToken(
@@ -122,7 +122,7 @@ class GoogleIdTokenDecoderTest {
 
             @Test
             @DisplayName("예외가 발생한다.")
-            void shouldThrowException() {
+            void shouldThrowJwtException() {
                 // given
                 String token =
                         signedToken(ISSUER, List.of(CLIENT_ID), Instant.now().minusSeconds(300));

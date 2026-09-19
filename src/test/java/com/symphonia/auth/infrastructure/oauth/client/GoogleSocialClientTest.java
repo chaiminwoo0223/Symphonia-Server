@@ -105,7 +105,7 @@ class GoogleSocialClientTest extends UnitTest {
             // 여기서는 이 SocialClient만의 관심사인 "id_token 누락" 분기만 확인한다.
             @Test
             @DisplayName("id_token이 없는 응답이면 예외가 발생한다.")
-            void shouldThrowExceptionWhenIdTokenMissing() {
+            void shouldThrowSocialAuthenticationFailedExceptionWhenIdTokenMissing() {
                 // given
                 mockServer
                         .expect(requestTo(TOKEN_URI))
@@ -134,7 +134,7 @@ class GoogleSocialClientTest extends UnitTest {
 
             @Test
             @DisplayName("예외가 발생한다.")
-            void shouldThrowException() {
+            void shouldThrowSocialMemberInfoFetchFailedException() {
                 // given
                 given(googleIdTokenDecoder.decode(ID_TOKEN))
                         .willThrow(new BadJwtException("invalid id token"));
