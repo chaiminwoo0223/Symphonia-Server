@@ -175,6 +175,45 @@ class PairingQueryServiceTest extends UnitTest {
             assertThat(nonAlcoholicResult.score()).isGreaterThan(alcoholicResult.score());
         }
 
+        @Test
+        @DisplayName("도수가 MODERATE_ABV_THRESHOLD를 초과하는 Drink는 이하인 Drink보다 점수가 낮다")
+        void shouldScoreLowerWhenAbvExceedsModerateThreshold() {
+            // given
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.BALANCED.create(),
+                                    DrinkFixture.HIGH_ABV_BALANCED.create()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(RelationshipType.FRIEND, MoodType.CASUAL, Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            PairingResult moderateAbvResult =
+                    results.stream()
+                            .filter(r -> r.drinkName().equals(DrinkFixture.BALANCED.getName()))
+                            .findFirst()
+                            .orElseThrow();
+            PairingResult highAbvResult =
+                    results.stream()
+                            .filter(
+                                    r ->
+                                            r.drinkName()
+                                                    .equals(
+                                                            DrinkFixture.HIGH_ABV_BALANCED
+                                                                    .getName()))
+                            .findFirst()
+                            .orElseThrow();
+
+            assertThat(highAbvResult.score()).isLessThan(moderateAbvResult.score());
+        }
+
         private void givenStandardCatalog() {
             given(drinkRepository.findAll())
                     .willReturn(

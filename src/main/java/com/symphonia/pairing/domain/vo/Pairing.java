@@ -18,6 +18,8 @@ public class Pairing {
     private static final double LIGHT_ANJU_PENALTY = 0.1;
     private static final int LIGHT_ANJU_RICHNESS_THRESHOLD = 3;
     private static final double NON_ALCOHOLIC_MISMATCH_PENALTY = 0.2;
+    private static final double MODERATE_ABV_THRESHOLD = 20.0;
+    private static final double HIGH_ABV_PENALTY = 0.15;
     private static final int RECOMMENDATION_LIMIT = 5;
 
     private final Drink drink;
@@ -62,6 +64,10 @@ public class Pairing {
 
         if (occasion.requiresNonAlcoholicOption() && !drink.isNonAlcoholic()) {
             score -= NON_ALCOHOLIC_MISMATCH_PENALTY;
+        }
+
+        if (drink.getAbv() > MODERATE_ABV_THRESHOLD) {
+            score -= HIGH_ABV_PENALTY;
         }
 
         return Math.max(0, score);
