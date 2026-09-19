@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Tag(name = "Pairing API", description = "술, 안주, 음악 페어링 추천 API")
 public interface PairingApi {
     @GetMapping("/recommend")
-    @Operation(summary = "페어링 추천", description = "관계 유형과 분위기를 기반으로 술, 안주, 음악 조합을 추천합니다.")
+    @Operation(summary = "페어링 추천", description = "관계 유형과 분위기, 성인 인증 여부를 기반으로 술, 안주, 음악 조합을 추천합니다.")
     ResponseEntity<StandardResponse<List<PairingResponse>>> recommend(
             @Valid @ModelAttribute RecommendPairingRequest request);
 

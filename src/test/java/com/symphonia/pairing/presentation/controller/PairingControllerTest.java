@@ -47,7 +47,8 @@ class PairingControllerTest extends IntegrationTest {
             mockMvc.perform(
                             get("/api/v1/pairings/recommend")
                                     .param("relationshipType", "FRIEND")
-                                    .param("moodType", "CASUAL"))
+                                    .param("moodType", "CASUAL")
+                                    .param("isAdultConfirmed", "true"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray())
                     .andExpect(jsonPath("$.data[0].score").exists());
@@ -57,8 +58,39 @@ class PairingControllerTest extends IntegrationTest {
         @DisplayName("필수 파라미터가 없으면 400을 반환한다")
         void shouldReturnBadRequestWhenParameterMissing() throws Exception {
             // when & then
-            mockMvc.perform(get("/api/v1/pairings/recommend").param("relationshipType", "FRIEND"))
+            mockMvc.perform(
+                            get("/api/v1/pairings/recommend")
+                                    .param("relationshipType", "FRIEND")
+                                    .param("isAdultConfirmed", "true"))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Nested
+        @DisplayName("성인 인증이 되지 않은 경우")
+        class WhenAdultNotConfirmed {
+
+            @Test
+            @DisplayName("isAdultConfirmed 파라미터가 없으면 400을 반환한다")
+            void shouldReturnBadRequestWhenIsAdultConfirmedMissing() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                get("/api/v1/pairings/recommend")
+                                        .param("relationshipType", "FRIEND")
+                                        .param("moodType", "CASUAL"))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("isAdultConfirmed가 false면 400을 반환한다")
+            void shouldReturnBadRequestWhenIsAdultConfirmedFalse() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                get("/api/v1/pairings/recommend")
+                                        .param("relationshipType", "FRIEND")
+                                        .param("moodType", "CASUAL")
+                                        .param("isAdultConfirmed", "false"))
+                        .andExpect(status().isBadRequest());
+            }
         }
     }
 
