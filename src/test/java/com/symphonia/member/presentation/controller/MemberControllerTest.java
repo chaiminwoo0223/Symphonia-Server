@@ -48,14 +48,17 @@ class MemberControllerTest extends IntegrationTest {
             @DisplayName("멤버 정보를 반환한다")
             void shouldReturnMember() throws Exception {
                 // given
-                Member member = memberHelper.save(MemberFixture.KAKAO);
-                String token = authHelper.bearerTokenFor(member);
+                MemberSession memberSession = authenticateMember();
 
                 // when & then
-                mockMvc.perform(get("/api/v1/members/me").header(HttpHeaders.AUTHORIZATION, token))
+                mockMvc.perform(
+                                get("/api/v1/members/me")
+                                        .header(HttpHeaders.AUTHORIZATION, memberSession.token()))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.id").value(member.getId()))
-                        .andExpect(jsonPath("$.data.nickname").value(member.getNickname()));
+                        .andExpect(jsonPath("$.data.id").value(memberSession.member().getId()))
+                        .andExpect(
+                                jsonPath("$.data.nickname")
+                                        .value(memberSession.member().getNickname()));
             }
         }
 
@@ -80,8 +83,7 @@ class MemberControllerTest extends IntegrationTest {
         @DisplayName("닉네임을 수정한다")
         void shouldUpdateNickname() throws Exception {
             // given
-            Member member = memberHelper.save(MemberFixture.KAKAO);
-            String token = authHelper.bearerTokenFor(member);
+            String token = authenticateMember().token();
             UpdateMemberRequest request = new UpdateMemberRequest("새로운 닉네임");
 
             // when & then
@@ -121,8 +123,7 @@ class MemberControllerTest extends IntegrationTest {
             @DisplayName("400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
-                Member member = memberHelper.save(MemberFixture.KAKAO);
-                String token = authHelper.bearerTokenFor(member);
+                String token = authenticateMember().token();
                 UpdateMemberRequest request = new UpdateMemberRequest("");
 
                 // when & then
@@ -206,4 +207,12 @@ class MemberControllerTest extends IntegrationTest {
             }
         }
     }
+
+    private MemberSession authenticateMember() {
+        Member member = memberHelper.save(MemberFixture.KAKAO);
+        String token = authHelper.bearerTokenFor(member);
+        return new MemberSession(member, token);
+    }
+
+    private record MemberSession(Member member, String token) {}
 }
