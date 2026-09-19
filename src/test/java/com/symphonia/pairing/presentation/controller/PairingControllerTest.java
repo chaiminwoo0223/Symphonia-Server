@@ -18,12 +18,7 @@ import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
-import com.symphonia.pairing.infrastructure.jpa.AnjuJpaEntity;
-import com.symphonia.pairing.infrastructure.jpa.AnjuJpaRepository;
-import com.symphonia.pairing.infrastructure.jpa.DrinkJpaEntity;
-import com.symphonia.pairing.infrastructure.jpa.DrinkJpaRepository;
-import com.symphonia.pairing.infrastructure.jpa.MusicMoodJpaEntity;
-import com.symphonia.pairing.infrastructure.jpa.MusicMoodJpaRepository;
+import com.symphonia.pairing.helper.PairingHelper;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,9 +29,7 @@ import org.springframework.http.MediaType;
 
 class PairingControllerTest extends IntegrationTest {
 
-    @Autowired private DrinkJpaRepository drinkJpaRepository;
-    @Autowired private AnjuJpaRepository anjuJpaRepository;
-    @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
+    @Autowired private PairingHelper pairingHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
 
@@ -119,31 +112,15 @@ class PairingControllerTest extends IntegrationTest {
     }
 
     private void seedCatalog() {
-        seedDrink();
-        seedAnju();
-        seedMusicMood();
-    }
-
-    private Drink seedDrink() {
-        return drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SOJU.create())).toDomain();
-    }
-
-    private Anju seedAnju() {
-        return anjuJpaRepository
-                .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
-                .toDomain();
-    }
-
-    private MusicMood seedMusicMood() {
-        return musicMoodJpaRepository
-                .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
-                .toDomain();
+        pairingHelper.saveDrink(DrinkFixture.SOJU);
+        pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+        pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest() {
-        Drink drink = seedDrink();
-        Anju anju = seedAnju();
-        MusicMood musicMood = seedMusicMood();
+        Drink drink = pairingHelper.saveDrink(DrinkFixture.SOJU);
+        Anju anju = pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+        MusicMood musicMood = pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
         return new SubmitPairingFeedbackRequest(
                 drink.getId(),
                 anju.getId(),
