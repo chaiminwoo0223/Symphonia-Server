@@ -56,7 +56,7 @@ class PairingCommandServiceTest extends UnitTest {
         class WhenDrinkNotFound {
 
             @Test
-            @DisplayName("예외를 던진다")
+            @DisplayName("DrinkNotFoundException을 던진다")
             void shouldThrowDrinkNotFoundException() {
                 // given
                 given(drinkRepository.findById(DRINK_ID)).willReturn(Optional.empty());
@@ -72,7 +72,7 @@ class PairingCommandServiceTest extends UnitTest {
         class WhenAnjuNotFound {
 
             @Test
-            @DisplayName("예외를 던진다")
+            @DisplayName("AnjuNotFoundException을 던진다")
             void shouldThrowAnjuNotFoundException() {
                 // given
                 Drink drink = DrinkFixture.SOJU.create();
@@ -90,7 +90,7 @@ class PairingCommandServiceTest extends UnitTest {
         class WhenMusicMoodNotFound {
 
             @Test
-            @DisplayName("예외를 던진다")
+            @DisplayName("MusicMoodNotFoundException을 던진다")
             void shouldThrowMusicMoodNotFoundException() {
                 // given
                 Drink drink = DrinkFixture.SOJU.create();
