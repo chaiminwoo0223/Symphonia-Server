@@ -63,7 +63,7 @@ class MemberQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
-            void shouldReturnMemberResultWhenFoundBySocialLogin() {
+            void shouldReturnMemberResultWhenFound() {
                 // given
                 given(
                                 memberRepository.findBySocialLogin(
@@ -107,7 +107,7 @@ class MemberQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("멤버가 존재하면 MemberResult를 반환한다.")
-            void shouldReturnMemberResultWhenFoundBySocialLogin() {
+            void shouldReturnMemberResultWhenFound() {
                 // given
                 given(
                                 memberRepository.findBySocialLogin(

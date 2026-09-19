@@ -66,7 +66,7 @@ class RefreshServiceTest extends UnitTest {
 
             @Test
             @DisplayName("기존 리프레시 토큰을 삭제한다.")
-            void shouldDeleteExistingRefreshToken() {
+            void shouldDeleteRefreshToken() {
                 // when
                 refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP));
 
