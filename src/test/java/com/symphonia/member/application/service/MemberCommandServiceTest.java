@@ -67,7 +67,7 @@ class MemberCommandServiceTest extends UnitTest {
         class WhenAlreadyExists {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("MemberAlreadyExistsException이 발생한다.")
             void shouldThrowMemberAlreadyExistsException() {
                 // given
                 given(
@@ -121,7 +121,7 @@ class MemberCommandServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+        @DisplayName("멤버를 찾을 수 없으면 MemberNotFoundException이 발생한다.")
         void shouldThrowMemberNotFoundException() {
             // given
             Long unknownId = -1L;
@@ -155,7 +155,7 @@ class MemberCommandServiceTest extends UnitTest {
     class Delete {
 
         @Test
-        @DisplayName("멤버를 찾을 수 없으면 예외가 발생한다.")
+        @DisplayName("멤버를 찾을 수 없으면 MemberNotFoundException이 발생한다.")
         void shouldThrowMemberNotFoundException() {
             // given
             Long unknownId = -1L;
