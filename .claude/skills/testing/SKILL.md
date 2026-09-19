@@ -91,6 +91,7 @@ class LoginServiceTest extends UnitTest {
 ## Mockito Strict Stubbing
 
 - `@BeforeEach` 공유 스텁은 **모든 테스트가 소비하는 가장 좁은 `@Nested` 스코프**에 배치한다. 상위 스코프에 두면 일부 테스트에서 미사용 스텁으로 strict-stubbing 검증에 걸린다.
+- **(2026-09-20 결정, 이슈 #47)**: 동일한 `given(...).willReturn(...)` 스텁 조합이 같은 테스트 클래스 안에서 2개 이상의 테스트 메서드에 그대로 반복되면, `private void given<대상>()` 메서드로 추출해 각 테스트에서 호출한다(예: `givenStandardCatalog()`). `*Fixture`(데이터 생성)나 `*Helper`(여러 파일에서 재사용하는 행동)와는 다른 층위이므로 파일을 분리하지 않고 같은 클래스의 private 메서드로 둔다. 스텁이 테스트마다 미묘하게 달라 추출이 오히려 읽기 어려워지면 억지로 묶지 않는다.
 
 ## Fixture 패턴
 
