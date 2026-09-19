@@ -16,8 +16,15 @@ public class Drink {
     private String name;
     private double abv;
     private FlavorProfile flavorProfile;
+    private boolean nonAlcoholic;
 
-    public static Drink of(String name, double abv, FlavorProfile flavorProfile) {
-        return Drink.builder().name(name).abv(abv).flavorProfile(flavorProfile).build();
+    public static Drink of(
+            String name, double abv, FlavorProfile flavorProfile, boolean nonAlcoholic) {
+        return Drink.builder()
+                .name(name)
+                .abv(abv)
+                .flavorProfile(flavorProfile)
+                .nonAlcoholic(nonAlcoholic)
+                .build();
     }
 }

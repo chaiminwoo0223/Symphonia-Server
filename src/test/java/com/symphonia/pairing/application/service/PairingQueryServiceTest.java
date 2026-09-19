@@ -11,6 +11,7 @@ import com.symphonia.pairing.domain.entity.MusicMood;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.repository.DrinkRepository;
 import com.symphonia.pairing.domain.repository.MusicMoodRepository;
+import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.Occasion;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -18,6 +19,7 @@ import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,7 +45,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenStandardCatalog();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.FRIEND, MoodType.CASUAL);
+                    new RecommendPairingQuery(RelationshipType.FRIEND, MoodType.CASUAL, Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -59,7 +61,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenStandardCatalog();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.BOSS, MoodType.FORMAL);
+                    new RecommendPairingQuery(RelationshipType.BOSS, MoodType.FORMAL, Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -81,7 +83,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.create()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.BOSS, MoodType.CASUAL);
+                    new RecommendPairingQuery(RelationshipType.BOSS, MoodType.CASUAL, Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -107,7 +109,8 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.LIGHT_BALANCED.create(),
                                     AnjuFixture.HEAVY_BALANCED.create()));
             given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
-            RecommendPairingQuery query = new RecommendPairingQuery(relationshipType, moodType);
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(relationshipType, moodType, Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -128,6 +131,48 @@ class PairingQueryServiceTest extends UnitTest {
             assertThat(heavyResult.score()).isEqualTo(0.72, within(1e-9));
             assertThat(results.getFirst().anjuName())
                     .isEqualTo(AnjuFixture.LIGHT_BALANCED.getName());
+        }
+
+        @Test
+        @DisplayName("attendeeConstraints에 DRIVER가 포함되면 무알코올 Drink가 그렇지 않은 Drink보다 점수가 높다")
+        void shouldScoreNonAlcoholicDrinkHigherWhenAttendeeRequiresNonAlcoholicOption() {
+            // given
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.BALANCED.create(),
+                                    DrinkFixture.NON_ALCOHOLIC_BALANCED.create()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(AttendeeConstraint.DRIVER));
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            PairingResult alcoholicResult =
+                    results.stream()
+                            .filter(r -> r.drinkName().equals(DrinkFixture.BALANCED.getName()))
+                            .findFirst()
+                            .orElseThrow();
+            PairingResult nonAlcoholicResult =
+                    results.stream()
+                            .filter(
+                                    r ->
+                                            r.drinkName()
+                                                    .equals(
+                                                            DrinkFixture.NON_ALCOHOLIC_BALANCED
+                                                                    .getName()))
+                            .findFirst()
+                            .orElseThrow();
+
+            assertThat(nonAlcoholicResult.score()).isGreaterThan(alcoholicResult.score());
         }
 
         private void givenStandardCatalog() {

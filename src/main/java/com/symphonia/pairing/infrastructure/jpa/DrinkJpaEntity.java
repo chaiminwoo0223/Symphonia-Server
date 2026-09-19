@@ -29,12 +29,16 @@ public class DrinkJpaEntity {
 
     @Embedded private FlavorProfileEmbeddable flavorProfile;
 
+    @Column(nullable = false)
+    private boolean nonAlcoholic;
+
     public static DrinkJpaEntity from(Drink drink) {
         return DrinkJpaEntity.builder()
                 .id(drink.getId())
                 .name(drink.getName())
                 .abv(drink.getAbv())
                 .flavorProfile(FlavorProfileEmbeddable.from(drink.getFlavorProfile()))
+                .nonAlcoholic(drink.isNonAlcoholic())
                 .build();
     }
 
@@ -44,6 +48,7 @@ public class DrinkJpaEntity {
                 .name(name)
                 .abv(abv)
                 .flavorProfile(flavorProfile.toDomain())
+                .nonAlcoholic(nonAlcoholic)
                 .build();
     }
 }
