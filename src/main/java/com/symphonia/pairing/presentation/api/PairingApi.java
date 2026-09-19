@@ -23,7 +23,7 @@ public interface PairingApi {
     @GetMapping("/recommend")
     @Operation(
             summary = "페어링 추천",
-            description = "관계 유형과 분위기, 성인 인증 여부, 참석자 음주 제약을 기반으로 술, 안주, 음악 조합을 추천합니다.")
+            description = "관계 유형과 분위기, 성인 인증 여부, 참석자 음주 제약과 알레르기 정보를 기반으로 술, 안주, 음악 조합을 추천합니다.")
     ResponseEntity<StandardResponse<List<PairingResponse>>> recommend(
             @Valid @ModelAttribute RecommendPairingRequest request);
 

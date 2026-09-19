@@ -11,6 +11,7 @@ import com.symphonia.pairing.domain.entity.MusicMood;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.repository.DrinkRepository;
 import com.symphonia.pairing.domain.repository.MusicMoodRepository;
+import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.Occasion;
@@ -45,7 +46,8 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenStandardCatalog();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.FRIEND, MoodType.CASUAL, Set.of());
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -61,7 +63,8 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenStandardCatalog();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.BOSS, MoodType.FORMAL, Set.of());
+                    new RecommendPairingQuery(
+                            RelationshipType.BOSS, MoodType.FORMAL, Set.of(), Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -83,7 +86,8 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.create()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.BOSS, MoodType.CASUAL, Set.of());
+                    new RecommendPairingQuery(
+                            RelationshipType.BOSS, MoodType.CASUAL, Set.of(), Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -110,7 +114,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.HEAVY_BALANCED.create()));
             given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(relationshipType, moodType, Set.of());
+                    new RecommendPairingQuery(relationshipType, moodType, Set.of(), Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -134,6 +138,46 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
+        @DisplayName("도수가 MODERATE_ABV_THRESHOLD를 초과하는 Drink는 이하인 Drink보다 점수가 낮다")
+        void shouldScoreLowerWhenAbvExceedsModerateThreshold() {
+            // given
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.BALANCED.create(),
+                                    DrinkFixture.HIGH_ABV_BALANCED.create()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            PairingResult moderateAbvResult =
+                    results.stream()
+                            .filter(r -> r.drinkName().equals(DrinkFixture.BALANCED.getName()))
+                            .findFirst()
+                            .orElseThrow();
+            PairingResult highAbvResult =
+                    results.stream()
+                            .filter(
+                                    r ->
+                                            r.drinkName()
+                                                    .equals(
+                                                            DrinkFixture.HIGH_ABV_BALANCED
+                                                                    .getName()))
+                            .findFirst()
+                            .orElseThrow();
+
+            assertThat(highAbvResult.score()).isLessThan(moderateAbvResult.score());
+        }
+
+        @Test
         @DisplayName("attendeeConstraints에 DRIVER가 포함되면 무알코올 Drink가 그렇지 않은 Drink보다 점수가 높다")
         void shouldScoreNonAlcoholicDrinkHigherWhenAttendeeRequiresNonAlcoholicOption() {
             // given
@@ -150,7 +194,8 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND,
                             MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.DRIVER));
+                            Set.of(AttendeeConstraint.DRIVER),
+                            Set.of());
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -176,42 +221,31 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("도수가 MODERATE_ABV_THRESHOLD를 초과하는 Drink는 이하인 Drink보다 점수가 낮다")
-        void shouldScoreLowerWhenAbvExceedsModerateThreshold() {
+        @DisplayName("attendeeAllergies와 겹치는 Anju는 추천 결과에서 제외한다")
+        void shouldExcludeAnjuWhenAllergyConflicts() {
             // given
-            given(drinkRepository.findAll())
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BALANCED.create()));
+            given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
-                                    DrinkFixture.BALANCED.create(),
-                                    DrinkFixture.HIGH_ABV_BALANCED.create()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
+                                    AnjuFixture.LIGHT_BALANCED.create(),
+                                    AnjuFixture.PEANUT_ALLERGY.create()));
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(RelationshipType.FRIEND, MoodType.CASUAL, Set.of());
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(),
+                            Set.of(AllergyType.PEANUT));
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            PairingResult moderateAbvResult =
-                    results.stream()
-                            .filter(r -> r.drinkName().equals(DrinkFixture.BALANCED.getName()))
-                            .findFirst()
-                            .orElseThrow();
-            PairingResult highAbvResult =
-                    results.stream()
-                            .filter(
-                                    r ->
-                                            r.drinkName()
-                                                    .equals(
-                                                            DrinkFixture.HIGH_ABV_BALANCED
-                                                                    .getName()))
-                            .findFirst()
-                            .orElseThrow();
-
-            assertThat(highAbvResult.score()).isLessThan(moderateAbvResult.score());
+            assertThat(results)
+                    .extracting(PairingResult::anjuName)
+                    .containsOnly(AnjuFixture.LIGHT_BALANCED.getName());
         }
 
         private void givenStandardCatalog() {

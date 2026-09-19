@@ -1,3 +1,4 @@
+DELETE FROM anju_allergy_type;
 DELETE FROM drink_jpa_entity;
 DELETE FROM anju_jpa_entity;
 DELETE FROM music_mood_jpa_entity;
@@ -19,6 +20,23 @@ INSERT INTO anju_jpa_entity (name, sweetness, bitterness, carbonation, richness)
     ('마른안주', 1, 1, 0, 1),
     ('치즈플래터', 2, 1, 0, 3),
     ('과일안주', 4, 0, 0, 1);
+
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'WHEAT' FROM anju_jpa_entity WHERE name = '골뱅이무침';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'WHEAT' FROM anju_jpa_entity WHERE name = '후라이드치킨';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'EGG' FROM anju_jpa_entity WHERE name = '후라이드치킨';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'SOYBEAN' FROM anju_jpa_entity WHERE name = '두부김치';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'PORK' FROM anju_jpa_entity WHERE name = '두부김치';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'SQUID' FROM anju_jpa_entity WHERE name = '마른안주';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'PEANUT' FROM anju_jpa_entity WHERE name = '마른안주';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'MILK' FROM anju_jpa_entity WHERE name = '치즈플래터';
 
 INSERT INTO music_mood_jpa_entity (title, formality, romance, celebration, comfort, streaming_url) VALUES
     ('잔잔한 재즈', 5, 1, 1, 2, 'https://open.spotify.com/playlist/formal-jazz'),

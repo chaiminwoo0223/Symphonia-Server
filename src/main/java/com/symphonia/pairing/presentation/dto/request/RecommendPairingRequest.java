@@ -1,6 +1,7 @@
 package com.symphonia.pairing.presentation.dto.request;
 
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
+import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -15,9 +16,11 @@ public record RecommendPairingRequest(
         @NotNull @Schema(description = "분위기 유형") MoodType moodType,
         @AssertTrue(message = "성인 인증이 필요합니다.") @Schema(description = "성인 인증 여부")
                 boolean isAdultConfirmed,
-        @Schema(description = "참석자 음주 제약(운전, 임신 등)") List<AttendeeConstraint> attendeeConstraints) {
+        @Schema(description = "참석자 음주 제약(운전, 임신 등)") List<AttendeeConstraint> attendeeConstraints,
+        @Schema(description = "참석자 알레르기 정보") List<AllergyType> attendeeAllergies) {
     public RecommendPairingQuery toQuery() {
-        return new RecommendPairingQuery(relationshipType, moodType, toSet(attendeeConstraints));
+        return new RecommendPairingQuery(
+                relationshipType, moodType, toSet(attendeeConstraints), toSet(attendeeAllergies));
     }
 
     private static <T> Set<T> toSet(List<T> values) {
