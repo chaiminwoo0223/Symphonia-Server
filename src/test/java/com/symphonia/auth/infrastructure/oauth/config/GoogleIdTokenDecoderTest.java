@@ -85,7 +85,7 @@ class GoogleIdTokenDecoderTest {
         class WhenAudienceMismatches {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("JwtException이 발생한다.")
             void shouldThrowJwtException() {
                 // given
                 String token =
@@ -102,7 +102,7 @@ class GoogleIdTokenDecoderTest {
         class WhenIssuerMismatches {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("JwtException이 발생한다.")
             void shouldThrowJwtException() {
                 // given
                 String token =
@@ -121,7 +121,7 @@ class GoogleIdTokenDecoderTest {
         class WhenTokenExpired {
 
             @Test
-            @DisplayName("예외가 발생한다.")
+            @DisplayName("JwtException이 발생한다.")
             void shouldThrowJwtException() {
                 // given
                 String token =

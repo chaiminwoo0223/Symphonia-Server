@@ -140,7 +140,7 @@ class KakaoSocialClientTest extends UnitTest {
             // AuthorizationCodeClientTest에서 검증한다.
             // 여기서는 이 SocialClient만의 관심사인 "access_token 누락" 분기만 확인한다.
             @Test
-            @DisplayName("access_token이 없는 응답이면 예외가 발생한다.")
+            @DisplayName("access_token이 없는 응답이면 SocialAuthenticationFailedException이 발생한다.")
             void shouldThrowSocialAuthenticationFailedExceptionWhenAccessTokenMissing() {
                 // given
                 mockServer
@@ -169,7 +169,7 @@ class KakaoSocialClientTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("서버 오류 응답이면 예외가 발생한다.")
+            @DisplayName("서버 오류 응답이면 SocialMemberInfoFetchFailedException이 발생한다.")
             void shouldThrowSocialMemberInfoFetchFailedException() {
                 // given
                 mockServer.expect(requestTo(USER_INFO_URI)).andRespond(withServerError());

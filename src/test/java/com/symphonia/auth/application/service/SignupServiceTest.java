@@ -113,7 +113,7 @@ class SignupServiceTest extends UnitTest {
         class WhenMemberAlreadyExists {
 
             @Test
-            @DisplayName("예외가 그대로 전파된다.")
+            @DisplayName("MemberAlreadyExistsException이 그대로 전파된다.")
             void shouldPropagateMemberAlreadyExistsException() {
                 // given
                 given(createMemberUseCase.create(any(CreateMemberCommand.class)))
