@@ -23,36 +23,19 @@ public enum MusicMoodFixture {
     private final MoodProfile moodProfile;
     private final String streamingUrl;
 
+    public MusicMood.MusicMoodBuilder builder() {
+        return MusicMood.builder().title(title).moodProfile(moodProfile).streamingUrl(streamingUrl);
+    }
+
     public MusicMood create() {
-        return create(moodProfile);
+        return builder().build();
     }
 
     public MusicMood create(MoodProfile moodProfile) {
-        return build(null, moodProfile);
+        return builder().moodProfile(moodProfile).build();
     }
 
     public MusicMood createWithId() {
-        return createWithId(moodProfile);
-    }
-
-    public MusicMood createWithId(MoodProfile moodProfile) {
-        return createWithId(ordinal() + 1L, moodProfile);
-    }
-
-    public MusicMood createWithId(Long id) {
-        return createWithId(id, moodProfile);
-    }
-
-    public MusicMood createWithId(Long id, MoodProfile moodProfile) {
-        return build(id, moodProfile);
-    }
-
-    private MusicMood build(Long id, MoodProfile moodProfile) {
-        return MusicMood.builder()
-                .id(id)
-                .title(title)
-                .moodProfile(moodProfile)
-                .streamingUrl(streamingUrl)
-                .build();
+        return builder().id(ordinal() + 1L).build();
     }
 }
