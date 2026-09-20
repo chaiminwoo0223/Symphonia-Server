@@ -12,7 +12,7 @@ import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.auth.helper.AuthHelper;
-import com.symphonia.auth.presentation.cookie.CookieProvider;
+import com.symphonia.auth.presentation.cookie.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.member.domain.entity.Member;
@@ -31,7 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 class AuthControllerTest extends IntegrationTest {
 
-    private static final String COOKIE_NAME = CookieProvider.COOKIE_NAME;
+    private static final String COOKIE_NAME = RefreshTokenCookieFactory.COOKIE_NAME;
     private static final String AUTH_CODE = "auth-code";
 
     @Autowired private MemberHelper memberHelper;

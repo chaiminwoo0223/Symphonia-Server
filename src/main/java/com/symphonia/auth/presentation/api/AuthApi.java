@@ -1,7 +1,7 @@
 package com.symphonia.auth.presentation.api;
 
 import com.symphonia.auth.presentation.AuthEndpoints;
-import com.symphonia.auth.presentation.cookie.CookieProvider;
+import com.symphonia.auth.presentation.cookie.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
@@ -31,7 +31,8 @@ public interface AuthApi {
     @PostMapping(AuthEndpoints.REFRESH)
     @Operation(summary = "토큰 재발급", description = "리프레시 토큰 쿠키로 새로운 엑세스 토큰과 리프레시 토큰을 재발급합니다.")
     ResponseEntity<StandardResponse<TokenResponse>> refresh(
-            @CookieValue(name = CookieProvider.COOKIE_NAME, required = false) String refreshToken,
+            @CookieValue(name = RefreshTokenCookieFactory.COOKIE_NAME, required = false)
+                    String refreshToken,
             HttpServletRequest httpRequest);
 
     @PostMapping(AuthEndpoints.LOGOUT)
