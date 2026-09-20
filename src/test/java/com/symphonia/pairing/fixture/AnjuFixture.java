@@ -32,24 +32,15 @@ public enum AnjuFixture {
     private final FlavorProfile flavorProfile;
     private final Set<AllergyType> allergyTypes;
 
+    public Anju.AnjuBuilder builder() {
+        return Anju.builder().name(name).flavorProfile(flavorProfile).allergyTypes(allergyTypes);
+    }
+
     public Anju create() {
-        return build(null);
+        return builder().build();
     }
 
     public Anju createWithId() {
-        return createWithId(ordinal() + 1L);
-    }
-
-    public Anju createWithId(Long id) {
-        return build(id);
-    }
-
-    private Anju build(Long id) {
-        return Anju.builder()
-                .id(id)
-                .name(name)
-                .flavorProfile(flavorProfile)
-                .allergyTypes(allergyTypes)
-                .build();
+        return builder().id(ordinal() + 1L).build();
     }
 }
