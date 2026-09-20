@@ -7,6 +7,7 @@ import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.fixture.AnjuFixture;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,7 @@ class AnjuRepositoryImplTest extends RepositoryTest {
 
     @Autowired private AnjuRepository anjuRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
+    @Autowired private EntityManager entityManager;
 
     @Nested
     @DisplayName("findAll 메서드는")
@@ -69,6 +71,22 @@ class AnjuRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("영속성 컨텍스트가 정리된 뒤에도 allergyTypes를 읽을 수 있다")
+        void shouldReadAllergyTypesAfterPersistenceContextCleared() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
+            entityManager.flush();
+            entityManager.clear();
+            Anju anju = anjuRepository.findById(saved.getId()).orElseThrow();
+            entityManager.clear();
+
+            // when & then
+            assertThat(anju.getAllergyTypes())
+                    .containsExactlyInAnyOrder(AllergyType.SQUID, AllergyType.PEANUT);
         }
 
         @Test
