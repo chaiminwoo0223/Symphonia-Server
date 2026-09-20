@@ -34,8 +34,11 @@ description: Load when writing or modifying tests. JUnit5/Mockito/Testcontainers
 | 메서드 레벨 `@Nested` | 계층 무관, **테스트 대상 동작**(메서드/쿼리/엔드포인트)을 나타내는 PascalCase 명사. 접두어 없음 | Service: `GetMember` · Repository: `FindByEmail` · Controller: `CreateMember` |
 | 조건 레벨 `@Nested` | `When` + 조건(PascalCase). **조건이 여러 갈래로 나뉠 때만** 사용 | `WhenMemberNotFound` |
 | 테스트 메서드(리프) | `should` + 기대동작. **예외/실패 케이스는 조건 레벨 `@Nested`가 있어도 검증하는 구체적 예외 타입명을 그대로 담는다**(`assertThatThrownBy(...).isInstanceOf(...)` 대상). 조건 레벨 없이 단일 케이스만 테스트한다면 `should[기대동작]When[조건]`을 그대로 쓰되, 예외명 자체가 조건을 이미 드러내면(`MemberNotFoundException`처럼) `When[조건]`을 반복해 붙이지 않는다 | 조건 있음: `shouldThrowMemberNotFoundException()` · 성공 케이스: `shouldReturnMemberResultWhenMemberExists()` |
+| 복수 표기 | 식별자(메서드명 등)에서 여러 개를 가리킬 때는 대상 이름의 복수형만 쓴다. `All` 같은 수식어를 앞에 붙이지 않는다 | `shouldReturnEmptyListWhenAnjusExcludedByAllergies()` (`AllAnju`, `AllAnjus` 금지) |
 | Fixture | `*Fixture`는 도메인 객체/Command 등 **데이터** 생성을 전담한다 | `MemberFixture` |
 | Helper | `*Helper`는 인증 토큰 발급, MockMvc 요청 빌드, 공통 assertion 등 **행동/절차**를 전담한다. 하나의 `*Helper` = 하나의 관심사 (범용 유틸리티 클래스 금지) | `AuthHelper`, `MockMvcRequestHelper` |
+
+**(2026-09-20 결정, 이슈 #47)**: 여러 개를 가리키는 식별자는 복수형(`Anjus`)만으로 충분하다. `AllAnju`는 단수형에 `All`을 붙여 복수를 흉내 내는 안티패턴이고, `AllAnjus`는 복수형과 `All`이 중복 표현이라 둘 다 쓰지 않는다.
 
 **(2026-09-19 결정, 이슈 #54)**: 리프 메서드는 조건 레벨 `@Nested` 존재 여부와 무관하게 실제로 던져지는 예외 클래스명을 반영한다(`shouldThrowException()` 금지). `@DisplayName`이나 테스트 리포트만으로는 어떤 예외를 검증하는지 알 수 없어 식별력이 떨어졌기 때문. 예외명이 조건을 자명하게 내포하면 별도로 `When[조건]`을 덧붙이지 않는다. 그러면 동어반복이 되어 "자기 레벨에서만 새 정보를 더한다" 원칙에 반하기 때문.
 
