@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record PairingResponse(
         @Schema(description = "술 ID") Long drinkId,
         @Schema(description = "술 이름") String drinkName,
+        @Schema(description = "무알코올 여부") boolean drinkNonAlcoholic,
         @Schema(description = "안주 ID") Long anjuId,
         @Schema(description = "안주 이름") String anjuName,
         @Schema(description = "음악 무드 ID") Long musicMoodId,
@@ -16,6 +17,7 @@ public record PairingResponse(
         return new PairingResponse(
                 result.drinkId(),
                 result.drinkName(),
+                result.drinkNonAlcoholic(),
                 result.anjuId(),
                 result.anjuName(),
                 result.musicMoodId(),

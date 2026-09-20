@@ -19,6 +19,7 @@ import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -175,15 +176,10 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("attendeeConstraints에 DRIVER가 포함되면 무알코올 Drink가 그렇지 않은 Drink보다 점수가 높다")
-        void shouldScoreNonAlcoholicDrinkHigherWhenAttendeeRequiresNonAlcoholicOption() {
+        @DisplayName("attendeeConstraints에 DRIVER가 포함되면 상위에서 밀린 무알코올 Drink도 결과에 포함한다")
+        void shouldIncludeNonAlcoholicPairingWhenAttendeeRequiresNonAlcoholicOption() {
             // given
-            given(drinkRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    DrinkFixture.BALANCED.create(),
-                                    DrinkFixture.NON_ALCOHOLIC_BALANCED.create()));
-            givenSingleLightAnjuAndCasualAcousticMusicMood();
+            givenAlcoholicDrinksOutrankingNonAlcoholicDrink();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND,
@@ -195,23 +191,72 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            PairingResult alcoholicResult =
-                    results.stream()
-                            .filter(r -> r.drinkName().equals(DrinkFixture.BALANCED.getName()))
-                            .findFirst()
-                            .orElseThrow();
-            PairingResult nonAlcoholicResult =
-                    results.stream()
-                            .filter(
-                                    r ->
-                                            r.drinkName()
-                                                    .equals(
-                                                            DrinkFixture.NON_ALCOHOLIC_BALANCED
-                                                                    .getName()))
-                            .findFirst()
-                            .orElseThrow();
+            assertThat(results).hasSize(5);
+            assertThat(results.getLast().drinkName()).isEqualTo(DrinkFixture.SODA.getName());
+            assertThat(results.getLast().drinkNonAlcoholic()).isTrue();
+        }
 
-            assertThat(nonAlcoholicResult.score()).isGreaterThan(alcoholicResult.score());
+        @Test
+        @DisplayName("attendeeConstraints가 비어 있으면 무알코올 Drink를 끌어올리지 않는다")
+        void shouldNotIncludeNonAlcoholicPairingWhenNoAttendeeConstraints() {
+            // given
+            givenAlcoholicDrinksOutrankingNonAlcoholicDrink();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results).extracting(PairingResult::drinkNonAlcoholic).containsOnly(false);
+        }
+
+        @Test
+        @DisplayName("이미 상위에 무알코올 Drink가 있으면 결과를 그대로 유지한다")
+        void shouldKeepResultsWhenNonAlcoholicPairingAlreadyIncluded() {
+            // given
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(DrinkFixture.SOJU.create(), DrinkFixture.FRUIT_JUICE.create()));
+            givenSingleLightAnjuAndCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(AttendeeConstraint.PREGNANT),
+                            Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkName)
+                    .containsExactlyInAnyOrder(
+                            DrinkFixture.SOJU.getName(), DrinkFixture.FRUIT_JUICE.getName());
+        }
+
+        @Test
+        @DisplayName("무알코올 Drink 후보가 없으면 기존 상위 결과를 그대로 반환한다")
+        void shouldReturnTopResultsWhenNoNonAlcoholicDrinkExists() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.create()));
+            givenSingleLightAnjuAndCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(AttendeeConstraint.NON_DRINKER),
+                            Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkName)
+                    .containsExactly(DrinkFixture.SOJU.getName());
         }
 
         @Test
@@ -260,6 +305,14 @@ class PairingQueryServiceTest extends UnitTest {
                                     MusicMoodFixture.FORMAL_JAZZ.create(),
                                     MusicMoodFixture.CASUAL_ACOUSTIC.create(),
                                     MusicMoodFixture.CELEBRATORY_DANCE.create()));
+        }
+
+        private void givenAlcoholicDrinksOutrankingNonAlcoholicDrink() {
+            given(drinkRepository.findAll())
+                    .willReturn(List.of(DrinkFixture.SOJU.create(), DrinkFixture.SODA.create()));
+            given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.DRIED_SNACK.create()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(Collections.nCopies(5, MusicMoodFixture.CASUAL_ACOUSTIC.create()));
         }
 
         private void givenSingleLightAnjuAndCasualAcousticMusicMood() {
