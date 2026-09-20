@@ -38,6 +38,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] Given-When-Then 3블록이 명확히 구분되어 있는지
 - [ ] 이중 `@Nested` 구조(메서드 레벨 → 조건 레벨)를 따르는지, 조건이 하나뿐인데 억지로 조건 레벨을 만들지 않았는지
 - [ ] 명명 규칙 준수 여부: 테스트 클래스 `*Test`, `@Nested`/메서드명이 상위 레벨과 중복 정보를 담지 않는지, `should[기대동작]When[조건]` 규칙
+- [ ] 여러 개를 가리키는 식별자가 복수형만으로 표현되어 있는지 (`AllAnju`, `AllAnjus`처럼 단수형에 `All`을 붙이거나 복수형에 `All`을 중복하지 않고 `Anjus`로 쓴다)
 - [ ] 계층별 베이스 클래스(`RepositoryTest`/`UnitTest`/`IntegrationTest`)를 계층에 맞게 쓰는지
 - [ ] 데이터 생성(`*Fixture`)과 행동/절차(`*Helper`)가 섞이지 않고 분리되어 있는지, `*Helper`가 여러 관심사를 겸하지 않는지
 - [ ] `@BeforeEach` 공유 스텁이 모든 테스트가 소비하는 가장 좁은 `@Nested` 스코프에 있는지 (strict-stubbing 위반 방지)
