@@ -1,6 +1,8 @@
 services:
   postgres:
     image: 'pgvector/pgvector:pg17'
+    labels:
+      - 'org.springframework.boot.service-connection=postgres'
     environment:
       - 'POSTGRES_DB=${POSTGRES_DB}'
       - 'POSTGRES_USER=${POSTGRES_USER}'
