@@ -1,9 +1,11 @@
 package com.symphonia.member.infrastructure.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.member.domain.entity.Member;
+import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Import(MemberRepositoryImpl.class)
 class MemberRepositoryImplTest extends RepositoryTest {
@@ -101,6 +104,39 @@ class MemberRepositoryImplTest extends RepositoryTest {
 
             // when
             Member saved = memberRepository.save(member);
+
+            // then
+            assertThat(saved.getId()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("같은 소셜 계정이 이미 저장되어 있으면 예외를 던진다")
+        void shouldThrowDataIntegrityViolationExceptionWhenSocialLoginDuplicated() {
+            // given
+            memberRepository.save(MemberFixture.KAKAO.create());
+
+            // when & then
+            assertThatThrownBy(() -> memberRepository.save(MemberFixture.KAKAO.create()))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("socialId가 같아도 소셜 제공자가 다르면 저장한다")
+        void shouldPersistMemberWhenOnlySocialIdMatchesAcrossProviders() {
+            // given
+            memberRepository.save(MemberFixture.KAKAO.create());
+            Member googleMember =
+                    Member.builder()
+                            .socialId(MemberFixture.KAKAO.getSocialId())
+                            .nickname(MemberFixture.GOOGLE.getNickname())
+                            .email(MemberFixture.GOOGLE.getEmail())
+                            .profileImage(MemberFixture.GOOGLE.getProfileImage())
+                            .role(Role.ROLE_MEMBER)
+                            .socialProvider(SocialProvider.GOOGLE)
+                            .build();
+
+            // when
+            Member saved = memberRepository.save(googleMember);
 
             // then
             assertThat(saved.getId()).isNotNull();
