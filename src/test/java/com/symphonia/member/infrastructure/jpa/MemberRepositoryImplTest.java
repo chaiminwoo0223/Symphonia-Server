@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.member.domain.entity.Member;
-import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
@@ -96,50 +95,58 @@ class MemberRepositoryImplTest extends RepositoryTest {
     @DisplayName("save 메서드는")
     class Save {
 
-        @Test
-        @DisplayName("회원을 저장하고 ID를 채워 반환한다")
-        void shouldPersistMember() {
-            // given
-            Member member = MemberFixture.KAKAO.create();
+        @Nested
+        @DisplayName("저장된 적 없는 소셜 계정인 경우")
+        class WhenSocialLoginIsNew {
 
-            // when
-            Member saved = memberRepository.save(member);
+            @Test
+            @DisplayName("회원을 저장하고 ID를 채워 반환한다")
+            void shouldPersistMember() {
+                // given
+                Member member = MemberFixture.KAKAO.create();
 
-            // then
-            assertThat(saved.getId()).isNotNull();
+                // when
+                Member saved = memberRepository.save(member);
+
+                // then
+                assertThat(saved.getId()).isNotNull();
+            }
         }
 
-        @Test
-        @DisplayName("같은 소셜 계정이 이미 저장되어 있으면 예외를 던진다")
-        void shouldThrowDataIntegrityViolationExceptionWhenSocialLoginDuplicated() {
-            // given
-            memberRepository.save(MemberFixture.KAKAO.create());
+        @Nested
+        @DisplayName("같은 소셜 계정이 이미 저장되어 있는 경우")
+        class WhenSocialLoginDuplicated {
 
-            // when & then
-            assertThatThrownBy(() -> memberRepository.save(MemberFixture.KAKAO.create()))
-                    .isInstanceOf(DataIntegrityViolationException.class);
+            @Test
+            @DisplayName("예외를 던진다")
+            void shouldThrowDataIntegrityViolationException() {
+                // given
+                memberRepository.save(MemberFixture.KAKAO.create());
+
+                // when & then
+                assertThatThrownBy(() -> memberRepository.save(MemberFixture.KAKAO.create()))
+                        .isInstanceOf(DataIntegrityViolationException.class);
+            }
         }
 
-        @Test
-        @DisplayName("socialId가 같아도 소셜 제공자가 다르면 저장한다")
-        void shouldPersistMemberWhenOnlySocialIdMatchesAcrossProviders() {
-            // given
-            memberRepository.save(MemberFixture.KAKAO.create());
-            Member googleMember =
-                    Member.builder()
-                            .socialId(MemberFixture.KAKAO.getSocialId())
-                            .nickname(MemberFixture.GOOGLE.getNickname())
-                            .email(MemberFixture.GOOGLE.getEmail())
-                            .profileImage(MemberFixture.GOOGLE.getProfileImage())
-                            .role(Role.ROLE_MEMBER)
-                            .socialProvider(SocialProvider.GOOGLE)
-                            .build();
+        @Nested
+        @DisplayName("socialId만 같고 소셜 제공자가 다른 경우")
+        class WhenOnlySocialIdMatches {
 
-            // when
-            Member saved = memberRepository.save(googleMember);
+            @Test
+            @DisplayName("회원을 저장한다")
+            void shouldPersistMember() {
+                // given
+                memberRepository.save(MemberFixture.KAKAO.create());
+                Member googleMember =
+                        MemberFixture.GOOGLE.createWithSocialId(MemberFixture.KAKAO.getSocialId());
 
-            // then
-            assertThat(saved.getId()).isNotNull();
+                // when
+                Member saved = memberRepository.save(googleMember);
+
+                // then
+                assertThat(saved.getId()).isNotNull();
+            }
         }
     }
 
