@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.member.domain.entity.Member;
+import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
+import com.symphonia.member.domain.exception.MemberAlreadyExistsException;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import java.util.Optional;
@@ -118,13 +120,35 @@ class MemberRepositoryImplTest extends RepositoryTest {
         class WhenSocialLoginDuplicated {
 
             @Test
-            @DisplayName("예외를 던진다")
-            void shouldThrowDataIntegrityViolationException() {
+            @DisplayName("MemberAlreadyExistsException이 발생한다")
+            void shouldThrowMemberAlreadyExistsException() {
                 // given
                 memberRepository.save(MemberFixture.KAKAO.create());
 
                 // when & then
                 assertThatThrownBy(() -> memberRepository.save(MemberFixture.KAKAO.create()))
+                        .isInstanceOf(MemberAlreadyExistsException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("소셜 계정과 무관한 무결성 위반이 발생한 경우")
+        class WhenOtherIntegrityViolationOccurs {
+
+            @Test
+            @DisplayName("변환하지 않고 DataIntegrityViolationException을 그대로 던진다")
+            void shouldPropagateDataIntegrityViolationException() {
+                // given
+                Member memberWithoutNickname =
+                        Member.builder()
+                                .socialId(MemberFixture.KAKAO.getSocialId())
+                                .email(MemberFixture.KAKAO.getEmail())
+                                .role(Role.ROLE_MEMBER)
+                                .socialProvider(SocialProvider.KAKAO)
+                                .build();
+
+                // when & then
+                assertThatThrownBy(() -> memberRepository.save(memberWithoutNickname))
                         .isInstanceOf(DataIntegrityViolationException.class);
             }
         }
