@@ -13,7 +13,9 @@ public enum DrinkFixture {
     WHISKEY("위스키", 40.0, FlavorProfile.of(1, 4, 0, 4), false),
     BALANCED("밸런스 술", 5.0, FlavorProfile.of(2, 2, 2, 2), false),
     HIGH_ABV_BALANCED("고도수 밸런스 술", 25.0, FlavorProfile.of(2, 2, 2, 2), false),
-    NON_ALCOHOLIC_BALANCED("무알코올 밸런스 술", 0.0, FlavorProfile.of(2, 2, 2, 2), true);
+    NON_ALCOHOLIC_BALANCED("무알코올 밸런스 술", 0.0, FlavorProfile.of(2, 2, 2, 2), true),
+    SODA("탄산음료", 0.0, FlavorProfile.of(4, 0, 5, 0), true),
+    FRUIT_JUICE("과일주스", 0.0, FlavorProfile.of(4, 0, 0, 2), true);
 
     private final String name;
     private final double abv;

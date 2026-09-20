@@ -5,6 +5,7 @@ import com.symphonia.pairing.domain.vo.Pairing;
 public record PairingResult(
         Long drinkId,
         String drinkName,
+        boolean drinkNonAlcoholic,
         Long anjuId,
         String anjuName,
         Long musicMoodId,
@@ -15,6 +16,7 @@ public record PairingResult(
         return new PairingResult(
                 pairing.getDrink().getId(),
                 pairing.getDrink().getName(),
+                pairing.getDrink().isNonAlcoholic(),
                 pairing.getAnju().getId(),
                 pairing.getAnju().getName(),
                 pairing.getMusicMood().getId(),
