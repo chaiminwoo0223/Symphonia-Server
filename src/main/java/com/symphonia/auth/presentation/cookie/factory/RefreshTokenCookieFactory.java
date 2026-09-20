@@ -1,4 +1,4 @@
-package com.symphonia.auth.presentation.cookie;
+package com.symphonia.auth.presentation.cookie.factory;
 
 import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.global.config.properties.RefreshTokenProperties;

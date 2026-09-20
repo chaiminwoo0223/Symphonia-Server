@@ -1,7 +1,7 @@
 package com.symphonia.auth.presentation.api;
 
 import com.symphonia.auth.presentation.AuthEndpoints;
-import com.symphonia.auth.presentation.cookie.RefreshTokenCookieFactory;
+import com.symphonia.auth.presentation.cookie.factory.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
