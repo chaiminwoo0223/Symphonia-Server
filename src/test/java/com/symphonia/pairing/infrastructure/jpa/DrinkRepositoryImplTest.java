@@ -73,8 +73,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         void shouldReturnDrinkWithNonAlcoholicFlag() {
             // given
             DrinkJpaEntity saved =
-                    drinkJpaRepository.save(
-                            DrinkJpaEntity.from(DrinkFixture.NON_ALCOHOLIC_BALANCED.create()));
+                    drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SODA.create()));
 
             // when
             Optional<Drink> result = drinkRepository.findById(saved.getId());

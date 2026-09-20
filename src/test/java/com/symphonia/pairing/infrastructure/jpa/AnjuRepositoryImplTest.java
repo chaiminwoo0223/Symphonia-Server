@@ -76,14 +76,15 @@ class AnjuRepositoryImplTest extends RepositoryTest {
         void shouldReturnAnjuWithAllergyTypes() {
             // given
             AnjuJpaEntity saved =
-                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.PEANUT_ALLERGY.create()));
+                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
 
             // when
             Optional<Anju> result = anjuRepository.findById(saved.getId());
 
             // then
             assertThat(result).isPresent();
-            assertThat(result.get().getAllergyTypes()).containsExactly(AllergyType.PEANUT);
+            assertThat(result.get().getAllergyTypes())
+                    .containsExactlyInAnyOrder(AllergyType.SQUID, AllergyType.PEANUT);
         }
     }
 }
