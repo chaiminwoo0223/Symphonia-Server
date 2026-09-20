@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 영속성(PostgreSQL/pgvector, 인덱스·제약, compose/DB 설정).
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -105,13 +105,13 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 영속성 (PostgreSQL / pgvector)
 
-**(2026-09-20 결정, 이슈 #53)**: DB는 MySQL 대신 PostgreSQL 17을 쓰고, 로컬 compose와 Testcontainers 모두 `pgvector/pgvector:pg17` 이미지를 쓴다. 두 환경이 같은 이미지를 써서 환경 간 차이를 없애고, pgvector 확장이 필요해질 때 이미지를 바꾸지 않아도 된다. 도메인과 데이터가 작을 때 전환하는 편이 member/auth가 커진 뒤보다 변경 범위가 작다.
+**(2026-09-20 결정, 이슈 #53)**: DB는 MySQL 대신 PostgreSQL 17을 쓰고, 로컬 compose와 Testcontainers 모두 `pgvector/pgvector:pg17` 이미지를 쓴다. 두 환경이 같은 이미지를 써서 환경 간 차이를 없애고, pgvector 확장이 필요해질 때 이미지를 바꾸지 않아도 된다. 도메인과 데이터가 작을 때 전환하는 편이 member/auth가 커진 뒤보다 변경 범위가 작다. MySQL을 유지하는 안은 pgvector를 쓸 수 없어 유사도 검색을 도입할 때 다시 전환해야 하고, 그때는 데이터가 커져 있어 택하지 않았다. 확장이 없는 일반 `postgres` 이미지는 나중에 확장 설치를 따로 해야 해서 택하지 않았다. `pgvector/pgvector` 이미지는 이름으로 PostgreSQL을 인식하지 못해 `spring-boot-docker-compose`가 datasource를 연결하지 못한다(`bootRun`에서 `Failed to configure a DataSource`로 확인). 그래서 `compose.yaml`의 `postgres` 서비스에 `org.springframework.boot.service-connection=postgres` 라벨을 반드시 유지한다. 테스트는 `@ServiceConnection` 빈으로 연결하므로 이 문제를 잡지 못한다. 이미지를 바꾸면 `bootRun`으로 직접 확인한다.
 
-**(2026-09-20 결정, 이슈 #53)**: `FlavorProfile`과 `MoodProfile`은 지금처럼 int 4컬럼 `*Embeddable`로 유지하고 vector 컬럼으로 바꾸지 않는다. 유사도는 `Pairing.score()`가 자바에서 계산하고 데이터도 술 8개, 안주 6개뿐이라 ANN 인덱스(ivfflat/hnsw)를 쓸 지점도 이득도 없다. vector 컬럼으로 교체하는 안은 스키마와 매핑만 복잡해지고, int 컬럼과 vector 컬럼을 병행하는 안은 이중 관리가 되어 택하지 않았다. pgvector 0.8.4에서 `vector(4)`의 `<->` 거리가 현재 공식과 `similarity = 1 - distance / 10`으로 정확히 대응하는 것을 확인했으므로 나중에 전환해도 점수의 의미는 바뀌지 않는다. 재검토 조건은 유사한 술이나 안주를 DB 쿼리로 찾는 기능 이슈가 생기거나, 후보가 수천 건 이상으로 늘어 자바 전건 계산이 병목이 될 때다. 그때도 도메인 VO는 그대로 두고 `*Embeddable`과 `*JpaEntity`(infrastructure)에만 `@JdbcTypeCode(SqlTypes.VECTOR)`와 `@Array(length = 4)`로 매핑한다.
+**(2026-09-20 결정, 이슈 #53)**: `FlavorProfile`과 `MoodProfile`은 지금처럼 int 4컬럼 `*Embeddable`로 유지하고 vector 컬럼으로 바꾸지 않는다. 점수는 `Pairing.score()`가 `FlavorProfile.similarity()`와 `MoodProfile.fitness()`를 자바에서 계산해 합산하고, 데이터도 술 8개, 안주 6개뿐이라 ANN 인덱스(ivfflat/hnsw)를 쓸 지점도 이득도 없다. vector 컬럼으로 교체하는 안은 스키마와 매핑만 복잡해지고, int 컬럼과 vector 컬럼을 병행하는 안은 이중 관리가 되어 택하지 않았다. pgvector 0.8.4(`pg17` 태그 기준 확인 시점의 버전)에서 `vector(4)`의 `<->` 거리가 현재 공식과 `similarity = 1 - distance / 10`으로 정확히 대응하는 것을 확인했으므로 나중에 전환해도 점수의 의미는 바뀌지 않는다. 재검토 조건은 유사한 술이나 안주를 DB 쿼리로 찾는 기능 이슈가 생기거나, 후보가 수천 건 이상으로 늘어 자바 전건 계산이 병목이 될 때다. 그때도 도메인 VO는 그대로 두고 `*Embeddable`과 `*JpaEntity`(infrastructure)에만 `@JdbcTypeCode(SqlTypes.VECTOR)`와 `@Array(length = 4)`로 매핑한다.
 
 **(2026-09-20 결정, 이슈 #53)**: `CREATE EXTENSION IF NOT EXISTS vector`는 지금 실행하지 않는다. 쓰는 코드가 없고 마이그레이션 도구 없이 `ddl-auto: update`만 쓰므로, vector 컬럼을 도입하는 이슈에서 실행 위치(컨테이너 init 스크립트 또는 앱 시작 시 SQL)와 함께 정한다.
 
-**(2026-09-20 결정, 이슈 #53)**: 인덱스와 제약은 `*JpaEntity`의 `@Table`에 직접 선언한다. MySQL(InnoDB)과 달리 PostgreSQL은 FK 컬럼을 자동으로 인덱싱하지 않고, 조회 조건 컬럼의 인덱스도 Hibernate가 만들어 주지 않기 때문이다. 현재 FK는 `anju_allergy_type.anju_id` 하나뿐인데 복합 PK의 선두 컬럼이라 별도 인덱스가 필요 없고, `pairing_feedback`의 `*_id` 컬럼은 FK도 조회 조건도 없어 인덱스를 두지 않았다. `member`는 로그인마다 조회하는 `(social_provider, social_id)`에 unique 제약(`uk_member_social_login`)을 선언해 조회 성능과 중복 가입 방지를 함께 해결했다. 동시 첫 로그인 경쟁에서 두 번째 저장이 던지는 `DataIntegrityViolationException`은 아직 도메인 예외로 변환하지 않아 500으로 노출된다(별도 이슈로 다룬다). FK 제약이 생기거나 새 조회 조건 컬럼이 생길 때마다 인덱스가 필요한지 함께 검토한다.
+**(2026-09-20 결정, 이슈 #53)**: 인덱스와 제약은 `*JpaEntity`의 `@Table`에 직접 선언한다. PostgreSQL은 MySQL(InnoDB)과 달리 FK 컬럼을 자동으로 인덱싱하지 않기 때문이다. 조회 조건 컬럼의 인덱스도 어느 DB에서든 Hibernate가 만들어 주지 않는다. 현재 FK는 `anju_allergy_type.anju_id` 하나뿐인데 복합 PK의 선두 컬럼이라 별도 인덱스가 필요 없고, `pairing_feedback`의 `*_id` 컬럼은 FK도 조회 조건도 없어 인덱스를 두지 않았다. `member`는 로그인마다 조회하는 `(social_provider, social_id)`에 unique 제약(`uk_member_social_login`)을 선언해 조회 성능과 중복 가입 방지를 함께 해결했다. 동시 첫 로그인 경쟁에서 두 번째 저장이 던지는 `DataIntegrityViolationException`은 아직 도메인 예외로 변환하지 않아 500으로 노출된다(#63에서 다룬다). FK 제약이 생기거나 새 조회 조건 컬럼이 생길 때마다 인덱스가 필요한지 함께 검토한다.
 
 **(2026-09-20 결정, 이슈 #53)**: `@Enumerated(STRING)` 컬럼은 `varchar(255)`와 허용 값 목록 `check` 제약으로 생성되는데, `ddl-auto: update`는 이미 만들어진 `check` 제약을 갱신하지 않는다. 그래서 enum 값을 추가하면 이미 스키마가 만들어진 DB에서는 새 값 INSERT가 제약 위반으로 실패한다. dev/prod는 아직 빈 DB라 지금은 영향이 없지만, enum 값을 추가하는 이슈에서는 수동 `ALTER`나 마이그레이션 도구 도입을 함께 결정해야 한다. MySQL의 native `enum` 컬럼도 같은 한계가 있었으므로 이번 전환으로 생긴 회귀는 아니다.
 
