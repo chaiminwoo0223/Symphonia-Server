@@ -71,7 +71,7 @@ class PairingControllerTest extends IntegrationTest {
             // given
             pairingHelper.saveDrink(DrinkFixture.SOJU);
             pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            pairingHelper.saveAnju(AnjuFixture.PEANUT_ALLERGY);
+            pairingHelper.saveAnju(AnjuFixture.DRIED_SNACK);
             pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
 
             // when & then
@@ -86,7 +86,7 @@ class PairingControllerTest extends IntegrationTest {
                     .andExpect(
                             jsonPath(
                                             "$.data[?(@.anjuName=='%s')]",
-                                            AnjuFixture.PEANUT_ALLERGY.getName())
+                                            AnjuFixture.DRIED_SNACK.getName())
                                     .isEmpty());
         }
 

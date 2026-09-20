@@ -1,7 +1,6 @@
 package com.symphonia.pairing.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.within;
 import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
@@ -79,10 +78,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldExcludeDrinkExceedingMaxAbv() {
             // given
             given(drinkRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    DrinkFixture.LOW_ABV_BEER.create(),
-                                    DrinkFixture.SOJU.create()));
+                    .willReturn(List.of(DrinkFixture.BEER.create(), DrinkFixture.SOJU.create()));
             given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.DRIED_SNACK.create()));
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.create()));
@@ -96,7 +92,7 @@ class PairingQueryServiceTest extends UnitTest {
             // then
             assertThat(results)
                     .extracting(PairingResult::drinkName)
-                    .containsOnly(DrinkFixture.LOW_ABV_BEER.getName());
+                    .containsOnly(DrinkFixture.BEER.getName());
         }
 
         @Test
@@ -107,12 +103,13 @@ class PairingQueryServiceTest extends UnitTest {
             MoodType moodType = MoodType.FORMAL;
             Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
             MusicMood musicMood = MusicMoodFixture.FORMAL_JAZZ.create(occasion.toMoodProfile());
-            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BALANCED.create()));
+            // 와인은 맛 유사도상 후라이드치킨이 과일안주보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.WINE.create()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
-                                    AnjuFixture.LIGHT_BALANCED.create(),
-                                    AnjuFixture.HEAVY_BALANCED.create()));
+                                    AnjuFixture.FRUIT_PLATTER.create(),
+                                    AnjuFixture.FRIED_CHICKEN.create()));
             given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
             RecommendPairingQuery query =
                     new RecommendPairingQuery(relationshipType, moodType, Set.of(), Set.of());
@@ -121,33 +118,31 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            PairingResult lightResult =
+            PairingResult fruitResult =
                     results.stream()
-                            .filter(r -> r.anjuName().equals(AnjuFixture.LIGHT_BALANCED.getName()))
+                            .filter(r -> r.anjuName().equals(AnjuFixture.FRUIT_PLATTER.getName()))
                             .findFirst()
                             .orElseThrow();
-            PairingResult heavyResult =
+            PairingResult chickenResult =
                     results.stream()
-                            .filter(r -> r.anjuName().equals(AnjuFixture.HEAVY_BALANCED.getName()))
+                            .filter(r -> r.anjuName().equals(AnjuFixture.FRIED_CHICKEN.getName()))
                             .findFirst()
                             .orElseThrow();
 
-            assertThat(lightResult.score()).isEqualTo(1.0, within(1e-9));
-            assertThat(heavyResult.score()).isEqualTo(0.72, within(1e-9));
+            assertThat(chickenResult.score()).isLessThan(fruitResult.score());
             assertThat(results.getFirst().anjuName())
-                    .isEqualTo(AnjuFixture.LIGHT_BALANCED.getName());
+                    .isEqualTo(AnjuFixture.FRUIT_PLATTER.getName());
         }
 
         @Test
-        @DisplayName("도수가 MODERATE_ABV_THRESHOLD를 초과하는 Drink는 이하인 Drink보다 점수가 낮다")
+        @DisplayName("도수가 MODERATE_ABV_THRESHOLD를 초과하는 Drink는 맛이 더 가까워도 이하인 Drink보다 점수가 낮다")
         void shouldScoreLowerWhenAbvExceedsModerateThreshold() {
             // given
+            // 위스키는 후라이드치킨과 맛이 소주보다 더 가깝지만 고도수 페널티로 뒤집힌다
             given(drinkRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    DrinkFixture.BALANCED.create(),
-                                    DrinkFixture.HIGH_ABV_BALANCED.create()));
-            givenSingleLightAnjuAndCasualAcousticMusicMood();
+                    .willReturn(List.of(DrinkFixture.SOJU.create(), DrinkFixture.WHISKEY.create()));
+            given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.FRIED_CHICKEN.create()));
+            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
@@ -156,23 +151,18 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            PairingResult moderateAbvResult =
+            PairingResult sojuResult =
                     results.stream()
-                            .filter(r -> r.drinkName().equals(DrinkFixture.BALANCED.getName()))
+                            .filter(r -> r.drinkName().equals(DrinkFixture.SOJU.getName()))
                             .findFirst()
                             .orElseThrow();
-            PairingResult highAbvResult =
+            PairingResult whiskeyResult =
                     results.stream()
-                            .filter(
-                                    r ->
-                                            r.drinkName()
-                                                    .equals(
-                                                            DrinkFixture.HIGH_ABV_BALANCED
-                                                                    .getName()))
+                            .filter(r -> r.drinkName().equals(DrinkFixture.WHISKEY.getName()))
                             .findFirst()
                             .orElseThrow();
 
-            assertThat(highAbvResult.score()).isLessThan(moderateAbvResult.score());
+            assertThat(whiskeyResult.score()).isLessThan(sojuResult.score());
         }
 
         @Test
@@ -219,7 +209,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(drinkRepository.findAll())
                     .willReturn(
                             List.of(DrinkFixture.SOJU.create(), DrinkFixture.FRUIT_JUICE.create()));
-            givenSingleLightAnjuAndCasualAcousticMusicMood();
+            givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND,
@@ -242,7 +232,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldReturnTopResultsWhenNoNonAlcoholicDrinkExists() {
             // given
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.create()));
-            givenSingleLightAnjuAndCasualAcousticMusicMood();
+            givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND,
@@ -263,12 +253,12 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("attendeeAllergies와 겹치는 Anju는 추천 결과에서 제외한다")
         void shouldExcludeAnjuWhenAllergyConflicts() {
             // given
-            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BALANCED.create()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.create()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
-                                    AnjuFixture.LIGHT_BALANCED.create(),
-                                    AnjuFixture.PEANUT_ALLERGY.create()));
+                                    AnjuFixture.GOLBAENGI_MUCHIM.create(),
+                                    AnjuFixture.DRIED_SNACK.create()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
@@ -283,7 +273,40 @@ class PairingQueryServiceTest extends UnitTest {
             // then
             assertThat(results)
                     .extracting(PairingResult::anjuName)
-                    .containsOnly(AnjuFixture.LIGHT_BALANCED.getName());
+                    .containsOnly(AnjuFixture.GOLBAENGI_MUCHIM.getName());
+        }
+
+        @Test
+        @DisplayName("attendeeAllergies 중 하나라도 겹치는 Anju는 모두 추천 결과에서 제외한다")
+        void shouldExcludeAnjuWhenAnyOfMultipleAllergiesConflicts() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.create()));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.FRIED_CHICKEN.create(),
+                                    AnjuFixture.FRIED_SHRIMP.create(),
+                                    AnjuFixture.BOILED_PORK.create(),
+                                    AnjuFixture.FRENCH_FRIES.create(),
+                                    AnjuFixture.FRUIT_PLATTER.create()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(),
+                            Set.of(AllergyType.PORK, AllergyType.SHRIMP));
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuName)
+                    .containsExactlyInAnyOrder(
+                            AnjuFixture.FRIED_CHICKEN.getName(),
+                            AnjuFixture.FRENCH_FRIES.getName(),
+                            AnjuFixture.FRUIT_PLATTER.getName());
         }
 
         private void givenStandardCatalog() {
@@ -291,14 +314,18 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.create(),
-                                    DrinkFixture.LOW_ABV_BEER.create(),
-                                    DrinkFixture.WHISKEY.create()));
+                                    DrinkFixture.BEER.create(),
+                                    DrinkFixture.WHISKEY.create(),
+                                    DrinkFixture.WINE.create()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
                                     AnjuFixture.GOLBAENGI_MUCHIM.create(),
                                     AnjuFixture.FRIED_CHICKEN.create(),
-                                    AnjuFixture.DRIED_SNACK.create()));
+                                    AnjuFixture.DRIED_SNACK.create(),
+                                    AnjuFixture.TOFU_KIMCHI.create(),
+                                    AnjuFixture.CHEESE_PLATTER.create(),
+                                    AnjuFixture.FRUIT_PLATTER.create()));
             given(musicMoodRepository.findAll())
                     .willReturn(
                             List.of(
@@ -315,9 +342,8 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(Collections.nCopies(5, MusicMoodFixture.CASUAL_ACOUSTIC.create()));
         }
 
-        private void givenSingleLightAnjuAndCasualAcousticMusicMood() {
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.LIGHT_BALANCED.create()));
+        private void givenSingleAnjuAndCasualAcousticMusicMood() {
+            given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.TOFU_KIMCHI.create()));
             givenCasualAcousticMusicMood();
         }
 
