@@ -108,11 +108,7 @@ class PairingQueryServiceTest extends UnitTest {
             MoodType moodType = MoodType.FORMAL;
             Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
             MusicMood musicMood =
-                    MusicMoodFixture.FORMAL_JAZZ
-                            .builder()
-                            .id(1L)
-                            .moodProfile(occasion.toMoodProfile())
-                            .build();
+                    MusicMoodFixture.FORMAL_JAZZ.createWithId(occasion.toMoodProfile());
             // 와인은 맛 유사도상 후라이드치킨이 과일안주보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.WINE.createWithId()));
             given(anjuRepository.findAll())
@@ -451,12 +447,9 @@ class PairingQueryServiceTest extends UnitTest {
             given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
-                                    DrinkFixture.BEER
-                                            .builder()
-                                            .id(2L)
-                                            .flavorProfile(DrinkFixture.SOJU.getFlavorProfile())
-                                            .build(),
-                                    DrinkFixture.SOJU.builder().id(1L).build()));
+                                    DrinkFixture.BEER.createWithId(
+                                            2L, DrinkFixture.SOJU.getFlavorProfile()),
+                                    DrinkFixture.SOJU.createWithId(1L)));
             givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
@@ -481,8 +474,8 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
-                                    AnjuFixture.FRENCH_FRIES.builder().id(2L).build(),
-                                    AnjuFixture.BOILED_PORK.builder().id(1L).build()));
+                                    AnjuFixture.FRENCH_FRIES.createWithId(2L),
+                                    AnjuFixture.BOILED_PORK.createWithId(1L)));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
@@ -510,13 +503,9 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(
                             List.of(
-                                    MusicMoodFixture.CELEBRATORY_DANCE
-                                            .builder()
-                                            .id(2L)
-                                            .moodProfile(
-                                                    MusicMoodFixture.FORMAL_JAZZ.getMoodProfile())
-                                            .build(),
-                                    MusicMoodFixture.FORMAL_JAZZ.builder().id(1L).build()));
+                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithId(
+                                            2L, MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
+                                    MusicMoodFixture.FORMAL_JAZZ.createWithId(1L)));
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
