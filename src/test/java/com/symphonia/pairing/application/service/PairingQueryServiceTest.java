@@ -443,13 +443,13 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Drink 점수가 같으면 id가 작은 순서로 반환한다")
         void shouldOrderByDrinkIdAscendingWhenScoresTie() {
             // given
-            // 맥주에 소주의 flavorProfile을 주어 두 Drink의 점수를 같게 만든다. 소주가 id가 더 작다
+            // 맥주에 소주의 flavorProfile을 주어 두 Drink의 점수를 같게 만든다
             given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.BEER.createWithId(
-                                            DrinkFixture.SOJU.getFlavorProfile()),
-                                    DrinkFixture.SOJU.createWithId()));
+                                            2L, DrinkFixture.SOJU.getFlavorProfile()),
+                                    DrinkFixture.SOJU.createWithId(1L)));
             givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
@@ -469,13 +469,13 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Anju 점수가 같으면 id가 작은 순서로 반환한다")
         void shouldOrderByAnjuIdAscendingWhenScoresTie() {
             // given
-            // 수육과 감자튀김은 flavorProfile이 같아 점수가 같다. 수육이 id가 더 작다
+            // 수육과 감자튀김은 flavorProfile이 같아 점수가 같다
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
-                                    AnjuFixture.FRENCH_FRIES.createWithId(),
-                                    AnjuFixture.BOILED_PORK.createWithId()));
+                                    AnjuFixture.FRENCH_FRIES.createWithId(2L),
+                                    AnjuFixture.BOILED_PORK.createWithId(1L)));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
@@ -496,7 +496,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("MusicMood 점수가 같으면 id가 작은 순서로 반환한다")
         void shouldOrderByMusicMoodIdAscendingWhenScoresTie() {
             // given
-            // 파티 댄스에 재즈의 moodProfile을 주어 두 MusicMood의 점수를 같게 만든다. 재즈가 id가 더 작다
+            // 파티 댄스에 재즈의 moodProfile을 주어 두 MusicMood의 점수를 같게 만든다
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.TOFU_KIMCHI.createWithId()));
@@ -504,8 +504,8 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(
                             List.of(
                                     MusicMoodFixture.CELEBRATORY_DANCE.createWithId(
-                                            MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
-                                    MusicMoodFixture.FORMAL_JAZZ.createWithId()));
+                                            2L, MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
+                                    MusicMoodFixture.FORMAL_JAZZ.createWithId(1L)));
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
                             RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
