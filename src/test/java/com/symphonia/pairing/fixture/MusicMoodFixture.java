@@ -36,7 +36,15 @@ public enum MusicMoodFixture {
     }
 
     public MusicMood createWithId(MoodProfile moodProfile) {
-        return build(ordinal() + 1L, moodProfile);
+        return createWithId(ordinal() + 1L, moodProfile);
+    }
+
+    public MusicMood createWithId(Long id) {
+        return createWithId(id, moodProfile);
+    }
+
+    public MusicMood createWithId(Long id, MoodProfile moodProfile) {
+        return build(id, moodProfile);
     }
 
     private MusicMood build(Long id, MoodProfile moodProfile) {

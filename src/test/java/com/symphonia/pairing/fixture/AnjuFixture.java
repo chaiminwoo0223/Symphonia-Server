@@ -37,7 +37,11 @@ public enum AnjuFixture {
     }
 
     public Anju createWithId() {
-        return build(ordinal() + 1L);
+        return createWithId(ordinal() + 1L);
+    }
+
+    public Anju createWithId(Long id) {
+        return build(id);
     }
 
     private Anju build(Long id) {
