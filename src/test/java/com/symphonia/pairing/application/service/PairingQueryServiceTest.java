@@ -309,6 +309,31 @@ class PairingQueryServiceTest extends UnitTest {
                             AnjuFixture.FRUIT_PLATTER.getName());
         }
 
+        @Test
+        @DisplayName("attendeeAllergies로 모든 Anju가 제외되면 예외 없이 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenAnjusExcludedByAllergies() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.create()));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.GOLBAENGI_MUCHIM.create(),
+                                    AnjuFixture.FRIED_CHICKEN.create()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(),
+                            Set.of(AllergyType.WHEAT));
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results).isEmpty();
+        }
+
         private void givenStandardCatalog() {
             given(drinkRepository.findAll())
                     .willReturn(
