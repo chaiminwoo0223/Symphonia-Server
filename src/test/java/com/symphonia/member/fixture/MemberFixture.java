@@ -30,6 +30,10 @@ public enum MemberFixture {
     private final SocialProvider socialProvider;
 
     public Member create() {
+        return createWithSocialId(socialId);
+    }
+
+    public Member createWithSocialId(String socialId) {
         return Member.builder()
                 .socialId(socialId)
                 .nickname(nickname)
