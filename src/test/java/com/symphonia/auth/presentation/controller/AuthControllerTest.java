@@ -348,6 +348,31 @@ class AuthControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("같은 회원의 다른 기기가 재발급한 뒤인 경우")
+        class WhenOtherDeviceRefreshed {
+
+            @Test
+            @DisplayName("남아 있는 리프레시 토큰으로도 재발급된다")
+            void shouldRefreshWithRemainingToken() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String deviceAToken = authHelper.issueRefreshTokenFor(member);
+                String deviceBToken = authHelper.issueRefreshTokenFor(member);
+                mockMvc.perform(
+                                post("/api/v1/auth/refresh")
+                                        .cookie(new Cookie(COOKIE_NAME, deviceAToken)))
+                        .andExpect(status().isOk());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/refresh")
+                                        .cookie(new Cookie(COOKIE_NAME, deviceBToken)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.accessToken").exists());
+            }
+        }
+
+        @Nested
         @DisplayName("리프레시 토큰 쿠키가 없는 경우")
         class WhenCookieMissing {
 

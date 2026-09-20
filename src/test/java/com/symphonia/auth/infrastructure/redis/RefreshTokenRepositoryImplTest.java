@@ -71,6 +71,12 @@ class RefreshTokenRepositoryImplTest extends RedisRepositoryTest {
 
             // consume()이 거는 락은 짧은 TTL 동안 남아있으므로, 다른 Consume 테스트와 값을 공유하지 않는다.
             private static final String CONSUMABLE_VALUE = "consumable-refresh-token-value";
+            private static final String REMOVED_VALUE = "removed-refresh-token-value";
+            private static final String DEVICE_A_VALUE = "device-a-refresh-token-value";
+            private static final String DEVICE_B_VALUE = "device-b-refresh-token-value";
+
+            // 다른 테스트가 실제 회원 ID로 남긴 토큰과 섞이지 않도록 숫자가 아닌 ID를 쓴다.
+            private static final String DEVICE_OWNER_ID = "device-owner-member";
 
             @Test
             @DisplayName("멤버 ID를 반환한다")
@@ -83,6 +89,36 @@ class RefreshTokenRepositoryImplTest extends RedisRepositoryTest {
 
                 // then
                 assertThat(result).contains(MEMBER_ID);
+            }
+
+            @Test
+            @DisplayName("소비한 토큰을 삭제한다")
+            void shouldRemoveConsumedToken() {
+                // given
+                refreshTokenRepository.save(REMOVED_VALUE, MEMBER_ID, EXPIRATION_TIME);
+
+                // when
+                refreshTokenRepository.consume(REMOVED_VALUE);
+
+                // then
+                assertThat(refreshTokenRepository.findMemberIdByValue(REMOVED_VALUE)).isEmpty();
+            }
+
+            @Test
+            @DisplayName("같은 회원의 다른 토큰은 삭제하지 않는다")
+            void shouldKeepOtherTokensOfSameMember() {
+                // given
+                refreshTokenRepository.save(DEVICE_A_VALUE, DEVICE_OWNER_ID, EXPIRATION_TIME);
+                refreshTokenRepository.save(DEVICE_B_VALUE, DEVICE_OWNER_ID, EXPIRATION_TIME);
+
+                // when
+                refreshTokenRepository.consume(DEVICE_A_VALUE);
+
+                // then
+                assertThat(refreshTokenRepository.findMemberIdByValue(DEVICE_B_VALUE))
+                        .contains(DEVICE_OWNER_ID);
+                assertThat(refreshTokenRedisRepository.findAllByMemberId(DEVICE_OWNER_ID))
+                        .hasSize(1);
             }
         }
 

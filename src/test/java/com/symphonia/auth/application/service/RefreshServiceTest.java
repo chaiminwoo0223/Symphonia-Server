@@ -2,7 +2,9 @@ package com.symphonia.auth.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
@@ -65,13 +67,13 @@ class RefreshServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("기존 리프레시 토큰을 삭제한다.")
-            void shouldDeleteRefreshToken() {
+            @DisplayName("회원의 전체 리프레시 토큰을 삭제하지 않는다.")
+            void shouldNotDeleteRefreshTokensOfMember() {
                 // when
                 refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP));
 
                 // then
-                verify(refreshTokenRepository).delete(String.valueOf(MEMBER_ID));
+                verify(refreshTokenRepository, never()).delete(anyString());
             }
 
             @Test

@@ -30,8 +30,6 @@ public class RefreshService implements RefreshUseCase {
                         .orElseThrow(RefreshTokenNotFoundException::new);
         MemberResult member = getMemberUseCase.getById(Long.parseLong(memberId));
 
-        refreshTokenRepository.delete(memberId);
-
         return issueTokenUseCase.issue(memberId, member.role().name());
     }
 }
