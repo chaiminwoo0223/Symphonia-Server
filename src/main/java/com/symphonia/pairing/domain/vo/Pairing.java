@@ -6,6 +6,7 @@ import com.symphonia.pairing.domain.entity.MusicMood;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -20,6 +21,12 @@ public class Pairing {
     private static final double HIGH_ABV_THRESHOLD = 20.0;
     private static final double HIGH_ABV_PENALTY = 0.15;
     private static final int RECOMMENDATION_LIMIT = 5;
+    private static final Comparator<Pairing> RANKING =
+            Comparator.comparingDouble(Pairing::getScore)
+                    .reversed()
+                    .thenComparing(pairing -> pairing.getDrink().getId())
+                    .thenComparing(pairing -> pairing.getAnju().getId())
+                    .thenComparing(pairing -> pairing.getMusicMood().getId());
 
     private final Drink drink;
     private final Anju anju;
@@ -44,10 +51,7 @@ public class Pairing {
             }
         }
 
-        List<Pairing> ranked =
-                pairings.stream()
-                        .sorted(Comparator.comparingDouble(Pairing::getScore).reversed())
-                        .toList();
+        List<Pairing> ranked = pairings.stream().sorted(RANKING).toList();
         List<Pairing> top = ranked.stream().limit(RECOMMENDATION_LIMIT).toList();
 
         return occasion.requiresNonAlcoholicOption() ? withNonAlcoholicOption(top, ranked) : top;
@@ -72,6 +76,10 @@ public class Pairing {
     }
 
     private static Pairing of(Drink drink, Anju anju, MusicMood musicMood, Occasion occasion) {
+        Objects.requireNonNull(drink.getId(), "Drink의 id는 null일 수 없습니다.");
+        Objects.requireNonNull(anju.getId(), "Anju의 id는 null일 수 없습니다.");
+        Objects.requireNonNull(musicMood.getId(), "MusicMood의 id는 null일 수 없습니다.");
+
         return new Pairing(drink, anju, musicMood, score(drink, anju, musicMood, occasion));
     }
 
