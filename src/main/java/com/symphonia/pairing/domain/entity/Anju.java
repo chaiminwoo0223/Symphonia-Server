@@ -24,7 +24,7 @@ public class Anju {
         return Anju.builder()
                 .name(name)
                 .flavorProfile(flavorProfile)
-                .allergyTypes(allergyTypes)
+                .allergyTypes(allergyTypes == null ? Set.of() : Set.copyOf(allergyTypes))
                 .build();
     }
 

@@ -28,6 +28,8 @@ INSERT INTO anju_allergy_type (anju_id, allergy_type)
 INSERT INTO anju_allergy_type (anju_id, allergy_type)
     SELECT id, 'EGG' FROM anju_jpa_entity WHERE name = '후라이드치킨';
 INSERT INTO anju_allergy_type (anju_id, allergy_type)
+    SELECT id, 'CHICKEN' FROM anju_jpa_entity WHERE name = '후라이드치킨';
+INSERT INTO anju_allergy_type (anju_id, allergy_type)
     SELECT id, 'SOYBEAN' FROM anju_jpa_entity WHERE name = '두부김치';
 INSERT INTO anju_allergy_type (anju_id, allergy_type)
     SELECT id, 'PORK' FROM anju_jpa_entity WHERE name = '두부김치';

@@ -65,6 +65,64 @@ class PairingControllerTest extends IntegrationTest {
                     .andExpect(status().isBadRequest());
         }
 
+        @Test
+        @DisplayName("attendeeAllergies와 겹치는 안주는 추천 목록에서 제외한다")
+        void shouldExcludeAnjuConflictingWithAttendeeAllergies() throws Exception {
+            // given
+            pairingHelper.saveDrink(DrinkFixture.SOJU);
+            pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            pairingHelper.saveAnju(AnjuFixture.PEANUT_ALLERGY);
+            pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/recommend")
+                                    .param("relationshipType", "FRIEND")
+                                    .param("moodType", "CASUAL")
+                                    .param("isAdultConfirmed", "true")
+                                    .param("attendeeAllergies", "PEANUT"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isNotEmpty())
+                    .andExpect(
+                            jsonPath(
+                                            "$.data[?(@.anjuName=='%s')]",
+                                            AnjuFixture.PEANUT_ALLERGY.getName())
+                                    .isEmpty());
+        }
+
+        @Test
+        @DisplayName("attendeeConstraints를 반영해 무알코올 Drink를 응답에 포함한다")
+        void shouldIncludeNonAlcoholicDrinkWhenAttendeeConstraintsGiven() throws Exception {
+            // given
+            pairingHelper.saveDrink(DrinkFixture.SOJU);
+            pairingHelper.saveDrink(DrinkFixture.SODA);
+            pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/recommend")
+                                    .param("relationshipType", "FRIEND")
+                                    .param("moodType", "CASUAL")
+                                    .param("isAdultConfirmed", "true")
+                                    .param("attendeeConstraints", "DRIVER", "PREGNANT"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[?(@.drinkNonAlcoholic==true)]").isNotEmpty());
+        }
+
+        @Test
+        @DisplayName("정의되지 않은 attendeeAllergies 값이면 400을 반환한다")
+        void shouldReturnBadRequestWhenAttendeeAllergyInvalid() throws Exception {
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/recommend")
+                                    .param("relationshipType", "FRIEND")
+                                    .param("moodType", "CASUAL")
+                                    .param("isAdultConfirmed", "true")
+                                    .param("attendeeAllergies", "NOT_AN_ALLERGY"))
+                    .andExpect(status().isBadRequest());
+        }
+
         @Nested
         @DisplayName("성인 인증이 되지 않은 경우")
         class WhenAdultNotConfirmed {
