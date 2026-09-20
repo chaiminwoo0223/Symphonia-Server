@@ -21,7 +21,20 @@ public enum DrinkFixture {
     private final boolean nonAlcoholic;
 
     public Drink create() {
+        return build(null, flavorProfile);
+    }
+
+    public Drink createWithId() {
+        return createWithId(flavorProfile);
+    }
+
+    public Drink createWithId(FlavorProfile flavorProfile) {
+        return build(ordinal() + 1L, flavorProfile);
+    }
+
+    private Drink build(Long id, FlavorProfile flavorProfile) {
         return Drink.builder()
+                .id(id)
                 .name(name)
                 .abv(abv)
                 .flavorProfile(flavorProfile)
