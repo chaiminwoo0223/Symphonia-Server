@@ -2,9 +2,12 @@ package com.symphonia.member.infrastructure.jpa;
 
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
+import com.symphonia.member.domain.policy.MemberPolicy;
 import com.symphonia.member.domain.repository.MemberRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -26,9 +29,14 @@ public class MemberRepositoryImpl implements MemberRepository {
 
     @Override
     public Member save(Member member) {
-        MemberJpaEntity savedEntity = memberJpaRepository.save(MemberJpaEntity.from(member));
+        try {
+            MemberJpaEntity savedEntity = memberJpaRepository.save(MemberJpaEntity.from(member));
 
-        return savedEntity.toDomain();
+            return savedEntity.toDomain();
+        } catch (DataIntegrityViolationException e) {
+            MemberPolicy.validateNotDuplicated(isSocialLoginViolation(e));
+            throw e;
+        }
     }
 
     @Override
@@ -39,5 +47,10 @@ public class MemberRepositoryImpl implements MemberRepository {
     @Override
     public void delete(Member member) {
         memberJpaRepository.deleteById(member.getId());
+    }
+
+    private boolean isSocialLoginViolation(DataIntegrityViolationException e) {
+        return e.getCause() instanceof ConstraintViolationException violation
+                && "uk_member_social_login".equalsIgnoreCase(violation.getConstraintName());
     }
 }
