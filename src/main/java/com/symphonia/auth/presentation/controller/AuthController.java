@@ -8,7 +8,7 @@ import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.auth.application.usecase.RefreshUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
 import com.symphonia.auth.presentation.api.AuthApi;
-import com.symphonia.auth.presentation.cookie.CookieProvider;
+import com.symphonia.auth.presentation.cookie.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
@@ -29,14 +29,14 @@ public class AuthController implements AuthApi {
     private final LoginUseCase loginUseCase;
     private final RefreshUseCase refreshUseCase;
     private final LogoutUseCase logoutUseCase;
-    private final CookieProvider cookieProvider;
+    private final RefreshTokenCookieFactory refreshTokenCookieFactory;
 
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> signup(
             SignupRequest request, HttpServletRequest httpRequest) {
         TokenResult result = signupUseCase.signup(request.toCommand(extractIp(httpRequest)));
         TokenResponse response = TokenResponse.from(result);
-        ResponseCookie cookie = cookieProvider.create(result.refreshToken());
+        ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -48,7 +48,7 @@ public class AuthController implements AuthApi {
             LoginRequest request, HttpServletRequest httpRequest) {
         TokenResult result = loginUseCase.login(request.toCommand(extractIp(httpRequest)));
         TokenResponse response = TokenResponse.from(result);
-        ResponseCookie cookie = cookieProvider.create(result.refreshToken());
+        ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -61,7 +61,7 @@ public class AuthController implements AuthApi {
         RefreshCommand command = RefreshCommand.of(refreshToken, extractIp(httpRequest));
         TokenResult result = refreshUseCase.refresh(command);
         TokenResponse response = TokenResponse.from(result);
-        ResponseCookie cookie = cookieProvider.create(result.refreshToken());
+        ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -74,7 +74,7 @@ public class AuthController implements AuthApi {
         String accessToken = (String) authentication.getCredentials();
         LogoutCommand command = LogoutCommand.of(accessToken, extractIp(httpRequest));
         logoutUseCase.logout(command);
-        ResponseCookie cookie = cookieProvider.expire();
+        ResponseCookie cookie = refreshTokenCookieFactory.expire();
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())

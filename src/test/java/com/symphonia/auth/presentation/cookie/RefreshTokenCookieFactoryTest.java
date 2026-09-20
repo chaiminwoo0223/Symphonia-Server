@@ -10,17 +10,18 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseCookie;
 
-@DisplayName("CookieProvider 단위 테스트")
-class CookieProviderTest extends UnitTest {
+@DisplayName("RefreshTokenCookieFactory 단위 테스트")
+class RefreshTokenCookieFactoryTest extends UnitTest {
 
     private static final long EXPIRATION_TIME = 604800L;
     private static final String REFRESH_TOKEN = "refresh-token-value";
 
-    private CookieProvider cookieProvider;
+    private RefreshTokenCookieFactory refreshTokenCookieFactory;
 
     @BeforeEach
     void setUp() {
-        cookieProvider = new CookieProvider(new RefreshTokenProperties(EXPIRATION_TIME, true));
+        refreshTokenCookieFactory =
+                new RefreshTokenCookieFactory(new RefreshTokenProperties(EXPIRATION_TIME, true));
     }
 
     @Nested
@@ -31,7 +32,7 @@ class CookieProviderTest extends UnitTest {
         @DisplayName("HttpOnly, Secure, SameSite=Strict 속성을 가진 쿠키를 만든다.")
         void shouldCreateCookieWithSecurityAttributes() {
             // when
-            ResponseCookie cookie = cookieProvider.create(REFRESH_TOKEN);
+            ResponseCookie cookie = refreshTokenCookieFactory.create(REFRESH_TOKEN);
 
             // then
             assertThat(cookie.getValue()).isEqualTo(REFRESH_TOKEN);
@@ -51,7 +52,7 @@ class CookieProviderTest extends UnitTest {
         @DisplayName("Max-Age가 0인 쿠키를 만든다.")
         void shouldCreateCookieWithZeroMaxAge() {
             // when
-            ResponseCookie cookie = cookieProvider.expire();
+            ResponseCookie cookie = refreshTokenCookieFactory.expire();
 
             // then
             assertThat(cookie.getMaxAge().getSeconds()).isZero();
