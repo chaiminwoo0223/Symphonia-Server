@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.member.domain.entity.Member;
-import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.exception.MemberAlreadyExistsException;
 import com.symphonia.member.domain.repository.MemberRepository;
@@ -139,13 +138,7 @@ class MemberRepositoryImplTest extends RepositoryTest {
             @DisplayName("변환하지 않고 DataIntegrityViolationException을 그대로 던진다")
             void shouldPropagateDataIntegrityViolationException() {
                 // given
-                Member memberWithoutNickname =
-                        Member.builder()
-                                .socialId(MemberFixture.KAKAO.getSocialId())
-                                .email(MemberFixture.KAKAO.getEmail())
-                                .role(Role.ROLE_MEMBER)
-                                .socialProvider(SocialProvider.KAKAO)
-                                .build();
+                Member memberWithoutNickname = MemberFixture.KAKAO.createWithNickname(null);
 
                 // when & then
                 assertThatThrownBy(() -> memberRepository.save(memberWithoutNickname))
