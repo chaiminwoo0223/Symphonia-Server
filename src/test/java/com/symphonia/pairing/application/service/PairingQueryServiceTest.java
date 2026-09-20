@@ -135,7 +135,7 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("도수가 MODERATE_ABV_THRESHOLD를 초과하는 Drink는 맛이 더 가까워도 이하인 Drink보다 점수가 낮다")
+        @DisplayName("도수가 HIGH_ABV_THRESHOLD를 초과하는 Drink는 맛이 더 가까워도 이하인 Drink보다 점수가 낮다")
         void shouldScoreLowerWhenAbvExceedsModerateThreshold() {
             // given
             // 위스키는 후라이드치킨과 맛이 소주보다 더 가깝지만 고도수 페널티로 뒤집힌다

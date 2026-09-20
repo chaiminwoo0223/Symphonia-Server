@@ -17,7 +17,7 @@ public class Pairing {
     private static final double MOOD_WEIGHT = 0.4;
     private static final double LIGHT_ANJU_PENALTY = 0.1;
     private static final int LIGHT_ANJU_RICHNESS_THRESHOLD = 3;
-    private static final double MODERATE_ABV_THRESHOLD = 20.0;
+    private static final double HIGH_ABV_THRESHOLD = 20.0;
     private static final double HIGH_ABV_PENALTY = 0.15;
     private static final int RECOMMENDATION_LIMIT = 5;
 
@@ -85,7 +85,7 @@ public class Pairing {
             score -= LIGHT_ANJU_PENALTY;
         }
 
-        if (drink.getAbv() > MODERATE_ABV_THRESHOLD) {
+        if (drink.getAbv() > HIGH_ABV_THRESHOLD) {
             score -= HIGH_ABV_PENALTY;
         }
 
