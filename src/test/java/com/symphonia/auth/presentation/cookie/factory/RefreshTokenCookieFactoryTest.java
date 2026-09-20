@@ -1,4 +1,4 @@
-package com.symphonia.auth.presentation.cookie;
+package com.symphonia.auth.presentation.cookie.factory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

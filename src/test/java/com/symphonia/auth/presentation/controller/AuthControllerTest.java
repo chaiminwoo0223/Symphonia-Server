@@ -12,7 +12,7 @@ import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.auth.helper.AuthHelper;
-import com.symphonia.auth.presentation.cookie.RefreshTokenCookieFactory;
+import com.symphonia.auth.presentation.cookie.factory.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.member.domain.entity.Member;
