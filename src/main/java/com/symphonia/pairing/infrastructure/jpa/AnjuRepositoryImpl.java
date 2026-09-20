@@ -14,7 +14,9 @@ public class AnjuRepositoryImpl implements AnjuRepository {
 
     @Override
     public List<Anju> findAll() {
-        return anjuJpaRepository.findAll().stream().map(AnjuJpaEntity::toDomain).toList();
+        return anjuJpaRepository.findAllWithAllergyTypes().stream()
+                .map(AnjuJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

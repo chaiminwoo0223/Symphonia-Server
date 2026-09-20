@@ -10,6 +10,8 @@ import com.symphonia.pairing.fixture.AnjuFixture;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,50 @@ class AnjuRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).extracting(Anju::getId).contains(saved.getId());
+        }
+
+        @Test
+        @DisplayName("알레르기가 없는 Anju도 allergyTypes가 빈 Set인 채로 반환한다")
+        void shouldReturnAnjuWithoutAllergyTypes() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.FRUIT_PLATTER.create()));
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            List<Anju> result = anjuRepository.findAll();
+
+            // then
+            assertThat(result)
+                    .filteredOn(anju -> anju.getId().equals(saved.getId()))
+                    .singleElement()
+                    .satisfies(anju -> assertThat(anju.getAllergyTypes()).isEmpty());
+        }
+
+        @Test
+        @DisplayName("Anju 개수와 무관하게 쿼리를 한 번만 실행한다")
+        void shouldExecuteSingleQueryRegardlessOfAnjuCount() {
+            // given
+            anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()));
+            anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.FRIED_CHICKEN.create()));
+            anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
+            entityManager.flush();
+            entityManager.clear();
+            Statistics statistics =
+                    entityManager
+                            .getEntityManagerFactory()
+                            .unwrap(SessionFactory.class)
+                            .getStatistics();
+            statistics.setStatisticsEnabled(true);
+            statistics.clear();
+
+            // when
+            List<Anju> result = anjuRepository.findAll();
+
+            // then
+            assertThat(result).hasSizeGreaterThanOrEqualTo(3);
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
         }
     }
 
