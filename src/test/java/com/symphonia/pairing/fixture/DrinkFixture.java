@@ -32,16 +32,16 @@ public enum DrinkFixture {
         return build(id, flavorProfile);
     }
 
-    public Drink createWithFlavorProfile(FlavorProfile flavorProfile) {
-        return build(ordinal() + 1L, flavorProfile);
+    public Drink createWithFlavorProfile(FlavorProfile profile) {
+        return build(ordinal() + 1L, profile);
     }
 
-    private Drink build(Long id, FlavorProfile flavorProfile) {
+    private Drink build(Long id, FlavorProfile profile) {
         return Drink.builder()
                 .id(id)
                 .name(name)
                 .abv(abv)
-                .flavorProfile(flavorProfile)
+                .flavorProfile(profile)
                 .nonAlcoholic(nonAlcoholic)
                 .build();
     }

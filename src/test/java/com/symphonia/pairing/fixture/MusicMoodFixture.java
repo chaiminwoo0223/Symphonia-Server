@@ -35,15 +35,15 @@ public enum MusicMoodFixture {
         return build(id, moodProfile);
     }
 
-    public MusicMood createWithMoodProfile(MoodProfile moodProfile) {
-        return build(ordinal() + 1L, moodProfile);
+    public MusicMood createWithMoodProfile(MoodProfile profile) {
+        return build(ordinal() + 1L, profile);
     }
 
-    private MusicMood build(Long id, MoodProfile moodProfile) {
+    private MusicMood build(Long id, MoodProfile profile) {
         return MusicMood.builder()
                 .id(id)
                 .title(title)
-                .moodProfile(moodProfile)
+                .moodProfile(profile)
                 .streamingUrl(streamingUrl)
                 .build();
     }
