@@ -108,7 +108,7 @@ class PairingQueryServiceTest extends UnitTest {
             MoodType moodType = MoodType.FORMAL;
             Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
             MusicMood musicMood =
-                    MusicMoodFixture.FORMAL_JAZZ.createWithId(occasion.toMoodProfile());
+                    MusicMoodFixture.FORMAL_JAZZ.createWithMoodProfile(occasion.toMoodProfile());
             // 와인은 맛 유사도상 후라이드치킨이 과일안주보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.WINE.createWithId()));
             given(anjuRepository.findAll())
@@ -447,8 +447,8 @@ class PairingQueryServiceTest extends UnitTest {
             given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
-                                    DrinkFixture.BEER.createWithId(
-                                            2L, DrinkFixture.SOJU.getFlavorProfile()),
+                                    DrinkFixture.BEER.createWithFlavorProfile(
+                                            DrinkFixture.SOJU.getFlavorProfile()),
                                     DrinkFixture.SOJU.createWithId(1L)));
             givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
@@ -503,8 +503,8 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(
                             List.of(
-                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithId(
-                                            2L, MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
+                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithMoodProfile(
+                                            MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
                                     MusicMoodFixture.FORMAL_JAZZ.createWithId(1L)));
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
