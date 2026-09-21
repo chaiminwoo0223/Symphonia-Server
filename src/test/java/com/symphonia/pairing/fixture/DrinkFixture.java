@@ -32,8 +32,8 @@ public enum DrinkFixture {
         return build(id, flavorProfile);
     }
 
-    public Drink createWithId(Long id, FlavorProfile flavorProfile) {
-        return build(id, flavorProfile);
+    public Drink createWithFlavorProfile(FlavorProfile flavorProfile) {
+        return build(ordinal() + 1L, flavorProfile);
     }
 
     private Drink build(Long id, FlavorProfile flavorProfile) {
