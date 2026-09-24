@@ -2,6 +2,7 @@ package com.symphonia.pairing.application.dto.result;
 
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 
 public record PairingFeedbackResult(
@@ -11,7 +12,8 @@ public record PairingFeedbackResult(
         Long anjuId,
         Long musicMoodId,
         RelationshipType relationshipType,
-        MoodType moodType) {
+        MoodType moodType,
+        PairingRating rating) {
     public static PairingFeedbackResult from(PairingFeedback pairingFeedback) {
         return new PairingFeedbackResult(
                 pairingFeedback.getId(),
@@ -20,6 +22,7 @@ public record PairingFeedbackResult(
                 pairingFeedback.getAnjuId(),
                 pairingFeedback.getMusicMoodId(),
                 pairingFeedback.getRelationshipType(),
-                pairingFeedback.getMoodType());
+                pairingFeedback.getMoodType(),
+                pairingFeedback.getRating());
     }
 }

@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
+import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
@@ -14,6 +15,7 @@ import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.MusicMood;
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
@@ -179,7 +181,30 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.drinkId").value(request.drinkId()))
                         .andExpect(jsonPath("$.data.anjuId").value(request.anjuId()))
-                        .andExpect(jsonPath("$.data.musicMoodId").value(request.musicMoodId()));
+                        .andExpect(jsonPath("$.data.musicMoodId").value(request.musicMoodId()))
+                        .andExpect(jsonPath("$.data.rating").value(request.rating().name()));
+            }
+
+            @Test
+            @DisplayName("rating이 없으면 400을 반환한다")
+            void shouldReturnBadRequestWhenRatingMissing() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                SubmitPairingFeedbackRequest request = seedFeedbackRequest(null);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/pairings/feedback")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.ok").value(false))
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("rating"));
             }
         }
 
@@ -210,6 +235,10 @@ class PairingControllerTest extends IntegrationTest {
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest() {
+        return seedFeedbackRequest(PairingRating.LIKE);
+    }
+
+    private SubmitPairingFeedbackRequest seedFeedbackRequest(PairingRating rating) {
         Drink drink = pairingHelper.saveDrink(DrinkFixture.SOJU);
         Anju anju = pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
         MusicMood musicMood = pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
@@ -218,6 +247,7 @@ class PairingControllerTest extends IntegrationTest {
                 anju.getId(),
                 musicMood.getId(),
                 RelationshipType.FRIEND,
-                MoodType.CASUAL);
+                MoodType.CASUAL,
+                rating);
     }
 }

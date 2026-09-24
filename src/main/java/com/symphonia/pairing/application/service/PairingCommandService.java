@@ -37,7 +37,8 @@ public class PairingCommandService implements SubmitPairingFeedbackUseCase {
                         command.anjuId(),
                         command.musicMoodId(),
                         command.relationshipType(),
-                        command.moodType());
+                        command.moodType(),
+                        command.rating());
         PairingFeedback savedPairingFeedback = pairingFeedbackRepository.save(pairingFeedback);
 
         return PairingFeedbackResult.from(savedPairingFeedback);
