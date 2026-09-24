@@ -3,10 +3,12 @@ package com.symphonia.pairing.domain.vo;
 import com.symphonia.pairing.domain.entity.Anju;
 import java.util.Set;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Occasion {
@@ -20,11 +22,12 @@ public class Occasion {
             MoodType moodType,
             Set<AttendeeConstraint> attendeeConstraints,
             Set<AllergyType> attendeeAllergies) {
-        return new Occasion(
-                relationshipType,
-                moodType,
-                attendeeConstraints == null ? Set.of() : attendeeConstraints,
-                attendeeAllergies == null ? Set.of() : attendeeAllergies);
+        return Occasion.builder()
+                .relationshipType(relationshipType)
+                .moodType(moodType)
+                .attendeeConstraints(attendeeConstraints == null ? Set.of() : attendeeConstraints)
+                .attendeeAllergies(attendeeAllergies == null ? Set.of() : attendeeAllergies)
+                .build();
     }
 
     public MoodProfile toMoodProfile() {
