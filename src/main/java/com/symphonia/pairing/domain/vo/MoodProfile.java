@@ -11,9 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MoodProfile {
     private static final int MAX_AXIS_VALUE = 5;
-    private static final int AXIS_COUNT = 4;
-    private static final double MAX_DISTANCE_SQUARED =
-            AXIS_COUNT * (double) (MAX_AXIS_VALUE * MAX_AXIS_VALUE);
     private static final double FIT_THRESHOLD = 0.7;
 
     private int formality;
@@ -41,18 +38,9 @@ public class MoodProfile {
     }
 
     public double fitness(MoodProfile other) {
-        int formalityDiff = this.formality - other.formality;
-        int romanceDiff = this.romance - other.romance;
-        int celebrationDiff = this.celebration - other.celebration;
-        int comfortDiff = this.comfort - other.comfort;
-
-        double distanceSquared =
-                (double) formalityDiff * formalityDiff
-                        + (double) romanceDiff * romanceDiff
-                        + (double) celebrationDiff * celebrationDiff
-                        + (double) comfortDiff * comfortDiff;
-
-        return 1 - Math.sqrt(distanceSquared / MAX_DISTANCE_SQUARED);
+        return AxisDistance.similarity(
+                new int[] {formality, romance, celebration, comfort},
+                new int[] {other.formality, other.romance, other.celebration, other.comfort});
     }
 
     public boolean fits(MoodProfile other) {
