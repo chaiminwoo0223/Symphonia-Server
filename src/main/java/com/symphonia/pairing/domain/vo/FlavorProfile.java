@@ -14,6 +14,8 @@ public class FlavorProfile {
     private static final int AXIS_COUNT = 4;
     private static final double MAX_DISTANCE_SQUARED =
             AXIS_COUNT * (double) (MAX_AXIS_VALUE * MAX_AXIS_VALUE);
+    private static final double MATCH_THRESHOLD = 0.7;
+    private static final int LIGHT_RICHNESS_THRESHOLD = 3;
 
     private int sweetness;
     private int bitterness;
@@ -42,5 +44,13 @@ public class FlavorProfile {
                         + (double) richnessDiff * richnessDiff;
 
         return 1 - Math.sqrt(distanceSquared / MAX_DISTANCE_SQUARED);
+    }
+
+    public boolean matches(FlavorProfile other) {
+        return similarity(other) >= MATCH_THRESHOLD;
+    }
+
+    public boolean isLight() {
+        return richness <= LIGHT_RICHNESS_THRESHOLD;
     }
 }
