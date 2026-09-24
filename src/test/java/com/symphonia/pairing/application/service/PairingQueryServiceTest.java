@@ -15,6 +15,7 @@ import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.Occasion;
+import com.symphonia.pairing.domain.vo.PairingReason;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
@@ -522,6 +523,236 @@ class PairingQueryServiceTest extends UnitTest {
                             MusicMoodFixture.CELEBRATORY_DANCE.getTitle());
         }
 
+        @Test
+        @DisplayName("Occasion에 도수 제한이 있으면 reasons에 ABV_LIMIT을 포함한다")
+        void shouldIncludeAbvLimitReasonWhenOccasionHasAbvLimit() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.BOSS, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).contains(PairingReason.ABV_LIMIT);
+        }
+
+        @Test
+        @DisplayName("Occasion에 도수 제한이 없으면 reasons에 ABV_LIMIT을 포함하지 않는다")
+        void shouldNotIncludeAbvLimitReasonWhenOccasionHasNoAbvLimit() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.ABV_LIMIT);
+        }
+
+        @Test
+        @DisplayName("prefersLightAnju가 true고 richness가 임계값 이하면 reasons에 LIGHT_ANJU를 포함한다")
+        void shouldIncludeLightAnjuReasonWhenAnjuRichnessWithinThreshold() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.FORMAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).contains(PairingReason.LIGHT_ANJU);
+        }
+
+        @Test
+        @DisplayName("prefersLightAnju가 true여도 richness가 임계값을 초과하면 reasons에 LIGHT_ANJU를 포함하지 않는다")
+        void shouldNotIncludeLightAnjuReasonWhenAnjuRichnessExceedsThreshold() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.FORMAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.LIGHT_ANJU);
+        }
+
+        @Test
+        @DisplayName("무알코올 옵션이 필요하고 Drink가 무알코올이면 reasons에 NON_ALCOHOLIC_OPTION을 포함한다")
+        void shouldIncludeNonAlcoholicOptionReasonWhenDrinkIsNonAlcoholic() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SODA.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(AttendeeConstraint.DRIVER),
+                            Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).contains(PairingReason.NON_ALCOHOLIC_OPTION);
+        }
+
+        @Test
+        @DisplayName("무알코올 옵션이 필요해도 Drink가 무알코올이 아니면 reasons에 NON_ALCOHOLIC_OPTION을 포함하지 않는다")
+        void shouldNotIncludeNonAlcoholicOptionReasonWhenDrinkIsAlcoholic() {
+            // given
+            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(AttendeeConstraint.DRIVER),
+                            Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.NON_ALCOHOLIC_OPTION);
+        }
+
+        @Test
+        @DisplayName("attendeeAllergies가 있으면 살아남은 결과의 reasons에 ALLERGY_EXCLUDED를 포함한다")
+        void shouldIncludeAllergyExcludedReasonWhenAttendeeAllergiesPresent() {
+            // given
+            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(),
+                            Set.of(AllergyType.WHEAT));
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).contains(PairingReason.ALLERGY_EXCLUDED);
+        }
+
+        @Test
+        @DisplayName("attendeeAllergies가 없으면 reasons에 ALLERGY_EXCLUDED를 포함하지 않는다")
+        void shouldNotIncludeAllergyExcludedReasonWhenNoAttendeeAllergies() {
+            // given
+            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.ALLERGY_EXCLUDED);
+        }
+
+        @Test
+        @DisplayName("flavorSimilarity가 임계값 이상이면 reasons에 FLAVOR_MATCH를 포함한다")
+        void shouldIncludeFlavorMatchReasonWhenFlavorSimilarityAboveThreshold() {
+            // given
+            // 소주와 마른안주는 맛 유사도가 임계값(0.7)을 넘는다
+            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).contains(PairingReason.FLAVOR_MATCH);
+        }
+
+        @Test
+        @DisplayName("flavorSimilarity가 임계값 미만이면 reasons에 FLAVOR_MATCH를 포함하지 않는다")
+        void shouldNotIncludeFlavorMatchReasonWhenFlavorSimilarityBelowThreshold() {
+            // given
+            // 소주와 후라이드치킨은 맛 유사도가 임계값(0.7)에 못 미친다
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.FLAVOR_MATCH);
+        }
+
+        @Test
+        @DisplayName("moodFitness가 임계값 이상이면 reasons에 MOOD_MATCH를 포함한다")
+        void shouldIncludeMoodMatchReasonWhenMoodFitnessAboveThreshold() {
+            // given
+            // 편안한 어쿠스틱은 CASUAL Occasion의 moodProfile과 적합도가 임계값(0.7)을 넘는다
+            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).contains(PairingReason.MOOD_MATCH);
+        }
+
+        @Test
+        @DisplayName("moodFitness가 임계값 미만이면 reasons에 MOOD_MATCH를 포함하지 않는다")
+        void shouldNotIncludeMoodMatchReasonWhenMoodFitnessBelowThreshold() {
+            // given
+            // 잔잔한 재즈는 CASUAL Occasion의 moodProfile과 적합도가 임계값(0.7)에 못 미친다
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            given(musicMoodRepository.findAll())
+                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.MOOD_MATCH);
+        }
+
         private void givenStandardCatalog() {
             given(drinkRepository.findAll())
                     .willReturn(
@@ -570,6 +801,15 @@ class PairingQueryServiceTest extends UnitTest {
         private void givenCasualAcousticMusicMood() {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.createWithId()));
+        }
+
+        // 소주와 마른안주는 도수 제한·light anju·무알코올 조건과 무관하고, 맛 유사도와 편안한 어쿠스틱과의
+        // 무드 적합도만 임계값(0.7)을 넘는 조합이다.
+        private void givenSojuAndDriedSnackWithCasualAcousticMusicMood() {
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
         }
     }
 }

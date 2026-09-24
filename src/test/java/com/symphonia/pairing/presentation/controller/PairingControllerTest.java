@@ -51,7 +51,9 @@ class PairingControllerTest extends IntegrationTest {
                                     .param("isAdultConfirmed", "true"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray())
-                    .andExpect(jsonPath("$.data[0].score").exists());
+                    .andExpect(jsonPath("$.data[0].score").exists())
+                    .andExpect(jsonPath("$.data[0].reasons").isArray())
+                    .andExpect(jsonPath("$.data[0].reasons").isNotEmpty());
         }
 
         @Test

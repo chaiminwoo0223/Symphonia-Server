@@ -20,6 +20,8 @@ public class Pairing {
     private static final int LIGHT_ANJU_RICHNESS_THRESHOLD = 3;
     private static final double HIGH_ABV_THRESHOLD = 20.0;
     private static final double HIGH_ABV_PENALTY = 0.15;
+    private static final double FLAVOR_MATCH_THRESHOLD = 0.7;
+    private static final double MOOD_MATCH_THRESHOLD = 0.7;
     private static final int RECOMMENDATION_LIMIT = 5;
     private static final Comparator<Pairing> RANKING =
             Comparator.comparingDouble(Pairing::getScore)
@@ -32,6 +34,7 @@ public class Pairing {
     private final Anju anju;
     private final MusicMood musicMood;
     private final double score;
+    private final List<PairingReason> reasons;
 
     public static List<Pairing> recommend(
             List<Drink> drinks, List<Anju> anjus, List<MusicMood> musicMoods, Occasion occasion) {
@@ -80,12 +83,23 @@ public class Pairing {
         Objects.requireNonNull(anju.getId(), "Anju의 id는 null일 수 없습니다.");
         Objects.requireNonNull(musicMood.getId(), "MusicMood의 id는 null일 수 없습니다.");
 
-        return new Pairing(drink, anju, musicMood, score(drink, anju, musicMood, occasion));
-    }
-
-    private static double score(Drink drink, Anju anju, MusicMood musicMood, Occasion occasion) {
         double flavorSimilarity = drink.getFlavorProfile().similarity(anju.getFlavorProfile());
         double moodFitness = musicMood.getMoodProfile().fitness(occasion.toMoodProfile());
+
+        return new Pairing(
+                drink,
+                anju,
+                musicMood,
+                score(flavorSimilarity, moodFitness, drink, anju, occasion),
+                reasons(flavorSimilarity, moodFitness, drink, anju, occasion));
+    }
+
+    private static double score(
+            double flavorSimilarity,
+            double moodFitness,
+            Drink drink,
+            Anju anju,
+            Occasion occasion) {
         double score = FLAVOR_WEIGHT * flavorSimilarity + MOOD_WEIGHT * moodFitness;
 
         if (occasion.prefersLightAnju()
@@ -98,5 +112,36 @@ public class Pairing {
         }
 
         return Math.max(0, score);
+    }
+
+    private static List<PairingReason> reasons(
+            double flavorSimilarity,
+            double moodFitness,
+            Drink drink,
+            Anju anju,
+            Occasion occasion) {
+        List<PairingReason> reasons = new ArrayList<>();
+
+        if (occasion.hasAbvLimit()) {
+            reasons.add(PairingReason.ABV_LIMIT);
+        }
+        if (occasion.prefersLightAnju()
+                && anju.getFlavorProfile().getRichness() <= LIGHT_ANJU_RICHNESS_THRESHOLD) {
+            reasons.add(PairingReason.LIGHT_ANJU);
+        }
+        if (occasion.requiresNonAlcoholicOption() && drink.isNonAlcoholic()) {
+            reasons.add(PairingReason.NON_ALCOHOLIC_OPTION);
+        }
+        if (occasion.hasAllergyInput()) {
+            reasons.add(PairingReason.ALLERGY_EXCLUDED);
+        }
+        if (flavorSimilarity >= FLAVOR_MATCH_THRESHOLD) {
+            reasons.add(PairingReason.FLAVOR_MATCH);
+        }
+        if (moodFitness >= MOOD_MATCH_THRESHOLD) {
+            reasons.add(PairingReason.MOOD_MATCH);
+        }
+
+        return reasons;
     }
 }
