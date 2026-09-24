@@ -112,3 +112,9 @@ Fixture가 "데이터"를 만든다면, Helper는 여러 테스트에서 반복�
 - 예: 인증이 필요한 통합 테스트의 토큰 발급/헤더 세팅(`AuthHelper`), 반복되는 MockMvc 요청 빌더(`MockMvcRequestHelper`), 공통 응답 검증(`ResponseAssertHelper`).
 - **`Helper` 접미사가 "만능 유틸리티 클래스"의 핑계가 되지 않게 한다.** 클린코드에서 `Util`/`Manager`처럼 책임이 불분명한 이름을 지양하는 것과 같은 이유로, 하나의 `*Helper`는 하나의 관심사만 다룬다. 인증 Helper와 요청 빌드 Helper를 하나로 합치지 않는다.
 - `*Fixture`와 마찬가지로 도메인별 `helper` 패키지(각 모듈의 `src/test`)에 둔다.
+
+## 부하테스트
+
+**(2026-09-24 결정, 이슈 #70)**: 부하테스트 도구로 K6를 채택한다. GCP와 Grafana Cloud/Alloy 스택을 쓰기로 했는데, K6는 Grafana Labs 소유 프로젝트라 Prometheus remote write 출력이 Alloy·Grafana Cloud와 별도 브릿지 없이 연동된다. 단일 바이너리/컨테이너라 GCP에서 상시 인프라 없이 실행되고, Go 기반이라 JVM 스레드 기반인 nGrinder·JMeter보다 동일 자원으로 더 큰 동시 사용자를 시뮬레이션한다. nGrinder는 Controller/Agent 상시 인프라가 필요하고 Grafana 네이티브 연동이 없어서 제외했다. JMeter는 XML 기반 GUI 워크플로라 코드 리뷰·CI 게이트 친화성이 떨어져서 제외했다. JDBC·JMS 등 비HTTP 프로토콜까지 부하테스트 범위가 넓어지면 JMeter 도입을 재검토한다.
+
+1차 부하테스트는 `pairing` 도메인의 `POST /api/v1/pairings/recommend`를 대상으로 로컬과 dev 프로파일 환경에서 K6 스크립트를 실행하는 범위로 시작한다(이슈 #70). GCP 실행 위치와 Grafana Alloy 연동은 인프라 협의가 끝난 뒤 별도 이슈에서 다룬다. 인증이 필요한 `FEEDBACK` 엔드포인트를 포함한 로그인 플로우도 범위를 넓힐 때 별도 이슈에서 다룬다.
