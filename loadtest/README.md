@@ -41,6 +41,7 @@ k6 run --summary-export=loadtest/results/recommend-baseline.json loadtest/recomm
 
 - `relationshipType`, `moodType`을 무작위로 섞는다.
 - `attendeeConstraints`, `attendeeAllergies`는 0~2개를 무작위로 골라 섞는다.
+- 요청 사이에 `sleep`(think-time)을 두지 않는다. 실제 사용자 트래픽보다 VU당 요청 빈도가 높게 나오지만, 엔드포인트가 낼 수 있는 최대 처리량 기준으로 기준선을 잡기 위한 의도다.
 - `isAdultConfirmed`는 항상 `true`로 고정한다. 이 값이 없거나 `false`인 실패 케이스는 JUnit 테스트(`PairingControllerTest`)가 이미 검증하고 있어 부하테스트 범위에서는 다루지 않는다.
 
 ## Threshold
