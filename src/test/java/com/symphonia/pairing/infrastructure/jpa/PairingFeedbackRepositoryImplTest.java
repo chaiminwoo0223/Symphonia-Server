@@ -6,6 +6,7 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,7 +28,14 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         void shouldPersistPairingFeedback() {
             // given
             PairingFeedback pairingFeedback =
-                    PairingFeedback.of(1L, 1L, 1L, 1L, RelationshipType.FRIEND, MoodType.CASUAL);
+                    PairingFeedback.of(
+                            1L,
+                            1L,
+                            1L,
+                            1L,
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            PairingRating.LIKE);
 
             // when
             PairingFeedback saved = pairingFeedbackRepository.save(pairingFeedback);
@@ -37,6 +45,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
             assertThat(saved.getMemberId()).isEqualTo(1L);
             assertThat(saved.getRelationshipType()).isEqualTo(RelationshipType.FRIEND);
             assertThat(saved.getMoodType()).isEqualTo(MoodType.CASUAL);
+            assertThat(saved.getRating()).isEqualTo(PairingRating.LIKE);
         }
     }
 }

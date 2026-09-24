@@ -1,6 +1,7 @@
 package com.symphonia.pairing.application.dto.command;
 
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 
 public record SubmitPairingFeedbackCommand(
@@ -9,4 +10,5 @@ public record SubmitPairingFeedbackCommand(
         Long anjuId,
         Long musicMoodId,
         RelationshipType relationshipType,
-        MoodType moodType) {}
+        MoodType moodType,
+        PairingRating rating) {}

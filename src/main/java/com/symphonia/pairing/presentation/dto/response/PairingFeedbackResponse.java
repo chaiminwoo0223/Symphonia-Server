@@ -9,7 +9,8 @@ public record PairingFeedbackResponse(
         @Schema(description = "안주 ID") Long anjuId,
         @Schema(description = "음악 무드 ID") Long musicMoodId,
         @Schema(description = "관계 유형") String relationshipType,
-        @Schema(description = "분위기 유형") String moodType) {
+        @Schema(description = "분위기 유형") String moodType,
+        @Schema(description = "평가값") String rating) {
     public static PairingFeedbackResponse from(PairingFeedbackResult result) {
         return new PairingFeedbackResponse(
                 result.id(),
@@ -17,6 +18,7 @@ public record PairingFeedbackResponse(
                 result.anjuId(),
                 result.musicMoodId(),
                 result.relationshipType().name(),
-                result.moodType().name());
+                result.moodType().name(),
+                result.rating().name());
     }
 }

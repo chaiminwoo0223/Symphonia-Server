@@ -3,6 +3,7 @@ package com.symphonia.pairing.infrastructure.jpa;
 import com.symphonia.common.entity.BaseTimeEntity;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -45,6 +46,10 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private MoodType moodType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PairingRating rating;
+
     public static PairingFeedbackJpaEntity from(PairingFeedback pairingFeedback) {
         return PairingFeedbackJpaEntity.builder()
                 .id(pairingFeedback.getId())
@@ -54,6 +59,7 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .musicMoodId(pairingFeedback.getMusicMoodId())
                 .relationshipType(pairingFeedback.getRelationshipType())
                 .moodType(pairingFeedback.getMoodType())
+                .rating(pairingFeedback.getRating())
                 .build();
     }
 
@@ -66,6 +72,7 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .musicMoodId(musicMoodId)
                 .relationshipType(relationshipType)
                 .moodType(moodType)
+                .rating(rating)
                 .build();
     }
 }

@@ -20,6 +20,7 @@ import com.symphonia.pairing.domain.repository.DrinkRepository;
 import com.symphonia.pairing.domain.repository.MusicMoodRepository;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
@@ -134,6 +135,7 @@ class PairingCommandServiceTest extends UnitTest {
                 assertThat(result.drinkId()).isEqualTo(DRINK_ID);
                 assertThat(result.anjuId()).isEqualTo(ANJU_ID);
                 assertThat(result.musicMoodId()).isEqualTo(MUSIC_MOOD_ID);
+                assertThat(result.rating()).isEqualTo(PairingRating.LIKE);
             }
         }
 
@@ -144,7 +146,8 @@ class PairingCommandServiceTest extends UnitTest {
                     ANJU_ID,
                     MUSIC_MOOD_ID,
                     RelationshipType.FRIEND,
-                    MoodType.FORMAL);
+                    MoodType.FORMAL,
+                    PairingRating.LIKE);
         }
     }
 }

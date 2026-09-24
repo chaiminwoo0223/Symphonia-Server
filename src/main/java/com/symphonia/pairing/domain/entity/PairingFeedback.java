@@ -1,6 +1,7 @@
 package com.symphonia.pairing.domain.entity;
 
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,7 @@ public class PairingFeedback {
     private Long musicMoodId;
     private RelationshipType relationshipType;
     private MoodType moodType;
+    private PairingRating rating;
 
     public static PairingFeedback of(
             Long memberId,
@@ -27,7 +29,8 @@ public class PairingFeedback {
             Long anjuId,
             Long musicMoodId,
             RelationshipType relationshipType,
-            MoodType moodType) {
+            MoodType moodType,
+            PairingRating rating) {
         return PairingFeedback.builder()
                 .memberId(memberId)
                 .drinkId(drinkId)
@@ -35,6 +38,7 @@ public class PairingFeedback {
                 .musicMoodId(musicMoodId)
                 .relationshipType(relationshipType)
                 .moodType(moodType)
+                .rating(rating)
                 .build();
     }
 }
