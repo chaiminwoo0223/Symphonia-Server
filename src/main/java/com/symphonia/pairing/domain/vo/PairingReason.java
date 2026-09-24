@@ -3,7 +3,9 @@ package com.symphonia.pairing.domain.vo;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public enum PairingReason {
     ABV_LIMIT("자리의 도수 제한에 맞는 술이에요", PairingReasonCriteria::abvLimit),
     ALLERGY_EXCLUDED("알레르기 유발 성분을 피했어요", PairingReasonCriteria::allergyExcluded),
@@ -15,11 +17,6 @@ public enum PairingReason {
 
     private final String message;
     private final Predicate<PairingCandidate> predicate;
-
-    PairingReason(String message, Predicate<PairingCandidate> predicate) {
-        this.message = message;
-        this.predicate = predicate;
-    }
 
     public String message() {
         return message;
