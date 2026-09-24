@@ -44,3 +44,6 @@ out/
 
 ### AI Config ###
 **/.ai
+
+### Load Test ###
+loadtest/results/
