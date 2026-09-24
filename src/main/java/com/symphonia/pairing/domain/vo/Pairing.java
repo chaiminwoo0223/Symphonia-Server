@@ -45,7 +45,9 @@ public class Pairing {
                     continue;
                 }
                 for (MusicMood musicMood : musicMoods) {
-                    pairings.add(of(PairingCandidate.of(drink, anju, musicMood, occasion)));
+                    PairingCandidate candidate =
+                            PairingCandidate.of(drink, anju, musicMood, occasion);
+                    pairings.add(of(candidate));
                 }
             }
         }
