@@ -539,7 +539,7 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.ABV_LIMIT);
+            assertThat(results.getFirst().reasons()).contains(PairingReason.ABV_LIMIT.message());
         }
 
         @Test
@@ -558,7 +558,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.ABV_LIMIT);
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.ABV_LIMIT.message());
         }
 
         @Test
@@ -578,7 +579,7 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.LIGHT_ANJU);
+            assertThat(results.getFirst().reasons()).contains(PairingReason.LIGHT_ANJU.message());
         }
 
         @Test
@@ -598,7 +599,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.LIGHT_ANJU);
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.LIGHT_ANJU.message());
         }
 
         @Test
@@ -620,7 +622,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.NON_ALCOHOLIC_OPTION);
+            assertThat(results.getFirst().reasons())
+                    .contains(PairingReason.NON_ALCOHOLIC_OPTION.message());
         }
 
         @Test
@@ -640,7 +643,7 @@ class PairingQueryServiceTest extends UnitTest {
 
             // then
             assertThat(results.getFirst().reasons())
-                    .doesNotContain(PairingReason.NON_ALCOHOLIC_OPTION);
+                    .doesNotContain(PairingReason.NON_ALCOHOLIC_OPTION.message());
         }
 
         @Test
@@ -659,7 +662,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.ALLERGY_EXCLUDED);
+            assertThat(results.getFirst().reasons())
+                    .contains(PairingReason.ALLERGY_EXCLUDED.message());
         }
 
         @Test
@@ -675,7 +679,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.ALLERGY_EXCLUDED);
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.ALLERGY_EXCLUDED.message());
         }
 
         @Test
@@ -692,7 +697,7 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.FLAVOR_MATCH);
+            assertThat(results.getFirst().reasons()).contains(PairingReason.FLAVOR_MATCH.message());
         }
 
         @Test
@@ -712,7 +717,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.FLAVOR_MATCH);
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.FLAVOR_MATCH.message());
         }
 
         @Test
@@ -729,7 +735,7 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.MOOD_MATCH);
+            assertThat(results.getFirst().reasons()).contains(PairingReason.MOOD_MATCH.message());
         }
 
         @Test
@@ -750,7 +756,8 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.getFirst().reasons()).doesNotContain(PairingReason.MOOD_MATCH);
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.MOOD_MATCH.message());
         }
 
         private void givenStandardCatalog() {

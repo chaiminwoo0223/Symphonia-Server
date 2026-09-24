@@ -17,7 +17,7 @@ public record PairingResult(
         String musicMoodTitle,
         String streamingUrl,
         double score,
-        List<PairingReason> reasons) {
+        List<String> reasons) {
     public static PairingResult from(Pairing pairing) {
         return new PairingResult(
                 pairing.getDrink().getId(),
@@ -30,6 +30,6 @@ public record PairingResult(
                 pairing.getMusicMood().getTitle(),
                 pairing.getMusicMood().getStreamingUrl(),
                 pairing.getScore(),
-                pairing.getReasons());
+                pairing.getReasons().stream().map(PairingReason::message).toList());
     }
 }
