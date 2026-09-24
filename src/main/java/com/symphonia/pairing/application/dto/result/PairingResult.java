@@ -2,6 +2,8 @@ package com.symphonia.pairing.application.dto.result;
 
 import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.Pairing;
+import com.symphonia.pairing.domain.vo.PairingReason;
+import java.util.List;
 import java.util.Set;
 
 public record PairingResult(
@@ -14,7 +16,8 @@ public record PairingResult(
         Long musicMoodId,
         String musicMoodTitle,
         String streamingUrl,
-        double score) {
+        double score,
+        List<PairingReason> reasons) {
     public static PairingResult from(Pairing pairing) {
         return new PairingResult(
                 pairing.getDrink().getId(),
@@ -26,6 +29,7 @@ public record PairingResult(
                 pairing.getMusicMood().getId(),
                 pairing.getMusicMood().getTitle(),
                 pairing.getMusicMood().getStreamingUrl(),
-                pairing.getScore());
+                pairing.getScore(),
+                pairing.getReasons());
     }
 }

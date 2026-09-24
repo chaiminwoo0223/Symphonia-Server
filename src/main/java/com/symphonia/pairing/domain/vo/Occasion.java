@@ -37,6 +37,10 @@ public class Occasion {
         return relationshipType.maxAbv();
     }
 
+    public boolean hasAbvLimit() {
+        return relationshipType.maxAbv() < Double.MAX_VALUE;
+    }
+
     public boolean prefersLightAnju() {
         return relationshipType.prefersLightAnju() || moodType == MoodType.FORMAL;
     }
@@ -49,5 +53,9 @@ public class Occasion {
 
     public boolean hasAllergyConflict(Anju anju) {
         return anju.conflictsWith(attendeeAllergies);
+    }
+
+    public boolean hasAllergyInput() {
+        return !attendeeAllergies.isEmpty();
     }
 }
