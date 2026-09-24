@@ -47,7 +47,14 @@ public class Pairing {
                 for (MusicMood musicMood : musicMoods) {
                     PairingCandidate candidate =
                             PairingCandidate.of(drink, anju, musicMood, occasion);
-                    pairings.add(of(candidate));
+                    double flavorSimilarity =
+                            drink.getFlavorProfile().similarity(anju.getFlavorProfile());
+                    double moodFitness =
+                            musicMood
+                                    .getMoodProfile()
+                                    .fitness(candidate.occasion().toMoodProfile());
+
+                    pairings.add(of(candidate, flavorSimilarity, moodFitness));
                 }
             }
         }
@@ -76,35 +83,36 @@ public class Pairing {
         return replaced;
     }
 
-    private static Pairing of(PairingCandidate candidate) {
-        Drink drink = candidate.drink();
-        Anju anju = candidate.anju();
-        MusicMood musicMood = candidate.musicMood();
-        double flavorSimilarity = drink.getFlavorProfile().similarity(anju.getFlavorProfile());
-        double moodFitness =
-                musicMood.getMoodProfile().fitness(candidate.occasion().toMoodProfile());
-
+    private static Pairing of(
+            PairingCandidate candidate, double flavorSimilarity, double moodFitness) {
         return new Pairing(
-                drink,
-                anju,
-                musicMood,
+                candidate.drink(),
+                candidate.anju(),
+                candidate.musicMood(),
                 score(flavorSimilarity, moodFitness, candidate),
                 PairingReason.allApplicableTo(candidate));
     }
 
     private static double score(
             double flavorSimilarity, double moodFitness, PairingCandidate candidate) {
-        double score = FLAVOR_WEIGHT * flavorSimilarity + MOOD_WEIGHT * moodFitness;
-
-        if (candidate.occasion().prefersLightAnju()
-                && !candidate.anju().getFlavorProfile().isLight()) {
-            score -= LIGHT_ANJU_PENALTY;
-        }
-
-        if (candidate.drink().getAbv() > HIGH_ABV_THRESHOLD) {
-            score -= HIGH_ABV_PENALTY;
-        }
+        double score =
+                FLAVOR_WEIGHT * flavorSimilarity
+                        + MOOD_WEIGHT * moodFitness
+                        - lightAnjuPenalty(candidate)
+                        - highAbvPenalty(candidate);
 
         return Math.max(0, score);
+    }
+
+    private static double lightAnjuPenalty(PairingCandidate candidate) {
+        boolean heavyAnjuDespitePreference =
+                candidate.occasion().prefersLightAnju()
+                        && !candidate.anju().getFlavorProfile().isLight();
+
+        return heavyAnjuDespitePreference ? LIGHT_ANJU_PENALTY : 0;
+    }
+
+    private static double highAbvPenalty(PairingCandidate candidate) {
+        return candidate.drink().getAbv() > HIGH_ABV_THRESHOLD ? HIGH_ABV_PENALTY : 0;
     }
 }
