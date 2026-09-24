@@ -60,10 +60,14 @@ function pickOne(values) {
     return values[Math.floor(Math.random() * values.length)];
 }
 
-// 0개부터 maxCount개까지 중복 없이 무작위로 고른다.
+// 0개부터 maxCount개까지 중복 없이 무작위로 고른다. Fisher-Yates로 섞어 정렬 기반 셔플의 분포 편향을 피한다.
 function pickSome(values, maxCount) {
     const count = Math.floor(Math.random() * (maxCount + 1));
-    const shuffled = [...values].sort(() => Math.random() - 0.5);
+    const shuffled = [...values];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
     return shuffled.slice(0, count);
 }
 
@@ -81,16 +85,30 @@ function buildQueryString() {
     return params.join('&');
 }
 
+// 200이 아니거나 바디가 JSON이 아닌 응답에서 res.json()이 던지는 예외로 이터레이션이 중단되지 않도록,
+// 파싱을 먼저 한 번만 시도하고 그 결과를 check에서 재사용한다.
+function parseBody(response) {
+    if (response.status !== 200) {
+        return null;
+    }
+    try {
+        return response.json();
+    } catch {
+        return null;
+    }
+}
+
 export default function () {
     const response = http.get(`${BASE_URL}/api/v1/pairings/recommend?${buildQueryString()}`);
+    const body = parseBody(response);
 
     const isSuccess = check(response, {
         '상태 코드는 200이다': (res) => res.status === 200,
-        '응답 바디는 ok:true다': (res) => res.json('ok') === true,
-        'data는 배열이다': (res) => Array.isArray(res.json('data')),
+        '응답 바디는 ok:true다': () => body !== null && body.ok === true,
+        'data는 배열이다': () => body !== null && Array.isArray(body.data),
     });
 
     if (isSuccess) {
-        emptyRecommendationRate.add(response.json('data').length === 0);
+        emptyRecommendationRate.add(body.data.length === 0);
     }
 }
