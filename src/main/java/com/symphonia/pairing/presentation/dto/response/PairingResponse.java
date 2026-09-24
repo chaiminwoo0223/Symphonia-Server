@@ -2,7 +2,6 @@ package com.symphonia.pairing.presentation.dto.response;
 
 import com.symphonia.pairing.application.dto.result.PairingResult;
 import com.symphonia.pairing.domain.vo.AllergyType;
-import com.symphonia.pairing.domain.vo.PairingReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.Set;
@@ -18,7 +17,7 @@ public record PairingResponse(
         @Schema(description = "음악 무드 제목") String musicMoodTitle,
         @Schema(description = "스트리밍 링크") String streamingUrl,
         @Schema(description = "추천 점수") double score,
-        @Schema(description = "추천 이유 문구") List<String> reasons) {
+        @Schema(description = "추천 이유") List<String> reasons) {
     public static PairingResponse from(PairingResult result) {
         return new PairingResponse(
                 result.drinkId(),
@@ -31,6 +30,6 @@ public record PairingResponse(
                 result.musicMoodTitle(),
                 result.streamingUrl(),
                 result.score(),
-                result.reasons().stream().map(PairingReason::message).toList());
+                result.reasons());
     }
 }
