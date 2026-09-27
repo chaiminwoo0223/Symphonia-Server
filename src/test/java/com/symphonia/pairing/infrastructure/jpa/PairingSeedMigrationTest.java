@@ -18,8 +18,8 @@ class PairingSeedMigrationTest extends RepositoryTest {
 
     // 시드 마이그레이션에서 setval 보정이 빠지면 IDENTITY가 시드 id를 다시 발급해 save()가 중복 키로 실패한다.
     @Test
-    @DisplayName("시드 이후 저장하는 행은 시드 ID와 충돌하지 않고 새 ID를 받는다")
-    void shouldAssignNewIdWithoutCollidingWithSeedIds() {
+    @DisplayName("시드 이후 저장해도 ID가 충돌하지 않는다")
+    void shouldSaveWithoutIdCollision() {
         // given: 시드 마이그레이션이 적재된 상태
 
         // when
