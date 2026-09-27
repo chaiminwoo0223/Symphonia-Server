@@ -22,6 +22,6 @@ class TestcontainersConfiguration {
     @ServiceConnection(name = "redis")
     @SuppressWarnings("resource")
     GenericContainer<?> redisContainer() {
-        return new GenericContainer<>(DockerImageName.parse("redis:latest")).withExposedPorts(6379);
+        return new GenericContainer<>(DockerImageName.parse("redis:8.8")).withExposedPorts(6379);
     }
 }
