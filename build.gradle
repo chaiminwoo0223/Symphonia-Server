@@ -49,6 +49,9 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-impl:0.13.0'
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 
+	// 음료 적재 규칙표(CSV) 파싱. 키워드에 쉼표가 들어간 항목이 있어 직접 split하지 않는다.
+	implementation 'tools.jackson.dataformat:jackson-dataformat-csv'
+
 	// Google ID Token(JWKS) 서명 검증
 	implementation 'org.springframework.security:spring-security-oauth2-jose'
 
