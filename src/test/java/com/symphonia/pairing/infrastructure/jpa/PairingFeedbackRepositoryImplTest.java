@@ -35,7 +35,19 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         @DisplayName("피드백을 저장하고 ID를 채워 반환한다")
         void shouldPersistPairingFeedback() {
             // given
-            Long drinkId = saveDrink();
+            // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
+            Long drinkStyleId =
+                    drinkStyleJpaRepository
+                            .save(
+                                    DrinkStyleJpaEntity.from(
+                                            DrinkStyleFixture.DISTILLED_SOJU.create()))
+                            .getId();
+            Long drinkId =
+                    drinkJpaRepository
+                            .save(
+                                    DrinkJpaEntity.from(
+                                            DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
+                            .getId();
             Long anjuId =
                     anjuJpaRepository
                             .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
@@ -65,17 +77,5 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
             assertThat(saved.getRating())
                     .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
         }
-    }
-
-    // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
-    private Long saveDrink() {
-        Long drinkStyleId =
-                drinkStyleJpaRepository
-                        .save(DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()))
-                        .getId();
-
-        return drinkJpaRepository
-                .save(DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
-                .getId();
     }
 }
