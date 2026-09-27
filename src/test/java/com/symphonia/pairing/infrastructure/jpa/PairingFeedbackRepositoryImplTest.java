@@ -7,6 +7,7 @@ import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
+import com.symphonia.pairing.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +22,7 @@ import org.springframework.test.context.jdbc.Sql;
 class PairingFeedbackRepositoryImplTest extends RepositoryTest {
 
     @Autowired private PairingFeedbackRepository pairingFeedbackRepository;
+    @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
     @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
@@ -33,10 +35,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         @DisplayName("피드백을 저장하고 ID를 채워 반환한다")
         void shouldPersistPairingFeedback() {
             // given
-            Long drinkId =
-                    drinkJpaRepository
-                            .save(DrinkJpaEntity.from(DrinkFixture.SOJU.create()))
-                            .getId();
+            Long drinkId = saveDrink();
             Long anjuId =
                     anjuJpaRepository
                             .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
@@ -66,5 +65,17 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
             assertThat(saved.getRating())
                     .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
         }
+    }
+
+    // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
+    private Long saveDrink() {
+        Long drinkStyleId =
+                drinkStyleJpaRepository
+                        .save(DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()))
+                        .getId();
+
+        return drinkJpaRepository
+                .save(DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
+                .getId();
     }
 }

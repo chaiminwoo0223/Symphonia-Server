@@ -2,5 +2,6 @@
 DELETE FROM pairing_feedback;
 DELETE FROM anju_allergy_type;
 DELETE FROM drink;
+DELETE FROM drink_style;
 DELETE FROM anju;
 DELETE FROM music_mood;

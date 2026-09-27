@@ -1,5 +1,6 @@
 package com.symphonia.pairing.domain.entity;
 
+import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -13,14 +14,26 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Drink {
     private Long id;
+    private Long drinkStyleId;
+    private DrinkSource source;
+    private String externalId;
     private String name;
     private double abv;
     private FlavorProfile flavorProfile;
     private boolean nonAlcoholic;
 
     public static Drink of(
-            String name, double abv, FlavorProfile flavorProfile, boolean nonAlcoholic) {
+            Long drinkStyleId,
+            DrinkSource source,
+            String externalId,
+            String name,
+            double abv,
+            FlavorProfile flavorProfile,
+            boolean nonAlcoholic) {
         return Drink.builder()
+                .drinkStyleId(drinkStyleId)
+                .source(source)
+                .externalId(externalId)
                 .name(name)
                 .abv(abv)
                 .flavorProfile(flavorProfile)

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
+import com.symphonia.pairing.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 class PairingSeedMigrationTest extends RepositoryTest {
 
+    @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
     @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
@@ -23,8 +25,12 @@ class PairingSeedMigrationTest extends RepositoryTest {
         // given: 시드 마이그레이션이 적재된 상태
 
         // when
+        DrinkStyleJpaEntity drinkStyle =
+                drinkStyleJpaRepository.save(
+                        DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()));
         DrinkJpaEntity drink =
-                drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SOJU.create()));
+                drinkJpaRepository.save(
+                        DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyle.getId())));
         AnjuJpaEntity anju =
                 anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.BOILED_PORK.create()));
         MusicMoodJpaEntity musicMood =
@@ -32,6 +38,7 @@ class PairingSeedMigrationTest extends RepositoryTest {
                         MusicMoodJpaEntity.from(MusicMoodFixture.CASUAL_LOFI.create()));
 
         // then
+        assertThat(drinkStyle.getId()).isNotNull();
         assertThat(drink.getId()).isNotNull();
         assertThat(anju.getId()).isNotNull();
         assertThat(musicMood.getId()).isNotNull();
