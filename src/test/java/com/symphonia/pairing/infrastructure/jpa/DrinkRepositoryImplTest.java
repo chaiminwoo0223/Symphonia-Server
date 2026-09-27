@@ -119,12 +119,12 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("saveAndFlush 메서드는 (source, externalId) 유니크 제약에 따라")
+    @DisplayName("saveAndFlush 메서드는")
     class SaveAndFlush {
 
         @Test
         @DisplayName("같은 source와 externalId를 가진 Drink를 두 번 저장할 수 없다")
-        void shouldThrowDataIntegrityViolationException() {
+        void shouldThrowDataIntegrityViolationExceptionWhenSourceAndExternalIdDuplicated() {
             // given
             Long drinkStyleId = saveDrinkStyle(DrinkFixture.SOJU);
             drinkJpaRepository.saveAndFlush(
