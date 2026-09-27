@@ -17,20 +17,29 @@ public class FlavorProfile {
     private int bitterness;
     private int carbonation;
     private int richness;
+    private int acidity;
 
-    public static FlavorProfile of(int sweetness, int bitterness, int carbonation, int richness) {
+    public static FlavorProfile of(
+            int sweetness, int bitterness, int carbonation, int richness, int acidity) {
         return FlavorProfile.builder()
                 .sweetness(sweetness)
                 .bitterness(bitterness)
                 .carbonation(carbonation)
                 .richness(richness)
+                .acidity(acidity)
                 .build();
     }
 
     public double similarity(FlavorProfile other) {
         return AxisDistance.similarity(
-                new int[] {sweetness, bitterness, carbonation, richness},
-                new int[] {other.sweetness, other.bitterness, other.carbonation, other.richness});
+                new int[] {sweetness, bitterness, carbonation, richness, acidity},
+                new int[] {
+                    other.sweetness,
+                    other.bitterness,
+                    other.carbonation,
+                    other.richness,
+                    other.acidity
+                });
     }
 
     public boolean matches(FlavorProfile other) {

@@ -82,5 +82,21 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             assertThat(result).isPresent();
             assertThat(result.get().isNonAlcoholic()).isTrue();
         }
+
+        @Test
+        @DisplayName("flavorProfile의 acidity 값을 포함해 Drink를 반환한다")
+        void shouldReturnDrinkWithAcidity() {
+            // given
+            DrinkJpaEntity saved =
+                    drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.WINE.create()));
+
+            // when
+            Optional<Drink> result = drinkRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getFlavorProfile().getAcidity())
+                    .isEqualTo(DrinkFixture.WINE.getFlavorProfile().getAcidity());
+        }
     }
 }
