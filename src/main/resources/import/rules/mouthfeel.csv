@@ -1,0 +1,55 @@
+keyword,axis,value
+high carbonation,carbonation,5
+high to very high carbonation,carbonation,5
+highly carbonated,carbonation,5
+low carbonation,carbonation,1
+low to medium carbonation,carbonation,2
+low to medium-low carbonation,carbonation,2
+low to moderate carbonation,carbonation,2
+medium carbonation,carbonation,3
+medium to high carbonation,carbonation,4
+medium to medium-high carbonation,carbonation,4
+medium-high carbonation,carbonation,4
+medium-high to high carbonation,carbonation,5
+medium-low to medium carbonation,carbonation,3
+moderate carbonation,carbonation,3
+moderate to high carbonation,carbonation,4
+moderate to low carbonation,carbonation,2
+moderate to moderately low carbonation,carbonation,3
+moderate to moderately-high carbonation,carbonation,4
+moderate to moderately-low carbonation,carbonation,3
+moderately high to highly carbonated,carbonation,5
+moderately low to moderately high carbonation,carbonation,3
+moderately-low to moderately-high carbonation,carbonation,3
+very high carbonation,carbonation,5
+very highly carbonated,carbonation,5
+full to very full-bodied,richness,5
+full-bodied,richness,5
+light body,richness,1
+light to medium body,richness,2
+light to medium-light body,richness,2
+light to medium-low body,richness,2
+light to very light body,richness,1
+low to medium-low body,richness,2
+medium body,richness,3
+medium to full body,richness,4
+medium to medium-full bodied,richness,4
+medium to medium-full body,richness,4
+medium to medium-light body,richness,3
+medium-bodied,richness,3
+medium-full to full body,richness,5
+medium-full to full-bodied,richness,5
+medium-full to medium body,richness,4
+medium-light body,richness,2
+medium-light to medium body,richness,3
+medium-light to medium-full body,richness,3
+medium-low to medium body,richness,3
+virtually to completely uncarbonated,carbonation,0
+sparkling to nearly still,carbonation,3
+carbonation may be low to moderate,carbonation,2
+"very light, sometimes watery, body",richness,0
+"light and crisp, although body can reach medium",richness,2
+"medium to full, chewy body",richness,4
+body is generally from low to medium,richness,2
+body is usually medium to full,richness,4
+range from medium-light to medium-full,richness,3
