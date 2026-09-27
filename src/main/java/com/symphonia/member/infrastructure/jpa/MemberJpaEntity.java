@@ -20,6 +20,7 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(
+        name = "member",
         uniqueConstraints =
                 @UniqueConstraint(
                         name = "uk_member_social_login",

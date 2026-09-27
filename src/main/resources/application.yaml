@@ -4,17 +4,12 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     show-sql: true
-    defer-datasource-initialization: true
     properties:
       hibernate:
         format_sql: true
-
-  sql:
-    init:
-      mode: always
 
 access-token:
   secret: ${JWT_SECRET}

@@ -13,8 +13,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.jdbc.Sql;
 
 @Import(DrinkRepositoryImpl.class)
+@Sql("/sql/clear-pairing-catalog.sql")
 class DrinkRepositoryImplTest extends RepositoryTest {
 
     @Autowired private DrinkRepository drinkRepository;

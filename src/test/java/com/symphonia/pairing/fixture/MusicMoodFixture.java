@@ -17,7 +17,9 @@ public enum MusicMoodFixture {
     CELEBRATORY_DANCE(
             "신나는 파티 댄스",
             MoodProfile.of(1, 1, 5, 2),
-            "https://open.spotify.com/playlist/celebratory-dance");
+            "https://open.spotify.com/playlist/celebratory-dance"),
+    CASUAL_LOFI(
+            "로파이 힙합", MoodProfile.of(1, 0, 1, 5), "https://open.spotify.com/playlist/casual-lofi");
 
     private final String title;
     private final MoodProfile moodProfile;
