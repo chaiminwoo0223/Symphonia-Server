@@ -2,6 +2,7 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.repository.DrinkStyleRepository;
+import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -22,5 +23,13 @@ public class DrinkStyleRepositoryImpl implements DrinkStyleRepository {
     @Override
     public Optional<DrinkStyle> findById(Long drinkStyleId) {
         return drinkStyleJpaRepository.findById(drinkStyleId).map(DrinkStyleJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<DrinkStyle> findBySourceAndExternalId(
+            DrinkStyleSource source, String externalId) {
+        return drinkStyleJpaRepository
+                .findBySourceAndExternalId(source, externalId)
+                .map(DrinkStyleJpaEntity::toDomain);
     }
 }

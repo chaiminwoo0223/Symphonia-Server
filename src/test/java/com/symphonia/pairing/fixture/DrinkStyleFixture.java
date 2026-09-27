@@ -2,7 +2,9 @@ package com.symphonia.pairing.fixture;
 
 import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.vo.DrinkCategory;
+import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
+import java.util.Locale;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -21,17 +23,34 @@ public enum DrinkStyleFixture {
     private final DrinkCategory category;
     private final FlavorProfile flavorProfile;
 
+    // 시드의 external_id("lager" 등)와 (source, external_id) 유니크 제약이 겹치지 않게 접두어를 붙인다.
+    public String getExternalId() {
+        return "fixture-" + name().toLowerCase(Locale.ROOT);
+    }
+
     public DrinkStyle create() {
-        return build(null);
+        return build(null, DrinkStyleSource.SEED, getExternalId());
     }
 
     public DrinkStyle createWithId() {
-        return build(ordinal() + 1L);
+        return build(ordinal() + 1L, DrinkStyleSource.SEED, getExternalId());
     }
 
-    private DrinkStyle build(Long id) {
+    // (source, external_id)는 스타일을 식별하는 유니크 키다. 적재나 유니크 제약을 검증할 때 이 키를 직접 정한다.
+    public DrinkStyle createWithIdentity(DrinkStyleSource source, String externalId) {
+        return build(null, source, externalId);
+    }
+
+    // 이미 저장된 스타일을 흉내 내야 할 때 id까지 채운다.
+    public DrinkStyle createWithIdAndIdentity(DrinkStyleSource source, String externalId) {
+        return build(ordinal() + 1L, source, externalId);
+    }
+
+    private DrinkStyle build(Long id, DrinkStyleSource source, String externalId) {
         return DrinkStyle.builder()
                 .id(id)
+                .source(source)
+                .externalId(externalId)
                 .name(name)
                 .category(category)
                 .flavorProfile(flavorProfile)
