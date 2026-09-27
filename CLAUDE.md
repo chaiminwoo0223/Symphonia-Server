@@ -108,8 +108,10 @@ com.symphonia
 
 | 속성 성격 | 위치 |
 |---|---|
-| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: update`, dialect) | `application.yaml` |
+| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, dialect) | `application.yaml` |
 | 환경별 값 (`datasource`, `data.redis`, `jwt`, `logging.level`) | `application-{profile}.yaml` |
+
+> 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 변경한다. 규칙은 `architecture` 스킬의 영속성 절 참고.
 
 - 활성 프로파일: `--spring.profiles.active={profile}` 또는 `SPRING_PROFILES_ACTIVE`
 - **DB/Redis 연결 정보는 값이 같아도 프로파일별로 각각 명시** (환경 간 독립적 분기). 비밀값은 하드코딩 금지, `${ENV_VAR}` 주입 (`.env` 커밋 금지)

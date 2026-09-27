@@ -28,7 +28,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.jdbc.Sql;
 
+@Sql("/sql/clear-pairing-catalog.sql")
 class PairingControllerTest extends IntegrationTest {
 
     @Autowired private PairingHelper pairingHelper;
@@ -231,7 +233,7 @@ class PairingControllerTest extends IntegrationTest {
     private void seedCatalog() {
         pairingHelper.saveDrink(DrinkFixture.SOJU);
         pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
+        pairingHelper.saveMusicMood(MusicMoodFixture.CASUAL_ACOUSTIC);
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest() {

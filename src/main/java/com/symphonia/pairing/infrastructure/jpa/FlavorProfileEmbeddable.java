@@ -6,7 +6,6 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.ColumnDefault;
 
 @Embeddable
 @Getter
@@ -17,8 +16,6 @@ public class FlavorProfileEmbeddable {
     private int bitterness;
     private int carbonation;
     private int richness;
-
-    @ColumnDefault("0")
     private int acidity;
 
     public static FlavorProfileEmbeddable from(FlavorProfile flavorProfile) {
