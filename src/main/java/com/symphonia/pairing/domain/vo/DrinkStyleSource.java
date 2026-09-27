@@ -1,6 +1,6 @@
 package com.symphonia.pairing.domain.vo;
 
-public enum DrinkSource {
+public enum DrinkStyleSource {
     SEED,
-    CURATED,
+    BJCP,
 }

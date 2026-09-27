@@ -2,6 +2,7 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.vo.DrinkCategory;
+import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -26,6 +27,13 @@ public class DrinkStyleJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DrinkStyleSource source;
+
+    @Column(nullable = false)
+    private String externalId;
+
     @Column(nullable = false)
     private String name;
 
@@ -38,6 +46,8 @@ public class DrinkStyleJpaEntity {
     public static DrinkStyleJpaEntity from(DrinkStyle drinkStyle) {
         return DrinkStyleJpaEntity.builder()
                 .id(drinkStyle.getId())
+                .source(drinkStyle.getSource())
+                .externalId(drinkStyle.getExternalId())
                 .name(drinkStyle.getName())
                 .category(drinkStyle.getCategory())
                 .flavorProfile(FlavorProfileEmbeddable.from(drinkStyle.getFlavorProfile()))
@@ -47,6 +57,8 @@ public class DrinkStyleJpaEntity {
     public DrinkStyle toDomain() {
         return DrinkStyle.builder()
                 .id(id)
+                .source(source)
+                .externalId(externalId)
                 .name(name)
                 .category(category)
                 .flavorProfile(flavorProfile.toDomain())
