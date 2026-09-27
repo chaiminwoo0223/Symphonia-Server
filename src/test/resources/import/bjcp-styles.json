@@ -1,0 +1,28 @@
+{
+  "beerjson": {
+    "version": 2.01,
+    "styles": [
+      {
+        "style_id": "1A",
+        "name": "American Light Lager",
+        "tags": "session-strength, pale-color, bottom-fermented",
+        "mouthfeel": "Very Light Body, Very High Carbonation",
+        "international_bitterness_units": {
+          "minimum": { "unit": "IBUs", "value": 8 },
+          "maximum": { "unit": "IBUs", "value": 12 }
+        }
+      },
+      {
+        "style_id": "27A",
+        "name": "Historical Beer",
+        "tags": null,
+        "mouthfeel": null,
+        "international_bitterness_units": null
+      },
+      {
+        "style_id": "34A",
+        "name": "Commercial Specialty Beer"
+      }
+    ]
+  }
+}
