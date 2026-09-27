@@ -47,3 +47,8 @@ out/
 
 ### Load Test ###
 loadtest/results/
+
+### Import Data ###
+scripts/import/data/bjcp/
+scripts/import/data/x-wines/*ratings*
+scripts/import/data/x-wines/*labels*
