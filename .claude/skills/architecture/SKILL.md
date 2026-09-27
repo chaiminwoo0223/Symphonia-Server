@@ -24,7 +24,7 @@ com.symphonia
 │   ├── presentation/
 │   └── infrastructure/    # Redis 기반 RefreshToken/BlacklistAccessToken 구현, JPA 엔티티
 ├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45)
-│   ├── domain/            # 순수 도메인 모델(Drink, Anju, MusicMood, Pairing), FlavorProfile/MoodProfile/Occasion 값 객체, PairingFeedback, *Repository 인터페이스
+│   ├── domain/            # 순수 도메인 모델(Drink, DrinkStyle, Anju, MusicMood, Pairing), FlavorProfile/MoodProfile/Occasion 값 객체, PairingFeedback, *Repository 인터페이스
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨)
 │   ├── presentation/
 │   └── infrastructure/    # DrinkRepository/AnjuRepository/PairingFeedbackRepository 구현체, JPA 엔티티
@@ -118,6 +118,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 **(2026-09-20 결정, 이슈 #53)**: `@Enumerated(STRING)` 컬럼은 `varchar(255)`와 허용 값 목록 `check` 제약으로 생성되는데, `ddl-auto: update`는 이미 만들어진 `check` 제약을 갱신하지 않는다. 그래서 enum 값을 추가하면 이미 스키마가 만들어진 DB에서는 새 값 INSERT가 제약 위반으로 실패한다. dev/prod는 아직 빈 DB라 지금은 영향이 없지만, enum 값을 추가하는 이슈에서는 수동 `ALTER`나 마이그레이션 도구 도입을 함께 결정해야 한다. MySQL의 native `enum` 컬럼도 같은 한계가 있었으므로 이번 전환으로 생긴 회귀는 아니다. #61 이후 enum 값 추가는 새 마이그레이션에서 `check` 제약을 수정한다.
 
 **(2026-09-27 결정, 이슈 #61)**: 스키마와 시드 데이터는 Flyway 마이그레이션(`db/migration/V{n}__설명.sql`)으로 관리하고, `ddl-auto`는 `validate`로 둬서 엔티티와 스키마 불일치를 기동 단계에서 잡는다. `data.sql`은 기동할 때마다 시드를 지우고 다시 넣어서 IDENTITY id가 재기동마다 바뀌었다. 그 결과 FK 없이 id만 저장하던 `pairing_feedback`이 없는 행을 가리키게 되어 폐기했다. 이미 적용된 V 파일은 수정하지 않는다. 스키마 변경, enum 값 추가(`check` 제약 수정), 시드 추가는 모두 새 버전 파일로 한다. 시드는 id를 명시해 넣고, 파일 끝에서 `setval(pg_get_serial_sequence(...), MAX(id))`로 시퀀스를 보정한다. 보정하지 않으면 다음 INSERT가 시드 id와 충돌한다. 테이블 이름은 `@Table(name)`으로 지정해 `_jpa_entity` 접미사가 스키마에 드러나지 않게 했다. dev/prod는 한 번도 기동된 적 없어 스키마가 비어 있으므로 baseline 없이 V1부터 적용했다. Flyway는 데이터 유무가 아니라 스키마가 비어 있는지로 판단하므로, 옛 `*_jpa_entity` 테이블이 남은 DB(로컬 compose 등)는 볼륨을 초기화한 뒤 기동한다. `drink.name`은 X-Wines 데이터(#77)에 같은 이름의 와인이 204건 있어서 유니크 제약을 걸지 않았다. `pairing_feedback`의 `member_id`는 도메인 간 참조라 FK를 걸지 않았다. drink, anju, music mood FK 컬럼은 조회 조건이 없고 카탈로그를 삭제하는 일도 드물어 인덱스를 두지 않았다. 테스트 DB에도 V2 시드가 들어가므로, 카탈로그 내용에 기대는 테스트는 `@Sql("/sql/clear-pairing-catalog.sql")`로 카탈로그를 비우고 시작한다.
+
+**(2026-09-27 결정, 이슈 #75)**: 음료 데이터는 소스마다 단위가 달라서(와인은 제품, 맥주는 스타일) `Drink`를 제품 단위로 통일하고, 분류(`DrinkCategory`)와 기본 맛은 `DrinkStyle`이 갖는다. `Drink`는 `DrinkStyle`을 객체가 아니라 `drinkStyleId`로 참조한다. 스타일은 적재 기준 데이터이고 제품은 소스별로 늘어나서 생명주기가 다르므로 별도 애그리거트로 뒀다. 추천 점수는 지금처럼 `Drink`의 `flavorProfile`로 계산하고, 스타일의 기본 맛은 적재할 때 제품 맛의 초기값으로만 쓴다. `Drink`는 `(source, external_id)` 유니크 제약으로 식별한다. `name`은 동명 와인이 있어 식별자로 쓸 수 없기 때문이다(#61). PostgreSQL 유니크 제약은 NULL끼리 중복을 허용하므로 `external_id`는 `NOT NULL`로 두고, 시드 음료에는 `source = 'SEED'`와 `'soju'` 같은 읽을 수 있는 키를 넣었다. `DrinkSource`에는 지금 쓰는 `SEED`만 두고, `X_WINES` 등은 적재 이슈(#76, #77)의 마이그레이션에서 `check` 제약과 함께 추가한다. BJCP는 스타일의 출처라 `Drink`의 source 값이 아니다. 값이 늘어날 enum의 `check` 제약에는 `ck_<테이블>_<컬럼>` 이름을 붙여 후속 마이그레이션이 이름으로 DROP한 뒤 다시 ADD할 수 있게 했다. `DrinkStyle`에는 `name` 유니크 제약만 걸었다. BJCP 스타일 적재(#76)에서 출처 식별이 필요해지면 그때 `(source, external_id)`를 추가한다. `drink.drink_style_id` FK는 이 컬럼으로 조회하는 곳이 없어 인덱스를 두지 않았다. 스타일별 음료 조회가 생기면 인덱스를 추가한다.
 
 ## DDD 핵심 원칙
 

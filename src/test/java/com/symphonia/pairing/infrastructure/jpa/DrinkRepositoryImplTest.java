@@ -1,10 +1,12 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.repository.DrinkRepository;
+import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +15,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.jdbc.Sql;
 
 @Import(DrinkRepositoryImpl.class)
@@ -21,6 +24,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
 
     @Autowired private DrinkRepository drinkRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
+    @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
 
     @Nested
     @DisplayName("findAll 메서드는")
@@ -30,8 +34,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         @DisplayName("저장된 모든 Drink를 반환한다")
         void shouldReturnDrinks() {
             // given
-            DrinkJpaEntity saved =
-                    drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SOJU.create()));
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.SOJU);
 
             // when
             List<Drink> result = drinkRepository.findAll();
@@ -49,8 +52,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         @DisplayName("존재하는 ID면 Drink를 반환한다")
         void shouldReturnDrinkWhenIdExists() {
             // given
-            DrinkJpaEntity saved =
-                    drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SOJU.create()));
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.SOJU);
 
             // when
             Optional<Drink> result = drinkRepository.findById(saved.getId());
@@ -74,8 +76,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         @DisplayName("nonAlcoholic 값을 포함해 Drink를 반환한다")
         void shouldReturnDrinkWithNonAlcoholicFlag() {
             // given
-            DrinkJpaEntity saved =
-                    drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.SODA.create()));
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.SODA);
 
             // when
             Optional<Drink> result = drinkRepository.findById(saved.getId());
@@ -89,8 +90,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         @DisplayName("flavorProfile의 acidity 값을 포함해 Drink를 반환한다")
         void shouldReturnDrinkWithAcidity() {
             // given
-            DrinkJpaEntity saved =
-                    drinkJpaRepository.save(DrinkJpaEntity.from(DrinkFixture.WINE.create()));
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.WINE);
 
             // when
             Optional<Drink> result = drinkRepository.findById(saved.getId());
@@ -100,5 +100,57 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             assertThat(result.get().getFlavorProfile().getAcidity())
                     .isEqualTo(DrinkFixture.WINE.getFlavorProfile().getAcidity());
         }
+
+        @Test
+        @DisplayName("drinkStyleId, source, externalId 값을 포함해 Drink를 반환한다")
+        void shouldReturnDrinkWithStyleAndSource() {
+            // given
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.BEER);
+
+            // when
+            Optional<Drink> result = drinkRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getDrinkStyleId()).isEqualTo(saved.getDrinkStyleId());
+            assertThat(result.get().getSource()).isEqualTo(DrinkSource.SEED);
+            assertThat(result.get().getExternalId()).isEqualTo(DrinkFixture.BEER.getExternalId());
+        }
+    }
+
+    @Nested
+    @DisplayName("saveAndFlush 메서드는")
+    class SaveAndFlush {
+
+        @Test
+        @DisplayName("같은 source와 externalId를 가진 Drink를 두 번 저장할 수 없다")
+        void shouldThrowDataIntegrityViolationExceptionWhenSourceAndExternalIdDuplicated() {
+            // given
+            Long drinkStyleId = saveDrinkStyle(DrinkFixture.SOJU);
+            drinkJpaRepository.saveAndFlush(
+                    DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)));
+
+            // when & then
+            assertThatThrownBy(
+                            () ->
+                                    drinkJpaRepository.saveAndFlush(
+                                            DrinkJpaEntity.from(
+                                                    DrinkFixture.SOJU.createWithStyle(
+                                                            drinkStyleId))))
+                    .isInstanceOf(DataIntegrityViolationException.class);
+        }
+    }
+
+    private DrinkJpaEntity saveDrink(DrinkFixture drinkFixture) {
+        Long drinkStyleId = saveDrinkStyle(drinkFixture);
+
+        return drinkJpaRepository.save(
+                DrinkJpaEntity.from(drinkFixture.createWithStyle(drinkStyleId)));
+    }
+
+    private Long saveDrinkStyle(DrinkFixture drinkFixture) {
+        return drinkStyleJpaRepository
+                .save(DrinkStyleJpaEntity.from(drinkFixture.getDrinkStyleFixture().create()))
+                .getId();
     }
 }

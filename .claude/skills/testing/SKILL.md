@@ -91,6 +91,12 @@ class LoginServiceTest extends UnitTest {
 }
 ```
 
+## private 메서드 위치
+
+테스트 클래스 안의 private 메서드(`given*()` 스텁 추출, 저장 절차 추출 등)는 그 메서드가 속한 클래스의 맨 아래, 즉 `@Nested` 클래스와 테스트 메서드보다 뒤에 둔다. 필드 순서 규칙과 같은 이유로, 파일을 열었을 때 무엇을 검증하는지가 준비 절차보다 먼저 보여야 읽기 쉽다. 최상위 클래스에 둘지 그 메서드를 쓰는 `@Nested` 안에 둘지는 강제하지 않는다(예: 최상위 맨 아래에 둔 `PairingControllerTest`의 `seedCatalog()`, `Recommend` 안 맨 아래에 둔 `PairingQueryServiceTest`의 `givenStandardCatalog()`).
+
+**(2026-09-27 결정, 이슈 #75)**: 기존 테스트들이 모두 private 메서드를 클래스 맨 아래에 두던 관례를 명시했다. `DrinkRepositoryImplTest`에서 저장 절차 메서드를 필드 바로 아래에 두었다가 관례와 어긋나 옮겼다.
+
 ## Mockito Strict Stubbing
 
 - `@BeforeEach` 공유 스텁은 **모든 테스트가 소비하는 가장 좁은 `@Nested` 스코프**에 배치한다. 상위 스코프에 두면 일부 테스트에서 미사용 스텁으로 strict-stubbing 검증에 걸린다.
