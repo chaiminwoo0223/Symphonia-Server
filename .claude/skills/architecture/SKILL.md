@@ -24,10 +24,10 @@ com.symphonia
 │   ├── presentation/
 │   └── infrastructure/    # Redis 기반 RefreshToken/BlacklistAccessToken 구현, JPA 엔티티
 ├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45)
-│   ├── domain/            # 순수 도메인 모델(Drink, DrinkStyle, Anju, MusicMood, Pairing), FlavorProfile/MoodProfile/Occasion 값 객체, PairingFeedback, *Repository 인터페이스
-│   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨)
-│   ├── presentation/
-│   └── infrastructure/    # DrinkRepository/AnjuRepository/PairingFeedbackRepository 구현체, JPA 엔티티
+│   ├── domain/            # 순수 도메인 모델(Drink, DrinkStyle, Anju, MusicMood, Pairing), FlavorProfile/MoodProfile/Occasion 값 객체, PairingFeedback, *Repository 인터페이스, 규칙표로 맛을 계산하는 FlavorRule, 적재 원본을 읽는 *Reader 인터페이스(reader)
+│   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨. 파일을 읽는 적재는 UseCase 단위로 분리: ImportDrinkStyleService)
+│   ├── presentation/      # Controller, *Api, 수동 적재 진입점 ImportDrinkStyleRunner(runner)
+│   └── infrastructure/    # DrinkRepository/AnjuRepository/PairingFeedbackRepository 구현체, JPA 엔티티, *Reader 구현체(reader: JsonBjcpStyleReader, CsvFlavorRuleReader)
 ├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
 └── global/                # 기술 부트스트랩: Security/JPA/Redis/Swagger 설정 (config), 인증 필터·핸들러 (security)
 ```
@@ -54,10 +54,10 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 | 계층 | 역할 |
 |---|---|
-| `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository` 인터페이스. 비즈니스 로직이 실제로 사는 곳 |
+| `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository`·`*Reader` 인터페이스. 비즈니스 로직이 실제로 사는 곳 |
 | `application` | `*UseCase` 인터페이스 + `*Service` 구현체(`@CommandService`/`@QueryService`). 오케스트레이션만 담당 |
-| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` DTO |
-| `infrastructure` | `*RepositoryImpl`(`*Repository` 구현체), `*JpaEntity`(Domain↔JPA 변환용 `from()`/`toDomain()` 포함), Redis 등 외부 연동 |
+| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` DTO, 수동 실행 진입점 `*Runner`(`ApplicationRunner`) |
+| `infrastructure` | `*RepositoryImpl`(`*Repository` 구현체), `*JpaEntity`(Domain↔JPA 변환용 `from()`/`toDomain()` 포함), Redis 등 외부 연동, 파일 원본을 읽는 `*Reader` 구현체 |
 
 ## 계층별 타입 어휘 (Layer Type Vocabulary)
 

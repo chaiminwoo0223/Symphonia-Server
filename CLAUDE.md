@@ -122,8 +122,11 @@ com.symphonia
 ./gradlew test                     # 전체 테스트 (빠른 반복 확인용)
 ./gradlew build                    # 빌드 (컴파일+테스트+패키징, 로컬 검증용)
 ./.claude/scripts/check-all.sh     # PR 전 전체 검증 (포맷 검증 포함)
+./scripts/import/fetch-bjcp.sh     # BJCP 원본 JSON 다운로드 (적재 전 1회, 원본은 커밋하지 않음)
+./gradlew importDrinkStyles        # BJCP 스타일을 drink_style에 적재 (배포와 분리한 수동 실행)
 ```
 
 > `check-all.sh`는 내부적으로 `./gradlew clean build`를 실행한다. 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
 > 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 포맷을 적용한다.
 > 아키텍처 규칙 자동검증(ArchUnit 등) 미도입 사유는 위 "운영 원칙" 참고.
+> 음료 데이터 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 영속성 절 참고.
