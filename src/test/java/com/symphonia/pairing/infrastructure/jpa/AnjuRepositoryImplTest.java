@@ -152,5 +152,22 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             assertThat(result.get().getAllergyTypes())
                     .containsExactlyInAnyOrder(AllergyType.SQUID, AllergyType.PEANUT);
         }
+
+        @Test
+        @DisplayName("flavorProfile의 acidity 값을 포함해 Anju를 반환한다")
+        void shouldReturnAnjuWithAcidity() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(
+                            AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()));
+
+            // when
+            Optional<Anju> result = anjuRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getFlavorProfile().getAcidity())
+                    .isEqualTo(AnjuFixture.GOLBAENGI_MUCHIM.getFlavorProfile().getAcidity());
+        }
     }
 }

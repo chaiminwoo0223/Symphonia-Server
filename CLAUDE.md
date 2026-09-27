@@ -108,7 +108,7 @@ com.symphonia
 
 | 속성 성격 | 위치 |
 |---|---|
-| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, dialect) | `application.yaml` |
+| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: update`, dialect) | `application.yaml` |
 | 환경별 값 (`datasource`, `data.redis`, `jwt`, `logging.level`) | `application-{profile}.yaml` |
 
 - 활성 프로파일: `--spring.profiles.active={profile}` 또는 `SPRING_PROFILES_ACTIVE`

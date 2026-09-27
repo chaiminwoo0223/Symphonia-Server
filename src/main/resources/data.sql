@@ -3,23 +3,23 @@ DELETE FROM drink_jpa_entity;
 DELETE FROM anju_jpa_entity;
 DELETE FROM music_mood_jpa_entity;
 
-INSERT INTO drink_jpa_entity (name, abv, sweetness, bitterness, carbonation, richness, non_alcoholic) VALUES
-    ('소주', 16.5, 2, 2, 0, 1, false),
-    ('맥주', 4.5, 1, 3, 4, 1, false),
-    ('막걸리', 6.0, 3, 1, 2, 2, false),
-    ('레드 와인', 13.0, 2, 2, 0, 3, false),
-    ('위스키', 40.0, 1, 4, 0, 4, false),
-    ('하이볼', 9.0, 2, 2, 4, 1, false),
-    ('버진 모히또', 0.0, 3, 1, 4, 1, true),
-    ('논알콜 하이볼', 0.0, 2, 2, 4, 1, true);
+INSERT INTO drink_jpa_entity (name, abv, sweetness, bitterness, carbonation, richness, acidity, non_alcoholic) VALUES
+    ('소주', 16.5, 2, 2, 0, 1, 1, false),
+    ('맥주', 4.5, 1, 3, 4, 1, 2, false),
+    ('막걸리', 6.0, 3, 1, 2, 2, 3, false),
+    ('레드 와인', 13.0, 2, 2, 0, 3, 4, false),
+    ('위스키', 40.0, 1, 4, 0, 4, 1, false),
+    ('하이볼', 9.0, 2, 2, 4, 1, 2, false),
+    ('버진 모히또', 0.0, 3, 1, 4, 1, 4, true),
+    ('논알콜 하이볼', 0.0, 2, 2, 4, 1, 2, true);
 
-INSERT INTO anju_jpa_entity (name, sweetness, bitterness, carbonation, richness) VALUES
-    ('골뱅이무침', 3, 1, 0, 2),
-    ('후라이드치킨', 2, 0, 0, 5),
-    ('두부김치', 1, 2, 0, 2),
-    ('마른안주', 1, 1, 0, 1),
-    ('치즈플래터', 2, 1, 0, 3),
-    ('과일안주', 4, 0, 0, 1);
+INSERT INTO anju_jpa_entity (name, sweetness, bitterness, carbonation, richness, acidity) VALUES
+    ('골뱅이무침', 3, 1, 0, 2, 4),
+    ('후라이드치킨', 2, 0, 0, 5, 0),
+    ('두부김치', 1, 2, 0, 2, 2),
+    ('마른안주', 1, 1, 0, 1, 0),
+    ('치즈플래터', 2, 1, 0, 3, 1),
+    ('과일안주', 4, 0, 0, 1, 3);
 
 INSERT INTO anju_allergy_type (anju_id, allergy_type)
     SELECT id, 'WHEAT' FROM anju_jpa_entity WHERE name = '골뱅이무침';

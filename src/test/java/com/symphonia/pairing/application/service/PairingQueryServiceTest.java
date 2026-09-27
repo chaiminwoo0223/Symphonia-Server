@@ -13,6 +13,7 @@ import com.symphonia.pairing.domain.repository.DrinkRepository;
 import com.symphonia.pairing.domain.repository.MusicMoodRepository;
 import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
+import com.symphonia.pairing.domain.vo.FlavorProfile;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.Occasion;
 import com.symphonia.pairing.domain.vo.PairingReason;
@@ -110,8 +111,12 @@ class PairingQueryServiceTest extends UnitTest {
             Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
             MusicMood musicMood =
                     MusicMoodFixture.FORMAL_JAZZ.createWithMoodProfile(occasion.toMoodProfile());
-            // 와인은 맛 유사도상 후라이드치킨이 과일안주보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
-            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.WINE.createWithId()));
+            // 산미가 없는 와인은 맛 유사도상 후라이드치킨이 과일안주보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.WINE.createWithFlavorProfile(
+                                            FlavorProfile.of(2, 2, 0, 3, 0))));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -708,6 +713,31 @@ class PairingQueryServiceTest extends UnitTest {
             given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons())
+                    .doesNotContain(PairingReason.FLAVOR_MATCH.message());
+        }
+
+        @Test
+        @DisplayName("나머지 맛 축이 같아도 산미 차이가 크면 reasons에 FLAVOR_MATCH를 포함하지 않는다")
+        void shouldNotIncludeFlavorMatchReasonWhenOnlyAcidityDiffers() {
+            // given
+            // 마른안주와 산미(0 vs 5)만 다른 Drink는 맛 유사도가 1 - sqrt(25 / 125) ≈ 0.553으로 임계값(0.7)에 못 미친다
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithFlavorProfile(
+                                            FlavorProfile.of(1, 1, 0, 1, 5))));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQuery(
