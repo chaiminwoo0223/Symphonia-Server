@@ -22,6 +22,15 @@ public enum PairingFeedbackFixture {
     private final PairingRating rating;
 
     public PairingFeedback create() {
+        return build(id, drinkId, anjuId, musicMoodId);
+    }
+
+    // FK가 걸린 drink, anju, music mood는 실제로 저장된 id를 받아 아직 저장 전인 피드백을 만든다.
+    public PairingFeedback createWithReferences(Long drinkId, Long anjuId, Long musicMoodId) {
+        return build(null, drinkId, anjuId, musicMoodId);
+    }
+
+    private PairingFeedback build(Long id, Long drinkId, Long anjuId, Long musicMoodId) {
         return PairingFeedback.builder()
                 .id(id)
                 .memberId(memberId)

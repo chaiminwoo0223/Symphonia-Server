@@ -5,12 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
-import com.symphonia.pairing.domain.vo.MoodType;
-import com.symphonia.pairing.domain.vo.PairingRating;
-import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
+import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,27 +46,25 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                             .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
                             .getId();
             PairingFeedback pairingFeedback =
-                    PairingFeedback.of(
-                            1L,
-                            drinkId,
-                            anjuId,
-                            musicMoodId,
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            PairingRating.LIKE);
+                    PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
+                            drinkId, anjuId, musicMoodId);
 
             // when
             PairingFeedback saved = pairingFeedbackRepository.save(pairingFeedback);
 
             // then
             assertThat(saved.getId()).isNotNull();
-            assertThat(saved.getMemberId()).isEqualTo(1L);
+            assertThat(saved.getMemberId())
+                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getMemberId());
             assertThat(saved.getDrinkId()).isEqualTo(drinkId);
             assertThat(saved.getAnjuId()).isEqualTo(anjuId);
             assertThat(saved.getMusicMoodId()).isEqualTo(musicMoodId);
-            assertThat(saved.getRelationshipType()).isEqualTo(RelationshipType.FRIEND);
-            assertThat(saved.getMoodType()).isEqualTo(MoodType.CASUAL);
-            assertThat(saved.getRating()).isEqualTo(PairingRating.LIKE);
+            assertThat(saved.getRelationshipType())
+                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRelationshipType());
+            assertThat(saved.getMoodType())
+                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getMoodType());
+            assertThat(saved.getRating())
+                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
         }
     }
 }
