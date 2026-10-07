@@ -27,6 +27,48 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
 
     @Nested
+    @DisplayName("save 메서드는")
+    class Save {
+
+        @Test
+        @DisplayName("id가 없는 Drink를 저장하고 ID를 채워 반환한다")
+        void shouldPersistDrinkWhenIdNotExists() {
+            // given
+            Long drinkStyleId = saveDrinkStyle(DrinkFixture.BEER);
+            Drink drink = DrinkFixture.BEER.createWithStyle(drinkStyleId);
+
+            // when
+            Drink saved = drinkRepository.save(drink);
+
+            // then
+            assertThat(saved.getId()).isNotNull();
+            assertThat(saved.getName()).isEqualTo(DrinkFixture.BEER.getName());
+        }
+
+        @Test
+        @DisplayName("id가 있는 Drink면 같은 행을 갱신한다")
+        void shouldUpdateDrinkWhenIdExists() {
+            // given
+            Long drinkStyleId = saveDrinkStyle(DrinkFixture.BEER);
+            Drink saved = drinkRepository.save(DrinkFixture.BEER.createWithStyle(drinkStyleId));
+            saved.update(drinkStyleId, "카스 라이트", 4.0, DrinkFixture.WINE.getFlavorProfile());
+
+            // when
+            Drink updated = drinkRepository.save(saved);
+
+            // then
+            Optional<Drink> result = drinkRepository.findById(saved.getId());
+            assertThat(updated.getId()).isEqualTo(saved.getId());
+            assertThat(result).isPresent();
+            assertThat(result.get().getName()).isEqualTo("카스 라이트");
+            assertThat(result.get().getAbv()).isEqualTo(4.0);
+            assertThat(result.get().getFlavorProfile())
+                    .usingRecursiveComparison()
+                    .isEqualTo(DrinkFixture.WINE.getFlavorProfile());
+        }
+    }
+
+    @Nested
     @DisplayName("findAll 메서드는")
     class FindAll {
 
@@ -115,6 +157,54 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             assertThat(result.get().getDrinkStyleId()).isEqualTo(saved.getDrinkStyleId());
             assertThat(result.get().getSource()).isEqualTo(DrinkSource.SEED);
             assertThat(result.get().getExternalId()).isEqualTo(DrinkFixture.BEER.getExternalId());
+        }
+    }
+
+    @Nested
+    @DisplayName("findBySourceAndExternalId 메서드는")
+    class FindBySourceAndExternalId {
+
+        @Test
+        @DisplayName("source와 externalId가 모두 일치하는 Drink를 반환한다")
+        void shouldReturnDrinkWhenSourceAndExternalIdMatch() {
+            // given
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.BEER);
+
+            // when
+            Optional<Drink> result =
+                    drinkRepository.findBySourceAndExternalId(
+                            DrinkSource.SEED, DrinkFixture.BEER.getExternalId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getId()).isEqualTo(saved.getId());
+            assertThat(result.get().getName()).isEqualTo(DrinkFixture.BEER.getName());
+        }
+
+        @Test
+        @DisplayName("externalId가 같아도 source가 다르면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenSourceDiffers() {
+            // given
+            saveDrink(DrinkFixture.BEER);
+
+            // when
+            Optional<Drink> result =
+                    drinkRepository.findBySourceAndExternalId(
+                            DrinkSource.CURATED, DrinkFixture.BEER.getExternalId());
+
+            // then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("일치하는 externalId가 없으면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenExternalIdNotExists() {
+            // when
+            Optional<Drink> result =
+                    drinkRepository.findBySourceAndExternalId(DrinkSource.CURATED, "not-exists");
+
+            // then
+            assertThat(result).isEmpty();
         }
     }
 

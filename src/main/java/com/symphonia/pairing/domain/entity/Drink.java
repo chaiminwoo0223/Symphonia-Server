@@ -40,4 +40,11 @@ public class Drink {
                 .nonAlcoholic(nonAlcoholic)
                 .build();
     }
+
+    public void update(Long drinkStyleId, String name, double abv, FlavorProfile flavorProfile) {
+        this.drinkStyleId = drinkStyleId;
+        this.name = name;
+        this.abv = abv;
+        this.flavorProfile = flavorProfile;
+    }
 }
