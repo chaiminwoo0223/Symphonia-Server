@@ -1,5 +1,7 @@
 package com.symphonia.pairing.infrastructure.reader;
 
+import static java.util.function.Predicate.not;
+
 import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedException;
 import com.symphonia.pairing.domain.reader.BjcpStyleReader;
 import com.symphonia.pairing.domain.vo.BjcpStyle;
@@ -11,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -42,30 +45,27 @@ public class JsonBjcpStyleReader implements BjcpStyleReader {
         return new BjcpStyle(
                 style.path("style_id").asString(),
                 style.path("name").asString(),
-                ibuRange(style.path("international_bitterness_units")),
+                ibuRange(style.path("international_bitterness_units")).orElse(null),
                 tags(style.path("tags")),
                 style.path("mouthfeel").asString(null));
     }
 
-    // 최솟값과 최댓값 중 하나라도 없으면 구간을 정할 수 없으므로 null로 둔다.
-    private IbuRange ibuRange(JsonNode ibu) {
-        JsonNode min = ibu.path("minimum").path("value");
-        JsonNode max = ibu.path("maximum").path("value");
+    // 최솟값과 최댓값 중 하나라도 없으면 구간을 정할 수 없다.
+    private Optional<IbuRange> ibuRange(JsonNode ibu) {
+        JsonNode min = ibu.at("/minimum/value");
+        JsonNode max = ibu.at("/maximum/value");
 
-        if (min.isNumber() && max.isNumber()) {
-            return new IbuRange(min.asDouble(), max.asDouble());
-        }
-        return null;
+        return min.isNumber() && max.isNumber()
+                ? Optional.of(new IbuRange(min.asDouble(), max.asDouble()))
+                : Optional.empty();
     }
 
     // 태그는 배열이 아니라 "session-strength, pale-color" 형식의 쉼표 구분 문자열이다.
     private List<String> tags(JsonNode node) {
-        if (!node.isString()) {
-            return List.of();
-        }
-        return Arrays.stream(node.asString().split(","))
+        return node.stringValueOpt().stream()
+                .flatMap(tags -> Arrays.stream(tags.split(",")))
                 .map(String::strip)
-                .filter(tag -> !tag.isEmpty())
+                .filter(not(String::isEmpty))
                 .toList();
     }
 }
