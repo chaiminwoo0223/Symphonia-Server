@@ -1,22 +1,16 @@
 package com.symphonia.pairing.application.service;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.partitioningBy;
-import static java.util.stream.Collectors.toList;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.pairing.application.dto.result.ImportResult;
-import com.symphonia.pairing.application.dto.result.ImportResult.ExcludedItem;
 import com.symphonia.pairing.application.usecase.ImportDrinkStyleUseCase;
 import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.reader.BjcpStyleReader;
 import com.symphonia.pairing.domain.reader.FlavorRuleReader;
 import com.symphonia.pairing.domain.repository.DrinkStyleRepository;
-import com.symphonia.pairing.domain.vo.FlavorAxis;
 import com.symphonia.pairing.domain.vo.FlavorEvaluation;
 import com.symphonia.pairing.domain.vo.FlavorRule;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -39,8 +33,7 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
 
         determined.forEach(evaluation -> upsert(evaluation.toDrinkStyle()));
 
-        return new ImportResult(
-                determined.size(), excludedItems(undetermined), defaultedExternalIds(determined));
+        return ImportResult.of(determined, undetermined);
     }
 
     // 맛을 정할 수 있는 스타일(true)과 정할 수 없는 스타일(false)로 나눈다.
@@ -62,29 +55,5 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
                             drinkStyleRepository.save(existing);
                         },
                         () -> drinkStyleRepository.save(imported));
-    }
-
-    private List<ExcludedItem> excludedItems(List<FlavorEvaluation> undetermined) {
-        return undetermined.stream()
-                .map(
-                        evaluation ->
-                                new ExcludedItem(
-                                        evaluation.style().styleId(),
-                                        evaluation.style().name(),
-                                        evaluation.missingAxes()))
-                .toList();
-    }
-
-    private Map<FlavorAxis, List<String>> defaultedExternalIds(List<FlavorEvaluation> determined) {
-        return determined.stream()
-                .flatMap(
-                        evaluation ->
-                                evaluation.defaultedAxes().stream()
-                                        .map(axis -> Map.entry(axis, evaluation.style().styleId())))
-                .collect(
-                        groupingBy(
-                                Map.Entry::getKey,
-                                () -> new EnumMap<>(FlavorAxis.class),
-                                mapping(Map.Entry::getValue, toList())));
     }
 }
