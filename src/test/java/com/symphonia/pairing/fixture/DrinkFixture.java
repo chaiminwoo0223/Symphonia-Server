@@ -49,6 +49,11 @@ public enum DrinkFixture {
         return build(null, drinkStyleId, flavorProfile);
     }
 
+    // 단위 테스트에서 여러 음료가 같은 스타일을 공유하거나 서로 다른 스타일로 나뉘게 만들 때 쓴다.
+    public Drink createWithIdAndStyle(Long id, Long drinkStyleId) {
+        return build(id, drinkStyleId, flavorProfile);
+    }
+
     // 저장하지 않는 단위 테스트에서는 스타일 픽스처의 고정 id를 참조한다.
     private Long defaultDrinkStyleId() {
         return drinkStyleFixture.createWithId().getId();
