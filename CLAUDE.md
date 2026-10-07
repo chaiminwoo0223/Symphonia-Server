@@ -123,7 +123,7 @@ com.symphonia
 ./gradlew build                    # 빌드 (컴파일+테스트+패키징, 로컬 검증용)
 ./.claude/scripts/check-all.sh     # PR 전 전체 검증 (포맷 검증 포함)
 ./scripts/import/fetch-bjcp.sh     # BJCP 원본 JSON 다운로드 (적재 전 1회, 원본은 커밋하지 않음)
-./gradlew importDrinkStyles        # BJCP 스타일을 drink_style에 적재 (배포와 분리한 수동 실행)
+./gradlew importDrinks             # BJCP 스타일과 국내 유통 맥주를 drink_style, drink에 적재 (배포와 분리한 수동 실행)
 ```
 
 > `check-all.sh`는 내부적으로 `./gradlew clean build`를 실행한다. 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
