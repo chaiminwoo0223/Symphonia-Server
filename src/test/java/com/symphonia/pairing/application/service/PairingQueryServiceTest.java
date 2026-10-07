@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import com.symphonia.UnitTest;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
+import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.MusicMood;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.repository.DrinkRepository;
@@ -21,7 +22,6 @@ import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -216,6 +216,119 @@ class PairingQueryServiceTest extends UnitTest {
 
             // then
             assertThat(results).extracting(PairingResult::drinkNonAlcoholic).containsOnly(false);
+        }
+
+        @Test
+        @DisplayName("같은 스타일의 Drink가 여러 개여도 상위 결과에는 그 스타일의 조합이 하나만 남는다")
+        void shouldKeepOnePairingPerDrinkStyleWhenDrinksShareStyle() {
+            // given
+            // 같은 스타일을 공유하는 소주 3개는 마른안주와의 맛 유사도가 가장 높아 나머지 Drink보다 점수가 높다
+            List<Long> sameStyleSojuIds = List.of(11L, 12L, 13L);
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 100L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 100L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 100L),
+                                    DrinkFixture.BEER.createWithId(),
+                                    DrinkFixture.WINE.createWithId(),
+                                    DrinkFixture.SODA.createWithId(),
+                                    DrinkFixture.FRUIT_JUICE.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results).hasSize(5);
+            assertThat(results)
+                    .extracting(PairingResult::drinkId)
+                    .filteredOn(sameStyleSojuIds::contains)
+                    .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("스타일 수가 상한보다 적으면 모든 스타일을 포함하고 남은 자리를 점수 순으로 채운다")
+        void shouldFillRemainingSlotsByScoreWhenDrinkStylesFewerThanLimit() {
+            // given
+            // 고도수 페널티를 받는 위스키의 최고 조합도 소주의 5번째 조합(후라이드치킨)보다 점수가 낮다
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithId(),
+                                    DrinkFixture.WHISKEY.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.DRIED_SNACK.createWithId(),
+                                    AnjuFixture.TOFU_KIMCHI.createWithId(),
+                                    AnjuFixture.CHEESE_PLATTER.createWithId(),
+                                    AnjuFixture.GOLBAENGI_MUCHIM.createWithId(),
+                                    AnjuFixture.FRIED_CHICKEN.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results).hasSize(5);
+            assertThat(results)
+                    .extracting(PairingResult::drinkName)
+                    .containsOnlyOnce(DrinkFixture.WHISKEY.getName());
+            assertThat(results)
+                    .filteredOn(result -> result.drinkName().equals(DrinkFixture.SOJU.getName()))
+                    .extracting(PairingResult::anjuName)
+                    .containsExactlyInAnyOrder(
+                            AnjuFixture.DRIED_SNACK.getName(),
+                            AnjuFixture.TOFU_KIMCHI.getName(),
+                            AnjuFixture.CHEESE_PLATTER.getName(),
+                            AnjuFixture.GOLBAENGI_MUCHIM.getName());
+            assertThat(results).isSortedAccordingTo((a, b) -> Double.compare(b.score(), a.score()));
+        }
+
+        @Test
+        @DisplayName("무알코올 옵션을 보장할 때도 같은 스타일의 Drink는 하나만 남긴다")
+        void shouldKeepOnePairingPerDrinkStyleWhenAttendeeRequiresNonAlcoholicOption() {
+            // given
+            // 소주 6개와 맥주가 모두 탄산음료보다 점수가 높고, 그중 소주 11~13은 같은 스타일을 공유한다
+            Drink soda = DrinkFixture.SODA.createWithId();
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 100L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 100L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 100L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(14L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(15L, 102L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(16L, 103L),
+                                    DrinkFixture.BEER.createWithId(),
+                                    soda));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND,
+                            MoodType.CASUAL,
+                            Set.of(AttendeeConstraint.DRIVER),
+                            Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkId)
+                    .containsExactly(11L, 14L, 15L, 16L, soda.getId());
+            assertThat(results.getLast().drinkNonAlcoholic()).isTrue();
         }
 
         @Test
@@ -815,18 +928,20 @@ class PairingQueryServiceTest extends UnitTest {
                                     MusicMoodFixture.CELEBRATORY_DANCE.createWithId()));
         }
 
+        // 스타일이 서로 다른 소주 5개가 탄산음료보다 점수가 높아, 스타일당 하나를 골라도 상위 5개가 모두 알코올이다.
         private void givenAlcoholicDrinksOutrankingNonAlcoholicDrink() {
             given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
-                                    DrinkFixture.SOJU.createWithId(),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 102L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 103L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(14L, 104L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(15L, 105L),
                                     DrinkFixture.SODA.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            Collections.nCopies(
-                                    5, MusicMoodFixture.CASUAL_ACOUSTIC.createWithId()));
+            givenCasualAcousticMusicMood();
         }
 
         private void givenSingleAnjuAndCasualAcousticMusicMood() {
