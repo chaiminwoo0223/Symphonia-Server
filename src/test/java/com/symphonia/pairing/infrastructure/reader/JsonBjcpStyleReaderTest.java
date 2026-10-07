@@ -32,7 +32,7 @@ class JsonBjcpStyleReaderTest {
         @DisplayName("파일이 있는 경우")
         class WhenFileExists {
 
-            private List<BjcpStyle> styles;
+            private JsonBjcpStyleReader jsonBjcpStyleReader;
 
             @BeforeEach
             void setUp() throws URISyntaxException {
@@ -42,12 +42,15 @@ class JsonBjcpStyleReaderTest {
                                                         getClass().getResource(STYLES_RESOURCE))
                                                 .toURI())
                                 .toString();
-                styles = new JsonBjcpStyleReader(jsonMapper, new BjcpProperties(path)).read();
+                jsonBjcpStyleReader = new JsonBjcpStyleReader(jsonMapper, new BjcpProperties(path));
             }
 
             @Test
             @DisplayName("모든 스타일을 파일 순서대로 읽는다")
             void shouldReadStylesInOrder() {
+                // when
+                List<BjcpStyle> styles = jsonBjcpStyleReader.read();
+
                 // then
                 assertThat(styles)
                         .extracting(BjcpStyle::styleId)
@@ -58,10 +61,11 @@ class JsonBjcpStyleReaderTest {
             @Test
             @DisplayName("IBU 최소, 최대값을 읽는다")
             void shouldReadIbu() {
-                // given
-                BjcpStyle style = styles.getFirst();
+                // when
+                List<BjcpStyle> styles = jsonBjcpStyleReader.read();
 
                 // then
+                BjcpStyle style = styles.getFirst();
                 assertThat(style.ibuRange()).isEqualTo(new IbuRange(8.0, 12.0));
                 assertThat(style.ibu()).hasValue(10.0);
             }
@@ -69,31 +73,33 @@ class JsonBjcpStyleReaderTest {
             @Test
             @DisplayName("쉼표로 구분된 태그 문자열을 공백을 제거해 나눈다")
             void shouldSplitTags() {
-                // given
-                BjcpStyle style = styles.getFirst();
+                // when
+                List<BjcpStyle> styles = jsonBjcpStyleReader.read();
 
                 // then
-                assertThat(style.tags())
+                assertThat(styles.getFirst().tags())
                         .containsExactly("session-strength", "pale-color", "bottom-fermented");
             }
 
             @Test
             @DisplayName("mouthfeel을 소문자로 읽는다")
             void shouldReadMouthfeelInLowercase() {
-                // given
-                BjcpStyle style = styles.getFirst();
+                // when
+                List<BjcpStyle> styles = jsonBjcpStyleReader.read();
 
                 // then
-                assertThat(style.mouthfeel()).isEqualTo("very light body, very high carbonation");
+                assertThat(styles.getFirst().mouthfeel())
+                        .isEqualTo("very light body, very high carbonation");
             }
 
             @Test
             @DisplayName("tags, mouthfeel, IBU가 null이면 빈 값으로 읽는다")
             void shouldReadEmptyValuesWhenFieldsNull() {
-                // given
-                BjcpStyle style = styles.get(1);
+                // when
+                List<BjcpStyle> styles = jsonBjcpStyleReader.read();
 
                 // then
+                BjcpStyle style = styles.get(1);
                 assertThat(style.tags()).isEmpty();
                 assertThat(style.mouthfeel()).isEmpty();
                 assertThat(style.ibuRange()).isNull();
@@ -103,10 +109,11 @@ class JsonBjcpStyleReaderTest {
             @Test
             @DisplayName("tags, mouthfeel, IBU 필드가 없으면 빈 값으로 읽는다")
             void shouldReadEmptyValuesWhenFieldsAbsent() {
-                // given
-                BjcpStyle style = styles.get(2);
+                // when
+                List<BjcpStyle> styles = jsonBjcpStyleReader.read();
 
                 // then
+                BjcpStyle style = styles.get(2);
                 assertThat(style.tags()).isEmpty();
                 assertThat(style.mouthfeel()).isEmpty();
                 assertThat(style.ibu()).isEmpty();
