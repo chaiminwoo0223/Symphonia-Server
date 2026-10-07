@@ -75,19 +75,24 @@ public record FlavorRule(
     // mouthfeel은 기본 설명 뒤에 예외를 덧붙이는 경우가 많다. 그래서 가장 먼저 나온 키워드를 쓴다.
     // 같은 위치에서 여러 키워드가 걸리면 더 구체적인 긴 키워드를 쓴다.
     private Map<FlavorAxis, Integer> mouthfeelValues(BjcpStyle style) {
-        Comparator<MouthfeelRule> earliestThenLongest =
-                Comparator.<MouthfeelRule>comparingInt(rule -> rule.positionIn(style.mouthfeel()))
-                        .thenComparing(rule -> rule.keyword().length(), Comparator.reverseOrder());
+        Comparator<MouthfeelMatch> earliestThenLongest =
+                Comparator.comparingInt(MouthfeelMatch::position)
+                        .thenComparing(
+                                match -> match.rule().keyword().length(),
+                                Comparator.reverseOrder());
 
         return mouthfeelRules.stream()
-                .filter(rule -> rule.positionIn(style.mouthfeel()) >= 0)
+                .flatMap(
+                        rule ->
+                                rule.positionIn(style.mouthfeel()).stream()
+                                        .mapToObj(position -> new MouthfeelMatch(rule, position)))
                 .collect(
                         Collectors.groupingBy(
-                                MouthfeelRule::axis,
+                                match -> match.rule().axis(),
                                 () -> new EnumMap<>(FlavorAxis.class),
                                 Collectors.collectingAndThen(
                                         Collectors.minBy(earliestThenLongest),
-                                        rule -> rule.orElseThrow().value())));
+                                        match -> match.orElseThrow().rule().value())));
     }
 
     private FlavorProfile toFlavorProfile(Map<FlavorAxis, Integer> values) {
@@ -98,4 +103,7 @@ public record FlavorRule(
                 values.get(FlavorAxis.RICHNESS),
                 values.get(FlavorAxis.ACIDITY));
     }
+
+    // mouthfeel에서 키워드가 걸린 규칙과 그 위치를 한 번만 계산해 함께 들고 다닌다.
+    private record MouthfeelMatch(MouthfeelRule rule, int position) {}
 }

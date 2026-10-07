@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedException;
 import com.symphonia.pairing.domain.vo.BjcpStyle;
 import com.symphonia.pairing.domain.vo.IbuRange;
-import com.symphonia.pairing.infrastructure.reader.properties.BjcpProperties;
+import com.symphonia.pairing.infrastructure.reader.config.properties.BjcpProperties;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.List;

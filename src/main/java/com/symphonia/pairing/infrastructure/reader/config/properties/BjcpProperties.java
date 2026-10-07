@@ -1,4 +1,4 @@
-package com.symphonia.pairing.infrastructure.reader.properties;
+package com.symphonia.pairing.infrastructure.reader.config.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

@@ -6,7 +6,7 @@ import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedExcepti
 import com.symphonia.pairing.domain.reader.BjcpStyleReader;
 import com.symphonia.pairing.domain.vo.BjcpStyle;
 import com.symphonia.pairing.domain.vo.IbuRange;
-import com.symphonia.pairing.infrastructure.reader.properties.BjcpProperties;
+import com.symphonia.pairing.infrastructure.reader.config.properties.BjcpProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -25,7 +24,6 @@ import tools.jackson.databind.json.JsonMapper;
 // beerjson/bjcp-json 형식의 BJCP 가이드라인 JSON을 읽는다.
 @Component
 @RequiredArgsConstructor
-@EnableConfigurationProperties(BjcpProperties.class)
 public class JsonBjcpStyleReader implements BjcpStyleReader {
     private final JsonMapper jsonMapper;
     private final BjcpProperties bjcpProperties;
