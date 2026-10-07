@@ -5,7 +5,9 @@ import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.MusicMood;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -60,9 +62,34 @@ public class Pairing {
         }
 
         List<Pairing> ranked = pairings.stream().sorted(RANKING).toList();
-        List<Pairing> top = ranked.stream().limit(RECOMMENDATION_LIMIT).toList();
+        List<Pairing> top = diversifiedTop(ranked);
+        List<Pairing> recommended =
+                occasion.requiresNonAlcoholicOption() ? withNonAlcoholicOption(top, ranked) : top;
 
-        return occasion.requiresNonAlcoholicOption() ? withNonAlcoholicOption(top, ranked) : top;
+        return recommended.stream().sorted(RANKING).toList();
+    }
+
+    // 스타일마다 최고점 조합을 하나씩 먼저 고르고, 스타일이 모자라면 남은 조합을 점수순으로 채운다.
+    private static List<Pairing> diversifiedTop(List<Pairing> ranked) {
+        List<Pairing> picked = new ArrayList<>();
+        Set<Long> pickedDrinkStyleIds = new HashSet<>();
+        for (Pairing pairing : ranked) {
+            if (picked.size() == RECOMMENDATION_LIMIT) {
+                break;
+            }
+            if (pickedDrinkStyleIds.add(pairing.getDrink().getDrinkStyleId())) {
+                picked.add(pairing);
+            }
+        }
+
+        List<Pairing> leftovers =
+                ranked.stream()
+                        .filter(pairing -> !picked.contains(pairing))
+                        .limit(RECOMMENDATION_LIMIT - picked.size())
+                        .toList();
+        picked.addAll(leftovers);
+
+        return picked;
     }
 
     private static List<Pairing> withNonAlcoholicOption(List<Pairing> top, List<Pairing> ranked) {
