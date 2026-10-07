@@ -37,7 +37,7 @@ oauth:
     jwks-uri: https://www.googleapis.com/oauth2/v3/certs
     issuer: https://accounts.google.com
 
-# 음료 스타일 적재(./gradlew importDrinkStyles)가 읽는 BJCP 원본. scripts/import/fetch-bjcp.sh로 받는다.
+# 음료 적재(./gradlew importDrinks)가 읽는 BJCP 원본. scripts/import/fetch-bjcp.sh로 받는다.
 import:
   bjcp:
     path: ${BJCP_PATH:scripts/import/data/bjcp/bjcp_styleguide-2021.json}
