@@ -13,6 +13,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.exception.SocialAuthenticationFailedException;
 import com.symphonia.auth.domain.exception.SocialMemberInfoFetchFailedException;
+import com.symphonia.auth.domain.exception.SocialRequiredInfoMissingException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.auth.infrastructure.oauth.config.properties.KakaoOAuthProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,29 +107,84 @@ class KakaoSocialClientTest extends UnitTest {
                 assertThat(identity.socialProvider()).isEqualTo("KAKAO");
                 mockServer.verify();
             }
+        }
 
-            @Test
-            @DisplayName("kakao_account가 없으면 nickname, email, profileImage는 null이다.")
-            void shouldReturnSocialIdentityWithNullFieldsWhenKakaoAccountMissing() {
-                // given
+        @Nested
+        @DisplayName("이메일이나 닉네임이 제공되지 않은 경우")
+        class WhenRequiredInfoMissing {
+
+            @BeforeEach
+            void setUp() {
                 mockServer
                         .expect(requestTo(TOKEN_URI))
                         .andRespond(
                                 withSuccess(
                                         "{\"access_token\": \"access-token\"}",
                                         MediaType.APPLICATION_JSON));
+            }
+
+            @Test
+            @DisplayName("email이 없으면 SocialRequiredInfoMissingException이 발생한다.")
+            void shouldThrowSocialRequiredInfoMissingExceptionWhenEmailMissing() {
+                // given
+                mockServer
+                        .expect(requestTo(USER_INFO_URI))
+                        .andRespond(
+                                withSuccess(
+                                        """
+                                        {
+                                          "id": 123456,
+                                          "kakao_account": {
+                                            "profile": {
+                                              "nickname": "카카오 멤버"
+                                            }
+                                          }
+                                        }
+                                        """,
+                                        MediaType.APPLICATION_JSON));
+
+                // when & then
+                assertThatThrownBy(() -> kakaoSocialClient.authenticate(CODE))
+                        .isInstanceOf(SocialRequiredInfoMissingException.class)
+                        .hasMessage(AuthErrorCode.SOCIAL_REQUIRED_INFO_MISSING.getMessage());
+            }
+
+            @Test
+            @DisplayName("nickname이 없으면 SocialRequiredInfoMissingException이 발생한다.")
+            void shouldThrowSocialRequiredInfoMissingExceptionWhenNicknameMissing() {
+                // given
+                mockServer
+                        .expect(requestTo(USER_INFO_URI))
+                        .andRespond(
+                                withSuccess(
+                                        """
+                                        {
+                                          "id": 123456,
+                                          "kakao_account": {
+                                            "email": "symphonia@kakao.com"
+                                          }
+                                        }
+                                        """,
+                                        MediaType.APPLICATION_JSON));
+
+                // when & then
+                assertThatThrownBy(() -> kakaoSocialClient.authenticate(CODE))
+                        .isInstanceOf(SocialRequiredInfoMissingException.class)
+                        .hasMessage(AuthErrorCode.SOCIAL_REQUIRED_INFO_MISSING.getMessage());
+            }
+
+            @Test
+            @DisplayName("kakao_account가 없으면 SocialRequiredInfoMissingException이 발생한다.")
+            void shouldThrowSocialRequiredInfoMissingExceptionWhenKakaoAccountMissing() {
+                // given
                 mockServer
                         .expect(requestTo(USER_INFO_URI))
                         .andRespond(withSuccess("{\"id\": 123456}", MediaType.APPLICATION_JSON));
 
-                // when
-                SocialIdentity identity = kakaoSocialClient.authenticate(CODE);
-
-                // then
-                assertThat(identity.socialId()).isEqualTo("123456");
-                assertThat(identity.nickname()).isNull();
-                assertThat(identity.email()).isNull();
-                assertThat(identity.profileImage()).isNull();
+                // when & then
+                assertThatThrownBy(() -> kakaoSocialClient.authenticate(CODE))
+                        .isInstanceOf(SocialRequiredInfoMissingException.class)
+                        .hasMessage(AuthErrorCode.SOCIAL_REQUIRED_INFO_MISSING.getMessage());
             }
         }
 
