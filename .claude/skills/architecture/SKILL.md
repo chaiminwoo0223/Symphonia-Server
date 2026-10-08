@@ -46,7 +46,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 `domain`/`application` 계층은 공유 커널인 `common`만 참조하고, 기술 부트스트랩인 `global`(config/security)은 참조하지 않는다. `global`은 오직 Spring 설정·필터 wiring 목적으로만 `common`을 참조할 수 있다.
 
-`global`은 같은 이유로 도메인의 `presentation` 계층에 있는 `*Endpoints`(비즈니스 로직·프레임워크 의존 없이 URL 경로 문자열만 담은 상수 클래스, 예: `auth.presentation.AuthEndpoints`)도 참조할 수 있다. 이는 `SecurityConfig`의 permitAll 매처, `RateLimitFilter`의 rate-limit 키처럼 순수 wiring 목적에 한한다. `*Request`/`*Response`/`*Api`/`*Controller`처럼 실제 프레젠테이션 로직이 담긴 타입은 여전히 참조 대상이 아니다. URL 경로는 그 경로를 실제로 노출하는 `*Api`와 동기화돼야 하는 도메인 고유의 사실이므로, `global`이 별도 상수로 다시 소유하기보다 도메인 쪽 단일 소스를 참조하는 쪽이 응집도가 높다.
+`global`은 같은 이유로 도메인의 `presentation` 계층에 있는 `*Endpoints`(비즈니스 로직·프레임워크 의존 없이 URL 경로 문자열만 담은 상수 클래스, 예: `auth.presentation.AuthEndpoints`)도 참조할 수 있다. 이는 `SecurityConfig`의 permitAll 매처처럼 순수 wiring 목적에 한한다. `*Request`/`*Response`/`*Api`/`*Controller`처럼 실제 프레젠테이션 로직이 담긴 타입은 여전히 참조 대상이 아니다. URL 경로는 그 경로를 실제로 노출하는 `*Api`와 동기화돼야 하는 도메인 고유의 사실이므로, `global`이 별도 상수로 다시 소유하기보다 도메인 쪽 단일 소스를 참조하는 쪽이 응집도가 높다.
 
 **(2026-09-20 결정, 이슈 #47)**: `*Endpoints`가 경로의 단일 소스이고, `*Api` 자신도 `@GetMapping`/`@PostMapping` 등에 리터럴 경로 문자열 대신 같은 도메인의 `*Endpoints` 상수를 그대로 참조한다(예: `AuthApi`의 `@PostMapping(AuthEndpoints.LOGIN)`, `MemberApi`의 `@GetMapping(MemberEndpoints.ME)`). `*Api`가 리터럴 문자열을 따로 갖고 `*Endpoints`가 그걸 베끼는 구조가 아니다. 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 이미 완성해 둔 전체 경로를 각 메서드의 매핑 애노테이션에 직접 넣는다.
 
@@ -139,6 +139,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - **인증 식별자 추출**: `@AuthenticationPrincipal String memberId`.
 - **RTR(Refresh Token Rotation)**: 토큰 탈취 감지, 누락 시 단순 거부(Tombstone 없음). 리프레시 토큰은 httpOnly+Secure+SameSite 쿠키로 전달, 액세스 토큰은 응답 바디.
 - **쿠키 기반 인증 제약**: CORS `Access-Control-Allow-Credentials: true` 필요 → Origin 와일드카드(`*`) 사용 불가, 허용 오리진 명시 필수. CSRF는 리프레시 토큰 쿠키에 `SameSite=Strict` 적용으로 방어(별도 CSRF 토큰 없음). 쿠키 `Path`는 재발급 엔드포인트로 제한 권장.
+- **Rate Limiting 미적용 (2026-10-08 결정, 이슈 #83)**: 앱 단 IP별 rate limit(`RateLimitFilter`)을 제거했다. signup·login은 일회용 OAuth 인가 코드를, refresh는 추측할 수 없는 UUID 리프레시 토큰을 받으므로 무차별 대입이 성립하지 않는다. 대량 요청 방어는 요청이 앱에 닿기 전에 막는 LB/WAF(예: Cloud Armor)가 맡는 편이 낫다. 필터를 유지하려면 프록시 뒤 IP 식별과 `INCR`/`EXPIRE` 원자화(Lua)를 함께 고쳐야 했는데, 그 비용에 비해 실익이 작아 택하지 않았다. 잘못된 인가 코드로 반복 호출해 카카오·구글 API 호출 한도를 소모시키는 공격이 관측되거나, 비밀번호 로그인처럼 대입 가능한 입력을 받는 엔드포인트가 생기면 재검토한다.
+- **클라이언트 IP 식별 (2026-10-08 결정, 이슈 #83)**: 클라이언트 IP는 감사 로그(`AuditLogRecorder`)의 `ip` 필드에만 쓰인다. `server.forward-headers-strategy: native`로 Tomcat `RemoteIpValve`를 켜고, `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES` 환경변수, 기본값은 Spring Boot의 사설 IP 대역)에 든 프록시가 보낸 `X-Forwarded-For`만 반영한다. 그래서 IP는 어디서든 `HttpServletRequest.getRemoteAddr()`로 구하고, 별도 IP 추출 유틸을 두지 않는다. `framework` 전략(`ForwardedHeaderFilter`)은 헤더를 무조건 신뢰해 위조에 열려 있어 택하지 않았다. 신뢰 프록시 목록이 실제 LB 대역과 어긋나면 헤더가 무시되어 LB IP가 남을 뿐 위조에 열리지는 않으므로, 동작 검증은 테스트가 아니라 배포 시 `TRUSTED_PROXIES`를 넣고 감사 로그를 확인하는 것으로 한다. MockMvc는 Tomcat을 거치지 않아 이 동작을 검증할 수 없고, 실제 포트를 띄우는 테스트는 우리 코드가 아니라 Tomcat 구현을 검증하게 되어 두지 않았다. IP를 인가·차단 판단에 쓰기 시작하면 테스트 추가를 재검토한다.
 - **YAGNI**: 안 쓰는 에러 코드·검증기·추상화는 주저 없이 제거.
 
 ## 응답 포맷
