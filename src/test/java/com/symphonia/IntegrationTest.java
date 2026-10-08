@@ -24,7 +24,7 @@ public abstract class IntegrationTest {
 
     @Autowired private StringRedisTemplate redisTemplate;
 
-    // @Transactional은 JPA만 롤백하므로, 같은 컨테이너를 공유하는 Redis 상태(rate limit 카운터 등)는
+    // @Transactional은 JPA만 롤백하므로, 같은 컨테이너를 공유하는 Redis 상태(리프레시 토큰, 블랙리스트 등)는
     // 테스트마다 직접 비워줘야 다른 테스트에 영향을 주지 않는다.
     @AfterEach
     void flushRedis() {
