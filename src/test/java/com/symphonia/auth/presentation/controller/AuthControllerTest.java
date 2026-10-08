@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.domain.client.SocialClient;
+import com.symphonia.auth.domain.error.AuthErrorCode;
+import com.symphonia.auth.domain.exception.SocialRequiredInfoMissingException;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.auth.helper.AuthHelper;
@@ -96,6 +98,32 @@ class AuthControllerTest extends IntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isConflict());
+            }
+        }
+
+        @Nested
+        @DisplayName("소셜 계정이 이메일이나 닉네임을 제공하지 않은 경우")
+        class WhenSocialRequiredInfoMissing {
+
+            @Test
+            @DisplayName("400과 SOCIAL_REQUIRED_INFO_MISSING 코드를 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                        .willThrow(new SocialRequiredInfoMissingException());
+                SignupRequest request = new SignupRequest("kakao", AUTH_CODE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/signup")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                AuthErrorCode.SOCIAL_REQUIRED_INFO_MISSING
+                                                        .getCode()));
             }
         }
 
