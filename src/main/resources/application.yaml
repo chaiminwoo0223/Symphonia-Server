@@ -12,7 +12,7 @@ spring:
         format_sql: true
 
 # LB 뒤에서 감사 로그에 실제 클라이언트 IP를 남기기 위해, 신뢰하는 프록시가 보낸 X-Forwarded-For만 반영한다.
-# TRUSTED_PROXIES가 없으면 Spring Boot 기본값(사설 IP 대역)을 쓴다. 배포 시 LB 대역을 넣는다.
+# TRUSTED_PROXIES가 없으면 Spring Boot 기본값(사설 IP 대역)을 쓴다. 배포 시 LB 대역을 기본값과 같은 쉼표 구분 CIDR 형식으로 넣는다.
 server:
   forward-headers-strategy: native
   tomcat:
