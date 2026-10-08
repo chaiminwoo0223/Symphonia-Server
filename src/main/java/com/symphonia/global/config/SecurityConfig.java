@@ -5,7 +5,6 @@ import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.CorsProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
 import com.symphonia.global.security.filter.JwtAuthenticationFilter;
-import com.symphonia.global.security.filter.RateLimitFilter;
 import com.symphonia.global.security.handler.CustomAccessDeniedHandler;
 import com.symphonia.global.security.handler.CustomAuthenticationEntryPoint;
 import com.symphonia.pairing.presentation.PairingEndpoints;
@@ -43,7 +42,6 @@ public class SecurityConfig {
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final RateLimitFilter rateLimitFilter;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
     private final CorsProperties corsProperties;
@@ -72,8 +70,7 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .authenticated())
                 .addFilterBefore(
-                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class);
+                        jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -83,16 +80,6 @@ public class SecurityConfig {
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration() {
         FilterRegistrationBean<JwtAuthenticationFilter> registration =
                 new FilterRegistrationBean<>(jwtAuthenticationFilter);
-        registration.setEnabled(false);
-
-        return registration;
-    }
-
-    // 서블릿 필터 체인 이중 등록 방지
-    @Bean
-    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration() {
-        FilterRegistrationBean<RateLimitFilter> registration =
-                new FilterRegistrationBean<>(rateLimitFilter);
         registration.setEnabled(false);
 
         return registration;

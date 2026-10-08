@@ -34,7 +34,7 @@ public class AuthController implements AuthApi {
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> signup(
             SignupRequest request, HttpServletRequest httpRequest) {
-        TokenResult result = signupUseCase.signup(request.toCommand(extractIp(httpRequest)));
+        TokenResult result = signupUseCase.signup(request.toCommand(httpRequest.getRemoteAddr()));
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
@@ -46,7 +46,7 @@ public class AuthController implements AuthApi {
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> login(
             LoginRequest request, HttpServletRequest httpRequest) {
-        TokenResult result = loginUseCase.login(request.toCommand(extractIp(httpRequest)));
+        TokenResult result = loginUseCase.login(request.toCommand(httpRequest.getRemoteAddr()));
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
@@ -58,7 +58,7 @@ public class AuthController implements AuthApi {
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> refresh(
             String refreshToken, HttpServletRequest httpRequest) {
-        RefreshCommand command = RefreshCommand.of(refreshToken, extractIp(httpRequest));
+        RefreshCommand command = RefreshCommand.of(refreshToken, httpRequest.getRemoteAddr());
         TokenResult result = refreshUseCase.refresh(command);
         TokenResponse response = TokenResponse.from(result);
         ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
@@ -72,16 +72,12 @@ public class AuthController implements AuthApi {
     public ResponseEntity<StandardResponse<Void>> logout(
             Authentication authentication, HttpServletRequest httpRequest) {
         String accessToken = (String) authentication.getCredentials();
-        LogoutCommand command = LogoutCommand.of(accessToken, extractIp(httpRequest));
+        LogoutCommand command = LogoutCommand.of(accessToken, httpRequest.getRemoteAddr());
         logoutUseCase.logout(command);
         ResponseCookie cookie = refreshTokenCookieFactory.expire();
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));
-    }
-
-    private String extractIp(HttpServletRequest request) {
-        return request.getRemoteAddr();
     }
 }
