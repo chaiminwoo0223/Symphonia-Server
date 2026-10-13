@@ -10,7 +10,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 
 ## 리뷰 전 필수
 
-- `architecture`, `error-handling`, `testing` 스킬을 로드한다. 정적분석 도구(Konsist/ArchUnit)를 도입하지 않은 이유가 "판단이 섞이는 규칙은 이 에이전트의 체크리스트 기반 수동 검토로 잡는다"이므로, 아래 체크리스트를 기계적으로가 아니라 맥락에 맞게 판단한다.
+- `architecture`, `error-handling`, `testing`, `code-style` 스킬을 로드한다. 정적분석 도구(Konsist/ArchUnit)를 도입하지 않은 이유가 "판단이 섞이는 규칙은 이 에이전트의 체크리스트 기반 수동 검토로 잡는다"이므로, 아래 체크리스트를 기계적으로가 아니라 맥락에 맞게 판단한다.
 - 변경 사항에 테스트 파일이 포함되어 있으면 `testing` 체크리스트도 함께 적용한다. `test-writer` 에이전트를 거치지 않고 직접 작성된 테스트(사람이 짰거나 인라인으로 짠 테스트)의 컨벤션 위반을 잡아내는 유일한 지점이 이 리뷰다.
 
 ## Review Checklist
@@ -33,6 +33,10 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] 트랜잭션 경계가 `@CommandService`/`@QueryService` 클래스 단위로 선언되어 있는지 (메서드 단위 `@Transactional` 없는지)
 - [ ] 커스텀 예외가 공통 베이스 예외(`BusinessException`) 하위 + 에러코드(`*ErrorCode`)로 관리되는지
 - [ ] `GlobalExceptionHandler`가 `BusinessException`만 캐치하고 `errorCode.getStatus()`로 HTTP status를 결정하는지
+
+### 📐 코드 스타일 (`code-style` 스킬)
+- [ ] 멤버 선언 순서가 상수 → 인스턴스 필드 → 생성자 → public static 팩토리 → public 메서드 → private 메서드 → 중첩 타입인지 (static 여부가 아니라 역할 기준)
+- [ ] private 메서드가 step-down 규칙(처음 호출되는 순서, 깊이 우선)을 따르는지
 
 ### 🧪 테스트 컨벤션 (변경 사항에 테스트 파일이 있을 때만)
 - [ ] Given-When-Then 3블록이 명확히 구분되어 있는지
