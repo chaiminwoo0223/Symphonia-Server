@@ -49,4 +49,13 @@ public class FlavorProfile {
     public boolean isLight() {
         return richness <= LIGHT_RICHNESS_THRESHOLD;
     }
+
+    // 다른 축은 그대로 두고 한 축만 바꾼 새 FlavorProfile을 만든다. 원래 값은 바꾸지 않는다.
+    public FlavorProfile withRichness(int richness) {
+        return FlavorProfile.of(sweetness, bitterness, carbonation, richness, acidity);
+    }
+
+    public FlavorProfile withAcidity(int acidity) {
+        return FlavorProfile.of(sweetness, bitterness, carbonation, richness, acidity);
+    }
 }
