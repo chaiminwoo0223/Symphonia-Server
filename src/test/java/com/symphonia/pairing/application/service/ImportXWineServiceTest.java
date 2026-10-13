@@ -224,10 +224,15 @@ class ImportXWineServiceTest extends UnitTest {
                                 new AbvExceededItem(
                                         wine.wineId(), "Casa Valduga Origem Merlot", 48.0));
             }
+        }
+
+        @Nested
+        @DisplayName("도수가 상한(25%)과 같은 경우")
+        class WhenAbvEqualsLimit {
 
             @Test
-            @DisplayName("상한과 같은 도수는 적재한다")
-            void shouldSaveWineWhenAbvEqualsLimit() {
+            @DisplayName("상한을 넘지 않으므로 적재한다")
+            void shouldSaveWine() {
                 // given
                 XWine wine = XWineFixture.ORIGEM_MERLOT.createWithAbv(25.0);
                 givenRedStyleSaved();
