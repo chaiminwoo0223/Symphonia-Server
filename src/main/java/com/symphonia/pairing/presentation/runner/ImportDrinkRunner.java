@@ -48,23 +48,6 @@ public class ImportDrinkRunner implements ApplicationRunner {
         result.defaultedExternalIds().forEach(ImportDrinkRunner::logDefaultedAxis);
     }
 
-    private static void reportCuratedDrinks(ImportCuratedDrinkResult result) {
-        log.info("[ImportDrink] 적재한 국내 유통 맥주: {}개", result.importedCount());
-        log.info("[ImportDrink] 매핑한 스타일이 없어 제외한 맥주: {}개", result.unmappedItems().size());
-
-        result.unmappedItems().forEach(ImportDrinkRunner::logUnmappedItem);
-    }
-
-    private static void reportXWines(ImportXWineResult result) {
-        log.info("[ImportDrink] 적재한 와인 스타일: {}개", result.importedStyleCount());
-        log.info("[ImportDrink] 적재한 X-Wines 와인: {}개", result.importedDrinkCount());
-        log.info("[ImportDrink] 도수 상한을 넘어 제외한 와인: {}개", result.abvExceededItems().size());
-        log.info("[ImportDrink] 맛을 정할 수 없어 제외한 와인: {}개", result.undeterminedItems().size());
-
-        result.abvExceededItems().forEach(ImportDrinkRunner::logAbvExceededItem);
-        result.undeterminedItems().forEach(ImportDrinkRunner::logUndeterminedItem);
-    }
-
     private static void logExcludedItem(ExcludedItem item) {
         log.info(
                 "[ImportDrink]   {} {} (규칙 없는 축: {})",
@@ -77,12 +60,29 @@ public class ImportDrinkRunner implements ApplicationRunner {
         log.info("[ImportDrink] 기본값 1을 쓴 {}: {}개 {}", axis, externalIds.size(), externalIds);
     }
 
+    private static void reportCuratedDrinks(ImportCuratedDrinkResult result) {
+        log.info("[ImportDrink] 적재한 국내 유통 맥주: {}개", result.importedCount());
+        log.info("[ImportDrink] 매핑한 스타일이 없어 제외한 맥주: {}개", result.unmappedItems().size());
+
+        result.unmappedItems().forEach(ImportDrinkRunner::logUnmappedItem);
+    }
+
     private static void logUnmappedItem(UnmappedItem item) {
         log.info(
                 "[ImportDrink]   {} {} (BJCP 스타일: {})",
                 item.externalId(),
                 item.name(),
                 item.bjcpStyleId());
+    }
+
+    private static void reportXWines(ImportXWineResult result) {
+        log.info("[ImportDrink] 적재한 와인 스타일: {}개", result.importedStyleCount());
+        log.info("[ImportDrink] 적재한 X-Wines 와인: {}개", result.importedDrinkCount());
+        log.info("[ImportDrink] 도수 상한을 넘어 제외한 와인: {}개", result.abvExceededItems().size());
+        log.info("[ImportDrink] 맛을 정할 수 없어 제외한 와인: {}개", result.undeterminedItems().size());
+
+        result.abvExceededItems().forEach(ImportDrinkRunner::logAbvExceededItem);
+        result.undeterminedItems().forEach(ImportDrinkRunner::logUndeterminedItem);
     }
 
     private static void logAbvExceededItem(AbvExceededItem item) {
