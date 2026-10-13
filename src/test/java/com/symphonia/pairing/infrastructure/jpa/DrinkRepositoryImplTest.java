@@ -51,7 +51,15 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             // given
             Long drinkStyleId = saveDrinkStyle(DrinkFixture.BEER);
             Drink saved = drinkRepository.save(DrinkFixture.BEER.createWithStyle(drinkStyleId));
-            saved.update(drinkStyleId, "카스 라이트", 4.0, DrinkFixture.WINE.getFlavorProfile());
+            saved.overwriteWith(
+                    Drink.of(
+                            drinkStyleId,
+                            saved.getSource(),
+                            saved.getExternalId(),
+                            "카스 라이트",
+                            4.0,
+                            DrinkFixture.WINE.getFlavorProfile(),
+                            false));
 
             // when
             Drink updated = drinkRepository.save(saved);

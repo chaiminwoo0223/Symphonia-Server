@@ -44,16 +44,11 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
     }
 
     private void upsert(DrinkStyle imported) {
-        drinkStyleRepository
-                .findBySourceAndExternalId(imported.getSource(), imported.getExternalId())
-                .ifPresentOrElse(
-                        existing -> {
-                            existing.update(
-                                    imported.getName(),
-                                    imported.getCategory(),
-                                    imported.getFlavorProfile());
-                            drinkStyleRepository.save(existing);
-                        },
-                        () -> drinkStyleRepository.save(imported));
+        DrinkStyle drinkStyle =
+                drinkStyleRepository
+                        .findBySourceAndExternalId(imported.getSource(), imported.getExternalId())
+                        .map(existing -> existing.overwriteWith(imported))
+                        .orElse(imported);
+        drinkStyleRepository.save(drinkStyle);
     }
 }

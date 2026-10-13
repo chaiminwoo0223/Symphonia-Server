@@ -36,9 +36,11 @@ public class DrinkStyle {
                 .build();
     }
 
-    public void update(String name, DrinkCategory category, FlavorProfile flavorProfile) {
-        this.name = name;
-        this.category = category;
-        this.flavorProfile = flavorProfile;
+    // 다시 적재할 때 원본에서 바뀔 수 있는 값만 덮어쓴다. id와 식별 키(source, externalId)는 유지한다.
+    public DrinkStyle overwriteWith(DrinkStyle imported) {
+        this.name = imported.name;
+        this.category = imported.category;
+        this.flavorProfile = imported.flavorProfile;
+        return this;
     }
 }
