@@ -40,7 +40,7 @@
 | 작업 유형 | 로드 |
 |---|---|
 | 계층 설계, UseCase/Service/Api/Controller 분리, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조 | `architecture` |
-| 네이밍, 포맷, 클린코드 스타일 | `code-style` |
+| 네이밍, 포맷, 멤버 선언 순서, 클린코드 스타일 | `code-style` |
 | 테스트 작성 (JUnit5/Mockito/Testcontainers) | `testing` |
 | 예외/에러 처리 | `error-handling` |
 | Branch 전략, 전체 흐름 개요 | `git-workflow` |
