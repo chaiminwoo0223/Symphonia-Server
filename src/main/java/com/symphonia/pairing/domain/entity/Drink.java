@@ -41,10 +41,12 @@ public class Drink {
                 .build();
     }
 
-    public void update(Long drinkStyleId, String name, double abv, FlavorProfile flavorProfile) {
-        this.drinkStyleId = drinkStyleId;
-        this.name = name;
-        this.abv = abv;
-        this.flavorProfile = flavorProfile;
+    // 다시 적재할 때 원본에서 바뀔 수 있는 값만 덮어쓴다. id와 식별 키(source, externalId), 무알코올 여부는 유지한다.
+    public Drink overwriteWith(Drink imported) {
+        this.drinkStyleId = imported.drinkStyleId;
+        this.name = imported.name;
+        this.abv = imported.abv;
+        this.flavorProfile = imported.flavorProfile;
+        return this;
     }
 }

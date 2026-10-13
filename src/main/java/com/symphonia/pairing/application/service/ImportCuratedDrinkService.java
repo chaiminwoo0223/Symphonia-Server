@@ -42,17 +42,11 @@ public class ImportCuratedDrinkService implements ImportCuratedDrinkUseCase {
     }
 
     private void upsert(Drink imported) {
-        drinkRepository
-                .findBySourceAndExternalId(imported.getSource(), imported.getExternalId())
-                .ifPresentOrElse(
-                        existing -> {
-                            existing.update(
-                                    imported.getDrinkStyleId(),
-                                    imported.getName(),
-                                    imported.getAbv(),
-                                    imported.getFlavorProfile());
-                            drinkRepository.save(existing);
-                        },
-                        () -> drinkRepository.save(imported));
+        Drink drink =
+                drinkRepository
+                        .findBySourceAndExternalId(imported.getSource(), imported.getExternalId())
+                        .map(existing -> existing.overwriteWith(imported))
+                        .orElse(imported);
+        drinkRepository.save(drink);
     }
 }
