@@ -45,26 +45,6 @@ public record FlavorRule(
         return values;
     }
 
-    // 규칙이 없는 축을 기본값으로 채울 수 있는 축(true)과 채울 수 없는 축(false)으로 나눈다.
-    private Map<Boolean, Set<FlavorAxis>> absentAxesByDefaultable(Map<FlavorAxis, Integer> values) {
-        return Arrays.stream(FlavorAxis.values())
-                .filter(axis -> !values.containsKey(axis))
-                .collect(
-                        Collectors.partitioningBy(
-                                DEFAULTABLE_AXES::contains,
-                                Collectors.toCollection(() -> EnumSet.noneOf(FlavorAxis.class))));
-    }
-
-    private Optional<Integer> bitterness(BjcpStyle style) {
-        return style.ibu()
-                .flatMap(
-                        ibu ->
-                                ibuRules.stream()
-                                        .filter(rule -> rule.contains(ibu))
-                                        .map(IbuRule::bitterness)
-                                        .findFirst());
-    }
-
     // 태그가 여러 개 걸리면 가장 큰 값을 쓴다.
     private Map<FlavorAxis, Integer> tagValues(BjcpStyle style) {
         return tagRules.stream()
@@ -93,6 +73,26 @@ public record FlavorRule(
                                 Collectors.collectingAndThen(
                                         Collectors.minBy(earliestThenLongest),
                                         match -> match.orElseThrow().rule().value())));
+    }
+
+    private Optional<Integer> bitterness(BjcpStyle style) {
+        return style.ibu()
+                .flatMap(
+                        ibu ->
+                                ibuRules.stream()
+                                        .filter(rule -> rule.contains(ibu))
+                                        .map(IbuRule::bitterness)
+                                        .findFirst());
+    }
+
+    // 규칙이 없는 축을 기본값으로 채울 수 있는 축(true)과 채울 수 없는 축(false)으로 나눈다.
+    private Map<Boolean, Set<FlavorAxis>> absentAxesByDefaultable(Map<FlavorAxis, Integer> values) {
+        return Arrays.stream(FlavorAxis.values())
+                .filter(axis -> !values.containsKey(axis))
+                .collect(
+                        Collectors.partitioningBy(
+                                DEFAULTABLE_AXES::contains,
+                                Collectors.toCollection(() -> EnumSet.noneOf(FlavorAxis.class))));
     }
 
     private FlavorProfile toFlavorProfile(Map<FlavorAxis, Integer> values) {
