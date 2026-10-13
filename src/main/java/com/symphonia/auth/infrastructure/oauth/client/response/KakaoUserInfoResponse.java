@@ -6,13 +6,6 @@ import com.symphonia.member.domain.entity.SocialProvider;
 
 public record KakaoUserInfoResponse(
         @JsonProperty("id") Long id, @JsonProperty("kakao_account") KakaoAccount kakaoAccount) {
-    public record KakaoAccount(
-            @JsonProperty("email") String email, @JsonProperty("profile") Profile profile) {
-        public record Profile(
-                @JsonProperty("nickname") String nickname,
-                @JsonProperty("profile_image_url") String profileImageUrl) {}
-    }
-
     public SocialIdentity toSocialIdentity() {
         KakaoAccount.Profile profile = kakaoAccount != null ? kakaoAccount.profile() : null;
         String email = kakaoAccount != null ? kakaoAccount.email() : null;
@@ -21,5 +14,12 @@ public record KakaoUserInfoResponse(
 
         return new SocialIdentity(
                 String.valueOf(id), nickname, email, profileImage, SocialProvider.KAKAO.name());
+    }
+
+    public record KakaoAccount(
+            @JsonProperty("email") String email, @JsonProperty("profile") Profile profile) {
+        public record Profile(
+                @JsonProperty("nickname") String nickname,
+                @JsonProperty("profile_image_url") String profileImageUrl) {}
     }
 }
