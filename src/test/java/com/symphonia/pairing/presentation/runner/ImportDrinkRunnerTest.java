@@ -7,8 +7,10 @@ import static org.mockito.Mockito.mock;
 
 import com.symphonia.pairing.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.pairing.application.dto.result.ImportResult;
+import com.symphonia.pairing.application.dto.result.ImportXWineResult;
 import com.symphonia.pairing.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.pairing.application.usecase.ImportDrinkStyleUseCase;
+import com.symphonia.pairing.application.usecase.ImportXWineUseCase;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -26,11 +28,13 @@ class ImportDrinkRunnerTest {
             mock(ImportDrinkStyleUseCase.class);
     private final ImportCuratedDrinkUseCase importCuratedDrinkUseCase =
             mock(ImportCuratedDrinkUseCase.class);
+    private final ImportXWineUseCase importXWineUseCase = mock(ImportXWineUseCase.class);
 
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
                     .withBean(ImportDrinkStyleUseCase.class, () -> importDrinkStyleUseCase)
                     .withBean(ImportCuratedDrinkUseCase.class, () -> importCuratedDrinkUseCase)
+                    .withBean(ImportXWineUseCase.class, () -> importXWineUseCase)
                     .withUserConfiguration(ImportDrinkRunner.class);
 
     @Nested
@@ -104,23 +108,28 @@ class ImportDrinkRunnerTest {
     class Run {
 
         @Test
-        @DisplayName("BJCP 스타일을 먼저 적재한 뒤 국내 유통 맥주를 적재한다")
-        void shouldImportCuratedBeersAfterBjcpStyles() {
+        @DisplayName("BJCP 스타일, 국내 유통 맥주, X-Wines 와인 순서로 적재한다")
+        void shouldImportBjcpStylesCuratedBeersAndXWinesInOrder() {
             // given
             given(importDrinkStyleUseCase.importBjcpStyles())
                     .willReturn(new ImportResult(1, List.of(), Map.of()));
             given(importCuratedDrinkUseCase.importCuratedBeers())
                     .willReturn(new ImportCuratedDrinkResult(1, List.of()));
+            given(importXWineUseCase.importXWines())
+                    .willReturn(new ImportXWineResult(1, 1, List.of(), List.of()));
             ImportDrinkRunner runner =
-                    new ImportDrinkRunner(importDrinkStyleUseCase, importCuratedDrinkUseCase);
+                    new ImportDrinkRunner(
+                            importDrinkStyleUseCase, importCuratedDrinkUseCase, importXWineUseCase);
 
             // when
             runner.run(new DefaultApplicationArguments());
 
             // then
-            InOrder inOrder = inOrder(importDrinkStyleUseCase, importCuratedDrinkUseCase);
+            InOrder inOrder =
+                    inOrder(importDrinkStyleUseCase, importCuratedDrinkUseCase, importXWineUseCase);
             inOrder.verify(importDrinkStyleUseCase).importBjcpStyles();
             inOrder.verify(importCuratedDrinkUseCase).importCuratedBeers();
+            inOrder.verify(importXWineUseCase).importXWines();
         }
     }
 }
