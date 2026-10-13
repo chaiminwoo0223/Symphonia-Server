@@ -1,7 +1,7 @@
 package com.symphonia.pairing.infrastructure.reader;
 
-import static com.symphonia.pairing.infrastructure.reader.ClasspathCsv.column;
-import static com.symphonia.pairing.infrastructure.reader.ClasspathCsv.readRows;
+import static com.symphonia.pairing.infrastructure.reader.HeaderCsv.column;
+import static com.symphonia.pairing.infrastructure.reader.HeaderCsv.readRows;
 
 import com.symphonia.pairing.domain.reader.FlavorRuleReader;
 import com.symphonia.pairing.domain.vo.FlavorAxis;
@@ -10,6 +10,7 @@ import com.symphonia.pairing.domain.vo.IbuRule;
 import com.symphonia.pairing.domain.vo.MouthfeelRule;
 import com.symphonia.pairing.domain.vo.TagRule;
 import java.util.Map;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 // 규칙표는 버전 관리되는 설정이라 클래스패스(import/rules)에서 읽는다.
@@ -20,9 +21,10 @@ public class CsvFlavorRuleReader implements FlavorRuleReader {
     @Override
     public FlavorRule read() {
         return new FlavorRule(
-                readRows(RULES_DIR + "ibu-bitterness.csv", this::toIbuRule),
-                readRows(RULES_DIR + "tag.csv", this::toTagRule),
-                readRows(RULES_DIR + "mouthfeel.csv", this::toMouthfeelRule));
+                readRows(new ClassPathResource(RULES_DIR + "ibu-bitterness.csv"), this::toIbuRule),
+                readRows(new ClassPathResource(RULES_DIR + "tag.csv"), this::toTagRule),
+                readRows(
+                        new ClassPathResource(RULES_DIR + "mouthfeel.csv"), this::toMouthfeelRule));
     }
 
     private IbuRule toIbuRule(Map<String, String> row) {
