@@ -1,0 +1,7 @@
+type,external_id,name,sweetness,bitterness,carbonation,richness,acidity
+Red,red,Red Wine,1,3,0,4,3
+White,white,White Wine,1,1,0,2,4
+Rosé,rose,Rosé Wine,2,1,0,2,4
+Sparkling,sparkling,Sparkling Wine,2,1,5,2,4
+Dessert,dessert,Dessert Wine,5,1,0,4,3
+Dessert/Port,port,Port Wine,5,2,0,5,3
