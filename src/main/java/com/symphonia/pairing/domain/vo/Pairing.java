@@ -22,7 +22,7 @@ public class Pairing {
     private static final double HIGH_ABV_PENALTY = 0.15;
     private static final int RECOMMENDATION_LIMIT = 5;
     private static final Comparator<Pairing> RANKING =
-            Comparator.comparingDouble(Pairing::getScore)
+            Comparator.comparingDouble((Pairing pairing) -> pairing.rawScore)
                     .reversed()
                     .thenComparing(pairing -> pairing.getDrink().getId())
                     .thenComparing(pairing -> pairing.getAnju().getId())
@@ -31,7 +31,11 @@ public class Pairing {
     private final Drink drink;
     private final Anju anju;
     private final MusicMood musicMood;
-    private final double score;
+
+    // 순위는 감점이 반영된 원점수로 매긴다. 0으로 뭉개면 나쁜 조합끼리의 순서가 id 순으로 바뀐다.
+    @Getter(AccessLevel.NONE)
+    private final double rawScore;
+
     private final List<PairingReason> reasons;
 
     public static List<Pairing> recommend(
@@ -67,6 +71,11 @@ public class Pairing {
                 occasion.requiresNonAlcoholicOption() ? withNonAlcoholicOption(top, ranked) : top;
 
         return recommended.stream().sorted(RANKING).toList();
+    }
+
+    // 사용자에게 보여주는 점수는 음수가 되지 않게 0에서 자른다.
+    public double getScore() {
+        return Math.max(0, rawScore);
     }
 
     // 스타일마다 최고점 조합을 하나씩 먼저 고르고, 스타일이 모자라면 남은 조합을 점수순으로 채운다.
@@ -122,13 +131,10 @@ public class Pairing {
 
     private static double score(
             double flavorSimilarity, double moodFitness, PairingCandidate candidate) {
-        double score =
-                FLAVOR_WEIGHT * flavorSimilarity
-                        + MOOD_WEIGHT * moodFitness
-                        - lightAnjuPenalty(candidate)
-                        - highAbvPenalty(candidate);
-
-        return Math.max(0, score);
+        return FLAVOR_WEIGHT * flavorSimilarity
+                + MOOD_WEIGHT * moodFitness
+                - lightAnjuPenalty(candidate)
+                - highAbvPenalty(candidate);
     }
 
     private static double lightAnjuPenalty(PairingCandidate candidate) {
