@@ -37,11 +37,7 @@ public class Pairing {
     private final Drink drink;
     private final Anju anju;
     private final MusicMood musicMood;
-
-    // 순위는 감점이 반영된 원점수로 매긴다. 0으로 뭉개면 나쁜 조합끼리의 순서가 id 순으로 바뀐다.
-    @Getter(AccessLevel.NONE)
-    private final double rawScore;
-
+    private final double score;
     private final List<PairingReason> reasons;
 
     // 조합 점수는 음료×안주 점수와 음악 점수의 합이다. 그래서 전체 조합을 만들지 않고
@@ -65,11 +61,6 @@ public class Pairing {
                 .sorted(RANKING)
                 .map(combination -> combination.toPairing(occasion))
                 .toList();
-    }
-
-    // 사용자에게 보여주는 점수는 음수가 되지 않게 0에서 자른다.
-    public double getScore() {
-        return Math.max(0, rawScore);
     }
 
     private static List<ScoredDrinkAnju> candidateDrinkAnjus(
@@ -231,12 +222,18 @@ public class Pairing {
     private record ScoredMusicMood(MusicMood musicMood, double score) {}
 
     // 순위를 매기는 동안 쓰는 후보 조합이다. 추천 사유는 최종으로 고른 조합에만 계산한다.
+    // 순위는 감점이 반영된 원점수로 매긴다. 0으로 뭉개면 나쁜 조합끼리의 순서가 id 순으로 바뀐다.
     private record Combination(Drink drink, Anju anju, MusicMood musicMood, double rawScore) {
+        // 사용자에게 보여주는 점수만 음수가 되지 않게 0에서 자른다.
         private Pairing toPairing(Occasion occasion) {
             PairingCandidate candidate = PairingCandidate.of(drink, anju, musicMood, occasion);
 
             return new Pairing(
-                    drink, anju, musicMood, rawScore, PairingReason.allApplicableTo(candidate));
+                    drink,
+                    anju,
+                    musicMood,
+                    Math.max(0, rawScore),
+                    PairingReason.allApplicableTo(candidate));
         }
     }
 }
