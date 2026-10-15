@@ -77,20 +77,42 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findAll 메서드는")
-    class FindAll {
+    @DisplayName("findAllByAbvLessThanEqual 메서드는")
+    class FindAllByAbvLessThanEqual {
 
         @Test
-        @DisplayName("저장된 모든 Drink를 반환한다")
-        void shouldReturnDrinks() {
+        @DisplayName("도수가 상한 이하인 Drink만 반환하고 상한과 같은 도수도 포함한다")
+        void shouldReturnDrinksWithAbvAtMostMaxAbv() {
             // given
-            DrinkJpaEntity saved = saveDrink(DrinkFixture.SOJU);
+            DrinkJpaEntity beer = saveDrink(DrinkFixture.BEER);
+            DrinkJpaEntity wine = saveDrink(DrinkFixture.WINE);
+            saveDrink(DrinkFixture.SOJU);
+            saveDrink(DrinkFixture.WHISKEY);
 
             // when
-            List<Drink> result = drinkRepository.findAll();
+            List<Drink> result =
+                    drinkRepository.findAllByAbvLessThanEqual(DrinkFixture.WINE.getAbv());
 
             // then
-            assertThat(result).extracting(Drink::getId).contains(saved.getId());
+            assertThat(result)
+                    .extracting(Drink::getId)
+                    .containsExactlyInAnyOrder(beer.getId(), wine.getId());
+        }
+
+        @Test
+        @DisplayName("상한이 Double.MAX_VALUE면 모든 Drink를 반환한다")
+        void shouldReturnDrinksWhenMaxAbvIsUnlimited() {
+            // given
+            DrinkJpaEntity soju = saveDrink(DrinkFixture.SOJU);
+            DrinkJpaEntity whiskey = saveDrink(DrinkFixture.WHISKEY);
+
+            // when
+            List<Drink> result = drinkRepository.findAllByAbvLessThanEqual(Double.MAX_VALUE);
+
+            // then
+            assertThat(result)
+                    .extracting(Drink::getId)
+                    .containsExactlyInAnyOrder(soju.getId(), whiskey.getId());
         }
     }
 
