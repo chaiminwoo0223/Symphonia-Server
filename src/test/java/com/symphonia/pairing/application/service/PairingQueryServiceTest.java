@@ -211,7 +211,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldRankByRawScoreAndReturnZeroWhenScoresFallBelowZero() {
             // given
             // 위스키는 고도수 감점, 두 안주는 FORMAL 자리의 무거운 안주 감점을 받아 둘 다 0 아래로 내려간다.
-            // 수육(id 8)이 후라이드치킨(id 2)보다 위스키와 맛이 조금 더 가깝다.
+            // 수육이 위스키와 맛이 조금 더 가깝지만, 0으로 자른 뒤 순위를 매기면 id가 작은 후라이드치킨이 먼저 온다.
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
                             List.of(
