@@ -31,7 +31,7 @@ public class PairingQueryService implements RecommendPairingUseCase {
                         query.attendeeConstraints(),
                         query.attendeeAllergies());
 
-        // 도수 상한은 조회 단계에서 먼저 걸러 읽는 행을 줄인다. Pairing도 같은 규칙을 다시 검사한다.
+        // 도수 상한을 넘는 음료는 조회 단계에서 먼저 걸러 읽는 행을 줄인다.
         List<Drink> drinks = drinkRepository.findAllByAbvLessThanEqual(occasion.maxAbv());
         List<Anju> anjus = anjuRepository.findAll();
         List<MusicMood> musicMoods = musicMoodRepository.findAll();
