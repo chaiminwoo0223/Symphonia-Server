@@ -182,6 +182,38 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
+        @DisplayName("감점으로 점수가 0 아래로 내려가면 덜 나쁜 조합을 먼저 두고 점수는 0으로 반환한다")
+        void shouldRankByRawScoreAndReturnZeroWhenScoresFallBelowZero() {
+            // given
+            // 위스키는 고도수 감점, 두 안주는 FORMAL 자리의 무거운 안주 감점을 받아 둘 다 0 아래로 내려간다.
+            // 수육(id 8)이 후라이드치킨(id 2)보다 위스키와 맛이 조금 더 가깝다.
+            given(drinkRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.WHISKEY.createWithFlavorProfile(
+                                            FlavorProfile.of(5, 5, 5, 0, 5))));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.FRIED_CHICKEN.createWithId(),
+                                    AnjuFixture.BOILED_PORK.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query =
+                    new RecommendPairingQuery(
+                            RelationshipType.FRIEND, MoodType.FORMAL, Set.of(), Set.of());
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuName)
+                    .containsExactly(
+                            AnjuFixture.BOILED_PORK.getName(), AnjuFixture.FRIED_CHICKEN.getName());
+            assertThat(results).extracting(PairingResult::score).containsOnly(0.0);
+        }
+
+        @Test
         @DisplayName("attendeeConstraints에 DRIVER가 포함되면 상위에서 밀린 무알코올 Drink도 결과에 포함한다")
         void shouldIncludeNonAlcoholicPairingWhenAttendeeRequiresNonAlcoholicOption() {
             // given
