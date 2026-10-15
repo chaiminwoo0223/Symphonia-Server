@@ -7,13 +7,14 @@ pairing 도메인의 `GET /api/v1/pairings/recommend`를 대상으로 한 K6 부
 ## 사전 준비
 
 - [K6 설치](https://grafana.com/docs/k6/latest/set-up/install-k6/) (`brew install k6`)
-- Symphonia 서버 기동. `spring-boot-docker-compose`가 `compose.yaml`(PostgreSQL, Redis)을 자동으로 띄우므로 별도 `docker compose up` 없이 다음 명령이면 충분하다.
+- Symphonia 서버 기동. `spring-boot-docker-compose`가 `compose.yaml`(PostgreSQL, Redis)을 자동으로 띄우므로 별도 `docker compose up`은 필요 없다. Gradle은 `.env`를 읽지 않는다. 먼저 `.env`를 셸 환경변수로 불러온다. 그렇지 않으면 `JWT_SECRET`이 치환되지 않아 `WeakKeyException`으로 기동에 실패한다.
 
   ```bash
+  set -a; source .env; set +a
   ./gradlew bootRun
   ```
 
-  서버가 기동하면 `data.sql` 시드로 Drink·Anju·MusicMood 카탈로그가 채워진다. `RECOMMEND`는 인증이 필요 없는 `permitAll` 엔드포인트라 별도 로그인 준비는 필요 없다.
+  서버가 기동하면 Flyway 마이그레이션 시드로 Drink·Anju·MusicMood 카탈로그가 채워진다. 실제 규모로 측정하려면 같은 셸에서 `./gradlew importDrinks`로 BJCP와 X-Wines 음료를 적재한다. `RECOMMEND`는 인증이 필요 없는 `permitAll` 엔드포인트라 별도 로그인 준비는 필요 없다.
 
 ## 실행
 
