@@ -40,6 +40,8 @@ public class Pairing {
 
     public static List<Pairing> recommend(
             List<Drink> drinks, List<Anju> anjus, List<MusicMood> musicMoods, Occasion occasion) {
+        // 음악 점수는 음료, 안주와 무관하므로 음악마다 한 번만 계산한다.
+        List<ScoredMusicMood> scoredMusicMoods = scoreMusicMoods(musicMoods, occasion);
         List<Pairing> pairings = new ArrayList<>();
 
         for (Drink drink : drinks) {
@@ -50,17 +52,9 @@ public class Pairing {
                 if (occasion.hasAllergyConflict(anju)) {
                     continue;
                 }
-                for (MusicMood musicMood : musicMoods) {
-                    PairingCandidate candidate =
-                            PairingCandidate.of(drink, anju, musicMood, occasion);
-                    double flavorSimilarity =
-                            drink.getFlavorProfile().similarity(anju.getFlavorProfile());
-                    double moodFitness =
-                            musicMood
-                                    .getMoodProfile()
-                                    .fitness(candidate.occasion().toMoodProfile());
-
-                    pairings.add(of(candidate, flavorSimilarity, moodFitness));
+                double drinkAnjuScore = drinkAnjuScore(drink, anju, occasion);
+                for (ScoredMusicMood scoredMusicMood : scoredMusicMoods) {
+                    pairings.add(of(drink, anju, scoredMusicMood, drinkAnjuScore, occasion));
                 }
             }
         }
@@ -76,6 +70,55 @@ public class Pairing {
     // 사용자에게 보여주는 점수는 음수가 되지 않게 0에서 자른다.
     public double getScore() {
         return Math.max(0, rawScore);
+    }
+
+    private static List<ScoredMusicMood> scoreMusicMoods(
+            List<MusicMood> musicMoods, Occasion occasion) {
+        MoodProfile occasionMoodProfile = occasion.toMoodProfile();
+
+        List<ScoredMusicMood> scoredMusicMoods = new ArrayList<>();
+        for (MusicMood musicMood : musicMoods) {
+            double moodFitness = musicMood.getMoodProfile().fitness(occasionMoodProfile);
+            scoredMusicMoods.add(new ScoredMusicMood(musicMood, MOOD_WEIGHT * moodFitness));
+        }
+
+        return scoredMusicMoods;
+    }
+
+    private static double drinkAnjuScore(Drink drink, Anju anju, Occasion occasion) {
+        double flavorSimilarity = drink.getFlavorProfile().similarity(anju.getFlavorProfile());
+
+        return FLAVOR_WEIGHT * flavorSimilarity
+                - lightAnjuPenalty(anju, occasion)
+                - highAbvPenalty(drink);
+    }
+
+    private static double lightAnjuPenalty(Anju anju, Occasion occasion) {
+        boolean heavyAnjuDespitePreference =
+                occasion.prefersLightAnju() && !anju.getFlavorProfile().isLight();
+
+        return heavyAnjuDespitePreference ? LIGHT_ANJU_PENALTY : 0;
+    }
+
+    private static double highAbvPenalty(Drink drink) {
+        return drink.getAbv() > HIGH_ABV_THRESHOLD ? HIGH_ABV_PENALTY : 0;
+    }
+
+    private static Pairing of(
+            Drink drink,
+            Anju anju,
+            ScoredMusicMood scoredMusicMood,
+            double drinkAnjuScore,
+            Occasion occasion) {
+        MusicMood musicMood = scoredMusicMood.musicMood();
+        PairingCandidate candidate = PairingCandidate.of(drink, anju, musicMood, occasion);
+
+        return new Pairing(
+                drink,
+                anju,
+                musicMood,
+                drinkAnjuScore + scoredMusicMood.score(),
+                PairingReason.allApplicableTo(candidate));
     }
 
     // 스타일마다 최고점 조합을 하나씩 먼저 고르고, 스타일이 모자라면 남은 조합을 점수순으로 채운다.
@@ -119,33 +162,5 @@ public class Pairing {
         return replaced;
     }
 
-    private static Pairing of(
-            PairingCandidate candidate, double flavorSimilarity, double moodFitness) {
-        return new Pairing(
-                candidate.drink(),
-                candidate.anju(),
-                candidate.musicMood(),
-                score(flavorSimilarity, moodFitness, candidate),
-                PairingReason.allApplicableTo(candidate));
-    }
-
-    private static double score(
-            double flavorSimilarity, double moodFitness, PairingCandidate candidate) {
-        return FLAVOR_WEIGHT * flavorSimilarity
-                + MOOD_WEIGHT * moodFitness
-                - lightAnjuPenalty(candidate)
-                - highAbvPenalty(candidate);
-    }
-
-    private static double lightAnjuPenalty(PairingCandidate candidate) {
-        boolean heavyAnjuDespitePreference =
-                candidate.occasion().prefersLightAnju()
-                        && !candidate.anju().getFlavorProfile().isLight();
-
-        return heavyAnjuDespitePreference ? LIGHT_ANJU_PENALTY : 0;
-    }
-
-    private static double highAbvPenalty(PairingCandidate candidate) {
-        return candidate.drink().getAbv() > HIGH_ABV_THRESHOLD ? HIGH_ABV_PENALTY : 0;
-    }
+    private record ScoredMusicMood(MusicMood musicMood, double score) {}
 }
