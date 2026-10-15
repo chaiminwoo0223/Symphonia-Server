@@ -24,6 +24,8 @@ description: Load when writing or modifying tests. JUnit5/Mockito/Testcontainers
 | `application` (Service) | 비즈니스 로직 수행 여부 | `UnitTest` (`MockitoExtension`) |
 | `presentation` (Controller) | 요청/응답, 인증/인가, 예외 매핑 | `IntegrationTest` (`@SpringBootTest` + `@AutoConfigureMockMvc`) |
 
+- **`domain` 계층 테스트는 만들지 않는다.** 도메인 로직은 그 로직을 쓰는 `*Service` 테스트로 검증한다(예: `Pairing.recommend`는 `PairingQueryServiceTest`). 최적화 검증처럼 일시적으로 도메인 테스트가 필요하면 커밋하지 않고 작업이 끝나면 삭제한다.
+
 ## 명명 규칙
 
 각 이름은 **자기 레벨에서만 새로운 정보를 더한다.** 상위 레벨(클래스명·`@DisplayName`)이 이미 표현한 내용을 하위 레벨(메서드명)에서 다시 쓰지 않는다. 사람이 읽을 설명은 전부 `@DisplayName`(한국어)에 담고, 식별자(클래스명·메서드명)에는 한국어를 쓰지 않는다.
