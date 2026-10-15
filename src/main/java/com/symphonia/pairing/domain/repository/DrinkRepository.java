@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface DrinkRepository {
     Drink save(Drink drink);
 
-    List<Drink> findAll();
+    List<Drink> findAllByAbvLessThanEqual(double maxAbv);
 
     Optional<Drink> findById(Long drinkId);
 

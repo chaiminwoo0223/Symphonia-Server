@@ -21,8 +21,10 @@ public class DrinkRepositoryImpl implements DrinkRepository {
     }
 
     @Override
-    public List<Drink> findAll() {
-        return drinkJpaRepository.findAll().stream().map(DrinkJpaEntity::toDomain).toList();
+    public List<Drink> findAllByAbvLessThanEqual(double maxAbv) {
+        return drinkJpaRepository.findAllByAbvLessThanEqual(maxAbv).stream()
+                .map(DrinkJpaEntity::toDomain)
+                .toList();
     }
 
     @Override
