@@ -11,7 +11,7 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 
 ## 커밋 전 검증
 
-- `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
+- `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`check-test-conventions.sh` + `./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
 - `git status`로 `.env`가 스테이징에 포함되지 않았는지 확인한다 (`.env` 커밋 금지는 Profiles 규칙과 동일).
 - 포맷은 `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 적용한다(Spotless + Google Java Format, `code-style` 스킬 참고). 수동으로 신경 쓸 필요는 없다.
 - `.claude/hooks/check-commit-issue-number.sh`(PreToolUse)가 `<type>/<이슈번호>` 브랜치(`feat/9`, `refactor/22`, `chore/29` 등)에서 커밋 메시지의 `[#이슈번호]`가 브랜치 번호와 다르거나 없으면 커밋 자체를 막는다. 수동으로 이슈 번호를 맞춰 볼 필요 없이 훅이 강제한다.
@@ -66,4 +66,4 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 - **사용자가 명시적으로 요청하기 전까지는 push하지 않는다.**
 - **`git push --force`는 사용하지 않는다.**
 - `main`/`develop`에 직접 push하지 않는다.
-- `git push` 직전에 `.claude/hooks/pre-push-check.sh`(PreToolUse)가 `check-all.sh`(`./gradlew clean build`)를 자동으로 돌려 실패 시 push 자체를 막는다. `spotlessCheck`가 Gradle `check` 태스크에 연결되어 있어 이 `clean build`에 포맷 검증도 자동으로 포함된다. 빠르게 끝나는 정적 아키텍처 검증 수단은 아직 없어 전체 빌드+테스트로 게이트를 걸기 때문에 push마다 수 분이 걸릴 수 있다(2026-09-04 결정).
+- `git push` 직전에 `.claude/hooks/pre-push-check.sh`(PreToolUse)가 `check-all.sh`(`check-test-conventions.sh` + `./gradlew clean build`)를 자동으로 돌려 실패 시 push 자체를 막는다. `spotlessCheck`가 Gradle `check` 태스크에 연결되어 있어 이 `clean build`에 포맷 검증도 자동으로 포함된다. 빠르게 끝나는 정적 아키텍처 검증 수단은 아직 없어 전체 빌드+테스트로 게이트를 걸기 때문에 push마다 수 분이 걸릴 수 있다(2026-09-04 결정).
