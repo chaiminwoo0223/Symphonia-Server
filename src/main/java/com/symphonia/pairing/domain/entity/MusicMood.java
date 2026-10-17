@@ -24,4 +24,12 @@ public class MusicMood {
                 .streamingUrl(streamingUrl)
                 .build();
     }
+
+    public double fitnessFor(MoodProfile occasionMoodProfile) {
+        return moodProfile.fitness(occasionMoodProfile);
+    }
+
+    public boolean fitsFor(MoodProfile occasionMoodProfile) {
+        return moodProfile.fits(occasionMoodProfile);
+    }
 }

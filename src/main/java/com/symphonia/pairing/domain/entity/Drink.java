@@ -49,4 +49,12 @@ public class Drink {
         this.flavorProfile = imported.flavorProfile;
         return this;
     }
+
+    public double flavorSimilarityTo(Anju anju) {
+        return flavorProfile.similarity(anju.getFlavorProfile());
+    }
+
+    public boolean matchesFlavorOf(Anju anju) {
+        return flavorProfile.matches(anju.getFlavorProfile());
+    }
 }

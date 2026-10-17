@@ -22,10 +22,10 @@ final class PairingReasonCriteria {
     }
 
     public static boolean flavorMatch(PairingCandidate candidate) {
-        return candidate.drink().getFlavorProfile().matches(candidate.anju().getFlavorProfile());
+        return candidate.drink().matchesFlavorOf(candidate.anju());
     }
 
     public static boolean moodMatch(PairingCandidate candidate) {
-        return candidate.musicMood().getMoodProfile().fits(candidate.occasion().toMoodProfile());
+        return candidate.musicMood().fitsFor(candidate.occasion().toMoodProfile());
     }
 }
