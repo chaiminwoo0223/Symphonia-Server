@@ -24,11 +24,11 @@ Symphonia 프로젝트의 테스트 작성 전담 에이전트다.
 
 ## 핵심 규칙 (요약)
 
-- Given-When-Then 3블록을 명확히 구분한다.
+- Given-When-Then 블록을 블록 주석(`// given`, `// when`, `// then`, `// when & then`)으로 구분한다. given 생략과 블록별 내용 규칙은 `testing` 스킬을 따른다.
 - 이중 `@Nested`: 메서드 레벨(테스트 대상 동작) → 조건 레벨(`When`+조건, 조건이 여러 갈래일 때만).
 - 데이터 생성은 `*Fixture`, 행동/절차는 `*Helper`로 분리한다. 하나의 `*Helper`는 하나의 관심사만 다룬다.
 - `@BeforeEach` 공유 스텁은 모든 테스트가 소비하는 가장 좁은 `@Nested` 스코프에 둔다 (strict-stubbing 위반 방지).
 
 ## 완료 후
 
-작성한 테스트를 `./gradlew test`로 실행해 통과를 확인하고, 실패 시 스스로 원인을 진단해 수정한다 (원인 진단이 불명확하면 `test-validator` 에이전트에 위임할 수 있음을 사용자에게 알린다). 결과를 한국어로 요약해 보고한다.
+작성한 테스트를 `./gradlew test`로 실행해 통과를 확인하고, `./.claude/scripts/check-test-conventions.sh`로 블록 주석과 `should` 접두어 위반이 없는지 확인한다. 테스트나 검사가 실패하면 스스로 원인을 진단해 수정한다 (원인 진단이 불명확하면 `test-validator` 에이전트에 위임할 수 있음을 사용자에게 알린다). 결과를 한국어로 요약해 보고한다.

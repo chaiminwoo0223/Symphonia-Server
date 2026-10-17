@@ -49,7 +49,7 @@ description: Load when writing or modifying tests. JUnit5/Mockito/Testcontainers
 - **Given-When-Then 패턴을 고정**한다. 세 블록을 블록 주석으로 명확히 구분한다. 공백만으로 구분하면 `check-test-conventions.sh`에 걸린다.
   - 블록 주석은 `// given`, `// when`, `// then`, `// when & then` 중에서 쓴다. given은 준비할 것이 없으면 생략한다. 주석 뒤에 `: 설명`을 붙일 수 있다(예: `// given: 시드 마이그레이션이 적재된 상태`).
   - when 블록에는 SUT 호출 하나만 둔다. `@BeforeEach`에서는 SUT를 실행하지 않고 준비만 한다. given에서 SUT 결과를 고르거나 가공하지 않는다. then 블록에는 검증과 검증에 필요한 상태 재조회만 둔다.
-  - **(2026-10-17 결정, 이슈 #91)**: 검사를 두 층으로 나눈다. 블록 주석의 존재와 순서, 메서드명 `should` 접두어는 `.claude/scripts/check-test-conventions.sh`가 검사한다. 이 스크립트는 `check-all.sh`에서 빌드 전에 실행된다. 블록 안의 내용이 위 규칙에 맞는지는 판단이 필요해 `code-reviewer`가 검토한다. #76의 `JsonBjcpStyleReaderTest`가 `read()`를 `@BeforeEach`에 숨기고 결과 선택을 given에 둔 채 리뷰를 통과했기 때문이다. `code-style` 스킬의 #77 결정은 Java 구조를 정규식으로 해석하면 오탐이 많다며 awk를 택하지 않았다. 이 스크립트는 블록 주석을 줄 단위 고정 패턴으로 찾고, 메서드 경계는 문자열, text block, `//` 주석 밖의 중괄호 깊이로만 판정하므로 오탐 범위가 좁아 awk로 둔다.
+  - **(2026-10-17 결정, 이슈 #91)**: 검사를 두 층으로 나눈다. 블록 주석의 존재와 순서, 메서드명 `should` 접두어는 `.claude/scripts/check-test-conventions.sh`가 검사한다. 이 스크립트는 `check-all.sh`에서 빌드 전에 실행된다. 블록 안의 내용이 위 규칙에 맞는지는 판단이 필요해 `code-reviewer`가 검토한다. #76의 `JsonBjcpStyleReaderTest`가 `read()`를 `@BeforeEach`에 숨기고 결과 선택을 given에 둔 채 리뷰를 통과했기 때문이다. `code-style` 스킬의 #77 결정은 Java 구조를 정규식으로 해석하면 오탐이 많다며 awk를 택하지 않았다. 이 스크립트는 블록 주석을 줄 단위 고정 패턴으로 찾고, 메서드 경계는 문자열, 문자, text block, `//` 주석 밖의 중괄호 깊이로만 판정하므로 오탐 범위가 좁아 awk로 둔다. 테스트에서 거의 쓰지 않는 `/* */` 블록 주석은 처리하지 않는다.
 - **이중 `@Nested` 구조**: 메서드 레벨 → 조건 레벨. 조건이 하나뿐이면 조건 레벨은 생략할 수 있다 (억지로 중첩시키지 않는다).
 
 ```java

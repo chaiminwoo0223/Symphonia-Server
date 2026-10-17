@@ -40,7 +40,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] private 메서드가 step-down 규칙(처음 호출되는 순서, 깊이 우선)을 따르는지
 
 ### 🧪 테스트 컨벤션 (변경 사항에 테스트 파일이 있을 때만)
-- [ ] Given-When-Then 블록 안의 내용이 각 블록의 역할에 맞는지. 블록 주석의 존재와 순서, `should` 접두어는 `check-test-conventions.sh`가 검사하므로 여기서는 내용만 본다.
+- [ ] Given-When-Then 블록 안의 내용이 각 블록의 역할에 맞는지. 블록 주석의 존재와 순서, `should` 접두어는 `check-test-conventions.sh`가 검사하므로 여기서는 내용만 본다. 스크립트는 `*Test.java` 파일의 `@Test`, `@ParameterizedTest`, `@RepeatedTest` 메서드만 본다. 그 밖의 테스트 파일과 애노테이션은 블록 주석까지 리뷰어가 본다.
   - when 블록에는 SUT 호출이 하나만 있는지
   - `@BeforeEach`가 SUT를 실행하지 않는지. 준비(스텁, 저장, 객체 생성)만 해야 한다.
   - given 블록이 SUT의 결과를 고르거나 가공하지 않는지
