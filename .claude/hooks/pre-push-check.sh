@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# PreToolUse(Bash) 훅: `git push` 직전 전체 빌드+테스트를 강제한다.
+# PreToolUse(Bash) 훅: `git push` 직전 테스트 컨벤션 검사와 전체 빌드+테스트를 강제한다.
 #
-# check-all.sh(./gradlew clean build)로 게이트를 건다.
+# check-all.sh(check-test-conventions.sh + ./gradlew clean build)로 게이트를 건다.
 # push마다 수 분이 걸릴 수 있음을 감수하기로 했다(2026-09-04).
 # 실패해도 push를 막지 못하는 상황(스크립트 오류 등)에서는 항상 통과시킨다(fail-open).
 
