@@ -8,7 +8,6 @@ public record SocialIdentity(
         String email,
         String profileImage,
         String socialProvider) {
-
     public SocialIdentity {
         if (isBlank(nickname) || isBlank(email)) {
             throw new SocialRequiredInfoMissingException();
