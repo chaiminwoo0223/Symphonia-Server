@@ -24,7 +24,7 @@
 | `.claude/commands/*` (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점 |
 | 서브에이전트 (`domain-scaffolder`, `code-reviewer`, `test-*`) | Service | 격리된 컨텍스트에서 여러 단계를 조율 |
 | `.claude/skills/<name>/SKILL.md` | SRP 컴포넌트 | 하나의 지식 영역 = 그 규칙의 단일 소스 |
-| `.claude/scripts/*` (`check-all.sh`) | 결정론적 코어 | 절대 흔들리면 안 되는 컨벤션/검증을 담당한다. LLM 판단이 아니라 코드로 실행한다 |
+| `.claude/scripts/*` (`check-all.sh`, `check-test-conventions.sh`) | 결정론적 코어 | 절대 흔들리면 안 되는 컨벤션/검증을 담당한다. LLM 판단이 아니라 코드로 실행한다 |
 
 **운영 원칙**
 
@@ -53,7 +53,7 @@
 | PR 전 전체 검증 | `/run-checks` |
 
 > 도메인 스캐폴딩은 `domain-scaffolder`, 코드 리뷰는 `code-reviewer`, 테스트 작성은 `test-writer`, 실패 테스트 원인 진단(수정 제외)은 `test-validator` 에이전트에 위임한다.
-> `architecture`/`testing`/`git-workflow`/`commit-push`/`error-handling`/`create-issue`/`create-pr`/`code-style`/`design-decision` 스킬은 작성 완료. `domain-scaffolder`/`code-reviewer`/`test-writer`/`test-validator` 에이전트와 `/new-domain`/`/new-feature`/`/run-checks` 커맨드, `check-all.sh`도 작성 완료.
+> `architecture`/`testing`/`git-workflow`/`commit-push`/`error-handling`/`create-issue`/`create-pr`/`code-style`/`design-decision` 스킬은 작성 완료. `domain-scaffolder`/`code-reviewer`/`test-writer`/`test-validator` 에이전트와 `/new-domain`/`/new-feature`/`/run-checks` 커맨드, `check-all.sh`, `check-test-conventions.sh`도 작성 완료.
 
 ## 핵심 제약 (Critical Constraints)
 
@@ -122,11 +122,12 @@ com.symphonia
 ./gradlew test                     # 전체 테스트 (빠른 반복 확인용)
 ./gradlew build                    # 빌드 (컴파일+테스트+패키징, 로컬 검증용)
 ./.claude/scripts/check-all.sh     # PR 전 전체 검증 (포맷 검증 포함)
+./.claude/scripts/check-test-conventions.sh  # 바뀐 테스트의 given-when-then 블록과 should 접두어 검사 (--all: 전체)
 ./scripts/import/fetch-bjcp.sh     # BJCP 원본 JSON 다운로드 (적재 전 1회, 원본은 커밋하지 않음)
 ./gradlew importDrinks             # BJCP 스타일과 국내 유통 맥주를 drink_style, drink에 적재 (배포와 분리한 수동 실행)
 ```
 
-> `check-all.sh`는 내부적으로 `./gradlew clean build`를 실행한다. 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
+> `check-all.sh`는 `check-test-conventions.sh`를 먼저 실행한 뒤 `./gradlew clean build`를 실행한다. `clean`을 붙이는 이유는 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
 > 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 포맷을 적용한다.
 > 아키텍처 규칙 자동검증(ArchUnit 등) 미도입 사유는 위 "운영 원칙" 참고.
 > 음료 데이터 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 영속성 절 참고.
