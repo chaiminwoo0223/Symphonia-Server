@@ -1,7 +1,7 @@
 # 테스트 메서드의 given-when-then 블록 주석과 메서드명 접두어를 검사한다(check-test-conventions.sh 참고).
 #
-# @Test/@ParameterizedTest 다음에 나오는 "void 이름(" 줄부터 중괄호가 닫힐 때까지를 메서드 본문으로 본다.
-# 중괄호는 문자열, 문자, text block("""), // 주석 밖에 있는 것만 센다.
+# @Test/@ParameterizedTest/@RepeatedTest 다음에 나오는 "void 이름(" 줄부터 중괄호가 닫힐 때까지를 메서드 본문으로 본다.
+# 중괄호는 문자열, 문자, text block("""), // 주석 밖에 있는 것만 센다. /* */ 블록 주석은 처리하지 않는다.
 # 블록 주석은 "// given", "// when", "// then", "// when & then"이며 뒤에 ": 설명"을 붙일 수 있다.
 #
 # 위반은 "파일:줄: 메서드명: 사유"로 출력하고, 하나라도 있으면 종료 코드 1을 반환한다.
@@ -20,6 +20,7 @@ function check_method(   first_when) {
     if (method_name !~ /^should/) report("메서드명이 should로 시작하지 않는다")
 
     if (when_count + when_then_count == 0) { report("// when 또는 // when & then 블록이 없다"); return }
+    if (when_count && when_then_count) { report("// when과 // when & then이 함께 있다"); return }
     if (when_count + when_then_count > 1) { report("when 블록이 두 번 이상 나온다"); return }
     if (given_count > 1) report("// given 블록이 두 번 이상 나온다")
     if (then_count > 1) report("// then 블록이 두 번 이상 나온다")
@@ -46,8 +47,9 @@ function code_braces(line,   parts, n, i, seg, out) {
         gsub(/\\\\/, "", seg)
         gsub(/\\"/, "", seg)
         gsub(/\\'/, "", seg)
+        # '"'의 큰따옴표가 문자열 짝으로 잡히지 않도록 문자 리터럴을 먼저 지운다.
+        gsub(/'[^']'/, "", seg)
         gsub(/"[^"]*"/, "", seg)
-        gsub(/'[^']*'/, "", seg)
         sub(/\/\/.*/, "", seg)
         out = out seg
     }
@@ -67,8 +69,9 @@ FNR == 1 {
     sub(/[[:space:]]+$/, "", trimmed)
 
     if (!was_in_text_block) {
-        if (trimmed ~ /^@(Test|ParameterizedTest)([[:space:](]|$)/) pending_test = 1
-        else if (pending_test && match(trimmed, /void[[:space:]]+[A-Za-z0-9_]+[[:space:]]*\(/)) {
+        # 같은 줄에 메서드 선언이 이어지는 "@Test void shouldX() {"도 잡도록 선언 검사를 따로 둔다.
+        if (trimmed ~ /^@(Test|ParameterizedTest|RepeatedTest)([[:space:](]|$)/) pending_test = 1
+        if (pending_test && match(trimmed, /void[[:space:]]+[A-Za-z0-9_]+[[:space:]]*\(/)) {
             method_name = substr(trimmed, RSTART, RLENGTH)
             sub(/^void[[:space:]]+/, "", method_name)
             sub(/[[:space:]]*\($/, "", method_name)

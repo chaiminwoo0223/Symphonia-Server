@@ -4,6 +4,7 @@
 #
 # 검사 대상은 origin/develop과 갈라진 지점 이후 바뀐 src/test의 *Test.java다. 커밋하지 않은 변경과
 # 새 파일도 포함한다. --all을 주거나 origin/develop이 없으면 src/test 전체를 검사한다.
+# 바뀐 줄만이 아니라 바뀐 파일 안의 모든 테스트 메서드를 검사한다.
 # 블록 안의 내용이 맞는지(when의 SUT 단일 호출 등)는 판단이 필요해 code-reviewer가 검토한다.
 
 set -euo pipefail
