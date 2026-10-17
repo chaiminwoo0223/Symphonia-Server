@@ -108,13 +108,14 @@ com.symphonia
 
 | 속성 성격 | 위치 |
 |---|---|
-| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, 기본 프로파일, JWT·OAuth·CORS. 비밀값은 `${ENV_VAR}`, 그 외는 `${ENV_VAR:기본값}`으로 주입) | `application.yaml` |
-| 환경별 값 (`datasource`, `data.redis`, `show-sql`, `format_sql`, `refresh-token.cookie-secure`, `logging.level`) | `application-{profile}.yaml` |
+| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, 기본 프로파일) | `application.yaml` |
+| 환경별 값 (`datasource`, `data.redis`, SQL 로그, `logging.level`) | `application-{profile}.yaml` |
+
+> 속성별 배치, dev/prod 연결 변수, 테스트 프로파일 동작은 `architecture` 스킬의 영속성 절(#96 결정) 참고.
 
 > 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 변경한다. 규칙은 `architecture` 스킬의 영속성 절 참고.
 
-- 활성 프로파일: `--spring.profiles.active={profile}` 또는 `SPRING_PROFILES_ACTIVE`. 지정하지 않으면 `local`로 실행한다. dev, prod는 반드시 지정한다 (예: `SPRING_PROFILES_ACTIVE=dev ./gradlew importDrinks`)
-- 테스트는 `@ActiveProfiles("test")`로 `application-test.yaml`만 추가로 읽고, 연결은 Testcontainers `@ServiceConnection`이 맡는다
+- 활성 프로파일: `--spring.profiles.active={profile}` 또는 `SPRING_PROFILES_ACTIVE`. 지정하지 않으면 `local`로 실행하고, dev, prod는 반드시 지정한다
 - **DB/Redis 연결 정보는 값이 같아도 프로파일별로 각각 명시** (환경 간 독립적 분기). 비밀값은 하드코딩 금지, `${ENV_VAR}` 주입 (`.env` 커밋 금지)
 
 ## 명령어
