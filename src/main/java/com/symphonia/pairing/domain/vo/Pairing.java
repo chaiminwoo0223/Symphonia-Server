@@ -108,7 +108,7 @@ public class Pairing {
     }
 
     private static double drinkAnjuScore(Drink drink, Anju anju, Occasion occasion) {
-        double flavorSimilarity = drink.getFlavorProfile().similarity(anju.getFlavorProfile());
+        double flavorSimilarity = drink.flavorSimilarityTo(anju);
 
         return FLAVOR_WEIGHT * flavorSimilarity
                 - lightAnjuPenalty(anju, occasion)
@@ -151,7 +151,7 @@ public class Pairing {
 
         List<ScoredMusicMood> scoredMusicMoods = new ArrayList<>();
         for (MusicMood musicMood : musicMoods) {
-            double moodFitness = musicMood.getMoodProfile().fitness(occasionMoodProfile);
+            double moodFitness = musicMood.fitnessFor(occasionMoodProfile);
             scoredMusicMoods.add(new ScoredMusicMood(musicMood, MOOD_WEIGHT * moodFitness));
         }
 
