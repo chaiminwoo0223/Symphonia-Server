@@ -12,7 +12,7 @@ function reset_method() {
 }
 
 function report(reason) {
-    printf "%s:%d: %s: %s\n", FILENAME, method_line, method_name, reason
+    printf "%s:%d: %s: %s\n", method_file, method_line, method_name, reason
     violations++
 }
 
@@ -72,6 +72,7 @@ FNR == 1 {
             method_name = substr(trimmed, RSTART, RLENGTH)
             sub(/^void[[:space:]]+/, "", method_name)
             sub(/[[:space:]]*\($/, "", method_name)
+            method_file = FILENAME
             method_line = FNR
             pending_test = 0
             reset_method()
@@ -91,10 +92,11 @@ FNR == 1 {
         }
     }
 
+    # 중괄호마다 판정해야 "void shouldX() {}"처럼 한 줄에서 열고 닫히는 메서드도 끝을 잡는다.
     braces = code_braces($0)
-    for (i = 1; i <= length(braces); i++) depth += (substr(braces, i, 1) == "{") ? 1 : -1
-
-    if (in_method) {
+    for (i = 1; i <= length(braces); i++) {
+        depth += (substr(braces, i, 1) == "{") ? 1 : -1
+        if (!in_method) continue
         if (depth > base_depth) opened = 1
         else if (opened) { check_method(); reset_method() }
     }
