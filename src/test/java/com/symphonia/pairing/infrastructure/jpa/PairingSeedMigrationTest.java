@@ -1,16 +1,22 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
+import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.entity.Drink;
+import com.symphonia.pairing.domain.vo.AnjuBase;
+import com.symphonia.pairing.domain.vo.AnjuSource;
 import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
+import com.symphonia.pairing.domain.vo.ServingStyle;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.XWineFixture;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -96,5 +102,89 @@ class PairingSeedMigrationTest extends RepositoryTest {
         // then
         assertThat(wineStyle.getSource()).isEqualTo(DrinkStyleSource.X_WINES);
         assertThat(wine.getSource()).isEqualTo(DrinkSource.X_WINES);
+    }
+
+    // V7이 시드 안주를 지우고 다시 넣으면 id가 바뀌어 pairing_feedback의 FK가 끊긴다.
+    @Test
+    @DisplayName("시드 안주 6행은 같은 id를 유지한 채 출처 식별 키와 주재료 계열, 형태, 매운맛 여부가 채워진다")
+    void shouldFillSeedAnjuClassificationKeepingId() {
+        // given: 시드 마이그레이션이 적재된 상태
+
+        // when
+        List<Anju> seedAnjus =
+                anjuJpaRepository.findAllById(List.of(1L, 2L, 3L, 4L, 5L, 6L)).stream()
+                        .map(AnjuJpaEntity::toDomain)
+                        .toList();
+
+        // then
+        assertThat(seedAnjus)
+                .extracting(
+                        Anju::getSource,
+                        Anju::getExternalId,
+                        Anju::getBase,
+                        Anju::getServing,
+                        Anju::isSpicy)
+                .containsExactlyInAnyOrder(
+                        tuple(
+                                AnjuSource.SEED,
+                                "golbaengi-muchim",
+                                AnjuBase.SEAFOOD,
+                                ServingStyle.MAIN,
+                                true),
+                        tuple(
+                                AnjuSource.SEED,
+                                "fried-chicken",
+                                AnjuBase.POULTRY,
+                                ServingStyle.MAIN,
+                                false),
+                        tuple(
+                                AnjuSource.SEED,
+                                "tofu-kimchi",
+                                AnjuBase.PORK,
+                                ServingStyle.MAIN,
+                                true),
+                        tuple(
+                                AnjuSource.SEED,
+                                "dried-snack",
+                                AnjuBase.SEAFOOD,
+                                ServingStyle.SNACK,
+                                false),
+                        tuple(
+                                AnjuSource.SEED,
+                                "cheese-platter",
+                                AnjuBase.HARD_CHEESE,
+                                ServingStyle.APPETIZER,
+                                false),
+                        tuple(
+                                AnjuSource.SEED,
+                                "fruit-platter",
+                                AnjuBase.SWEET,
+                                ServingStyle.SNACK,
+                                false));
+    }
+
+    // check 제약에 K_FIND가 빠지면 안주 적재의 첫 INSERT가 제약 위반으로 실패한다.
+    @Test
+    @DisplayName("출처가 K_FIND인 안주를 저장할 수 있다")
+    void shouldSaveKFindAnju() {
+        // given
+        AnjuFixture anjuFixture = AnjuFixture.FRIED_SHRIMP;
+
+        // when
+        AnjuJpaEntity anju =
+                anjuJpaRepository.saveAndFlush(
+                        AnjuJpaEntity.from(
+                                Anju.of(
+                                        AnjuSource.K_FIND,
+                                        "fixture-k-find-code",
+                                        anjuFixture.getName(),
+                                        anjuFixture.getFlavorProfile(),
+                                        anjuFixture.getAllergyTypes(),
+                                        anjuFixture.getBase(),
+                                        anjuFixture.getServing(),
+                                        anjuFixture.isSpicy())));
+
+        // then
+        assertThat(anju.getSource()).isEqualTo(AnjuSource.K_FIND);
     }
 }
