@@ -2,6 +2,9 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.vo.AllergyType;
+import com.symphonia.pairing.domain.vo.AnjuBase;
+import com.symphonia.pairing.domain.vo.AnjuSource;
+import com.symphonia.pairing.domain.vo.ServingStyle;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -30,6 +33,13 @@ public class AnjuJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AnjuSource source;
+
+    @Column(nullable = false)
+    private String externalId;
+
     @Column(nullable = false)
     private String name;
 
@@ -41,21 +51,41 @@ public class AnjuJpaEntity {
     @Column(name = "allergy_type", nullable = false)
     private Set<AllergyType> allergyTypes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AnjuBase base;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ServingStyle serving;
+
+    private boolean spicy;
+
     public static AnjuJpaEntity from(Anju anju) {
         return AnjuJpaEntity.builder()
                 .id(anju.getId())
+                .source(anju.getSource())
+                .externalId(anju.getExternalId())
                 .name(anju.getName())
                 .flavorProfile(FlavorProfileEmbeddable.from(anju.getFlavorProfile()))
                 .allergyTypes(anju.getAllergyTypes())
+                .base(anju.getBase())
+                .serving(anju.getServing())
+                .spicy(anju.isSpicy())
                 .build();
     }
 
     public Anju toDomain() {
         return Anju.builder()
                 .id(id)
+                .source(source)
+                .externalId(externalId)
                 .name(name)
                 .flavorProfile(flavorProfile.toDomain())
                 .allergyTypes(allergyTypes)
+                .base(base)
+                .serving(serving)
+                .spicy(spicy)
                 .build();
     }
 }

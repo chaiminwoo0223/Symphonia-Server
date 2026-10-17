@@ -156,6 +156,27 @@ class AnjuRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
+        @DisplayName("주재료 계열, 형태, 매운맛 여부를 포함해 Anju를 반환한다")
+        void shouldReturnAnjuWithClassification() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(
+                            AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()));
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            Optional<Anju> result = anjuRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getBase()).isEqualTo(AnjuFixture.GOLBAENGI_MUCHIM.getBase());
+            assertThat(result.get().getServing())
+                    .isEqualTo(AnjuFixture.GOLBAENGI_MUCHIM.getServing());
+            assertThat(result.get().isSpicy()).isEqualTo(AnjuFixture.GOLBAENGI_MUCHIM.isSpicy());
+        }
+
+        @Test
         @DisplayName("flavorProfile의 acidity 값을 포함해 Anju를 반환한다")
         void shouldReturnAnjuWithAcidity() {
             // given
