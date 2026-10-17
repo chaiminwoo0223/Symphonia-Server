@@ -108,7 +108,7 @@ com.symphonia
 
 | 속성 성격 | 위치 |
 |---|---|
-| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, 기본 프로파일, `${ENV_VAR:기본값}`으로 주입하는 JWT·OAuth·CORS) | `application.yaml` |
+| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, 기본 프로파일, JWT·OAuth·CORS. 비밀값은 `${ENV_VAR}`, 그 외는 `${ENV_VAR:기본값}`으로 주입) | `application.yaml` |
 | 환경별 값 (`datasource`, `data.redis`, `show-sql`, `format_sql`, `refresh-token.cookie-secure`, `logging.level`) | `application-{profile}.yaml` |
 
 > 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 변경한다. 규칙은 `architecture` 스킬의 영속성 절 참고.
