@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
-import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.vo.AnjuBase;
 import com.symphonia.pairing.domain.vo.AnjuSource;
@@ -111,51 +110,56 @@ class PairingSeedMigrationTest extends RepositoryTest {
         // given: 시드 마이그레이션이 적재된 상태
 
         // when
-        List<Anju> seedAnjus =
-                anjuJpaRepository.findAllById(List.of(1L, 2L, 3L, 4L, 5L, 6L)).stream()
-                        .map(AnjuJpaEntity::toDomain)
-                        .toList();
+        List<AnjuJpaEntity> seedAnjus =
+                anjuJpaRepository.findAllById(List.of(1L, 2L, 3L, 4L, 5L, 6L));
 
         // then
         assertThat(seedAnjus)
                 .extracting(
-                        Anju::getSource,
-                        Anju::getExternalId,
-                        Anju::getBase,
-                        Anju::getServing,
-                        Anju::isSpicy)
+                        AnjuJpaEntity::getId,
+                        AnjuJpaEntity::getSource,
+                        AnjuJpaEntity::getExternalId,
+                        AnjuJpaEntity::getBase,
+                        AnjuJpaEntity::getServing,
+                        AnjuJpaEntity::isSpicy)
                 .containsExactlyInAnyOrder(
                         tuple(
+                                1L,
                                 AnjuSource.SEED,
                                 "golbaengi-muchim",
                                 AnjuBase.SEAFOOD,
                                 ServingStyle.MAIN,
                                 true),
                         tuple(
+                                2L,
                                 AnjuSource.SEED,
                                 "fried-chicken",
                                 AnjuBase.POULTRY,
                                 ServingStyle.MAIN,
                                 false),
                         tuple(
+                                3L,
                                 AnjuSource.SEED,
                                 "tofu-kimchi",
                                 AnjuBase.PORK,
                                 ServingStyle.MAIN,
                                 true),
                         tuple(
+                                4L,
                                 AnjuSource.SEED,
                                 "dried-snack",
                                 AnjuBase.SEAFOOD,
                                 ServingStyle.SNACK,
                                 false),
                         tuple(
+                                5L,
                                 AnjuSource.SEED,
                                 "cheese-platter",
                                 AnjuBase.HARD_CHEESE,
                                 ServingStyle.APPETIZER,
                                 false),
                         tuple(
+                                6L,
                                 AnjuSource.SEED,
                                 "fruit-platter",
                                 AnjuBase.SWEET,
@@ -168,21 +172,13 @@ class PairingSeedMigrationTest extends RepositoryTest {
     @DisplayName("출처가 K_FIND인 안주를 저장할 수 있다")
     void shouldSaveKFindAnju() {
         // given
-        AnjuFixture anjuFixture = AnjuFixture.FRIED_SHRIMP;
+        AnjuJpaEntity kFindAnju =
+                AnjuJpaEntity.from(
+                        AnjuFixture.FRIED_SHRIMP.createWithIdentity(
+                                AnjuSource.K_FIND, "fixture-k-find-code"));
 
         // when
-        AnjuJpaEntity anju =
-                anjuJpaRepository.saveAndFlush(
-                        AnjuJpaEntity.from(
-                                Anju.of(
-                                        AnjuSource.K_FIND,
-                                        "fixture-k-find-code",
-                                        anjuFixture.getName(),
-                                        anjuFixture.getFlavorProfile(),
-                                        anjuFixture.getAllergyTypes(),
-                                        anjuFixture.getBase(),
-                                        anjuFixture.getServing(),
-                                        anjuFixture.isSpicy())));
+        AnjuJpaEntity anju = anjuJpaRepository.saveAndFlush(kFindAnju);
 
         // then
         assertThat(anju.getSource()).isEqualTo(AnjuSource.K_FIND);

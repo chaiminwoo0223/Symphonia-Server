@@ -59,6 +59,7 @@ public class AnjuJpaEntity {
     @Column(nullable = false)
     private ServingStyle serving;
 
+    @Column(nullable = false)
     private boolean spicy;
 
     public static AnjuJpaEntity from(Anju anju) {

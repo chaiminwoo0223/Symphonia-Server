@@ -9,7 +9,7 @@ ALTER TABLE anju
     ADD COLUMN spicy       BOOLEAN;
 
 -- 시드 6행은 pairing_feedback이 FK로 참조하므로 id를 유지한 채 값만 채운다.
--- 분류 값은 적재 전까지의 초기값이고, 이후 적재(./gradlew importDrinks)가 매핑표 값으로 갱신한다.
+-- 분류 값은 적재 전까지의 초기값이고, 이후 안주 적재(#107)가 (source, external_id)로 이 행을 찾아 매핑표 값으로 갱신한다.
 UPDATE anju
 SET source      = 'SEED',
     external_id = seed.external_id,
