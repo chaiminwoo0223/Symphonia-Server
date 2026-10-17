@@ -91,7 +91,7 @@ public enum AnjuFixture {
     }
 
     public Anju create() {
-        return build(null);
+        return build(null, AnjuSource.SEED, getExternalId());
     }
 
     public Anju createWithId() {
@@ -99,14 +99,18 @@ public enum AnjuFixture {
     }
 
     public Anju createWithId(Long id) {
-        return build(id);
+        return build(id, AnjuSource.SEED, getExternalId());
     }
 
-    private Anju build(Long id) {
+    public Anju createWithIdentity(AnjuSource source, String externalId) {
+        return build(null, source, externalId);
+    }
+
+    private Anju build(Long id, AnjuSource source, String externalId) {
         return Anju.builder()
                 .id(id)
-                .source(AnjuSource.SEED)
-                .externalId(getExternalId())
+                .source(source)
+                .externalId(externalId)
                 .name(name)
                 .flavorProfile(flavorProfile)
                 .allergyTypes(allergyTypes)
