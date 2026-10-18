@@ -13,7 +13,9 @@ import com.symphonia.pairing.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.pairing.application.usecase.ImportDrinkStyleUseCase;
 import com.symphonia.pairing.application.usecase.ImportXWineUseCase;
 import com.symphonia.pairing.domain.vo.FlavorAxis;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -112,13 +114,12 @@ public class ImportCatalogRunner implements ApplicationRunner {
         result.deletedItems().forEach(ImportCatalogRunner::logRemovedAnju);
         log.info("[ImportCatalog] 지워야 하지만 피드백이 참조해 남긴 안주: {}개", result.retainedItems().size());
         result.retainedItems().forEach(ImportCatalogRunner::logRemovedAnju);
-        if (!result.unknownIngredients().isEmpty()) {
-            log.info("[ImportCatalog] 규칙표에 없는 재료: {}", result.unknownIngredients());
-        }
-        result.harmonizeCounts()
-                .forEach(
-                        (harmonize, count) ->
-                                log.info("[ImportCatalog] Harmonize {}: {}개", harmonize, count));
+        Set<String> unknownIngredients = result.unknownIngredients();
+        log.info(
+                "[ImportCatalog] 규칙표에 없는 재료: {}개 {}",
+                unknownIngredients.size(),
+                unknownIngredients);
+        result.harmonizeCounts().forEach(ImportCatalogRunner::logHarmonizeCount);
     }
 
     private static void logExcludedAnju(ImportAnjuResult.ExcludedItem item) {
@@ -128,5 +129,9 @@ public class ImportCatalogRunner implements ApplicationRunner {
 
     private static void logRemovedAnju(ImportAnjuResult.RemovedItem item) {
         log.info("[ImportCatalog]   {} {}", item.externalId(), item.name());
+    }
+
+    private static void logHarmonizeCount(Harmonize harmonize, int count) {
+        log.info("[ImportCatalog] Harmonize {}: {}개", harmonize, count);
     }
 }
