@@ -2,9 +2,9 @@ package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.DrinkStyle;
+import com.symphonia.pairing.domain.exception.UndeterminedEvaluationException;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Objects;
 import java.util.Set;
 
 // 평가한 와인을 함께 담는다.
@@ -32,7 +32,9 @@ public record WineEvaluation(
     }
 
     public Drink toDrink(DrinkStyle drinkStyle) {
-        Objects.requireNonNull(flavorProfile, "맛을 정할 수 없는 와인은 Drink로 바꿀 수 없습니다.");
+        if (!isDetermined()) {
+            throw new UndeterminedEvaluationException();
+        }
         return Drink.of(
                 drinkStyle.getId(),
                 DrinkSource.X_WINES,
