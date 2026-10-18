@@ -15,14 +15,23 @@ import java.util.TreeSet;
 public record ImportAnjuResult(
         int importedCount,
         List<ExcludedItem> excludedItems,
+        List<RemovedItem> deletedItems,
+        List<RemovedItem> retainedItems,
         Map<Harmonize, Integer> harmonizeCounts) {
     public ImportAnjuResult {
         excludedItems = List.copyOf(excludedItems);
+        deletedItems = List.copyOf(deletedItems);
+        retainedItems = List.copyOf(retainedItems);
         harmonizeCounts = immutableEnumMap(harmonizeCounts);
     }
 
     // 맞는 안주가 없는 태그도 0으로 남겨, 매핑표에서 빠진 계열을 리포트에서 바로 알 수 있게 한다.
-    public static ImportAnjuResult of(List<Anju> importedAnjus, List<AnjuEvaluation> excluded) {
+    // deleted는 이번 적재에서 지운 안주이고, retained는 지워야 하지만 피드백이 참조해 남긴 안주다.
+    public static ImportAnjuResult of(
+            List<Anju> importedAnjus,
+            List<AnjuEvaluation> excluded,
+            List<Anju> deleted,
+            List<Anju> retained) {
         Map<Harmonize, Integer> harmonizeCounts = new EnumMap<>(Harmonize.class);
         Arrays.stream(Harmonize.values()).forEach(harmonize -> harmonizeCounts.put(harmonize, 0));
         importedAnjus.stream()
@@ -32,6 +41,8 @@ public record ImportAnjuResult(
         return new ImportAnjuResult(
                 importedAnjus.size(),
                 excluded.stream().map(ExcludedItem::from).toList(),
+                deleted.stream().map(RemovedItem::from).toList(),
+                retained.stream().map(RemovedItem::from).toList(),
                 harmonizeCounts);
     }
 
@@ -60,6 +71,12 @@ public record ImportAnjuResult(
                     evaluation.curatedAnju().name(),
                     evaluation.exclusionReasons(),
                     evaluation.unknownIngredients());
+        }
+    }
+
+    public record RemovedItem(String externalId, String name) {
+        public static RemovedItem from(Anju anju) {
+            return new RemovedItem(anju.getExternalId(), anju.getName());
         }
     }
 }

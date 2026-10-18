@@ -87,6 +87,48 @@ class AnjuRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("deleteAllById 메서드는")
+    class DeleteAllById {
+
+        @Test
+        @DisplayName("안주와 그 알레르기 행을 함께 지운다")
+        void shouldDeleteAnjuWithAllergyTypes() {
+            // given
+            Long anjuId =
+                    anjuJpaRepository
+                            .save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()))
+                            .getId();
+
+            // when
+            anjuRepository.deleteAllById(List.of(anjuId));
+
+            // then
+            assertThat(anjuJpaRepository.findById(anjuId)).isEmpty();
+            assertThat(countAllergyTypeRowsOf(anjuId)).isZero();
+        }
+
+        // 적재 서비스는 매핑표에서 빠진 안주를 지운 뒤 같은 이름의 안주를 다른 식별 키로 저장할 수 있다.
+        @Test
+        @DisplayName("지우기를 바로 반영해 같은 이름의 안주를 이어서 저장해도 uk_anju_name에 걸리지 않는다")
+        void shouldAllowSavingAnjuWithSameNameAfterDeletion() {
+            // given
+            AnjuFixture fixture = AnjuFixture.DRIED_SNACK;
+            Long anjuId = anjuRepository.save(fixture.create()).getId();
+            anjuRepository.deleteAllById(List.of(anjuId));
+
+            // when
+            Anju saved =
+                    anjuRepository.save(
+                            fixture.createWithIdentity(AnjuSource.K_FIND, "fixture-anju-001"));
+
+            // then
+            entityManager.flush();
+            assertThat(saved.getId()).isNotEqualTo(anjuId);
+            assertThat(saved.getName()).isEqualTo(fixture.getName());
+        }
+    }
+
+    @Nested
     @DisplayName("findById 메서드는")
     class FindById {
 
@@ -266,6 +308,16 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(statistics.getPrepareStatementCount()).isZero();
         }
+    }
+
+    private long countAllergyTypeRowsOf(Long anjuId) {
+        return ((Number)
+                        entityManager
+                                .createNativeQuery(
+                                        "select count(*) from anju_allergy_type where anju_id = :anjuId")
+                                .setParameter("anjuId", anjuId)
+                                .getSingleResult())
+                .longValue();
     }
 
     private Statistics enabledStatistics() {

@@ -91,7 +91,7 @@ def write_anjus(fieldnames, anjus):
 def fill():
     """식품코드가 빈 안주 중 이름이 같은 음식이 있으면 가장 우선순위가 높은 행의 식품코드를 채운다.
 
-    K_FIND 행은 식품코드가 식별 키이므로 external_id도 같은 값으로 채운다. 시드 행의 external_id는 그대로 둔다.
+    external_id는 사람이 정한 식별 키라 건드리지 않는다. 식품코드를 고쳐도 적재된 안주의 id가 유지되어야 하기 때문이다.
     """
     best_by_name = {}
     for food in usable_foods():
@@ -104,8 +104,6 @@ def fill():
         if anju["kfind_code"] or food is None:
             continue
         anju["kfind_code"] = food["식품코드"]
-        if anju["source"] == "K_FIND":
-            anju["external_id"] = food["식품코드"]
         filled += 1
 
     write_anjus(fieldnames, anjus)
@@ -210,7 +208,7 @@ def extract():
 
 
 def apply():
-    """candidates.csv에서 pick 칸에 아무 값이나 적은 행의 식품코드를 그 안주의 kfind_code로 채운다.
+    """candidates.csv에서 pick 칸에 아무 값이나 적은 행의 식품코드를 그 안주의 kfind_code로 채운다. external_id는 건드리지 않는다.
 
     한 안주에 pick을 두 개 이상 적으면 어느 쪽인지 알 수 없어 아무것도 채우지 않고 실패한다.
     pick이 없는 안주는 비워 두며, 적재에서 MISSING_KFIND_CODE로 제외된다.
@@ -234,8 +232,6 @@ def apply():
         if anju["kfind_code"] or code is None:
             continue
         anju["kfind_code"] = code
-        if anju["source"] == "K_FIND":
-            anju["external_id"] = code
         applied += 1
 
     write_anjus(fieldnames, anjus)
