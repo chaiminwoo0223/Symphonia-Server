@@ -68,6 +68,17 @@ public class Anju {
                 .build();
     }
 
+    // 다시 적재할 때 매핑표와 규칙표에서 바뀔 수 있는 값만 덮어쓴다. id와 식별 키(source, externalId)는 유지한다.
+    public Anju overwriteWith(Anju imported) {
+        this.name = imported.name;
+        this.flavorProfile = imported.flavorProfile;
+        this.allergyTypes = imported.allergyTypes;
+        this.base = imported.base;
+        this.serving = imported.serving;
+        this.spicy = imported.spicy;
+        return this;
+    }
+
     public boolean conflictsWith(Set<AllergyType> attendeeAllergies) {
         return !Collections.disjoint(allergyTypes, attendeeAllergies);
     }

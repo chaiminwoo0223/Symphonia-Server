@@ -5,9 +5,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
+import com.symphonia.pairing.application.dto.result.ImportAnjuResult;
 import com.symphonia.pairing.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.pairing.application.dto.result.ImportResult;
 import com.symphonia.pairing.application.dto.result.ImportXWineResult;
+import com.symphonia.pairing.application.usecase.ImportAnjuUseCase;
 import com.symphonia.pairing.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.pairing.application.usecase.ImportDrinkStyleUseCase;
 import com.symphonia.pairing.application.usecase.ImportXWineUseCase;
@@ -29,12 +31,14 @@ class ImportCatalogRunnerTest {
     private final ImportCuratedDrinkUseCase importCuratedDrinkUseCase =
             mock(ImportCuratedDrinkUseCase.class);
     private final ImportXWineUseCase importXWineUseCase = mock(ImportXWineUseCase.class);
+    private final ImportAnjuUseCase importAnjuUseCase = mock(ImportAnjuUseCase.class);
 
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
                     .withBean(ImportDrinkStyleUseCase.class, () -> importDrinkStyleUseCase)
                     .withBean(ImportCuratedDrinkUseCase.class, () -> importCuratedDrinkUseCase)
                     .withBean(ImportXWineUseCase.class, () -> importXWineUseCase)
+                    .withBean(ImportAnjuUseCase.class, () -> importAnjuUseCase)
                     .withUserConfiguration(ImportCatalogRunner.class);
 
     @Nested
@@ -111,8 +115,8 @@ class ImportCatalogRunnerTest {
     class Run {
 
         @Test
-        @DisplayName("BJCP 스타일, 국내 유통 맥주, X-Wines 와인 순서로 적재한다")
-        void shouldImportBjcpStylesCuratedBeersAndXWinesInOrder() {
+        @DisplayName("BJCP 스타일, 국내 유통 맥주, X-Wines 와인, 안주 순서로 적재한다")
+        void shouldImportBjcpStylesCuratedBeersXWinesAndAnjusInOrder() {
             // given
             given(importDrinkStyleUseCase.importBjcpStyles())
                     .willReturn(new ImportResult(1, List.of(), Map.of()));
@@ -120,19 +124,29 @@ class ImportCatalogRunnerTest {
                     .willReturn(new ImportCuratedDrinkResult(1, List.of()));
             given(importXWineUseCase.importXWines())
                     .willReturn(new ImportXWineResult(1, 1, List.of(), List.of()));
+            given(importAnjuUseCase.importCuratedAnjus())
+                    .willReturn(new ImportAnjuResult(1, List.of(), Map.of()));
             ImportCatalogRunner runner =
                     new ImportCatalogRunner(
-                            importDrinkStyleUseCase, importCuratedDrinkUseCase, importXWineUseCase);
+                            importDrinkStyleUseCase,
+                            importCuratedDrinkUseCase,
+                            importXWineUseCase,
+                            importAnjuUseCase);
 
             // when
             runner.run(new DefaultApplicationArguments());
 
             // then
             InOrder inOrder =
-                    inOrder(importDrinkStyleUseCase, importCuratedDrinkUseCase, importXWineUseCase);
+                    inOrder(
+                            importDrinkStyleUseCase,
+                            importCuratedDrinkUseCase,
+                            importXWineUseCase,
+                            importAnjuUseCase);
             inOrder.verify(importDrinkStyleUseCase).importBjcpStyles();
             inOrder.verify(importCuratedDrinkUseCase).importCuratedBeers();
             inOrder.verify(importXWineUseCase).importXWines();
+            inOrder.verify(importAnjuUseCase).importCuratedAnjus();
         }
     }
 }
