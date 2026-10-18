@@ -3,7 +3,7 @@ package com.symphonia.pairing.infrastructure.reader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedException;
+import com.symphonia.pairing.domain.exception.ImportSourceReadFailedException;
 import com.symphonia.pairing.domain.vo.XWine;
 import com.symphonia.pairing.infrastructure.reader.config.properties.XWinesProperties;
 import java.util.List;
@@ -85,15 +85,15 @@ class CsvXWineReaderTest {
         class WhenFileNotFound {
 
             @Test
-            @DisplayName("DrinkImportSourceReadFailedException을 던진다")
-            void shouldThrowDrinkImportSourceReadFailedException() {
+            @DisplayName("ImportSourceReadFailedException을 던진다")
+            void shouldThrowImportSourceReadFailedException() {
                 // given
                 CsvXWineReader csvXWineReader =
                         new CsvXWineReader(new XWinesProperties("not-exists/x-wines.csv"));
 
                 // when & then
                 assertThatThrownBy(csvXWineReader::read)
-                        .isInstanceOf(DrinkImportSourceReadFailedException.class);
+                        .isInstanceOf(ImportSourceReadFailedException.class);
             }
         }
     }

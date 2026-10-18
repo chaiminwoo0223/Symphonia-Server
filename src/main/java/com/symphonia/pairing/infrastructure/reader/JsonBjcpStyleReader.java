@@ -2,7 +2,7 @@ package com.symphonia.pairing.infrastructure.reader;
 
 import static java.util.function.Predicate.not;
 
-import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedException;
+import com.symphonia.pairing.domain.exception.ImportSourceReadFailedException;
 import com.symphonia.pairing.domain.reader.BjcpStyleReader;
 import com.symphonia.pairing.domain.vo.BjcpStyle;
 import com.symphonia.pairing.domain.vo.IbuRange;
@@ -35,7 +35,7 @@ public class JsonBjcpStyleReader implements BjcpStyleReader {
 
             return StreamSupport.stream(styles.spliterator(), false).map(this::toStyle).toList();
         } catch (IOException | JacksonException e) {
-            throw new DrinkImportSourceReadFailedException();
+            throw new ImportSourceReadFailedException();
         }
     }
 

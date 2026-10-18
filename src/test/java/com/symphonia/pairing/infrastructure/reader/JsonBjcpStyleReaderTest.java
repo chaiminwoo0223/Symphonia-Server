@@ -3,7 +3,7 @@ package com.symphonia.pairing.infrastructure.reader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedException;
+import com.symphonia.pairing.domain.exception.ImportSourceReadFailedException;
 import com.symphonia.pairing.domain.vo.BjcpStyle;
 import com.symphonia.pairing.domain.vo.IbuRange;
 import com.symphonia.pairing.infrastructure.reader.config.properties.BjcpProperties;
@@ -125,8 +125,8 @@ class JsonBjcpStyleReaderTest {
         class WhenFileNotFound {
 
             @Test
-            @DisplayName("DrinkImportSourceReadFailedException을 던진다")
-            void shouldThrowDrinkImportSourceReadFailedException() {
+            @DisplayName("ImportSourceReadFailedException을 던진다")
+            void shouldThrowImportSourceReadFailedException() {
                 // given
                 JsonBjcpStyleReader reader =
                         new JsonBjcpStyleReader(
@@ -134,7 +134,7 @@ class JsonBjcpStyleReaderTest {
 
                 // when & then
                 assertThatThrownBy(reader::read)
-                        .isInstanceOf(DrinkImportSourceReadFailedException.class);
+                        .isInstanceOf(ImportSourceReadFailedException.class);
             }
         }
     }
