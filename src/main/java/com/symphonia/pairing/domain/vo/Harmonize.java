@@ -1,9 +1,8 @@
 package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.Anju;
-import lombok.RequiredArgsConstructor;
-
 import java.util.function.Predicate;
+import lombok.RequiredArgsConstructor;
 
 // X-Wines Harmonize 상위 20개 태그다. 태그마다 안주 속성 하나만 보고 맞는지 판정하며, 판정 결과는 저장하지 않는다.
 // 맞는 한국 안주가 없는 Veal은 BEEF로 흡수하고, Game Meat은 오리를 포함한 GAME 계열로 판정한다.
