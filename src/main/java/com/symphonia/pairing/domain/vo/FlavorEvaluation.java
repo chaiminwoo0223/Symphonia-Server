@@ -1,9 +1,9 @@
 package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.DrinkStyle;
+import com.symphonia.pairing.domain.exception.UndeterminedEvaluationException;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Objects;
 import java.util.Set;
 
 // 평가한 스타일을 함께 담는다.
@@ -32,7 +32,9 @@ public record FlavorEvaluation(
     }
 
     public DrinkStyle toDrinkStyle() {
-        Objects.requireNonNull(flavorProfile, "맛을 정할 수 없는 스타일은 DrinkStyle로 바꿀 수 없습니다.");
+        if (!isDetermined()) {
+            throw new UndeterminedEvaluationException();
+        }
         return style.toDrinkStyle(flavorProfile);
     }
 

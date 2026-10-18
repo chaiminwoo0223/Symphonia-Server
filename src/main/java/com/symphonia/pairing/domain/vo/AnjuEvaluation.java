@@ -1,9 +1,9 @@
 package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.Anju;
+import com.symphonia.pairing.domain.exception.UndeterminedEvaluationException;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -38,6 +38,9 @@ public record AnjuEvaluation(
     }
 
     public Anju toAnju() {
-        return Objects.requireNonNull(anju, "적재할 수 없는 안주는 Anju로 바꿀 수 없습니다.");
+        if (!isDetermined()) {
+            throw new UndeterminedEvaluationException();
+        }
+        return anju;
     }
 }
