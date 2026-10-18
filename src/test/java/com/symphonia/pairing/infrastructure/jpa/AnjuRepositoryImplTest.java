@@ -6,10 +6,13 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.vo.AllergyType;
+import com.symphonia.pairing.domain.vo.AnjuSource;
+import com.symphonia.pairing.domain.vo.FlavorProfile;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
@@ -191,6 +194,107 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             assertThat(result).isPresent();
             assertThat(result.get().getFlavorProfile().getAcidity())
                     .isEqualTo(AnjuFixture.GOLBAENGI_MUCHIM.getFlavorProfile().getAcidity());
+        }
+    }
+
+    @Nested
+    @DisplayName("save 메서드는")
+    class Save {
+
+        @Test
+        @DisplayName("id가 없는 Anju는 새로 저장하고 id를 채워 반환한다")
+        void shouldInsertAnjuWhenIdMissing() {
+            // given
+            Anju anju = AnjuFixture.FRIED_CHICKEN.createWithIdentity(AnjuSource.K_FIND, "D101");
+
+            // when
+            Anju saved = anjuRepository.save(anju);
+
+            // then
+            entityManager.flush();
+            entityManager.clear();
+            AnjuJpaEntity found = anjuJpaRepository.findById(saved.getId()).orElseThrow();
+            assertThat(found.getSource()).isEqualTo(AnjuSource.K_FIND);
+            assertThat(found.getExternalId()).isEqualTo("D101");
+            assertThat(found.getAllergyTypes())
+                    .containsExactlyInAnyOrderElementsOf(
+                            AnjuFixture.FRIED_CHICKEN.getAllergyTypes());
+        }
+
+        @Test
+        @DisplayName("id가 있는 Anju는 같은 행의 맛과 알레르기를 갱신한다")
+        void shouldUpdateAnjuWhenIdExists() {
+            // given
+            Anju existing =
+                    anjuRepository.save(
+                            AnjuFixture.FRIED_CHICKEN.createWithIdentity(
+                                    AnjuSource.K_FIND, "D101"));
+            entityManager.flush();
+            entityManager.clear();
+            Anju imported =
+                    Anju.of(
+                            AnjuSource.K_FIND,
+                            "D101",
+                            existing.getName(),
+                            FlavorProfile.of(1, 0, 0, 4, 0),
+                            Set.of(AllergyType.CHICKEN),
+                            existing.getBase(),
+                            existing.getServing(),
+                            true);
+            Anju updated = existing.overwriteWith(imported);
+
+            // when
+            anjuRepository.save(updated);
+
+            // then
+            entityManager.flush();
+            entityManager.clear();
+            AnjuJpaEntity found = anjuJpaRepository.findById(existing.getId()).orElseThrow();
+            assertThat(anjuJpaRepository.count()).isEqualTo(1);
+            assertThat(found.getFlavorProfile().toDomain())
+                    .usingRecursiveComparison()
+                    .isEqualTo(FlavorProfile.of(1, 0, 0, 4, 0));
+            assertThat(found.getAllergyTypes()).containsExactly(AllergyType.CHICKEN);
+            assertThat(found.isSpicy()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("findBySourceAndExternalId 메서드는")
+    class FindBySourceAndExternalId {
+
+        @Test
+        @DisplayName("source와 externalId가 모두 일치하는 Anju를 반환한다")
+        void shouldReturnAnjuWhenSourceAndExternalIdMatch() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
+
+            // when
+            Optional<Anju> result =
+                    anjuRepository.findBySourceAndExternalId(
+                            AnjuSource.SEED, AnjuFixture.DRIED_SNACK.getExternalId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getId()).isEqualTo(saved.getId());
+            assertThat(result.get().getAllergyTypes())
+                    .containsExactlyInAnyOrderElementsOf(AnjuFixture.DRIED_SNACK.getAllergyTypes());
+        }
+
+        @Test
+        @DisplayName("externalId가 같아도 source가 다르면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenSourceDiffers() {
+            // given
+            anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
+
+            // when
+            Optional<Anju> result =
+                    anjuRepository.findBySourceAndExternalId(
+                            AnjuSource.K_FIND, AnjuFixture.DRIED_SNACK.getExternalId());
+
+            // then
+            assertThat(result).isEmpty();
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.symphonia.pairing.presentation.runner;
 
+import com.symphonia.pairing.application.dto.result.ImportAnjuResult;
 import com.symphonia.pairing.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.pairing.application.dto.result.ImportCuratedDrinkResult.UnmappedItem;
 import com.symphonia.pairing.application.dto.result.ImportResult;
@@ -7,6 +8,7 @@ import com.symphonia.pairing.application.dto.result.ImportResult.ExcludedItem;
 import com.symphonia.pairing.application.dto.result.ImportXWineResult;
 import com.symphonia.pairing.application.dto.result.ImportXWineResult.AbvExceededItem;
 import com.symphonia.pairing.application.dto.result.ImportXWineResult.UndeterminedItem;
+import com.symphonia.pairing.application.usecase.ImportAnjuUseCase;
 import com.symphonia.pairing.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.pairing.application.usecase.ImportDrinkStyleUseCase;
 import com.symphonia.pairing.application.usecase.ImportXWineUseCase;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Component;
 // 속성이 없는 일반 기동에서는 빈이 만들어지지 않아 적재가 돌지 않는다.
 // 제품은 매핑한 스타일을 참조하므로 스타일을 먼저 적재한다. 유스케이스마다 트랜잭션이 따로라 스타일 적재가 먼저 커밋된다.
 // 와인은 스타일이 와인 데이터에서만 나오므로 와인 적재가 스타일까지 한 트랜잭션에서 적재한다.
+// 안주는 음료를 참조하지 않아 순서와 무관하지만, 음료 적재가 실패해도 안주 적재 결과를 볼 수 있게 따로 트랜잭션을 둔다.
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -32,12 +35,14 @@ public class ImportCatalogRunner implements ApplicationRunner {
     private final ImportDrinkStyleUseCase importDrinkStyleUseCase;
     private final ImportCuratedDrinkUseCase importCuratedDrinkUseCase;
     private final ImportXWineUseCase importXWineUseCase;
+    private final ImportAnjuUseCase importAnjuUseCase;
 
     @Override
     public void run(@NonNull ApplicationArguments args) {
         reportStyles(importDrinkStyleUseCase.importBjcpStyles());
         reportCuratedDrinks(importCuratedDrinkUseCase.importCuratedBeers());
         reportXWines(importXWineUseCase.importXWines());
+        reportAnjus(importAnjuUseCase.importCuratedAnjus());
     }
 
     private static void reportStyles(ImportResult result) {
@@ -95,5 +100,24 @@ public class ImportCatalogRunner implements ApplicationRunner {
                 item.externalId(),
                 item.name(),
                 item.unknownAttributes());
+    }
+
+    private static void reportAnjus(ImportAnjuResult result) {
+        log.info("[ImportCatalog] 적재한 안주: {}개", result.importedCount());
+        log.info("[ImportCatalog] 맛이나 알레르기를 정할 수 없어 제외한 안주: {}개", result.excludedItems().size());
+
+        result.excludedItems().forEach(ImportCatalogRunner::logExcludedAnju);
+        if (!result.unknownIngredients().isEmpty()) {
+            log.info("[ImportCatalog] 규칙표에 없는 재료: {}", result.unknownIngredients());
+        }
+        result.harmonizeCounts()
+                .forEach(
+                        (harmonize, count) ->
+                                log.info("[ImportCatalog] Harmonize {}: {}개", harmonize, count));
+    }
+
+    private static void logExcludedAnju(ImportAnjuResult.ExcludedItem item) {
+        log.info(
+                "[ImportCatalog]   {} {} (사유: {})", item.externalId(), item.name(), item.reasons());
     }
 }

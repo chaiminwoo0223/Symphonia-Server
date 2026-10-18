@@ -1,0 +1,6 @@
+min_grams,max_grams,sweetness
+0,2,1
+2,5,2
+5,10,3
+10,20,4
+20,999,5

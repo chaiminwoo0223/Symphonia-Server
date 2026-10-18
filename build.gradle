@@ -78,7 +78,7 @@ tasks.withType(Test).configureEach {
 // 음료 적재는 배포와 분리해 수동으로 실행한다. 원본은 scripts/import/fetch-bjcp.sh로 먼저 받는다.
 tasks.register('importCatalog', org.springframework.boot.gradle.tasks.run.BootRun) {
 	group = 'application'
-	description = 'BJCP 스타일과 국내 유통 맥주를 drink_style, drink에 적재한다.'
+	description = 'BJCP 스타일, 국내 유통 맥주, X-Wines 와인과 안주를 drink_style, drink, anju에 적재한다.'
 	mainClass = tasks.named('bootRun').flatMap { it.mainClass }
 	classpath = tasks.named('bootRun').get().classpath
 	args '--import.catalog.enabled=true', '--spring.main.web-application-type=none'
