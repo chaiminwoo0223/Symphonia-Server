@@ -36,7 +36,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] `GlobalExceptionHandler`가 `BusinessException`만 캐치하고 `errorCode.getStatus()`로 HTTP status를 결정하는지
 
 ### 📐 코드 스타일 (`code-style` 스킬)
-- [ ] 멤버 선언 순서가 상수 → 인스턴스 필드 → 생성자 → public static 팩토리 → public 메서드 → private 메서드 → 중첩 타입인지 (static 여부가 아니라 역할 기준)
+- [ ] 멤버 선언 순서가 상수 → 인스턴스 필드 → 생성자 → public static 팩토리 → public 메서드 → public 중첩 타입 → private 메서드 → private 중첩 타입인지 (static 여부가 아니라 역할과 공개 범위 기준, public은 public끼리 private은 private끼리)
 - [ ] private 메서드가 step-down 규칙(처음 호출되는 순서, 깊이 우선)을 따르는지
 
 ### 🧪 테스트 컨벤션 (변경 사항에 테스트 파일이 있을 때만)
