@@ -44,11 +44,20 @@ public enum XWineFixture {
         return new XWine(getWineId(), wineName, wineryName, type, abv, body, acidity);
     }
 
+    // FK가 걸린 와인 스타일은 실제로 저장된 id를 받아 아직 저장 전인 와인을 만든다.
+    public Drink createDrink(Long drinkStyleId, FlavorProfile flavorProfile) {
+        return buildDrink(null, drinkStyleId, flavorProfile);
+    }
+
     // 이미 적재된 와인을 흉내 내야 할 때 id와 당시의 스타일, 맛을 채운다.
     public Drink createImportedDrink(Long id, DrinkStyle drinkStyle, FlavorProfile flavorProfile) {
+        return buildDrink(id, drinkStyle.getId(), flavorProfile);
+    }
+
+    private Drink buildDrink(Long id, Long drinkStyleId, FlavorProfile flavorProfile) {
         return Drink.builder()
                 .id(id)
-                .drinkStyleId(drinkStyle.getId())
+                .drinkStyleId(drinkStyleId)
                 .source(DrinkSource.X_WINES)
                 .externalId(getWineId())
                 .name(getDisplayName())

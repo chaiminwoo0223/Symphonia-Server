@@ -26,6 +26,7 @@ import com.symphonia.pairing.domain.vo.WineBodyRule;
 import com.symphonia.pairing.domain.vo.WineFlavorRule;
 import com.symphonia.pairing.domain.vo.WineTypeRule;
 import com.symphonia.pairing.domain.vo.XWine;
+import com.symphonia.pairing.fixture.WineStyleFixture;
 import com.symphonia.pairing.fixture.XWineFixture;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +42,7 @@ import org.mockito.Mock;
 class ImportXWineServiceTest extends UnitTest {
 
     private static final Long RED_STYLE_ID = 100L;
-    private static final FlavorProfile RED_STYLE_PROFILE = FlavorProfile.of(1, 3, 0, 2, 2);
+    private static final FlavorProfile RED_STYLE_PROFILE = WineStyleFixture.RED.getFlavorProfile();
 
     // 스타일 기본 맛의 무게감(2)과 산미(2)가 제품의 Body, Acidity 값으로 덮어써지는지 보이도록 서로 다른 값을 둔다.
     private static final WineFlavorRule WINE_FLAVOR_RULE =
@@ -104,15 +105,7 @@ class ImportXWineServiceTest extends UnitTest {
             @DisplayName("id를 유지한 채 이름, 분류, 기본 맛을 갱신해 저장한다")
             void shouldUpdateExistingWineStyle() {
                 // given
-                DrinkStyle existing =
-                        DrinkStyle.builder()
-                                .id(RED_STYLE_ID)
-                                .source(DrinkStyleSource.X_WINES)
-                                .externalId("red")
-                                .name("Old Red Wine")
-                                .category(DrinkCategory.WINE)
-                                .flavorProfile(FlavorProfile.of(5, 5, 5, 5, 5))
-                                .build();
+                DrinkStyle existing = WineStyleFixture.RED.createImportedStyle(RED_STYLE_ID);
                 given(xWineReader.read()).willReturn(List.of());
                 given(drinkStyleRepository.findAllBySource(DrinkStyleSource.X_WINES))
                         .willReturn(List.of(existing));
@@ -124,7 +117,7 @@ class ImportXWineServiceTest extends UnitTest {
                 // then
                 DrinkStyle saved = captureSavedStyle();
                 assertThat(saved.getId()).isEqualTo(RED_STYLE_ID);
-                assertThat(saved.getName()).isEqualTo("Red Wine");
+                assertThat(saved.getName()).isEqualTo(WineStyleFixture.RED.getName());
                 assertThat(saved.getFlavorProfile())
                         .usingRecursiveComparison()
                         .isEqualTo(RED_STYLE_PROFILE);
@@ -286,14 +279,7 @@ class ImportXWineServiceTest extends UnitTest {
     }
 
     private DrinkStyle savedRedStyle() {
-        return DrinkStyle.builder()
-                .id(RED_STYLE_ID)
-                .source(DrinkStyleSource.X_WINES)
-                .externalId("red")
-                .name("Red Wine")
-                .category(DrinkCategory.WINE)
-                .flavorProfile(RED_STYLE_PROFILE)
-                .build();
+        return WineStyleFixture.RED.createWithId(RED_STYLE_ID);
     }
 
     private DrinkStyle captureSavedStyle() {

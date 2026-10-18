@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
-import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.vo.AnjuBase;
 import com.symphonia.pairing.domain.vo.AnjuSource;
 import com.symphonia.pairing.domain.vo.DrinkSource;
@@ -90,14 +89,9 @@ class PairingSeedMigrationTest extends RepositoryTest {
         DrinkJpaEntity wine =
                 drinkJpaRepository.saveAndFlush(
                         DrinkJpaEntity.from(
-                                Drink.of(
+                                wineFixture.createDrink(
                                         wineStyle.getId(),
-                                        DrinkSource.X_WINES,
-                                        wineFixture.getWineId(),
-                                        wineFixture.getDisplayName(),
-                                        wineFixture.getAbv(),
-                                        DrinkStyleFixture.PINOT_NOIR.getFlavorProfile(),
-                                        false)));
+                                        DrinkStyleFixture.PINOT_NOIR.getFlavorProfile())));
 
         // then
         assertThat(wineStyle.getSource()).isEqualTo(DrinkStyleSource.X_WINES);
