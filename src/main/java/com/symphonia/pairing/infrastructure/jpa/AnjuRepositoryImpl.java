@@ -2,7 +2,6 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
-import com.symphonia.pairing.domain.vo.AnjuSource;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +29,5 @@ public class AnjuRepositoryImpl implements AnjuRepository {
     @Override
     public Optional<Anju> findById(Long anjuId) {
         return anjuJpaRepository.findById(anjuId).map(AnjuJpaEntity::toDomain);
-    }
-
-    @Override
-    public Optional<Anju> findBySourceAndExternalId(AnjuSource source, String externalId) {
-        return anjuJpaRepository
-                .findBySourceAndExternalId(source, externalId)
-                .map(AnjuJpaEntity::toDomain);
     }
 }

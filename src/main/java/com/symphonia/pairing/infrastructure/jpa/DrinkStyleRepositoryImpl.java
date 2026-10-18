@@ -3,6 +3,7 @@ package com.symphonia.pairing.infrastructure.jpa;
 import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.repository.DrinkStyleRepository;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -26,10 +27,9 @@ public class DrinkStyleRepositoryImpl implements DrinkStyleRepository {
     }
 
     @Override
-    public Optional<DrinkStyle> findBySourceAndExternalId(
-            DrinkStyleSource source, String externalId) {
-        return drinkStyleJpaRepository
-                .findBySourceAndExternalId(source, externalId)
-                .map(DrinkStyleJpaEntity::toDomain);
+    public List<DrinkStyle> findAllBySource(DrinkStyleSource source) {
+        return drinkStyleJpaRepository.findAllBySource(source).stream()
+                .map(DrinkStyleJpaEntity::toDomain)
+                .toList();
     }
 }

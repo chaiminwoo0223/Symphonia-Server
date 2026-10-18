@@ -24,7 +24,6 @@ import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.fixture.AnjuRuleFixture;
 import com.symphonia.pairing.fixture.CuratedAnjuFixture;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -154,10 +153,7 @@ class ImportAnjuServiceTest extends UnitTest {
                 // given
                 CuratedAnjuFixture fixture = CuratedAnjuFixture.FRIED_CHICKEN;
                 givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
-                given(
-                                anjuRepository.findBySourceAndExternalId(
-                                        AnjuSource.SEED, fixture.getExternalId()))
-                        .willReturn(Optional.of(fixture.createImportedAnju(2L)));
+                given(anjuRepository.findAll()).willReturn(List.of(fixture.createImportedAnju(2L)));
                 givenSaveReturnsArgument();
 
                 // when
@@ -179,6 +175,38 @@ class ImportAnjuServiceTest extends UnitTest {
                 assertThat(saved.getServing()).isEqualTo(fixture.getServing());
                 assertThat(saved.isSpicy()).isFalse();
                 assertThat(result.importedCount()).isEqualTo(1);
+            }
+        }
+
+        @Nested
+        @DisplayName("external_id가 같지만 출처가 다른 안주만 적재된 경우")
+        class WhenSameExternalIdWithDifferentSourceImported {
+
+            @Test
+            @DisplayName("다른 안주로 보고 기존 안주를 덮어쓰지 않은 채 새로 저장한다")
+            void shouldSaveAsNewAnju() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
+                Anju sameKeyOfSeed =
+                        Anju.builder()
+                                .id(3L)
+                                .source(AnjuSource.SEED)
+                                .externalId(fixture.getExternalId())
+                                .name("시드 안주")
+                                .flavorProfile(FlavorProfile.of(5, 5, 5, 5, 5))
+                                .build();
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                given(anjuRepository.findAll()).willReturn(List.of(sameKeyOfSeed));
+                givenSaveReturnsArgument();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                Anju saved = captureSavedAnju();
+                assertThat(saved.getId()).isNull();
+                assertThat(saved.getSource()).isEqualTo(AnjuSource.K_FIND);
+                assertThat(sameKeyOfSeed.getName()).isEqualTo("시드 안주");
             }
         }
 
@@ -352,7 +380,7 @@ class ImportAnjuServiceTest extends UnitTest {
     }
 
     private void givenNotImported() {
-        given(anjuRepository.findBySourceAndExternalId(any(), any())).willReturn(Optional.empty());
+        given(anjuRepository.findAll()).willReturn(List.of());
         givenSaveReturnsArgument();
     }
 

@@ -33,9 +33,9 @@ public class DrinkRepositoryImpl implements DrinkRepository {
     }
 
     @Override
-    public Optional<Drink> findBySourceAndExternalId(DrinkSource source, String externalId) {
-        return drinkJpaRepository
-                .findBySourceAndExternalId(source, externalId)
-                .map(DrinkJpaEntity::toDomain);
+    public List<Drink> findAllBySource(DrinkSource source) {
+        return drinkJpaRepository.findAllBySource(source).stream()
+                .map(DrinkJpaEntity::toDomain)
+                .toList();
     }
 }

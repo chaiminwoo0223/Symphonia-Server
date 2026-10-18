@@ -191,50 +191,37 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findBySourceAndExternalId 메서드는")
-    class FindBySourceAndExternalId {
+    @DisplayName("findAllBySource 메서드는")
+    class FindAllBySource {
 
         @Test
-        @DisplayName("source와 externalId가 모두 일치하는 Drink를 반환한다")
-        void shouldReturnDrinkWhenSourceAndExternalIdMatch() {
+        @DisplayName("source가 일치하는 Drink를 반환한다")
+        void shouldReturnDrinksWhenSourceMatches() {
             // given
             DrinkJpaEntity saved = saveDrink(DrinkFixture.BEER);
 
             // when
-            Optional<Drink> result =
-                    drinkRepository.findBySourceAndExternalId(
-                            DrinkSource.SEED, DrinkFixture.BEER.getExternalId());
+            List<Drink> result = drinkRepository.findAllBySource(DrinkSource.SEED);
 
             // then
-            assertThat(result).isPresent();
-            assertThat(result.get().getId()).isEqualTo(saved.getId());
-            assertThat(result.get().getName()).isEqualTo(DrinkFixture.BEER.getName());
+            assertThat(result)
+                    .filteredOn(drink -> drink.getId().equals(saved.getId()))
+                    .singleElement()
+                    .extracting(Drink::getExternalId)
+                    .isEqualTo(DrinkFixture.BEER.getExternalId());
         }
 
         @Test
-        @DisplayName("externalId가 같아도 source가 다르면 빈 Optional을 반환한다")
-        void shouldReturnEmptyWhenSourceDiffers() {
+        @DisplayName("source가 다른 Drink는 반환하지 않는다")
+        void shouldExcludeDrinksWhenSourceDiffers() {
             // given
-            saveDrink(DrinkFixture.BEER);
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.BEER);
 
             // when
-            Optional<Drink> result =
-                    drinkRepository.findBySourceAndExternalId(
-                            DrinkSource.CURATED, DrinkFixture.BEER.getExternalId());
+            List<Drink> result = drinkRepository.findAllBySource(DrinkSource.CURATED);
 
             // then
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        @DisplayName("일치하는 externalId가 없으면 빈 Optional을 반환한다")
-        void shouldReturnEmptyWhenExternalIdNotExists() {
-            // when
-            Optional<Drink> result =
-                    drinkRepository.findBySourceAndExternalId(DrinkSource.CURATED, "not-exists");
-
-            // then
-            assertThat(result).isEmpty();
+            assertThat(result).extracting(Drink::getId).doesNotContain(saved.getId());
         }
     }
 

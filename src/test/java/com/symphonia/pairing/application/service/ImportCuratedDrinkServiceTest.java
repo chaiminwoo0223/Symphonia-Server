@@ -20,7 +20,6 @@ import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import com.symphonia.pairing.fixture.CuratedDrinkFixture;
 import com.symphonia.pairing.fixture.DrinkStyleFixture;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,10 +51,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 CuratedDrink curatedDrink = CuratedDrinkFixture.CASS_FRESH.create();
                 DrinkStyle mappedStyle = givenMappedStyle(curatedDrink);
                 given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
-                given(
-                                drinkRepository.findBySourceAndExternalId(
-                                        DrinkSource.CURATED, curatedDrink.externalId()))
-                        .willReturn(Optional.empty());
+                given(drinkRepository.findAllBySource(DrinkSource.CURATED)).willReturn(List.of());
 
                 // when
                 ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
@@ -94,10 +90,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 Drink existing =
                         CuratedDrinkFixture.CASS_FRESH.createImportedDrink(10L, previousStyle);
                 given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
-                given(
-                                drinkRepository.findBySourceAndExternalId(
-                                        DrinkSource.CURATED, curatedDrink.externalId()))
-                        .willReturn(Optional.of(existing));
+                given(drinkRepository.findAllBySource(DrinkSource.CURATED))
+                        .willReturn(List.of(existing));
 
                 // when
                 ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
@@ -127,10 +121,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 // given
                 CuratedDrink curatedDrink = CuratedDrinkFixture.HOEGAARDEN.create();
                 given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
-                given(
-                                drinkStyleRepository.findBySourceAndExternalId(
-                                        DrinkStyleSource.BJCP, curatedDrink.bjcpStyleId()))
-                        .willReturn(Optional.empty());
+                given(drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP))
+                        .willReturn(List.of());
 
                 // when
                 ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
@@ -157,14 +149,10 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 // given
                 CuratedDrink mapped = CuratedDrinkFixture.CASS_FRESH.create();
                 CuratedDrink unmapped = CuratedDrinkFixture.HOEGAARDEN.create();
+                // 적재된 BJCP 스타일에는 mapped의 스타일만 있고 unmapped의 스타일은 없다.
                 givenMappedStyle(mapped);
-                given(
-                                drinkStyleRepository.findBySourceAndExternalId(
-                                        DrinkStyleSource.BJCP, unmapped.bjcpStyleId()))
-                        .willReturn(Optional.empty());
                 given(curatedDrinkReader.read()).willReturn(List.of(mapped, unmapped));
-                given(drinkRepository.findBySourceAndExternalId(any(), any()))
-                        .willReturn(Optional.empty());
+                given(drinkRepository.findAllBySource(DrinkSource.CURATED)).willReturn(List.of());
 
                 // when
                 ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
@@ -183,10 +171,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         DrinkStyle mappedStyle =
                 DrinkStyleFixture.ALE.createWithIdAndIdentity(
                         DrinkStyleSource.BJCP, curatedDrink.bjcpStyleId());
-        given(
-                        drinkStyleRepository.findBySourceAndExternalId(
-                                DrinkStyleSource.BJCP, curatedDrink.bjcpStyleId()))
-                .willReturn(Optional.of(mappedStyle));
+        given(drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP))
+                .willReturn(List.of(mappedStyle));
         return mappedStyle;
     }
 

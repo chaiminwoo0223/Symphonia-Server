@@ -8,6 +8,7 @@ import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.repository.DrinkStyleRepository;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import com.symphonia.pairing.fixture.DrinkStyleFixture;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -92,51 +93,37 @@ class DrinkStyleRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findBySourceAndExternalId 메서드는")
-    class FindBySourceAndExternalId {
+    @DisplayName("findAllBySource 메서드는")
+    class FindAllBySource {
 
         @Test
-        @DisplayName("source와 externalId가 모두 일치하는 DrinkStyle을 반환한다")
-        void shouldReturnDrinkStyleWhenSourceAndExternalIdMatch() {
+        @DisplayName("source가 일치하는 DrinkStyle을 반환한다")
+        void shouldReturnDrinkStylesWhenSourceMatches() {
             // given
             DrinkStyle saved = drinkStyleRepository.save(DrinkStyleFixture.ALE.create());
 
             // when
-            Optional<DrinkStyle> result =
-                    drinkStyleRepository.findBySourceAndExternalId(
-                            DrinkStyleSource.SEED, DrinkStyleFixture.ALE.getExternalId());
+            List<DrinkStyle> result = drinkStyleRepository.findAllBySource(DrinkStyleSource.SEED);
 
             // then
-            assertThat(result).isPresent();
-            assertThat(result.get().getId()).isEqualTo(saved.getId());
-            assertThat(result.get().getName()).isEqualTo(DrinkStyleFixture.ALE.getName());
+            assertThat(result)
+                    .filteredOn(drinkStyle -> drinkStyle.getId().equals(saved.getId()))
+                    .singleElement()
+                    .extracting(DrinkStyle::getExternalId)
+                    .isEqualTo(DrinkStyleFixture.ALE.getExternalId());
         }
 
         @Test
-        @DisplayName("externalId가 같아도 source가 다르면 빈 Optional을 반환한다")
-        void shouldReturnEmptyWhenSourceDiffers() {
+        @DisplayName("source가 다른 DrinkStyle은 반환하지 않는다")
+        void shouldExcludeDrinkStylesWhenSourceDiffers() {
             // given
-            drinkStyleRepository.save(DrinkStyleFixture.ALE.create());
+            DrinkStyle saved = drinkStyleRepository.save(DrinkStyleFixture.ALE.create());
 
             // when
-            Optional<DrinkStyle> result =
-                    drinkStyleRepository.findBySourceAndExternalId(
-                            DrinkStyleSource.BJCP, DrinkStyleFixture.ALE.getExternalId());
+            List<DrinkStyle> result = drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP);
 
             // then
-            assertThat(result).isEmpty();
-        }
-
-        @Test
-        @DisplayName("일치하는 externalId가 없으면 빈 Optional을 반환한다")
-        void shouldReturnEmptyWhenExternalIdNotExists() {
-            // when
-            Optional<DrinkStyle> result =
-                    drinkStyleRepository.findBySourceAndExternalId(
-                            DrinkStyleSource.BJCP, "not-exists");
-
-            // then
-            assertThat(result).isEmpty();
+            assertThat(result).extracting(DrinkStyle::getId).doesNotContain(saved.getId());
         }
     }
 

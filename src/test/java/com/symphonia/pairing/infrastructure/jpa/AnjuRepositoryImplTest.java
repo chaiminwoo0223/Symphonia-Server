@@ -77,13 +77,7 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
             entityManager.flush();
             entityManager.clear();
-            Statistics statistics =
-                    entityManager
-                            .getEntityManagerFactory()
-                            .unwrap(SessionFactory.class)
-                            .getStatistics();
-            statistics.setStatisticsEnabled(true);
-            statistics.clear();
+            Statistics statistics = enabledStatistics();
 
             // when
             List<Anju> result = anjuRepository.findAll();
@@ -257,44 +251,38 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             assertThat(found.getAllergyTypes()).containsExactly(AllergyType.CHICKEN);
             assertThat(found.isSpicy()).isTrue();
         }
-    }
 
-    @Nested
-    @DisplayName("findBySourceAndExternalId 메서드는")
-    class FindBySourceAndExternalId {
-
+        // 적재 서비스가 기존 안주를 findAll로 한 번에 불러온 뒤 행마다 저장할 때 N+1이 생기지 않는지 검증한다.
         @Test
-        @DisplayName("source와 externalId가 모두 일치하는 Anju를 반환한다")
-        void shouldReturnAnjuWhenSourceAndExternalIdMatch() {
-            // given
-            AnjuJpaEntity saved =
-                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
-
-            // when
-            Optional<Anju> result =
-                    anjuRepository.findBySourceAndExternalId(
-                            AnjuSource.SEED, AnjuFixture.DRIED_SNACK.getExternalId());
-
-            // then
-            assertThat(result).isPresent();
-            assertThat(result.get().getId()).isEqualTo(saved.getId());
-            assertThat(result.get().getAllergyTypes())
-                    .containsExactlyInAnyOrderElementsOf(AnjuFixture.DRIED_SNACK.getAllergyTypes());
-        }
-
-        @Test
-        @DisplayName("externalId가 같아도 source가 다르면 빈 Optional을 반환한다")
-        void shouldReturnEmptyWhenSourceDiffers() {
+        @DisplayName("findAll로 불러온 Anju를 갱신해 저장하면 SELECT를 다시 실행하지 않는다")
+        void shouldNotSelectAgainWhenSavingAnjuLoadedByFindAll() {
             // given
             anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()));
+            entityManager.flush();
+            entityManager.clear();
+            Anju loaded = anjuRepository.findAll().getFirst();
+            Anju updated =
+                    loaded.overwriteWith(
+                            AnjuFixture.FRIED_CHICKEN.createWithIdentity(
+                                    loaded.getSource(), loaded.getExternalId()));
+            Statistics statistics = enabledStatistics();
 
             // when
-            Optional<Anju> result =
-                    anjuRepository.findBySourceAndExternalId(
-                            AnjuSource.K_FIND, AnjuFixture.DRIED_SNACK.getExternalId());
+            anjuRepository.save(updated);
 
             // then
-            assertThat(result).isEmpty();
+            assertThat(statistics.getPrepareStatementCount()).isZero();
         }
+    }
+
+    private Statistics enabledStatistics() {
+        Statistics statistics =
+                entityManager
+                        .getEntityManagerFactory()
+                        .unwrap(SessionFactory.class)
+                        .getStatistics();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+        return statistics;
     }
 }
