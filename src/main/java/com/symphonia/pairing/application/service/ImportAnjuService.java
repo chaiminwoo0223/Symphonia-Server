@@ -46,13 +46,7 @@ public class ImportAnjuService implements ImportAnjuUseCase {
 
         Map<Boolean, List<AnjuEvaluation>> evaluationsByDetermined =
                 curatedAnjuReader.read().stream()
-                        .map(
-                                curatedAnju ->
-                                        anjuRule.evaluate(
-                                                curatedAnju,
-                                                Optional.ofNullable(
-                                                        nutritionsByCode.get(
-                                                                curatedAnju.kfindCode()))))
+                        .map(curatedAnju -> anjuRule.evaluate(curatedAnju, nutritionsByCode))
                         .collect(partitioningBy(AnjuEvaluation::isDetermined));
         List<Anju> imported =
                 evaluationsByDetermined.get(true).stream().map(AnjuEvaluation::toAnju).toList();

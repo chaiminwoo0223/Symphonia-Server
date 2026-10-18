@@ -4,6 +4,7 @@ import com.symphonia.pairing.domain.entity.Anju;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.ToIntFunction;
@@ -25,14 +26,22 @@ public record AnjuRule(
     }
 
     // 규칙표에 없는 재료가 하나라도 있으면 적재하지 않는다. 그 재료의 알레르기를 놓친 안주가 추천되면 안 되기 때문이다.
-    public AnjuEvaluation evaluate(CuratedAnju curatedAnju, Optional<AnjuNutrition> nutrition) {
+    public AnjuEvaluation evaluate(
+            CuratedAnju curatedAnju, Map<String, AnjuNutrition> nutritionsByCode) {
+        Optional<AnjuNutrition> nutrition =
+                Optional.ofNullable(nutritionsByCode.get(curatedAnju.kfindCode()));
         Optional<Integer> sweetness =
                 nutrition.flatMap(AnjuNutrition::sugar).flatMap(grams -> value(sugarRules, grams));
         Optional<Integer> richness =
                 nutrition.flatMap(AnjuNutrition::fat).flatMap(grams -> value(fatRules, grams));
         Set<String> unknownIngredients = unknownIngredients(curatedAnju.ingredients());
         Set<AnjuExclusionReason> exclusionReasons =
-                exclusionReasons(curatedAnju, nutrition, sweetness, richness, unknownIngredients);
+                exclusionReasons(
+                        curatedAnju,
+                        nutrition.isPresent(),
+                        sweetness.isPresent(),
+                        richness.isPresent(),
+                        unknownIngredients);
 
         if (!exclusionReasons.isEmpty()) {
             return AnjuEvaluation.excluded(curatedAnju, exclusionReasons, unknownIngredients);
@@ -71,30 +80,31 @@ public record AnjuRule(
 
     private Set<AnjuExclusionReason> exclusionReasons(
             CuratedAnju curatedAnju,
-            Optional<AnjuNutrition> nutrition,
-            Optional<Integer> sweetness,
-            Optional<Integer> richness,
+            boolean nutritionPresent,
+            boolean sugarMeasured,
+            boolean fatMeasured,
             Set<String> unknownIngredients) {
-        Set<AnjuExclusionReason> reasons = EnumSet.noneOf(AnjuExclusionReason.class);
-        if (curatedAnju.externalId().isBlank()) {
-            reasons.add(AnjuExclusionReason.MISSING_EXTERNAL_ID);
-        }
-        if (curatedAnju.kfindCode().isBlank()) {
-            reasons.add(AnjuExclusionReason.MISSING_KFIND_CODE);
-        } else if (nutrition.isEmpty()) {
-            reasons.add(AnjuExclusionReason.NUTRITION_NOT_FOUND);
-        } else {
-            if (sweetness.isEmpty()) {
-                reasons.add(AnjuExclusionReason.SUGAR_NOT_MEASURED);
-            }
-            if (richness.isEmpty()) {
-                reasons.add(AnjuExclusionReason.FAT_NOT_MEASURED);
-            }
-        }
-        if (!unknownIngredients.isEmpty()) {
-            reasons.add(AnjuExclusionReason.UNKNOWN_INGREDIENT);
-        }
-        return reasons;
+        boolean missingKfindCode = curatedAnju.kfindCode().isBlank();
+        boolean nutritionFound = !missingKfindCode && nutritionPresent;
+        Map<AnjuExclusionReason, Boolean> violations =
+                Map.of(
+                        AnjuExclusionReason.MISSING_EXTERNAL_ID,
+                        curatedAnju.externalId().isBlank(),
+                        AnjuExclusionReason.MISSING_KFIND_CODE,
+                        missingKfindCode,
+                        AnjuExclusionReason.NUTRITION_NOT_FOUND,
+                        !missingKfindCode && !nutritionPresent,
+                        AnjuExclusionReason.SUGAR_NOT_MEASURED,
+                        nutritionFound && !sugarMeasured,
+                        AnjuExclusionReason.FAT_NOT_MEASURED,
+                        nutritionFound && !fatMeasured,
+                        AnjuExclusionReason.UNKNOWN_INGREDIENT,
+                        !unknownIngredients.isEmpty());
+
+        return violations.entrySet().stream()
+                .filter(Map.Entry::getValue)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(AnjuExclusionReason.class)));
     }
 
     private List<IngredientRule> matchedRules(Collection<String> ingredients) {
