@@ -1,6 +1,8 @@
 package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.Drink;
+import com.symphonia.pairing.domain.exception.InvalidTopLimitException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,7 +66,7 @@ public record CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDr
     // 상위 경계는 정렬하지 않고 점수를 한 번 훑으며 구한다.
     // TopScores가 누적하는 상태를 스트림 forEach로 바꾸면 부작용이 숨으므로 반복문으로 둔다.
     private static double topThreshold(DrinkAnjuScores scores, int topLimit) {
-        TopScores top = new TopScores(topLimit);
+        TopScores top = TopScores.of(topLimit);
         for (double score : scores.scores()) {
             top.offer(score);
         }
@@ -74,29 +76,30 @@ public record CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDr
 
     // 점수를 정렬하지 않고 상위 limit개만 내림차순으로 들고 있다가 limit번째 점수를 경계로 돌려준다.
     // 같은 점수도 하나씩 세므로 정렬 후 limit번째를 고를 때와 경계가 같다.
-    // 점수가 limit개 이하면 모두 남겨야 하므로 경계는 음의 무한대다.
-    private static final class TopScores {
-        private final double[] scores;
-        private int size;
+    // 빈 자리는 음의 무한대로 채워 두므로, 점수가 limit개 미만이면 경계는 음의 무한대가 되어 모두 남는다.
+    private record TopScores(double[] scores) {
+        private static TopScores of(int limit) {
+            if (limit < 1) {
+                throw new InvalidTopLimitException();
+            }
+            double[] scores = new double[limit];
+            Arrays.fill(scores, Double.NEGATIVE_INFINITY);
 
-        private TopScores(int limit) {
-            this.scores = new double[limit];
+            return new TopScores(scores);
         }
 
+        // 맨 끝 자리부터 더 낮은 점수를 한 칸씩 밀어내고, 끝 자리보다 낮은 점수는 max로 버린다.
         private void offer(double score) {
-            if (size == scores.length && score <= scores[size - 1]) {
-                return;
-            }
-            int position = size == scores.length ? size - 1 : size++;
+            int position = scores.length - 1;
             while (position > 0 && scores[position - 1] < score) {
                 scores[position] = scores[position - 1];
                 position--;
             }
-            scores[position] = score;
+            scores[position] = Math.max(scores[position], score);
         }
 
         private double threshold() {
-            return size == scores.length ? scores[size - 1] : Double.NEGATIVE_INFINITY;
+            return scores[scores.length - 1];
         }
     }
 }
