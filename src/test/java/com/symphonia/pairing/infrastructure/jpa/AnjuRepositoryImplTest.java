@@ -107,24 +107,25 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             assertThat(countAllergyTypeRowsOf(anjuId)).isZero();
         }
 
-        // 적재 서비스는 매핑표에서 빠진 안주를 지운 뒤 같은 이름의 안주를 다른 식별 키로 저장할 수 있다.
+        // 적재 서비스는 매핑표에서 빠진 안주를 지운 뒤 같은 이름의 안주를 다른 식별 키로 저장한다.
+        // Hibernate는 같은 트랜잭션의 INSERT를 DELETE보다 먼저 실행하므로, 지우기가 바로 반영돼야 uk_anju_name에 걸리지 않는다.
         @Test
-        @DisplayName("지우기를 바로 반영해 같은 이름의 안주를 이어서 저장해도 uk_anju_name에 걸리지 않는다")
-        void shouldAllowSavingAnjuWithSameNameAfterDeletion() {
+        @DisplayName("flush를 기다리지 않고 DELETE를 바로 실행한다")
+        void shouldExecuteDeleteImmediately() {
             // given
-            AnjuFixture fixture = AnjuFixture.DRIED_SNACK;
-            Long anjuId = anjuRepository.save(fixture.create()).getId();
-            anjuRepository.deleteAllById(List.of(anjuId));
+            Long anjuId =
+                    anjuJpaRepository
+                            .save(AnjuJpaEntity.from(AnjuFixture.DRIED_SNACK.create()))
+                            .getId();
+            entityManager.flush();
+            entityManager.clear();
+            Statistics statistics = enabledStatistics();
 
             // when
-            Anju saved =
-                    anjuRepository.save(
-                            fixture.createWithIdentity(AnjuSource.K_FIND, "fixture-anju-001"));
+            anjuRepository.deleteAllById(List.of(anjuId));
 
             // then
-            entityManager.flush();
-            assertThat(saved.getId()).isNotEqualTo(anjuId);
-            assertThat(saved.getName()).isEqualTo(fixture.getName());
+            assertThat(statistics.getEntityDeleteCount()).isEqualTo(1);
         }
     }
 
