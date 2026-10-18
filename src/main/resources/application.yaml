@@ -43,7 +43,7 @@ oauth:
     jwks-uri: https://www.googleapis.com/oauth2/v3/certs
     issuer: https://accounts.google.com
 
-# 음료 적재(./gradlew importDrinks)가 읽는 원본.
+# 카탈로그 적재(./gradlew importCatalog)가 읽는 원본.
 # BJCP는 저작권 때문에 커밋하지 않고 scripts/import/fetch-bjcp.sh로 받는다. X-Wines(CC0)는 레포에 커밋되어 있다.
 import:
   bjcp:

@@ -21,8 +21,8 @@ import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 // 배포 기동에서 실수로 적재가 돌지 않도록 빈 등록 조건과 적재 순서만 가볍게 검증한다.
-@DisplayName("ImportDrinkRunner 단위 테스트")
-class ImportDrinkRunnerTest {
+@DisplayName("ImportCatalogRunner 단위 테스트")
+class ImportCatalogRunnerTest {
 
     private final ImportDrinkStyleUseCase importDrinkStyleUseCase =
             mock(ImportDrinkStyleUseCase.class);
@@ -35,70 +35,73 @@ class ImportDrinkRunnerTest {
                     .withBean(ImportDrinkStyleUseCase.class, () -> importDrinkStyleUseCase)
                     .withBean(ImportCuratedDrinkUseCase.class, () -> importCuratedDrinkUseCase)
                     .withBean(ImportXWineUseCase.class, () -> importXWineUseCase)
-                    .withUserConfiguration(ImportDrinkRunner.class);
+                    .withUserConfiguration(ImportCatalogRunner.class);
 
     @Nested
     @DisplayName("빈 등록은")
     class BeanRegistration {
 
         @Nested
-        @DisplayName("import.drink.enabled가 true인 경우")
+        @DisplayName("import.catalog.enabled가 true인 경우")
         class WhenEnabled {
 
             @Test
-            @DisplayName("ImportDrinkRunner 빈을 만든다")
+            @DisplayName("ImportCatalogRunner 빈을 만든다")
             void shouldRegisterRunner() {
                 // when & then
                 contextRunner
-                        .withPropertyValues("import.drink.enabled=true")
-                        .run(context -> assertThat(context).hasSingleBean(ImportDrinkRunner.class));
+                        .withPropertyValues("import.catalog.enabled=true")
+                        .run(
+                                context ->
+                                        assertThat(context)
+                                                .hasSingleBean(ImportCatalogRunner.class));
             }
         }
 
         @Nested
-        @DisplayName("import.drink.enabled 속성이 없는 경우")
+        @DisplayName("import.catalog.enabled 속성이 없는 경우")
         class WhenPropertyMissing {
 
             @Test
-            @DisplayName("ImportDrinkRunner 빈을 만들지 않는다")
+            @DisplayName("ImportCatalogRunner 빈을 만들지 않는다")
             void shouldNotRegisterRunner() {
                 // when & then
                 contextRunner.run(
-                        context -> assertThat(context).doesNotHaveBean(ImportDrinkRunner.class));
+                        context -> assertThat(context).doesNotHaveBean(ImportCatalogRunner.class));
             }
         }
 
         @Nested
-        @DisplayName("import.drink.enabled가 false인 경우")
+        @DisplayName("import.catalog.enabled가 false인 경우")
         class WhenDisabled {
 
             @Test
-            @DisplayName("ImportDrinkRunner 빈을 만들지 않는다")
+            @DisplayName("ImportCatalogRunner 빈을 만들지 않는다")
             void shouldNotRegisterRunner() {
                 // when & then
                 contextRunner
-                        .withPropertyValues("import.drink.enabled=false")
+                        .withPropertyValues("import.catalog.enabled=false")
                         .run(
                                 context ->
                                         assertThat(context)
-                                                .doesNotHaveBean(ImportDrinkRunner.class));
+                                                .doesNotHaveBean(ImportCatalogRunner.class));
             }
         }
 
         @Nested
-        @DisplayName("예전 속성 import.drink-style.enabled만 true인 경우")
+        @DisplayName("예전 속성 import.drink.enabled만 true인 경우")
         class WhenOnlyLegacyPropertyEnabled {
 
             @Test
-            @DisplayName("ImportDrinkRunner 빈을 만들지 않는다")
+            @DisplayName("ImportCatalogRunner 빈을 만들지 않는다")
             void shouldNotRegisterRunner() {
                 // when & then
                 contextRunner
-                        .withPropertyValues("import.drink-style.enabled=true")
+                        .withPropertyValues("import.drink.enabled=true")
                         .run(
                                 context ->
                                         assertThat(context)
-                                                .doesNotHaveBean(ImportDrinkRunner.class));
+                                                .doesNotHaveBean(ImportCatalogRunner.class));
             }
         }
     }
@@ -117,8 +120,8 @@ class ImportDrinkRunnerTest {
                     .willReturn(new ImportCuratedDrinkResult(1, List.of()));
             given(importXWineUseCase.importXWines())
                     .willReturn(new ImportXWineResult(1, 1, List.of(), List.of()));
-            ImportDrinkRunner runner =
-                    new ImportDrinkRunner(
+            ImportCatalogRunner runner =
+                    new ImportCatalogRunner(
                             importDrinkStyleUseCase, importCuratedDrinkUseCase, importXWineUseCase);
 
             // when
