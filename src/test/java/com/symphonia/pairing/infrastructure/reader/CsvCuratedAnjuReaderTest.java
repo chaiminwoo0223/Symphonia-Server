@@ -55,6 +55,35 @@ class CsvCuratedAnjuReaderTest {
         }
 
         @Test
+        @DisplayName("K_FIND 행은 식품코드가 식별 키라 external_id와 kfind_code가 같다")
+        void shouldUseKfindCodeAsExternalIdOfKfindRows() {
+            // when
+            List<CuratedAnju> curatedAnjus = csvCuratedAnjuReader.read();
+
+            // then
+            assertThat(curatedAnjus)
+                    .filteredOn(curatedAnju -> curatedAnju.source() == AnjuSource.K_FIND)
+                    .allSatisfy(
+                            curatedAnju ->
+                                    assertThat(curatedAnju.externalId())
+                                            .as(curatedAnju.name())
+                                            .isEqualTo(curatedAnju.kfindCode()));
+        }
+
+        @Test
+        @DisplayName("채워진 kfind_code가 중복되지 않는다")
+        void shouldReadUniqueKfindCodes() {
+            // when
+            List<CuratedAnju> curatedAnjus = csvCuratedAnjuReader.read();
+
+            // then
+            assertThat(curatedAnjus)
+                    .extracting(CuratedAnju::kfindCode)
+                    .filteredOn(kfindCode -> !kfindCode.isBlank())
+                    .doesNotHaveDuplicates();
+        }
+
+        @Test
         @DisplayName("시드 행은 V7 마이그레이션이 넣은 external_id를 그대로 쓴다")
         void shouldKeepSeedExternalIdsOfMigration() {
             // when
@@ -86,7 +115,7 @@ class CsvCuratedAnjuReaderTest {
                             new CuratedAnju(
                                     AnjuSource.SEED,
                                     "fried-chicken",
-                                    "",
+                                    "D312-549000000-0010",
                                     "후라이드치킨",
                                     List.of("닭고기"),
                                     List.of("밀가루", "전분", "달걀"),
