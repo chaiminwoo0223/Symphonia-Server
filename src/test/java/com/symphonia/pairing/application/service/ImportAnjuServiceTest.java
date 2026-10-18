@@ -187,14 +187,7 @@ class ImportAnjuServiceTest extends UnitTest {
             void shouldSaveAsNewAnju() {
                 // given
                 CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
-                Anju sameKeyOfSeed =
-                        Anju.builder()
-                                .id(3L)
-                                .source(AnjuSource.SEED)
-                                .externalId(fixture.getExternalId())
-                                .name("시드 안주")
-                                .flavorProfile(FlavorProfile.of(5, 5, 5, 5, 5))
-                                .build();
+                Anju sameKeyOfSeed = fixture.createImportedAnju(3L, AnjuSource.SEED);
                 givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
                 given(anjuRepository.findAll()).willReturn(List.of(sameKeyOfSeed));
                 givenSaveReturnsArgument();
@@ -206,7 +199,9 @@ class ImportAnjuServiceTest extends UnitTest {
                 Anju saved = captureSavedAnju();
                 assertThat(saved.getId()).isNull();
                 assertThat(saved.getSource()).isEqualTo(AnjuSource.K_FIND);
-                assertThat(sameKeyOfSeed.getName()).isEqualTo("시드 안주");
+                assertThat(sameKeyOfSeed)
+                        .usingRecursiveComparison()
+                        .isEqualTo(fixture.createImportedAnju(3L, AnjuSource.SEED));
             }
         }
 

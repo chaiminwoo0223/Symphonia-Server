@@ -104,6 +104,11 @@ public enum CuratedAnjuFixture {
 
     // 이미 적재된 안주를 흉내 내야 할 때 id와 이전 적재 당시의 값을 채운다.
     public Anju createImportedAnju(Long id) {
+        return createImportedAnju(id, source);
+    }
+
+    // external_id는 같지만 출처가 다른 안주가 이미 적재된 상황을 만든다.
+    public Anju createImportedAnju(Long id, AnjuSource source) {
         return Anju.builder()
                 .id(id)
                 .source(source)
