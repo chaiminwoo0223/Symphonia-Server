@@ -4,6 +4,7 @@
 실행:
   python3 -I scripts/import/extract-kfind.py fill        # 이름이 같은 음식의 식품코드를 anjus.csv에 채운다
   python3 -I scripts/import/extract-kfind.py candidates  # 식품코드를 못 채운 안주의 후보 목록을 만든다
+  python3 -I scripts/import/extract-kfind.py apply       # 후보 목록에서 pick을 표시한 식품코드를 anjus.csv에 채운다
   python3 -I scripts/import/extract-kfind.py extract     # anjus.csv가 가리키는 식품코드의 영양성분을 nutrition.csv로 뽑는다
 
 원본은 공공데이터포털에서 받은 표준데이터 CSV 두 개다. 132MB가 넘어 커밋하지 않고 data/kfind/에 둔다.
@@ -157,7 +158,7 @@ def candidates():
         if anju["kfind_code"]:
             continue
         match, found = candidates_for(anju, foods, processed_foods)
-        base = {"anju": anju["name"], "source": anju["source"], "match": match}
+        base = {"pick": "", "anju": anju["name"], "source": anju["source"], "match": match}
         if not found:
             rows.append({**base, "rank": "", "kfind_code": "", "food_name": "", "origin": "",
                          "sugar_grams": "", "fat_grams": "", "unit": ""})
@@ -166,7 +167,7 @@ def candidates():
                          "origin": food["식품기원명"], "sugar_grams": food["당류(g)"],
                          "fat_grams": food["지방(g)"], "unit": food["영양성분함량기준량"]})
 
-    fieldnames = ["anju", "source", "match", "rank", "kfind_code", "food_name", "origin",
+    fieldnames = ["pick", "anju", "source", "match", "rank", "kfind_code", "food_name", "origin",
                   "sugar_grams", "fat_grams", "unit"]
     # 엑셀에서 바로 열리도록 BOM을 붙인다.
     with open(CANDIDATES_CSV, "w", encoding="utf-8-sig", newline="") as file:
@@ -208,7 +209,41 @@ def extract():
         sys.exit(1)
 
 
-COMMANDS = {"fill": fill, "candidates": candidates, "extract": extract}
+def apply():
+    """candidates.csv에서 pick 칸에 아무 값이나 적은 행의 식품코드를 그 안주의 kfind_code로 채운다.
+
+    한 안주에 pick을 두 개 이상 적으면 어느 쪽인지 알 수 없어 아무것도 채우지 않고 실패한다.
+    pick이 없는 안주는 비워 두며, 적재에서 MISSING_KFIND_CODE로 제외된다.
+    """
+    picks = {}
+    duplicated = set()
+    for row in read_csv(CANDIDATES_CSV):
+        if not row["pick"].strip() or not row["kfind_code"]:
+            continue
+        if row["anju"] in picks:
+            duplicated.add(row["anju"])
+        picks[row["anju"]] = row["kfind_code"]
+    if duplicated:
+        print(f"✗ pick을 두 개 이상 표시한 안주: {sorted(duplicated)}", file=sys.stderr)
+        sys.exit(1)
+
+    fieldnames, anjus = read_anjus()
+    applied = 0
+    for anju in anjus:
+        code = picks.get(anju["name"])
+        if anju["kfind_code"] or code is None:
+            continue
+        anju["kfind_code"] = code
+        if anju["source"] == "K_FIND":
+            anju["external_id"] = code
+        applied += 1
+
+    write_anjus(fieldnames, anjus)
+    remaining = sum(1 for anju in anjus if not anju["kfind_code"])
+    print(f"✓ pick으로 채운 안주: {applied}개, 아직 빈 안주: {remaining}개")
+
+
+COMMANDS = {"fill": fill, "candidates": candidates, "apply": apply, "extract": extract}
 
 if __name__ == "__main__":
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
