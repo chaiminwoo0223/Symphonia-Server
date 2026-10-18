@@ -2,6 +2,7 @@ package com.symphonia.pairing.domain.repository;
 
 import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
+import java.util.List;
 import java.util.Optional;
 
 public interface DrinkStyleRepository {
@@ -9,5 +10,5 @@ public interface DrinkStyleRepository {
 
     Optional<DrinkStyle> findById(Long drinkStyleId);
 
-    Optional<DrinkStyle> findBySourceAndExternalId(DrinkStyleSource source, String externalId);
+    List<DrinkStyle> findAllBySource(DrinkStyleSource source);
 }

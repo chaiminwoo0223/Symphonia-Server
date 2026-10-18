@@ -23,7 +23,6 @@ import com.symphonia.pairing.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.fixture.FlavorRuleFixture;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -60,10 +59,8 @@ class ImportDrinkStyleServiceTest extends UnitTest {
                 // given
                 BjcpStyle style = BjcpStyleFixture.AMERICAN_LIGHT_LAGER.create();
                 given(bjcpStyleReader.read()).willReturn(List.of(style));
-                given(
-                                drinkStyleRepository.findBySourceAndExternalId(
-                                        DrinkStyleSource.BJCP, style.styleId()))
-                        .willReturn(Optional.empty());
+                given(drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP))
+                        .willReturn(List.of());
 
                 // when
                 ImportResult result = importDrinkStyleService.importBjcpStyles();
@@ -96,10 +93,8 @@ class ImportDrinkStyleServiceTest extends UnitTest {
                                 DrinkStyleSource.BJCP, style.styleId());
                 Long existingId = existing.getId();
                 given(bjcpStyleReader.read()).willReturn(List.of(style));
-                given(
-                                drinkStyleRepository.findBySourceAndExternalId(
-                                        DrinkStyleSource.BJCP, style.styleId()))
-                        .willReturn(Optional.of(existing));
+                given(drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP))
+                        .willReturn(List.of(existing));
 
                 // when
                 ImportResult result = importDrinkStyleService.importBjcpStyles();
@@ -161,8 +156,8 @@ class ImportDrinkStyleServiceTest extends UnitTest {
                 BjcpStyle undetermined = BjcpStyleFixture.COMMERCIAL_SPECIALTY_BEER.create();
                 given(bjcpStyleReader.read())
                         .willReturn(List.of(noTags, sour, sweetSour, undetermined));
-                given(drinkStyleRepository.findBySourceAndExternalId(any(), any()))
-                        .willReturn(Optional.empty());
+                given(drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP))
+                        .willReturn(List.of());
 
                 // when
                 ImportResult result = importDrinkStyleService.importBjcpStyles();

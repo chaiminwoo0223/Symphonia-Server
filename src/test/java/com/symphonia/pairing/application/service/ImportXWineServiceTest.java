@@ -28,7 +28,6 @@ import com.symphonia.pairing.domain.vo.WineTypeRule;
 import com.symphonia.pairing.domain.vo.XWine;
 import com.symphonia.pairing.fixture.XWineFixture;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -76,10 +75,8 @@ class ImportXWineServiceTest extends UnitTest {
             void shouldSaveNewWineStyle() {
                 // given
                 given(xWineReader.read()).willReturn(List.of());
-                given(
-                                drinkStyleRepository.findBySourceAndExternalId(
-                                        DrinkStyleSource.X_WINES, "red"))
-                        .willReturn(Optional.empty());
+                given(drinkStyleRepository.findAllBySource(DrinkStyleSource.X_WINES))
+                        .willReturn(List.of());
                 given(drinkStyleRepository.save(any())).willReturn(savedRedStyle());
 
                 // when
@@ -117,10 +114,8 @@ class ImportXWineServiceTest extends UnitTest {
                                 .flavorProfile(FlavorProfile.of(5, 5, 5, 5, 5))
                                 .build();
                 given(xWineReader.read()).willReturn(List.of());
-                given(
-                                drinkStyleRepository.findBySourceAndExternalId(
-                                        DrinkStyleSource.X_WINES, "red"))
-                        .willReturn(Optional.of(existing));
+                given(drinkStyleRepository.findAllBySource(DrinkStyleSource.X_WINES))
+                        .willReturn(List.of(existing));
                 given(drinkStyleRepository.save(any())).willReturn(savedRedStyle());
 
                 // when
@@ -147,8 +142,7 @@ class ImportXWineServiceTest extends UnitTest {
                 XWine wine = XWineFixture.ORIGEM_MERLOT.create();
                 givenRedStyleSaved();
                 given(xWineReader.read()).willReturn(List.of(wine));
-                given(drinkRepository.findBySourceAndExternalId(DrinkSource.X_WINES, wine.wineId()))
-                        .willReturn(Optional.empty());
+                given(drinkRepository.findAllBySource(DrinkSource.X_WINES)).willReturn(List.of());
 
                 // when
                 ImportXWineResult result = importXWineService.importXWines();
@@ -185,8 +179,8 @@ class ImportXWineServiceTest extends UnitTest {
                         XWineFixture.ORIGEM_MERLOT.createImportedDrink(
                                 10L, redStyle, FlavorProfile.of(5, 5, 5, 5, 5));
                 given(xWineReader.read()).willReturn(List.of(wine));
-                given(drinkRepository.findBySourceAndExternalId(DrinkSource.X_WINES, wine.wineId()))
-                        .willReturn(Optional.of(existing));
+                given(drinkRepository.findAllBySource(DrinkSource.X_WINES))
+                        .willReturn(List.of(existing));
 
                 // when
                 importXWineService.importXWines();
@@ -237,8 +231,7 @@ class ImportXWineServiceTest extends UnitTest {
                 XWine wine = XWineFixture.ORIGEM_MERLOT.createWithAbv(25.0);
                 givenRedStyleSaved();
                 given(xWineReader.read()).willReturn(List.of(wine));
-                given(drinkRepository.findBySourceAndExternalId(DrinkSource.X_WINES, wine.wineId()))
-                        .willReturn(Optional.empty());
+                given(drinkRepository.findAllBySource(DrinkSource.X_WINES)).willReturn(List.of());
 
                 // when
                 ImportXWineResult result = importXWineService.importXWines();
@@ -287,8 +280,7 @@ class ImportXWineServiceTest extends UnitTest {
 
     private DrinkStyle givenRedStyleSaved() {
         DrinkStyle saved = savedRedStyle();
-        given(drinkStyleRepository.findBySourceAndExternalId(DrinkStyleSource.X_WINES, "red"))
-                .willReturn(Optional.empty());
+        given(drinkStyleRepository.findAllBySource(DrinkStyleSource.X_WINES)).willReturn(List.of());
         given(drinkStyleRepository.save(any())).willReturn(saved);
         return saved;
     }

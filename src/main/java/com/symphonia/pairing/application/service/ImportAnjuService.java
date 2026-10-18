@@ -14,6 +14,7 @@ import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.vo.AnjuEvaluation;
 import com.symphonia.pairing.domain.vo.AnjuNutrition;
 import com.symphonia.pairing.domain.vo.AnjuRule;
+import com.symphonia.pairing.domain.vo.AnjuSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +32,7 @@ public class ImportAnjuService implements ImportAnjuUseCase {
     // 맛이나 알레르기를 정할 수 없는 안주는 저장하지 않고 제외 사유와 함께 결과에 남긴다.
     // 이미 적재된 안주는 (source, external_id)로 찾아 갱신하므로 여러 번 실행해도 결과가 같다.
     // 시드 행도 같은 방식으로 찾으므로 pairing_feedback이 참조하는 id가 유지된다.
+    // 매핑표에 SEED와 K_FIND가 섞여 있어 기존 안주는 출처를 가리지 않고 알레르기까지 한 번에 불러와 찾는다.
     @Override
     public ImportAnjuResult importCuratedAnjus() {
         AnjuRule anjuRule = anjuRuleReader.read();
@@ -49,20 +51,29 @@ public class ImportAnjuService implements ImportAnjuUseCase {
                                                                 curatedAnju.kfindCode()))))
                         .collect(partitioningBy(AnjuEvaluation::isDetermined));
 
+        Map<AnjuIdentity, Anju> existingByIdentity =
+                anjuRepository.findAll().stream()
+                        .collect(toMap(AnjuIdentity::of, Function.identity()));
+
         List<Anju> importedAnjus =
                 evaluationsByDetermined.get(true).stream()
                         .map(AnjuEvaluation::toAnju)
-                        .map(this::upsert)
+                        .map(imported -> upsert(imported, existingByIdentity))
                         .toList();
         return ImportAnjuResult.of(importedAnjus, evaluationsByDetermined.get(false));
     }
 
-    private Anju upsert(Anju imported) {
+    private Anju upsert(Anju imported, Map<AnjuIdentity, Anju> existingByIdentity) {
         Anju anju =
-                anjuRepository
-                        .findBySourceAndExternalId(imported.getSource(), imported.getExternalId())
+                Optional.ofNullable(existingByIdentity.get(AnjuIdentity.of(imported)))
                         .map(existing -> existing.overwriteWith(imported))
                         .orElse(imported);
         return anjuRepository.save(anju);
+    }
+
+    private record AnjuIdentity(AnjuSource source, String externalId) {
+        private static AnjuIdentity of(Anju anju) {
+            return new AnjuIdentity(anju.getSource(), anju.getExternalId());
+        }
     }
 }

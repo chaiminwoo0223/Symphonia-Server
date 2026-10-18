@@ -1,6 +1,7 @@
 package com.symphonia.pairing.application.service;
 
 import static java.util.stream.Collectors.partitioningBy;
+import static java.util.stream.Collectors.toMap;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.pairing.application.dto.result.ImportResult;
@@ -9,10 +10,13 @@ import com.symphonia.pairing.domain.entity.DrinkStyle;
 import com.symphonia.pairing.domain.reader.BjcpStyleReader;
 import com.symphonia.pairing.domain.reader.FlavorRuleReader;
 import com.symphonia.pairing.domain.repository.DrinkStyleRepository;
+import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import com.symphonia.pairing.domain.vo.FlavorEvaluation;
 import com.symphonia.pairing.domain.vo.FlavorRule;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 
 @CommandService
@@ -24,6 +28,7 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
 
     // 맛을 정할 수 없는 스타일은 적재하지 않고 결과에 남긴다.
     // 이미 적재된 스타일은 (source, external_id)로 찾아 갱신하므로 여러 번 실행해도 결과가 같다.
+    // 기존 스타일은 스타일마다 조회하지 않고 한 번에 불러와 external_id로 찾는다.
     @Override
     public ImportResult importBjcpStyles() {
         FlavorRule flavorRule = flavorRuleReader.read();
@@ -31,7 +36,11 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
         List<FlavorEvaluation> determined = evaluationsByDetermined.get(true);
         List<FlavorEvaluation> undetermined = evaluationsByDetermined.get(false);
 
-        determined.forEach(evaluation -> upsert(evaluation.toDrinkStyle()));
+        Map<String, DrinkStyle> existingByExternalId =
+                drinkStyleRepository.findAllBySource(DrinkStyleSource.BJCP).stream()
+                        .collect(toMap(DrinkStyle::getExternalId, Function.identity()));
+
+        determined.forEach(evaluation -> upsert(evaluation.toDrinkStyle(), existingByExternalId));
 
         return ImportResult.of(determined, undetermined);
     }
@@ -43,10 +52,9 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
                 .collect(partitioningBy(FlavorEvaluation::isDetermined));
     }
 
-    private void upsert(DrinkStyle imported) {
+    private void upsert(DrinkStyle imported, Map<String, DrinkStyle> existingByExternalId) {
         DrinkStyle drinkStyle =
-                drinkStyleRepository
-                        .findBySourceAndExternalId(imported.getSource(), imported.getExternalId())
+                Optional.ofNullable(existingByExternalId.get(imported.getExternalId()))
                         .map(existing -> existing.overwriteWith(imported))
                         .orElse(imported);
         drinkStyleRepository.save(drinkStyle);

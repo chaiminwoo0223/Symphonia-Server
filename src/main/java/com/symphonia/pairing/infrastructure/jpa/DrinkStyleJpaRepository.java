@@ -1,10 +1,9 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
-import java.util.Optional;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DrinkStyleJpaRepository extends JpaRepository<DrinkStyleJpaEntity, Long> {
-    Optional<DrinkStyleJpaEntity> findBySourceAndExternalId(
-            DrinkStyleSource source, String externalId);
+    List<DrinkStyleJpaEntity> findAllBySource(DrinkStyleSource source);
 }

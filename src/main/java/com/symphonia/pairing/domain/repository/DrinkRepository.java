@@ -12,5 +12,5 @@ public interface DrinkRepository {
 
     Optional<Drink> findById(Long drinkId);
 
-    Optional<Drink> findBySourceAndExternalId(DrinkSource source, String externalId);
+    List<Drink> findAllBySource(DrinkSource source);
 }

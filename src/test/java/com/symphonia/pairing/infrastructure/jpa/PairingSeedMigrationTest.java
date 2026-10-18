@@ -61,16 +61,17 @@ class PairingSeedMigrationTest extends RepositoryTest {
         // given: 시드 마이그레이션이 적재된 상태
 
         // when
-        Optional<DrinkJpaEntity> redWine =
-                drinkJpaRepository.findBySourceAndExternalId(DrinkSource.X_WINES, "111692");
+        Optional<DrinkJpaEntity> redWine = drinkJpaRepository.findById(4L);
 
         // then
         assertThat(redWine).isPresent();
-        assertThat(redWine.get().getId()).isEqualTo(4L);
+        assertThat(redWine.get().getSource()).isEqualTo(DrinkSource.X_WINES);
+        assertThat(redWine.get().getExternalId()).isEqualTo("111692");
         assertThat(redWine.get().getName()).isEqualTo("Louis Jadot Beaujolais");
         assertThat(redWine.get().getAbv()).isEqualTo(12.5);
-        assertThat(drinkJpaRepository.findBySourceAndExternalId(DrinkSource.SEED, "red-wine"))
-                .isEmpty();
+        assertThat(drinkJpaRepository.findAllBySource(DrinkSource.SEED))
+                .extracting(DrinkJpaEntity::getExternalId)
+                .doesNotContain("red-wine");
     }
 
     // check 제약에 X_WINES가 빠지면 와인 적재의 첫 INSERT가 제약 위반으로 실패한다.
