@@ -36,4 +36,9 @@ public final class HeaderCsv {
     public static String column(Map<String, String> row, String name) {
         return Optional.ofNullable(row.get(name)).orElseThrow(ImportSourceReadFailedException::new);
     }
+
+    // 한 칸에 여러 값을 적을 때는 |로 나눈다. 빈 칸은 값이 없는 것이다.
+    public static List<String> values(String cell) {
+        return cell.isBlank() ? List.of() : List.of(cell.split("\\|"));
+    }
 }
