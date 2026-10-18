@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class FlavorProfile {
     private static final double MATCH_THRESHOLD = 0.7;
     private static final int LIGHT_RICHNESS_THRESHOLD = 3;
+    private static final int AXIS_COUNT = 5;
 
     private int sweetness;
     private int bitterness;
@@ -31,15 +32,14 @@ public class FlavorProfile {
     }
 
     public double similarity(FlavorProfile other) {
-        return AxisDistance.similarity(
-                new int[] {sweetness, bitterness, carbonation, richness, acidity},
-                new int[] {
-                    other.sweetness,
-                    other.bitterness,
-                    other.carbonation,
-                    other.richness,
-                    other.acidity
-                });
+        int distanceSquared =
+                AxisDistance.square(sweetness - other.sweetness)
+                        + AxisDistance.square(bitterness - other.bitterness)
+                        + AxisDistance.square(carbonation - other.carbonation)
+                        + AxisDistance.square(richness - other.richness)
+                        + AxisDistance.square(acidity - other.acidity);
+
+        return AxisDistance.similarity(distanceSquared, AXIS_COUNT);
     }
 
     public boolean matches(FlavorProfile other) {

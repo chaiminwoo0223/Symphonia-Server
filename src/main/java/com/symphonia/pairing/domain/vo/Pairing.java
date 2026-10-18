@@ -4,14 +4,15 @@ import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.MusicMood;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
-import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -63,48 +64,85 @@ public class Pairing {
                 .toList();
     }
 
+    // 음료×안주 쌍은 카탈로그 크기의 곱이라 요청마다 수십만 개가 된다(#107).
+    // 그래서 점수는 배열에만 담고, 세 선정 규칙의 경계 점수를 한 번에 구한 뒤 경계를 넘는 쌍만 객체로 만든다.
+    // 경계는 nearTop과 같다. 상위 5개는 5번째로 높은 점수, 스타일별 최고와 무알코올 최고는 최고 점수이고,
+    // 각 경계와 TIE_TOLERANCE 안에 있는 쌍도 남긴다.
     private static List<ScoredDrinkAnju> candidateDrinkAnjus(
             List<Drink> drinks, List<Anju> anjus, Occasion occasion) {
-        List<ScoredDrinkAnju> drinkAnjus = scoreDrinkAnjus(drinks, anjus, occasion);
-        Set<ScoredDrinkAnju> candidates =
-                new LinkedHashSet<>(
-                        nearTop(drinkAnjus, ScoredDrinkAnju::score, RECOMMENDATION_LIMIT));
+        List<Drink> allowedDrinks =
+                drinks.stream().filter(drink -> drink.getAbv() <= occasion.maxAbv()).toList();
+        List<Anju> allowedAnjus =
+                anjus.stream().filter(anju -> !occasion.hasAllergyConflict(anju)).toList();
+        double[] scores = scoreDrinkAnjus(allowedDrinks, allowedAnjus, occasion);
+        int anjuCount = allowedAnjus.size();
 
-        drinkAnjus.stream()
-                .collect(Collectors.groupingBy(drinkAnju -> drinkAnju.drink().getDrinkStyleId()))
-                .values()
-                .forEach(
-                        sameStyle ->
-                                candidates.addAll(nearTop(sameStyle, ScoredDrinkAnju::score, 1)));
-
-        if (occasion.requiresNonAlcoholicOption()) {
-            List<ScoredDrinkAnju> nonAlcoholics =
-                    drinkAnjus.stream()
-                            .filter(drinkAnju -> drinkAnju.drink().isNonAlcoholic())
-                            .toList();
-            candidates.addAll(nearTop(nonAlcoholics, ScoredDrinkAnju::score, 1));
+        Map<Long, Integer> styleIndexes = new HashMap<>();
+        int[] styleIndexByDrink =
+                allowedDrinks.stream()
+                        .mapToInt(
+                                drink ->
+                                        styleIndexes.computeIfAbsent(
+                                                drink.getDrinkStyleId(),
+                                                styleId -> styleIndexes.size()))
+                        .toArray();
+        TopScores top = new TopScores(RECOMMENDATION_LIMIT);
+        double[] bestByStyle = new double[styleIndexes.size()];
+        Arrays.fill(bestByStyle, Double.NEGATIVE_INFINITY);
+        boolean nonAlcoholicOption = occasion.requiresNonAlcoholicOption();
+        double bestNonAlcoholic = Double.NEGATIVE_INFINITY;
+        for (int drinkIndex = 0; drinkIndex < allowedDrinks.size(); drinkIndex++) {
+            int style = styleIndexByDrink[drinkIndex];
+            boolean nonAlcoholic =
+                    nonAlcoholicOption && allowedDrinks.get(drinkIndex).isNonAlcoholic();
+            for (int anjuIndex = 0; anjuIndex < anjuCount; anjuIndex++) {
+                double score = scores[drinkIndex * anjuCount + anjuIndex];
+                top.offer(score);
+                bestByStyle[style] = Math.max(bestByStyle[style], score);
+                if (nonAlcoholic) {
+                    bestNonAlcoholic = Math.max(bestNonAlcoholic, score);
+                }
+            }
         }
 
-        return List.copyOf(candidates);
+        double topThreshold = top.threshold();
+        List<ScoredDrinkAnju> candidates = new ArrayList<>();
+        for (int drinkIndex = 0; drinkIndex < allowedDrinks.size(); drinkIndex++) {
+            Drink drink = allowedDrinks.get(drinkIndex);
+            double styleThreshold = bestByStyle[styleIndexByDrink[drinkIndex]];
+            double nonAlcoholicThreshold =
+                    nonAlcoholicOption && drink.isNonAlcoholic()
+                            ? bestNonAlcoholic
+                            : Double.POSITIVE_INFINITY;
+            for (int anjuIndex = 0; anjuIndex < anjuCount; anjuIndex++) {
+                double score = scores[drinkIndex * anjuCount + anjuIndex];
+                if (nearOrAbove(score, topThreshold)
+                        || nearOrAbove(score, styleThreshold)
+                        || nearOrAbove(score, nonAlcoholicThreshold)) {
+                    candidates.add(new ScoredDrinkAnju(drink, allowedAnjus.get(anjuIndex), score));
+                }
+            }
+        }
+
+        return candidates;
     }
 
-    private static List<ScoredDrinkAnju> scoreDrinkAnjus(
+    // 쌍 하나의 점수는 [음료 순서 * 안주 수 + 안주 순서]에 담는다.
+    private static double[] scoreDrinkAnjus(
             List<Drink> drinks, List<Anju> anjus, Occasion occasion) {
-        List<ScoredDrinkAnju> drinkAnjus = new ArrayList<>();
+        double[] scores = new double[drinks.size() * anjus.size()];
+        int index = 0;
         for (Drink drink : drinks) {
-            if (drink.getAbv() > occasion.maxAbv()) {
-                continue;
-            }
             for (Anju anju : anjus) {
-                if (occasion.hasAllergyConflict(anju)) {
-                    continue;
-                }
-                drinkAnjus.add(
-                        new ScoredDrinkAnju(drink, anju, drinkAnjuScore(drink, anju, occasion)));
+                scores[index++] = drinkAnjuScore(drink, anju, occasion);
             }
         }
 
-        return drinkAnjus;
+        return scores;
+    }
+
+    private static boolean nearOrAbove(double score, double threshold) {
+        return score >= threshold - TIE_TOLERANCE;
     }
 
     private static double drinkAnjuScore(Drink drink, Anju anju, Occasion occasion) {
@@ -218,6 +256,34 @@ public class Pairing {
     }
 
     private record ScoredDrinkAnju(Drink drink, Anju anju, double score) {}
+
+    // 점수를 정렬하지 않고 상위 limit개만 내림차순으로 들고 있다가 limit번째 점수를 경계로 돌려준다.
+    // 같은 점수도 하나씩 세므로 정렬 후 limit번째를 고르는 nearTop과 경계가 같다.
+    // 점수가 limit개 이하면 모두 남겨야 하므로 경계는 음의 무한대다.
+    private static final class TopScores {
+        private final double[] scores;
+        private int size;
+
+        private TopScores(int limit) {
+            this.scores = new double[limit];
+        }
+
+        private void offer(double score) {
+            if (size == scores.length && score <= scores[size - 1]) {
+                return;
+            }
+            int position = size == scores.length ? size - 1 : size++;
+            while (position > 0 && scores[position - 1] < score) {
+                scores[position] = scores[position - 1];
+                position--;
+            }
+            scores[position] = score;
+        }
+
+        private double threshold() {
+            return size == scores.length ? scores[size - 1] : Double.NEGATIVE_INFINITY;
+        }
+    }
 
     private record ScoredMusicMood(MusicMood musicMood, double score) {}
 
