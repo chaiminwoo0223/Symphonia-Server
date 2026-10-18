@@ -12,17 +12,10 @@ import java.util.stream.Stream;
 // 선정 규칙은 상위 topLimit개, 스타일별 최고, 무알코올 최고(무알코올 옵션이 필요할 때)다.
 // 상위 topLimit개의 경계는 topLimit번째로 높은 점수이고, 스타일별 최고와 무알코올 최고의 경계는 최고 점수다.
 // 쌍은 경계 중 하나라도 넘으면 후보이므로, 음료의 경계는 그 음료에 해당하는 경계 중 가장 낮은 값이다.
-// 각 경계와 tolerance 안에 있는 쌍도 남긴다.
-public final class CandidateThresholds {
-    private final DrinkAnjuScores scores;
-    private final double[] thresholdByDrink;
-
-    private CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
-        this.scores = scores;
-        this.thresholdByDrink = thresholdByDrink;
-    }
-
-    static CandidateThresholds of(
+// 각 경계와 tolerance 안에 있는 쌍도 남기도록 thresholdByDrink에는 tolerance를 뺀 값을 담는다.
+// thresholdByDrink는 DrinkAnjuScores의 scores처럼 비교하지 않고 후보 계산에만 쓰므로 복사하지 않는다.
+public record CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
+    public static CandidateThresholds of(
             DrinkAnjuScores scores, int topLimit, boolean nonAlcoholicOption, double tolerance) {
         List<Drink> drinks = scores.drinks();
         double top = topThreshold(scores, topLimit);
@@ -64,19 +57,19 @@ public final class CandidateThresholds {
         return new CandidateThresholds(scores, thresholdByDrink);
     }
 
+    public Stream<ScoredDrinkAnju> candidatesOf(int drinkIndex) {
+        return scores.pairsOf(drinkIndex, thresholdByDrink[drinkIndex]);
+    }
+
     // 상위 경계는 정렬하지 않고 점수를 한 번 훑으며 구한다.
     // TopScores가 누적하는 상태를 스트림 forEach로 바꾸면 부작용이 숨으므로 반복문으로 둔다.
     private static double topThreshold(DrinkAnjuScores scores, int topLimit) {
         TopScores top = new TopScores(topLimit);
-        for (double score : scores.allScores()) {
+        for (double score : scores.scores()) {
             top.offer(score);
         }
 
         return top.threshold();
-    }
-
-    Stream<ScoredDrinkAnju> candidatesOf(int drinkIndex) {
-        return scores.pairsOf(drinkIndex, thresholdByDrink[drinkIndex]);
     }
 
     // 점수를 정렬하지 않고 상위 limit개만 내림차순으로 들고 있다가 limit번째 점수를 경계로 돌려준다.
