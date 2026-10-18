@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public record ImportAnjuResult(
         int importedCount,
@@ -32,25 +34,22 @@ public record ImportAnjuResult(
             List<AnjuEvaluation> excluded,
             List<Anju> deleted,
             List<Anju> retained) {
-        Map<Harmonize, Integer> harmonizeCounts = new EnumMap<>(Harmonize.class);
-        Arrays.stream(Harmonize.values()).forEach(harmonize -> harmonizeCounts.put(harmonize, 0));
-        importedAnjus.stream()
-                .flatMap(anju -> Harmonize.matching(anju).stream())
-                .forEach(harmonize -> harmonizeCounts.merge(harmonize, 1, Integer::sum));
-
         return new ImportAnjuResult(
                 importedAnjus.size(),
                 excluded.stream().map(ExcludedItem::from).toList(),
                 deleted.stream().map(RemovedItem::from).toList(),
                 retained.stream().map(RemovedItem::from).toList(),
-                harmonizeCounts);
+                harmonizeCounts(importedAnjus));
     }
 
     // 규칙표에 추가해야 할 재료를 한 번에 보도록 제외된 안주 전체에서 모아 이름순으로 돌려준다.
     public Set<String> unknownIngredients() {
-        Set<String> unknownIngredients = new TreeSet<>();
-        excludedItems.forEach(item -> unknownIngredients.addAll(item.unknownIngredients()));
-        return Collections.unmodifiableSet(unknownIngredients);
+        return excludedItems.stream()
+                .flatMap(item -> item.unknownIngredients().stream())
+                .collect(
+                        Collectors.collectingAndThen(
+                                Collectors.toCollection(TreeSet::new),
+                                Collections::unmodifiableSet));
     }
 
     // 리포트에 태그가 늘 같은 순서로 나오도록 enum 선언 순서를 유지한다.
@@ -58,6 +57,20 @@ public record ImportAnjuResult(
         Map<Harmonize, Integer> copy = new EnumMap<>(Harmonize.class);
         copy.putAll(counts);
         return Collections.unmodifiableMap(copy);
+    }
+
+    private static Map<Harmonize, Integer> harmonizeCounts(List<Anju> importedAnjus) {
+        return Arrays.stream(Harmonize.values())
+                .collect(
+                        Collectors.toMap(
+                                Function.identity(),
+                                harmonize ->
+                                        (int)
+                                                importedAnjus.stream()
+                                                        .filter(harmonize::matches)
+                                                        .count(),
+                                (first, second) -> first,
+                                () -> new EnumMap<>(Harmonize.class)));
     }
 
     public record ExcludedItem(

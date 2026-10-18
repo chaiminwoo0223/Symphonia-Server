@@ -8,6 +8,7 @@ import com.symphonia.pairing.domain.vo.IngredientRule;
 import com.symphonia.pairing.domain.vo.NutrientRule;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -98,8 +99,11 @@ class CsvAnjuRuleReaderTest {
     private void assertContiguousFromZero(List<NutrientRule> rules) {
         assertThat(rules).first().extracting(NutrientRule::minGrams).isEqualTo(0.0);
         assertThat(rules).extracting(NutrientRule::value).containsExactly(1, 2, 3, 4, 5);
-        for (int i = 1; i < rules.size(); i++) {
-            assertThat(rules.get(i).minGrams()).isEqualTo(rules.get(i - 1).maxGrams());
-        }
+        assertThat(IntStream.range(1, rules.size()))
+                .allSatisfy(
+                        index ->
+                                assertThat(rules.get(index).minGrams())
+                                        .as("%d번째 구간의 시작", index)
+                                        .isEqualTo(rules.get(index - 1).maxGrams()));
     }
 }
