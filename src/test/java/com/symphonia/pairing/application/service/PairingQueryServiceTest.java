@@ -705,7 +705,10 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.FRIEND)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -891,7 +894,8 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 편안한 어쿠스틱은 CASUAL Occasion의 moodProfile과 적합도가 임계값(0.7)을 넘는다
             givenSojuAndDriedSnackWithCasualAcousticMusicMood();
-            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.CASUAL).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -911,7 +915,8 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
-            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.CASUAL).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
