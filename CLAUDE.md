@@ -126,7 +126,7 @@ com.symphonia
 ./.claude/scripts/check-all.sh     # PR 전 전체 검증 (포맷 검증 포함)
 ./.claude/scripts/check-test-conventions.sh  # 바뀐 테스트의 given-when-then 블록과 should 접두어 검사 (--all: 전체)
 ./scripts/import/fetch-bjcp.sh     # BJCP 원본 JSON 다운로드 (적재 전 1회, 원본은 커밋하지 않음)
-./gradlew importDrinks             # BJCP 스타일과 국내 유통 맥주를 drink_style, drink에 적재 (배포와 분리한 수동 실행)
+./gradlew importCatalog            # BJCP 스타일과 국내 유통 맥주를 drink_style, drink에 적재 (배포와 분리한 수동 실행)
 ```
 
 > `check-all.sh`는 `check-test-conventions.sh`를 먼저 실행한 뒤 `./gradlew clean build`를 실행한다. `clean`을 붙이는 이유는 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.

@@ -14,7 +14,7 @@ pairing 도메인의 `GET /api/v1/pairings/recommend`를 대상으로 한 K6 부
   ./gradlew bootRun
   ```
 
-  서버가 기동하면 Flyway 마이그레이션 시드로 Drink·Anju·MusicMood 카탈로그가 채워진다. 실제 규모로 측정하려면 같은 셸에서 `./gradlew importDrinks`로 BJCP와 X-Wines 음료를 적재한다. `RECOMMEND`는 인증이 필요 없는 `permitAll` 엔드포인트라 별도 로그인 준비는 필요 없다.
+  서버가 기동하면 Flyway 마이그레이션 시드로 Drink·Anju·MusicMood 카탈로그가 채워진다. 실제 규모로 측정하려면 같은 셸에서 `./gradlew importCatalog`로 BJCP와 X-Wines 음료를 적재한다. `RECOMMEND`는 인증이 필요 없는 `permitAll` 엔드포인트라 별도 로그인 준비는 필요 없다.
 
 ## 실행
 

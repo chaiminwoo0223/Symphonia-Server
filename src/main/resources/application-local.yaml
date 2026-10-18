@@ -1,4 +1,4 @@
-# bootRun과 importDrinks에서는 spring-boot-docker-compose가 compose.yaml의 컨테이너를 띄우고, 그 연결이 아래 연결 정보보다 우선한다.
+# bootRun과 importCatalog에서는 spring-boot-docker-compose가 compose.yaml의 컨테이너를 띄우고, 그 연결이 아래 연결 정보보다 우선한다.
 # spring.docker.compose.enabled=false로 실행하거나 jar로 실행할 때를 위해 compose.yaml과 같은 POSTGRES_* 변수로 명시한다.
 spring:
   datasource:
