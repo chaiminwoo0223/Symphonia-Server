@@ -12,7 +12,7 @@ public enum PairingErrorCode implements ErrorCode {
     MUSIC_MOOD_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 음악 무드를 찾을 수 없습니다."),
 
     // 500
-    DRINK_IMPORT_SOURCE_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "음료 적재 원본 파일을 읽을 수 없습니다."),
+    IMPORT_SOURCE_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "적재 원본 파일을 읽을 수 없습니다."),
     ;
 
     private final HttpStatus status;

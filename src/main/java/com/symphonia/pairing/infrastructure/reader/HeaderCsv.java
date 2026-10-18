@@ -1,6 +1,6 @@
 package com.symphonia.pairing.infrastructure.reader;
 
-import com.symphonia.pairing.domain.exception.DrinkImportSourceReadFailedException;
+import com.symphonia.pairing.domain.exception.ImportSourceReadFailedException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -28,13 +28,12 @@ public final class HeaderCsv {
                 ROW_READER.readValues(resource.getContentAsByteArray())) {
             return rows.readAll().stream().map(toRow).toList();
         } catch (IOException | JacksonException | IllegalArgumentException e) {
-            throw new DrinkImportSourceReadFailedException();
+            throw new ImportSourceReadFailedException();
         }
     }
 
     // 헤더 오타나 빠진 열을 NullPointerException이 아니라 적재 실패로 알린다.
     public static String column(Map<String, String> row, String name) {
-        return Optional.ofNullable(row.get(name))
-                .orElseThrow(DrinkImportSourceReadFailedException::new);
+        return Optional.ofNullable(row.get(name)).orElseThrow(ImportSourceReadFailedException::new);
     }
 }
