@@ -41,33 +41,32 @@ class CsvCuratedAnjuReaderTest {
         }
 
         @Test
-        @DisplayName("채워진 적재 키인 (source, external_id)가 중복되지 않는다")
+        @DisplayName("적재 키인 (source, external_id)가 중복되지 않는다")
         void shouldReadUniqueIdentities() {
             // when
             List<CuratedAnju> curatedAnjus = csvCuratedAnjuReader.read();
 
             // then
             assertThat(curatedAnjus)
-                    .filteredOn(curatedAnju -> !curatedAnju.externalId().isBlank())
                     .extracting(
                             curatedAnju -> curatedAnju.source() + ":" + curatedAnju.externalId())
                     .doesNotHaveDuplicates();
         }
 
         @Test
-        @DisplayName("K_FIND 행은 식품코드가 식별 키라 external_id와 kfind_code가 같다")
-        void shouldUseKfindCodeAsExternalIdOfKfindRows() {
+        @DisplayName("식품코드를 고쳐도 적재된 안주를 찾을 수 있도록 모든 행에 사람이 정한 external_id가 있다")
+        void shouldReadExternalIdOfEveryRow() {
             // when
             List<CuratedAnju> curatedAnjus = csvCuratedAnjuReader.read();
 
             // then
             assertThat(curatedAnjus)
-                    .filteredOn(curatedAnju -> curatedAnju.source() == AnjuSource.K_FIND)
                     .allSatisfy(
                             curatedAnju ->
                                     assertThat(curatedAnju.externalId())
                                             .as(curatedAnju.name())
-                                            .isEqualTo(curatedAnju.kfindCode()));
+                                            .isNotBlank()
+                                            .isNotEqualTo(curatedAnju.kfindCode()));
         }
 
         @Test

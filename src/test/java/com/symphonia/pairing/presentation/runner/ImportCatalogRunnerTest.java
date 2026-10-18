@@ -125,7 +125,7 @@ class ImportCatalogRunnerTest {
             given(importXWineUseCase.importXWines())
                     .willReturn(new ImportXWineResult(1, 1, List.of(), List.of()));
             given(importAnjuUseCase.importCuratedAnjus())
-                    .willReturn(new ImportAnjuResult(1, List.of(), Map.of()));
+                    .willReturn(new ImportAnjuResult(1, List.of(), List.of(), List.of(), Map.of()));
             ImportCatalogRunner runner =
                     new ImportCatalogRunner(
                             importDrinkStyleUseCase,

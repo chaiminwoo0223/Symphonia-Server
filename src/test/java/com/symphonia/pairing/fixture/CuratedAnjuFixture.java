@@ -12,14 +12,14 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-// K-FIND 행은 식품코드가 식별 키라 externalId와 kfindCode가 같다. 시드 행만 읽을 수 있는 키를 따로 쓴다.
+// externalId는 사람이 정한 식별 키이고 kfindCode는 영양성분 조회 키라 두 값이 다르다.
 // 다른 Fixture처럼 접두어를 붙여 매핑표와 시드의 키와 겹치지 않게 한다.
 @Getter
 @RequiredArgsConstructor
 public enum CuratedAnjuFixture {
     DAKBAL_BOKKEUM(
             AnjuSource.K_FIND,
-            "fixture-D101",
+            "fixture-anju-001",
             "fixture-D101",
             "닭발볶음",
             List.of("닭고기", "고춧가루"),
@@ -45,7 +45,7 @@ public enum CuratedAnjuFixture {
     // 산미를 내는 재료(식초)가 부재료에만 있다.
     GOLBAENGI_MUCHIM(
             AnjuSource.K_FIND,
-            "fixture-D103",
+            "fixture-anju-003",
             "fixture-D103",
             "골뱅이무침",
             List.of("골뱅이"),
@@ -58,7 +58,7 @@ public enum CuratedAnjuFixture {
     // 가공식품이라 원재료명에 매핑표의 재료에 없는 알레르기(땅콩)가 있다.
     BEEF_JERKY(
             AnjuSource.K_FIND,
-            "fixture-P201",
+            "fixture-anju-004",
             "fixture-P201",
             "육포",
             List.of("소고기"),
@@ -85,7 +85,7 @@ public enum CuratedAnjuFixture {
         return build(externalId, kfindCode, subIngredients);
     }
 
-    // 매핑표에서 식별 키나 식품코드를 아직 채우지 않았거나 잘못 채운 행을 만든다.
+    // 매핑표에서 식별 키나 식품코드를 아직 채우지 않은 행을 만든다.
     public CuratedAnju createWithIdentity(String externalId, String kfindCode) {
         return build(externalId, kfindCode, subIngredients);
     }

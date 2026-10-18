@@ -3,17 +3,20 @@ package com.symphonia.pairing.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
 import com.symphonia.pairing.application.dto.result.ImportAnjuResult;
 import com.symphonia.pairing.application.dto.result.ImportAnjuResult.ExcludedItem;
+import com.symphonia.pairing.application.dto.result.ImportAnjuResult.RemovedItem;
 import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.reader.AnjuNutritionReader;
 import com.symphonia.pairing.domain.reader.AnjuRuleReader;
 import com.symphonia.pairing.domain.reader.CuratedAnjuReader;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
+import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AnjuExclusionReason;
 import com.symphonia.pairing.domain.vo.AnjuNutrition;
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
@@ -42,6 +46,7 @@ class ImportAnjuServiceTest extends UnitTest {
     @Mock private AnjuNutritionReader anjuNutritionReader;
     @Mock private AnjuRuleReader anjuRuleReader;
     @Mock private AnjuRepository anjuRepository;
+    @Mock private PairingFeedbackRepository pairingFeedbackRepository;
 
     @BeforeEach
     void setUp() {
@@ -206,6 +211,58 @@ class ImportAnjuServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("이미 적재됐지만 이번에 적재하지 않은 안주가 있는 경우")
+        class WhenStaleAnjusExist {
+
+            @Test
+            @DisplayName("K_FIND 안주는 피드백이 참조하지 않으면 지우고, 참조하면 남기며, 시드 안주는 지우지 않는다")
+            void shouldDeleteUnreferencedStaleKfindAnjus() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
+                Anju unreferenced = CuratedAnjuFixture.BEEF_JERKY.createImportedAnju(7L);
+                Anju referenced = CuratedAnjuFixture.GOLBAENGI_MUCHIM.createImportedAnju(8L);
+                Anju seed = CuratedAnjuFixture.FRIED_CHICKEN.createImportedAnju(2L);
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                given(anjuRepository.findAll()).willReturn(List.of(unreferenced, referenced, seed));
+                given(pairingFeedbackRepository.findReferencedAnjuIds(any()))
+                        .willReturn(Set.of(8L));
+                givenSaveReturnsArgument();
+
+                // when
+                ImportAnjuResult result = importAnjuService.importCuratedAnjus();
+
+                // then
+                verify(anjuRepository).deleteAllById(List.of(7L));
+                assertThat(result.deletedItems())
+                        .containsExactly(
+                                new RemovedItem(
+                                        unreferenced.getExternalId(), unreferenced.getName()));
+                assertThat(result.retainedItems())
+                        .containsExactly(
+                                new RemovedItem(referenced.getExternalId(), referenced.getName()));
+            }
+
+            @Test
+            @DisplayName("같은 이름의 안주를 저장할 수 있도록 지우기를 저장보다 먼저 한다")
+            void shouldDeleteBeforeSaving() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                given(anjuRepository.findAll())
+                        .willReturn(List.of(CuratedAnjuFixture.BEEF_JERKY.createImportedAnju(7L)));
+                givenSaveReturnsArgument();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                InOrder inOrder = inOrder(anjuRepository);
+                inOrder.verify(anjuRepository).deleteAllById(List.of(7L));
+                inOrder.verify(anjuRepository).save(any());
+            }
+        }
+
+        @Nested
         @DisplayName("식별 키와 식품코드를 채우지 않은 경우")
         class WhenIdentityMissing {
 
@@ -230,31 +287,6 @@ class ImportAnjuServiceTest extends UnitTest {
                                 Set.of(
                                         AnjuExclusionReason.MISSING_EXTERNAL_ID,
                                         AnjuExclusionReason.MISSING_KFIND_CODE));
-            }
-        }
-
-        @Nested
-        @DisplayName("K-FIND 행의 식별 키와 식품코드가 다른 경우")
-        class WhenExternalIdDiffersFromKfindCode {
-
-            @Test
-            @DisplayName("저장하지 않고 EXTERNAL_ID_MISMATCH 사유를 담는다")
-            void shouldExcludeWithExternalIdMismatch() {
-                // given
-                CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
-                CuratedAnju curatedAnju =
-                        fixture.createWithIdentity("fixture-D999", fixture.getKfindCode());
-                givenCuratedAnjus(List.of(curatedAnju), List.of(fixture.createNutrition()));
-
-                // when
-                ImportAnjuResult result = importAnjuService.importCuratedAnjus();
-
-                // then
-                verify(anjuRepository, never()).save(any());
-                assertThat(result.excludedItems())
-                        .singleElement()
-                        .extracting(ExcludedItem::reasons)
-                        .isEqualTo(Set.of(AnjuExclusionReason.EXTERNAL_ID_MISMATCH));
             }
         }
 

@@ -76,12 +76,6 @@ public record AnjuRule(
                 reasons.add(AnjuExclusionReason.FAT_NOT_MEASURED);
             }
         }
-        // K-FIND 행은 식품코드가 식별 키이므로 두 값이 같아야 한다.
-        if (curatedAnju.source() == AnjuSource.K_FIND
-                && !curatedAnju.externalId().isBlank()
-                && !curatedAnju.externalId().equals(curatedAnju.kfindCode())) {
-            reasons.add(AnjuExclusionReason.EXTERNAL_ID_MISMATCH);
-        }
         if (!unknownIngredients.isEmpty()) {
             reasons.add(AnjuExclusionReason.UNKNOWN_INGREDIENT);
         }

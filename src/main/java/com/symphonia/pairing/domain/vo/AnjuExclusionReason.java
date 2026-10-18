@@ -4,7 +4,6 @@ package com.symphonia.pairing.domain.vo;
 public enum AnjuExclusionReason {
     MISSING_EXTERNAL_ID,
     MISSING_KFIND_CODE,
-    EXTERNAL_ID_MISMATCH,
     NUTRITION_NOT_FOUND,
     SUGAR_NOT_MEASURED,
     FAT_NOT_MEASURED,

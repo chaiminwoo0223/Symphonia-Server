@@ -107,6 +107,10 @@ public class ImportCatalogRunner implements ApplicationRunner {
         log.info("[ImportCatalog] 맛이나 알레르기를 정할 수 없어 제외한 안주: {}개", result.excludedItems().size());
 
         result.excludedItems().forEach(ImportCatalogRunner::logExcludedAnju);
+        log.info("[ImportCatalog] 매핑표에서 빠지거나 제외되어 지운 안주: {}개", result.deletedItems().size());
+        result.deletedItems().forEach(ImportCatalogRunner::logRemovedAnju);
+        log.info("[ImportCatalog] 지워야 하지만 피드백이 참조해 남긴 안주: {}개", result.retainedItems().size());
+        result.retainedItems().forEach(ImportCatalogRunner::logRemovedAnju);
         if (!result.unknownIngredients().isEmpty()) {
             log.info("[ImportCatalog] 규칙표에 없는 재료: {}", result.unknownIngredients());
         }
@@ -119,5 +123,9 @@ public class ImportCatalogRunner implements ApplicationRunner {
     private static void logExcludedAnju(ImportAnjuResult.ExcludedItem item) {
         log.info(
                 "[ImportCatalog]   {} {} (사유: {})", item.externalId(), item.name(), item.reasons());
+    }
+
+    private static void logRemovedAnju(ImportAnjuResult.RemovedItem item) {
+        log.info("[ImportCatalog]   {} {}", item.externalId(), item.name());
     }
 }
