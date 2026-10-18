@@ -49,6 +49,11 @@ public enum DrinkFixture {
         return build(null, drinkStyleId, flavorProfile);
     }
 
+    // 다시 적재할 때 같은 식별 키의 음료가 이 픽스처의 이름, 도수, 맛으로 바뀐 상황을 만든다.
+    public Drink createWithStyleAndExternalId(Long drinkStyleId, String externalId) {
+        return build(null, drinkStyleId, externalId, flavorProfile);
+    }
+
     // 단위 테스트에서 여러 음료가 같은 스타일을 공유하거나 서로 다른 스타일로 나뉘게 만들 때 쓴다.
     public Drink createWithIdAndStyle(Long id, Long drinkStyleId) {
         return build(id, drinkStyleId, flavorProfile);
@@ -60,11 +65,15 @@ public enum DrinkFixture {
     }
 
     private Drink build(Long id, Long drinkStyleId, FlavorProfile profile) {
+        return build(id, drinkStyleId, getExternalId(), profile);
+    }
+
+    private Drink build(Long id, Long drinkStyleId, String externalId, FlavorProfile profile) {
         return Drink.builder()
                 .id(id)
                 .drinkStyleId(drinkStyleId)
                 .source(DrinkSource.SEED)
-                .externalId(getExternalId())
+                .externalId(externalId)
                 .name(name)
                 .abv(abv)
                 .flavorProfile(profile)

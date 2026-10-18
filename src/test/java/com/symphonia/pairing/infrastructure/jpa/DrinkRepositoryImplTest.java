@@ -52,14 +52,8 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             Long drinkStyleId = saveDrinkStyle(DrinkFixture.BEER);
             Drink saved = drinkRepository.save(DrinkFixture.BEER.createWithStyle(drinkStyleId));
             saved.overwriteWith(
-                    Drink.of(
-                            drinkStyleId,
-                            saved.getSource(),
-                            saved.getExternalId(),
-                            "카스 라이트",
-                            4.0,
-                            DrinkFixture.WINE.getFlavorProfile(),
-                            false));
+                    DrinkFixture.WINE.createWithStyleAndExternalId(
+                            drinkStyleId, saved.getExternalId()));
 
             // when
             Drink updated = drinkRepository.save(saved);
@@ -68,8 +62,8 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             Optional<Drink> result = drinkRepository.findById(saved.getId());
             assertThat(updated.getId()).isEqualTo(saved.getId());
             assertThat(result).isPresent();
-            assertThat(result.get().getName()).isEqualTo("카스 라이트");
-            assertThat(result.get().getAbv()).isEqualTo(4.0);
+            assertThat(result.get().getName()).isEqualTo(DrinkFixture.WINE.getName());
+            assertThat(result.get().getAbv()).isEqualTo(DrinkFixture.WINE.getAbv());
             assertThat(result.get().getFlavorProfile())
                     .usingRecursiveComparison()
                     .isEqualTo(DrinkFixture.WINE.getFlavorProfile());

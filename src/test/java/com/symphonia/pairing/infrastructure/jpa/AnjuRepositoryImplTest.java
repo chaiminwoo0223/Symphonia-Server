@@ -7,12 +7,10 @@ import com.symphonia.pairing.domain.entity.Anju;
 import com.symphonia.pairing.domain.repository.AnjuRepository;
 import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AnjuSource;
-import com.symphonia.pairing.domain.vo.FlavorProfile;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
@@ -225,17 +223,9 @@ class AnjuRepositoryImplTest extends RepositoryTest {
                                     AnjuSource.K_FIND, "D101"));
             entityManager.flush();
             entityManager.clear();
-            Anju imported =
-                    Anju.of(
-                            AnjuSource.K_FIND,
-                            "D101",
-                            existing.getName(),
-                            FlavorProfile.of(1, 0, 0, 4, 0),
-                            Set.of(AllergyType.CHICKEN),
-                            existing.getBase(),
-                            existing.getServing(),
-                            true);
-            Anju updated = existing.overwriteWith(imported);
+            AnjuFixture imported = AnjuFixture.GOLBAENGI_MUCHIM;
+            Anju updated =
+                    existing.overwriteWith(imported.createWithIdentity(AnjuSource.K_FIND, "D101"));
 
             // when
             anjuRepository.save(updated);
@@ -245,11 +235,14 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             entityManager.clear();
             AnjuJpaEntity found = anjuJpaRepository.findById(existing.getId()).orElseThrow();
             assertThat(anjuJpaRepository.count()).isEqualTo(1);
+            assertThat(found.getName()).isEqualTo(imported.getName());
             assertThat(found.getFlavorProfile().toDomain())
                     .usingRecursiveComparison()
-                    .isEqualTo(FlavorProfile.of(1, 0, 0, 4, 0));
-            assertThat(found.getAllergyTypes()).containsExactly(AllergyType.CHICKEN);
-            assertThat(found.isSpicy()).isTrue();
+                    .isEqualTo(imported.getFlavorProfile());
+            assertThat(found.getAllergyTypes())
+                    .containsExactlyInAnyOrderElementsOf(imported.getAllergyTypes());
+            assertThat(found.getBase()).isEqualTo(imported.getBase());
+            assertThat(found.isSpicy()).isEqualTo(imported.isSpicy());
         }
 
         // 적재 서비스가 기존 안주를 findAll로 한 번에 불러온 뒤 행마다 저장할 때 N+1이 생기지 않는지 검증한다.
