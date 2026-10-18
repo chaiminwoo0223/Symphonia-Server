@@ -24,6 +24,7 @@ import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import com.symphonia.pairing.fixture.MusicMoodFixture;
+import com.symphonia.pairing.fixture.RecommendPairingQueryFixture;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -50,9 +51,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldReturnPairingResultsSortedByScore() {
             // given
             givenStandardCatalog();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -68,8 +67,10 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenStandardCatalog();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.BOSS, MoodType.FORMAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .moodType(MoodType.FORMAL)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -92,8 +93,9 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.BOSS, MoodType.CASUAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -115,8 +117,9 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.BOSS, MoodType.CASUAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
 
             // when
             pairingQueryService.recommend(query);
@@ -149,7 +152,10 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
             given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(relationshipType, moodType, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(relationshipType)
+                            .moodType(moodType)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -184,9 +190,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -224,8 +228,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.BOILED_PORK.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.FORMAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -244,11 +247,9 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenAlcoholicDrinksOutrankingNonAlcoholicDrink();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.DRIVER),
-                            Set.of());
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -264,9 +265,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldNotIncludeNonAlcoholicPairingWhenNoAttendeeConstraints() {
             // given
             givenAlcoholicDrinksOutrankingNonAlcoholicDrink();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -294,9 +293,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -328,9 +325,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.GOLBAENGI_MUCHIM.createWithId(),
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -372,11 +367,9 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.DRIVER),
-                            Set.of());
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -399,11 +392,9 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.FRUIT_JUICE.createWithId()));
             givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.PREGNANT),
-                            Set.of());
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.PREGNANT)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -423,11 +414,9 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             givenSingleAnjuAndCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.NON_DRINKER),
-                            Set.of());
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.NON_DRINKER)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -451,11 +440,9 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(),
-                            Set.of(AllergyType.PEANUT));
+                    new RecommendPairingQueryFixture()
+                            .attendeeAllergies(AllergyType.PEANUT)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -482,11 +469,9 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.FRUIT_PLATTER.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(),
-                            Set.of(AllergyType.PORK, AllergyType.SHRIMP));
+                    new RecommendPairingQueryFixture()
+                            .attendeeAllergies(AllergyType.PORK, AllergyType.SHRIMP)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -513,11 +498,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(),
-                            Set.of(AllergyType.WHEAT));
+                    new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -535,9 +516,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when & then
             assertThatThrownBy(() -> pairingQueryService.recommend(query))
@@ -553,9 +532,7 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.DRIED_SNACK.create()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when & then
             assertThatThrownBy(() -> pairingQueryService.recommend(query))
@@ -573,9 +550,7 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when & then
             assertThatThrownBy(() -> pairingQueryService.recommend(query))
@@ -610,9 +585,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     MusicMoodFixture.CELEBRATORY_DANCE.createWithId(),
                                     MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(),
                                     MusicMoodFixture.FORMAL_JAZZ.createWithId()));
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> resultsInOriginalOrder = pairingQueryService.recommend(query);
@@ -635,9 +608,7 @@ class PairingQueryServiceTest extends UnitTest {
                                             DrinkFixture.SOJU.getFlavorProfile()),
                                     DrinkFixture.SOJU.createWithId(1L)));
             givenSingleAnjuAndCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -662,9 +633,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.FRENCH_FRIES.createWithId(2L),
                                     AnjuFixture.BOILED_PORK.createWithId(1L)));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -692,9 +661,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     MusicMoodFixture.CELEBRATORY_DANCE.createWithMoodProfile(
                                             MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
                                     MusicMoodFixture.FORMAL_JAZZ.createWithId(1L)));
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -718,8 +685,9 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.BOSS, MoodType.CASUAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -737,9 +705,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -760,8 +726,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.FORMAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -781,8 +746,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.FORMAL, Set.of(), Set.of());
+                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -802,11 +766,9 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.DRIVER),
-                            Set.of());
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -822,11 +784,9 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenSojuAndDriedSnackWithCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(AttendeeConstraint.DRIVER),
-                            Set.of());
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -842,11 +802,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             givenSojuAndDriedSnackWithCasualAcousticMusicMood();
             RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND,
-                            MoodType.CASUAL,
-                            Set.of(),
-                            Set.of(AllergyType.WHEAT));
+                    new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -861,9 +817,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldNotIncludeAllergyExcludedReasonWhenNoAttendeeAllergies() {
             // given
             givenSojuAndDriedSnackWithCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -879,9 +833,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 소주와 마른안주는 맛 유사도가 임계값(0.7)을 넘는다
             givenSojuAndDriedSnackWithCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -900,9 +852,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -925,9 +875,7 @@ class PairingQueryServiceTest extends UnitTest {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             givenCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -943,9 +891,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 편안한 어쿠스틱은 CASUAL Occasion의 moodProfile과 적합도가 임계값(0.7)을 넘는다
             givenSojuAndDriedSnackWithCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -965,9 +911,7 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             given(musicMoodRepository.findAll())
                     .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
-            RecommendPairingQuery query =
-                    new RecommendPairingQuery(
-                            RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
