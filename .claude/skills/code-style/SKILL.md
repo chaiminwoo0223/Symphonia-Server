@@ -46,6 +46,17 @@ spotless {
 
 **(2026-10-13 결정, 이슈 #77)**: record마다 중첩 타입 위치가 달라(`ImportResult`는 중간, `KakaoUserInfoResponse`는 맨 위) 순서 규칙을 정했다. static 멤버를 모두 위로 모으는 안은 private 헬퍼가 공개 API보다 먼저 나와 읽는 흐름이 끊기고 기존 코드 대부분을 바꿔야 해서 택하지 않았다. 검증은 `code-reviewer` 체크리스트로 한다. 호출 순서처럼 판단이 섞이는 규칙이라 결정론적 검사에 맞지 않기 때문이다. Checkstyle(`DeclarationOrder`, `InnerTypeLast`)은 상수, 생성자, 중첩 타입 위치만 잡고 팩토리와 private 메서드 순서는 잡지 못해 새 도구를 들일 만큼 이득이 크지 않았다. awk 스크립트는 Java 구조를 정규식으로 해석해야 해서 오탐이 많아 택하지 않았다. 리뷰에서 같은 위반이 반복해서 나오면 Checkstyle 도입을 재검토한다. 이번에는 record만 맞췄고, class와 enum은 수정하는 파일부터 리뷰에서 맞춘다.
 
+## 중첩 타입 위치
+
+중첩 타입을 바깥 타입 안에 둘지 최상위로 꺼낼지는 그 타입이 무엇에 속하는지로 정한다. 공개 범위는 누가 쓰는지로 따로 정한다.
+
+- 바깥 타입 없이 의미가 없는 타입은 public이어도 바깥 타입 안에 둔다. 결과 DTO의 항목 record(`ImportAnjuResult.ExcludedItem`)가 여기에 해당한다. 다른 패키지에서 읽으면 public으로 둔다.
+- 다른 클래스가 함께 쓰거나, 바깥 클래스와 다른 도메인 책임을 맡을 때만 최상위로 꺼낸다. `Pairing`과 `DrinkAnjuScores`가 함께 쓰는 `ScoredDrinkAnju`, 추천 정책과 별개로 대량의 쌍을 계산하는 `DrinkAnjuScores`와 `CandidateThresholds`가 여기에 해당한다.
+- 바깥 클래스의 private 생성자를 써야 하는 타입은 바깥 클래스 안에 private으로 둔다. `Pairing.Combination`은 `Pairing`을 만드는 길을 `recommend` 하나로 묶어 두므로 꺼내지 않는다.
+- 도메인 개념이 아닌 구현 세부는 쓰는 클래스 안에 private으로 둔다. 가변 누적기 `CandidateThresholds.TopScores`가 여기에 해당한다. 꺼내면 값 객체가 모이는 `domain/vo`에 가변 객체가 섞이고, 패키지 전체에 열린다.
+
+**(2026-10-18 결정, 이슈 #107)**: `Pairing`의 후보 계산 클래스를 분리하면서 어떤 중첩 타입은 꺼내고 어떤 타입은 남길지 판단이 갈렸다. 그래서 소속과 공개 범위를 나눠 보는 기준을 정했다. public이면 무조건 최상위로 꺼내는 안은 택하지 않았다. 결과 DTO의 항목 record처럼 바깥 타입에 속한 타입이 흩어지고, `ImportResult.ExcludedItem`과 `ImportAnjuResult.ExcludedItem`처럼 이름이 겹쳐 출처를 이름에 붙여야 하기 때문이다. 쓰는 곳이 하나인 구현 세부를 범용 유틸로 미리 꺼내는 안도 YAGNI라 택하지 않았다. 두 번째로 쓰는 곳이 생기면 그때 꺼낸다.
+
 ## 명령어
 
 ```bash
