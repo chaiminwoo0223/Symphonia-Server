@@ -13,6 +13,7 @@ public enum PairingErrorCode implements ErrorCode {
 
     // 500
     IMPORT_SOURCE_READ_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "적재 원본 파일을 읽을 수 없습니다."),
+    INVALID_TOP_LIMIT(HttpStatus.INTERNAL_SERVER_ERROR, "상위 후보 개수는 1 이상이어야 합니다."),
     ;
 
     private final HttpStatus status;
