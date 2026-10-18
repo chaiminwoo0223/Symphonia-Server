@@ -54,6 +54,21 @@ public record AnjuRule(
         return AnjuEvaluation.determined(curatedAnju, anju);
     }
 
+    private Optional<Integer> value(List<NutrientRule> rules, double grams) {
+        return rules.stream()
+                .filter(rule -> rule.contains(grams))
+                .map(NutrientRule::value)
+                .findFirst();
+    }
+
+    private Set<String> unknownIngredients(List<String> ingredients) {
+        return ingredients.stream()
+                .filter(
+                        ingredient ->
+                                ingredientRules.stream().noneMatch(r -> r.matches(ingredient)))
+                .collect(Collectors.toSet());
+    }
+
     private Set<AnjuExclusionReason> exclusionReasons(
             CuratedAnju curatedAnju,
             Optional<AnjuNutrition> nutrition,
@@ -82,21 +97,6 @@ public record AnjuRule(
         return reasons;
     }
 
-    private Optional<Integer> value(List<NutrientRule> rules, double grams) {
-        return rules.stream()
-                .filter(rule -> rule.contains(grams))
-                .map(NutrientRule::value)
-                .findFirst();
-    }
-
-    private Set<String> unknownIngredients(List<String> ingredients) {
-        return ingredients.stream()
-                .filter(
-                        ingredient ->
-                                ingredientRules.stream().noneMatch(r -> r.matches(ingredient)))
-                .collect(Collectors.toSet());
-    }
-
     private List<IngredientRule> matchedRules(Collection<String> ingredients) {
         return ingredients.stream()
                 .flatMap(
@@ -112,12 +112,11 @@ public record AnjuRule(
 
     // 알레르기는 부재료와 가공식품 원재료명까지 모두 본다. 원재료명은 문장이라 재료 단위로 나누지 않고 키워드를 찾는다.
     private Set<AllergyType> allergyTypes(List<IngredientRule> rules, String rawMaterials) {
-        Set<AllergyType> allergyTypes = EnumSet.noneOf(AllergyType.class);
-        Stream.concat(
+        return Stream.concat(
                         rules.stream(),
                         ingredientRules.stream().filter(rule -> rule.matches(rawMaterials)))
-                .forEach(rule -> allergyTypes.addAll(rule.allergyTypes()));
-        return allergyTypes;
+                .flatMap(rule -> rule.allergyTypes().stream())
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(AllergyType.class)));
     }
 
     // 매운맛은 주재료에서만 본다. 부재료로 조금 넣은 고춧가루가 안주의 성격을 바꾸면 안 되기 때문이다.

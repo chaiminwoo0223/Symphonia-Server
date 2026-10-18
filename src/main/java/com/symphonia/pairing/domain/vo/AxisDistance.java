@@ -1,15 +1,15 @@
 package com.symphonia.pairing.domain.vo;
 
+import java.util.stream.IntStream;
+
 public final class AxisDistance {
     private static final int MAX_AXIS_VALUE = 5;
 
     private AxisDistance() {}
 
     public static double similarity(int[] first, int[] second) {
-        int distanceSquared = 0;
-        for (int i = 0; i < first.length; i++) {
-            distanceSquared += square(first[i] - second[i]);
-        }
+        int distanceSquared =
+                IntStream.range(0, first.length).map(i -> square(first[i] - second[i])).sum();
 
         return similarity(distanceSquared, first.length);
     }
