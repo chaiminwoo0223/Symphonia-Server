@@ -52,6 +52,26 @@ public record ImportAnjuResult(
                                 Collections::unmodifiableSet));
     }
 
+    public record ExcludedItem(
+            String externalId,
+            String name,
+            Set<AnjuExclusionReason> reasons,
+            Set<String> unknownIngredients) {
+        public static ExcludedItem from(AnjuEvaluation evaluation) {
+            return new ExcludedItem(
+                    evaluation.curatedAnju().externalId(),
+                    evaluation.curatedAnju().name(),
+                    evaluation.exclusionReasons(),
+                    evaluation.unknownIngredients());
+        }
+    }
+
+    public record RemovedItem(String externalId, String name) {
+        public static RemovedItem from(Anju anju) {
+            return new RemovedItem(anju.getExternalId(), anju.getName());
+        }
+    }
+
     // 리포트에 태그가 늘 같은 순서로 나오도록 enum 선언 순서를 유지한다.
     private static Map<Harmonize, Integer> immutableEnumMap(Map<Harmonize, Integer> counts) {
         Map<Harmonize, Integer> copy = new EnumMap<>(Harmonize.class);
@@ -71,25 +91,5 @@ public record ImportAnjuResult(
                                                         .count(),
                                 (first, second) -> first,
                                 () -> new EnumMap<>(Harmonize.class)));
-    }
-
-    public record ExcludedItem(
-            String externalId,
-            String name,
-            Set<AnjuExclusionReason> reasons,
-            Set<String> unknownIngredients) {
-        public static ExcludedItem from(AnjuEvaluation evaluation) {
-            return new ExcludedItem(
-                    evaluation.curatedAnju().externalId(),
-                    evaluation.curatedAnju().name(),
-                    evaluation.exclusionReasons(),
-                    evaluation.unknownIngredients());
-        }
-    }
-
-    public record RemovedItem(String externalId, String name) {
-        public static RemovedItem from(Anju anju) {
-            return new RemovedItem(anju.getExternalId(), anju.getName());
-        }
     }
 }
