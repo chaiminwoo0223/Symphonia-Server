@@ -182,7 +182,7 @@ def extract():
     """anjus.csv가 가리키는 식품코드의 100g당 당류와 지방을 nutrition.csv로 뽑는다.
 
     100ml 기준 행도 100g과 같다고 본다. 구간 경계가 2~25g 단위라 밀도 차이로 등급이 거의 바뀌지 않기 때문이다.
-    가공식품의 원재료명은 C002에서 받으므로 지금은 비워 둔다.
+    가공식품의 원재료와 알레르기는 HACCP 포장지표기정보(공공데이터포털 15033307)로 대조한 뒤 채우므로 지금은 비워 둔다.
     """
     _, anjus = read_anjus()
     codes = {anju["kfind_code"] for anju in anjus if anju["kfind_code"]}
