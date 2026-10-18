@@ -92,7 +92,7 @@ class ImportAnjuServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("매운 재료가 부재료에만 있으면 알레르기에는 넣되 매운 안주로 보지 않는다")
+            @DisplayName("부재료의 알레르기는 넣되, 매운 재료가 부재료에만 있으면 매운 안주로 보지 않는다")
             void shouldNotMarkSpicyWhenSpicyIngredientOnlyInSubIngredients() {
                 // given
                 CuratedAnjuFixture fixture = CuratedAnjuFixture.FRIED_CHICKEN;
