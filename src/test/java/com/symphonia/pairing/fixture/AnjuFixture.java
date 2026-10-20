@@ -159,6 +159,7 @@ public enum AnjuFixture {
             ServingStyle.MAIN,
             true),
     // 아래는 도수 대비, Harmonize 점수를 넣은 뒤의 카탈로그 순위로 더한 안주다.
+    // 카스 프레시는 도토리묵무침이 1위, 닭강정과 닭똥집볶음이 동점 2위로 위에서 이미 더한 안주와 같다.
     // Louis Jadot Beaujolais는 깐풍기, 두부김치, 김치찌개, 탕수육이 동점 1위이고, Harmonize에 맞지 않는 안주 중 1위는 훈제연어, 2위는
     // 부대찌개다.
     CATALOG_KIMCHI_JJIGAE(
