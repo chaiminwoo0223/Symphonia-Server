@@ -3,20 +3,47 @@ package com.symphonia.pairing.fixture;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import java.util.Locale;
+import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
 public enum DrinkFixture {
-    SOJU(DrinkStyleFixture.DISTILLED_SOJU, "소주", 16.5, FlavorProfile.of(2, 2, 0, 1, 1), false),
-    BEER(DrinkStyleFixture.ALE, "맥주", 4.5, FlavorProfile.of(1, 3, 4, 1, 2), false),
-    WHISKEY(DrinkStyleFixture.BOURBON, "위스키", 40.0, FlavorProfile.of(1, 4, 0, 4, 1), false),
-    WINE(DrinkStyleFixture.PINOT_NOIR, "와인", 13.0, FlavorProfile.of(2, 2, 0, 3, 4), false),
-    SODA(DrinkStyleFixture.SODA, "탄산음료", 0.0, FlavorProfile.of(4, 0, 5, 0, 1), true),
-    FRUIT_JUICE(DrinkStyleFixture.FRUIT_JUICE, "과일주스", 0.0, FlavorProfile.of(4, 0, 0, 2, 3), true),
+    SOJU(
+            DrinkStyleFixture.DISTILLED_SOJU,
+            "소주",
+            16.5,
+            FlavorProfile.of(2, 2, 0, 1, 1),
+            false,
+            Set.of()),
+    BEER(DrinkStyleFixture.ALE, "맥주", 4.5, FlavorProfile.of(1, 3, 4, 1, 2), false, Set.of()),
+    WHISKEY(
+            DrinkStyleFixture.BOURBON,
+            "위스키",
+            40.0,
+            FlavorProfile.of(1, 4, 0, 4, 1),
+            false,
+            Set.of()),
+    WINE(
+            DrinkStyleFixture.PINOT_NOIR,
+            "와인",
+            13.0,
+            FlavorProfile.of(2, 2, 0, 3, 4),
+            false,
+            Set.of()),
+    SODA(DrinkStyleFixture.SODA, "탄산음료", 0.0, FlavorProfile.of(4, 0, 5, 0, 1), true, Set.of()),
+    FRUIT_JUICE(
+            DrinkStyleFixture.FRUIT_JUICE,
+            "과일주스",
+            0.0,
+            FlavorProfile.of(4, 0, 0, 2, 3),
+            true,
+            Set.of()),
     // 골든 세트 음료다. 카탈로그에 적재된 제품의 이름, 도수, 맛을 그대로 쓴다.
+    // Louis Jadot Beaujolais의 음식 계열은 X-Wines Harmonize(Pasta, Veal, Pork, Poultry)다.
     // 카스 프레시는 스타일(BJCP 2A) 맛을, Louis Jadot Beaujolais는 Red 맛에 Medium-bodied, High Acidity를 덮어쓴 맛을
     // 받는다.
     CASS_FRESH(
@@ -24,19 +51,22 @@ public enum DrinkFixture {
             "카스 프레시",
             4.5,
             FlavorProfile.of(2, 3, 5, 2, 1),
-            false),
+            false,
+            Set.of()),
     LOUIS_JADOT_BEAUJOLAIS(
             DrinkStyleFixture.RED_WINE,
             "Louis Jadot Beaujolais",
             12.5,
             FlavorProfile.of(1, 3, 0, 3, 4),
-            false);
+            false,
+            Set.of(Harmonize.PASTA, Harmonize.VEAL, Harmonize.PORK, Harmonize.POULTRY));
 
     private final DrinkStyleFixture drinkStyleFixture;
     private final String name;
     private final double abv;
     private final FlavorProfile flavorProfile;
     private final boolean nonAlcoholic;
+    private final Set<Harmonize> harmonizes;
 
     // 시드의 external_id("soju" 등)와 (source, external_id) 유니크 제약이 겹치지 않게 접두어를 붙인다.
     public String getExternalId() {
@@ -57,6 +87,12 @@ public enum DrinkFixture {
 
     public Drink createWithFlavorProfile(FlavorProfile profile) {
         return build(ordinal() + 1L, defaultDrinkStyleId(), profile);
+    }
+
+    // 음식 계열만 바꿔 Harmonize 점수와 추천 이유를 검증할 때 쓴다.
+    public Drink createWithHarmonizes(Set<Harmonize> harmonizes) {
+        return build(
+                ordinal() + 1L, defaultDrinkStyleId(), getExternalId(), flavorProfile, harmonizes);
     }
 
     // FK가 걸린 drink style은 실제로 저장된 id를 받아 아직 저장 전인 음료를 만든다.
@@ -84,6 +120,15 @@ public enum DrinkFixture {
     }
 
     private Drink build(Long id, Long drinkStyleId, String externalId, FlavorProfile profile) {
+        return build(id, drinkStyleId, externalId, profile, harmonizes);
+    }
+
+    private Drink build(
+            Long id,
+            Long drinkStyleId,
+            String externalId,
+            FlavorProfile profile,
+            Set<Harmonize> harmonizes) {
         return Drink.builder()
                 .id(id)
                 .drinkStyleId(drinkStyleId)
@@ -93,6 +138,7 @@ public enum DrinkFixture {
                 .abv(abv)
                 .flavorProfile(profile)
                 .nonAlcoholic(nonAlcoholic)
+                .harmonizes(harmonizes)
                 .build();
     }
 }

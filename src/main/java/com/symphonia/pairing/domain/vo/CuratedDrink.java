@@ -2,6 +2,7 @@ package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.DrinkStyle;
+import java.util.Set;
 
 // 국내 유통 맥주처럼 사람이 매핑표로 직접 고른 제품이다. 스타일은 BJCP 스타일 id로 가리킨다.
 public record CuratedDrink(String externalId, String name, double abv, String bjcpStyleId) {
@@ -14,6 +15,7 @@ public record CuratedDrink(String externalId, String name, double abv, String bj
                 name,
                 abv,
                 drinkStyle.getFlavorProfile(),
-                false);
+                false,
+                Set.of());
     }
 }

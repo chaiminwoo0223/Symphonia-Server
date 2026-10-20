@@ -20,10 +20,12 @@ import com.symphonia.pairing.domain.vo.DrinkCategory;
 import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.domain.vo.WineAcidityRule;
 import com.symphonia.pairing.domain.vo.WineAttribute;
 import com.symphonia.pairing.domain.vo.WineBodyRule;
 import com.symphonia.pairing.domain.vo.WineFlavorRule;
+import com.symphonia.pairing.domain.vo.WineHarmonizeRule;
 import com.symphonia.pairing.domain.vo.WineTypeRule;
 import com.symphonia.pairing.domain.vo.XWine;
 import com.symphonia.pairing.fixture.WineStyleFixture;
@@ -45,11 +47,19 @@ class ImportXWineServiceTest extends UnitTest {
     private static final FlavorProfile RED_STYLE_PROFILE = WineStyleFixture.RED.getFlavorProfile();
 
     // 스타일 기본 맛의 무게감(2)과 산미(2)가 제품의 Body, Acidity 값으로 덮어써지는지 보이도록 서로 다른 값을 둔다.
+    // ORIGEM_MERLOT의 Harmonize 태그 중 Grilled, Pizza는 맞는 계열이 없는 태그로 둔다.
     private static final WineFlavorRule WINE_FLAVOR_RULE =
             new WineFlavorRule(
                     List.of(new WineTypeRule("Red", "red", "Red Wine", RED_STYLE_PROFILE)),
                     List.of(new WineBodyRule("Full-bodied", 4)),
-                    List.of(new WineAcidityRule("Medium", 3)));
+                    List.of(new WineAcidityRule("Medium", 3)),
+                    List.of(
+                            new WineHarmonizeRule("Beef", Set.of(Harmonize.BEEF)),
+                            new WineHarmonizeRule("Lamb", Set.of(Harmonize.LAMB)),
+                            new WineHarmonizeRule("Veal", Set.of(Harmonize.VEAL)),
+                            new WineHarmonizeRule("Pasta", Set.of(Harmonize.PASTA)),
+                            new WineHarmonizeRule("Grilled", Set.of()),
+                            new WineHarmonizeRule("Pizza", Set.of())));
 
     @InjectMocks private ImportXWineService importXWineService;
 
@@ -129,7 +139,8 @@ class ImportXWineServiceTest extends UnitTest {
         class WhenWineNotImported {
 
             @Test
-            @DisplayName("스타일 id를 참조하고 와이너리명을 붙인 이름과 Body, Acidity로 덮어쓴 맛으로 새로 저장한다")
+            @DisplayName(
+                    "스타일 id를 참조하고 와이너리명을 붙인 이름, Body와 Acidity로 덮어쓴 맛, Harmonize 태그의 음식 계열로 새로 저장한다")
             void shouldSaveNewWineWithStyleAndOverriddenFlavor() {
                 // given
                 XWine wine = XWineFixture.ORIGEM_MERLOT.create();
@@ -152,6 +163,9 @@ class ImportXWineServiceTest extends UnitTest {
                 assertThat(saved.getFlavorProfile())
                         .usingRecursiveComparison()
                         .isEqualTo(FlavorProfile.of(1, 3, 0, 4, 3));
+                assertThat(saved.getHarmonizes())
+                        .containsExactlyInAnyOrder(
+                                Harmonize.BEEF, Harmonize.LAMB, Harmonize.VEAL, Harmonize.PASTA);
                 assertThat(result.importedDrinkCount()).isEqualTo(1);
                 assertThat(result.abvExceededItems()).isEmpty();
                 assertThat(result.undeterminedItems()).isEmpty();
@@ -163,14 +177,17 @@ class ImportXWineServiceTest extends UnitTest {
         class WhenWineAlreadyImported {
 
             @Test
-            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛을 갱신해 저장한다")
+            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛, 음식 계열을 갱신해 저장한다")
             void shouldUpdateExistingWine() {
                 // given
                 XWine wine = XWineFixture.ORIGEM_MERLOT.createWithAbv(13.5);
                 DrinkStyle redStyle = givenRedStyleSaved();
                 Drink existing =
                         XWineFixture.ORIGEM_MERLOT.createImportedDrink(
-                                10L, redStyle, FlavorProfile.of(5, 5, 5, 5, 5));
+                                10L,
+                                redStyle,
+                                FlavorProfile.of(5, 5, 5, 5, 5),
+                                Set.of(Harmonize.SWEET_DESSERT));
                 given(xWineReader.read()).willReturn(List.of(wine));
                 given(drinkRepository.findAllBySource(DrinkSource.X_WINES))
                         .willReturn(List.of(existing));
@@ -185,6 +202,9 @@ class ImportXWineServiceTest extends UnitTest {
                 assertThat(saved.getFlavorProfile())
                         .usingRecursiveComparison()
                         .isEqualTo(FlavorProfile.of(1, 3, 0, 4, 3));
+                assertThat(saved.getHarmonizes())
+                        .containsExactlyInAnyOrder(
+                                Harmonize.BEEF, Harmonize.LAMB, Harmonize.VEAL, Harmonize.PASTA);
             }
         }
 
@@ -236,7 +256,7 @@ class ImportXWineServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("규칙표에 없는 Type, Body, Acidity가 있는 경우")
+        @DisplayName("규칙표에 없는 Type, Body, Acidity, Harmonize 태그가 있는 경우")
         class WhenAttributesUnknown {
 
             @Test
@@ -245,8 +265,13 @@ class ImportXWineServiceTest extends UnitTest {
                 // given
                 XWine unknownEveryAttribute = XWineFixture.RESERVA_CHARDONNAY.create();
                 XWine unknownBody = XWineFixture.ORIGEM_MERLOT.createWithBody("Watery");
+                XWine unknownHarmonizeTag =
+                        XWineFixture.ORIGEM_MERLOT.createWithHarmonizeTags(
+                                List.of("Beef", "Truffle"));
                 givenRedStyleSaved();
-                given(xWineReader.read()).willReturn(List.of(unknownEveryAttribute, unknownBody));
+                given(xWineReader.read())
+                        .willReturn(
+                                List.of(unknownEveryAttribute, unknownBody, unknownHarmonizeTag));
 
                 // when
                 ImportXWineResult result = importXWineService.importXWines();
@@ -262,11 +287,16 @@ class ImportXWineServiceTest extends UnitTest {
                                         Set.of(
                                                 WineAttribute.TYPE,
                                                 WineAttribute.BODY,
-                                                WineAttribute.ACIDITY)),
+                                                WineAttribute.ACIDITY,
+                                                WineAttribute.HARMONIZE)),
                                 new UndeterminedItem(
                                         unknownBody.wineId(),
                                         "Casa Valduga Origem Merlot",
-                                        Set.of(WineAttribute.BODY)));
+                                        Set.of(WineAttribute.BODY)),
+                                new UndeterminedItem(
+                                        unknownHarmonizeTag.wineId(),
+                                        "Casa Valduga Origem Merlot",
+                                        Set.of(WineAttribute.HARMONIZE)));
             }
         }
     }

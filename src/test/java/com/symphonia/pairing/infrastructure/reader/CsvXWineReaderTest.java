@@ -39,7 +39,7 @@ class CsvXWineReaderTest {
             }
 
             @Test
-            @DisplayName("따옴표 안에 쉼표가 있는 열이 있어도 각 열을 XWine의 필드로 변환한다")
+            @DisplayName("따옴표 안에 쉼표가 있는 열이 있어도 각 열을 XWine의 필드로 변환하고 Harmonize는 태그 목록으로 나눈다")
             void shouldMapColumnsToXWineFields() {
                 // when
                 List<XWine> wines = csvXWineReader.read();
@@ -55,7 +55,10 @@ class CsvXWineReaderTest {
                                         "Red",
                                         13.0,
                                         "Full-bodied",
-                                        "Medium"));
+                                        "Medium",
+                                        List.of(
+                                                "Beef", "Lamb", "Veal", "Grilled", "Pizza",
+                                                "Pasta")));
             }
         }
 

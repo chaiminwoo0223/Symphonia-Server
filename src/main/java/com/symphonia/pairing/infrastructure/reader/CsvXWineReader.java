@@ -8,6 +8,7 @@ import com.symphonia.pairing.domain.vo.XWine;
 import com.symphonia.pairing.infrastructure.reader.config.properties.XWinesProperties;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class CsvXWineReader implements XWineReader {
+    private static final Pattern QUOTED_VALUE = Pattern.compile("'([^']*)'");
+
     private final XWinesProperties xWinesProperties;
 
     @Override
@@ -31,6 +34,12 @@ public class CsvXWineReader implements XWineReader {
                 column(row, "Type"),
                 Double.parseDouble(column(row, "ABV")),
                 column(row, "Body"),
-                column(row, "Acidity"));
+                column(row, "Acidity"),
+                harmonizeTags(column(row, "Harmonize")));
+    }
+
+    // 원본은 Harmonize를 "['Pasta', 'Veal']"처럼 파이썬 리스트 표기로 적는다. 따옴표 안의 값만 꺼낸다.
+    private List<String> harmonizeTags(String cell) {
+        return QUOTED_VALUE.matcher(cell).results().map(match -> match.group(1)).toList();
     }
 }

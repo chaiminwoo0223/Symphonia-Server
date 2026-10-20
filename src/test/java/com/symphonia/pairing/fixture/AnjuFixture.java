@@ -100,7 +100,7 @@ public enum AnjuFixture {
             AnjuBase.HARD_CHEESE,
             ServingStyle.APPETIZER,
             false),
-    // 아래는 현재 점수 규칙에서 골든 세트 음료별 카탈로그 상위 3위 안주다. 동점이면 anjus.csv에서 앞선 안주를 고른다.
+    // 아래는 도수 대비, Harmonize 점수를 넣기 전 규칙에서 골든 세트 음료별 카탈로그 상위 3위 안주다. 동점이면 anjus.csv에서 앞선 안주를 고른다.
     // 소주: 도토리묵무침, 닭꼬치, 찜닭 / 카스 프레시: 도토리묵무침, 닭강정, 닭똥집볶음 / Louis Jadot Beaujolais: 훈제연어, 깐풍기, 두부김치
     CATALOG_DOTORIMUK_MUCHIM(
             "도토리묵무침",
@@ -156,6 +156,30 @@ public enum AnjuFixture {
             FlavorProfile.of(1, 0, 0, 2, 3),
             Set.of(AllergyType.PORK, AllergyType.SOYBEAN),
             AnjuBase.PORK,
+            ServingStyle.MAIN,
+            true),
+    // 아래는 도수 대비, Harmonize 점수를 넣은 뒤의 카탈로그 순위로 더한 안주다.
+    // Louis Jadot Beaujolais는 깐풍기, 두부김치, 김치찌개, 탕수육이 동점 1위이고, Harmonize에 맞지 않는 안주 중 1위는 훈제연어, 2위는
+    // 부대찌개다.
+    CATALOG_KIMCHI_JJIGAE(
+            "김치찌개",
+            FlavorProfile.of(1, 0, 0, 2, 3),
+            Set.of(AllergyType.PORK, AllergyType.SOYBEAN),
+            AnjuBase.PORK,
+            ServingStyle.MAIN,
+            true),
+    CATALOG_TANGSUYUK(
+            "탕수육",
+            FlavorProfile.of(2, 0, 0, 2, 4),
+            Set.of(AllergyType.PORK, AllergyType.EGG, AllergyType.WHEAT),
+            AnjuBase.PORK,
+            ServingStyle.MAIN,
+            false),
+    CATALOG_BUDAE_JJIGAE(
+            "부대찌개",
+            FlavorProfile.of(1, 0, 0, 2, 3),
+            Set.of(AllergyType.MILK, AllergyType.PORK, AllergyType.WHEAT),
+            AnjuBase.CURED_MEAT,
             ServingStyle.MAIN,
             true);
 
