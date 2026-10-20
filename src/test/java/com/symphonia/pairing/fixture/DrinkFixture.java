@@ -15,7 +15,22 @@ public enum DrinkFixture {
     WHISKEY(DrinkStyleFixture.BOURBON, "위스키", 40.0, FlavorProfile.of(1, 4, 0, 4, 1), false),
     WINE(DrinkStyleFixture.PINOT_NOIR, "와인", 13.0, FlavorProfile.of(2, 2, 0, 3, 4), false),
     SODA(DrinkStyleFixture.SODA, "탄산음료", 0.0, FlavorProfile.of(4, 0, 5, 0, 1), true),
-    FRUIT_JUICE(DrinkStyleFixture.FRUIT_JUICE, "과일주스", 0.0, FlavorProfile.of(4, 0, 0, 2, 3), true);
+    FRUIT_JUICE(DrinkStyleFixture.FRUIT_JUICE, "과일주스", 0.0, FlavorProfile.of(4, 0, 0, 2, 3), true),
+    // 골든 세트 음료다. 카탈로그에 적재된 제품의 이름, 도수, 맛을 그대로 쓴다.
+    // 카스 프레시는 스타일(BJCP 2A) 맛을, Louis Jadot Beaujolais는 Red 맛에 Medium-bodied, High Acidity를 덮어쓴 맛을
+    // 받는다.
+    CASS_FRESH(
+            DrinkStyleFixture.INTERNATIONAL_PALE_LAGER,
+            "카스 프레시",
+            4.5,
+            FlavorProfile.of(2, 3, 5, 2, 1),
+            false),
+    LOUIS_JADOT_BEAUJOLAIS(
+            DrinkStyleFixture.RED_WINE,
+            "Louis Jadot Beaujolais",
+            12.5,
+            FlavorProfile.of(1, 3, 0, 3, 4),
+            false);
 
     private final DrinkStyleFixture drinkStyleFixture;
     private final String name;

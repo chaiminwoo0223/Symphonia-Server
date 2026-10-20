@@ -76,7 +76,88 @@ public enum AnjuFixture {
             Set.of(),
             AnjuBase.VEGETABLE,
             ServingStyle.SNACK,
-            false);
+            false),
+    // CATALOG_ 상수는 골든 세트 안주다. 맛, 알레르기는 anjus.csv와 K-FIND 영양성분을 적재 규칙으로 계산한 값이다.
+    // 위의 FRIED_CHICKEN, CHEESE_PLATTER는 V2 시드 값이라 실제 카탈로그 값과 다르다.
+    CATALOG_SAMGYEOPSAL_GUI(
+            "삼겹살구이",
+            FlavorProfile.of(1, 0, 0, 5, 0),
+            Set.of(AllergyType.PORK),
+            AnjuBase.PORK,
+            ServingStyle.MAIN,
+            false),
+    CATALOG_FRIED_CHICKEN(
+            "후라이드치킨",
+            FlavorProfile.of(1, 0, 0, 4, 0),
+            Set.of(AllergyType.CHICKEN, AllergyType.EGG, AllergyType.WHEAT),
+            AnjuBase.POULTRY,
+            ServingStyle.MAIN,
+            false),
+    CATALOG_CHEESE_PLATTER(
+            "치즈플래터",
+            FlavorProfile.of(1, 0, 0, 3, 0),
+            Set.of(AllergyType.MILK, AllergyType.WHEAT),
+            AnjuBase.HARD_CHEESE,
+            ServingStyle.APPETIZER,
+            false),
+    // 아래는 현재 점수 규칙에서 골든 세트 음료별 카탈로그 상위 3위 안주다. 동점이면 anjus.csv에서 앞선 안주를 고른다.
+    // 소주: 도토리묵무침, 닭꼬치, 찜닭 / 카스 프레시: 도토리묵무침, 닭강정, 닭똥집볶음 / Louis Jadot Beaujolais: 훈제연어, 깐풍기, 두부김치
+    CATALOG_DOTORIMUK_MUCHIM(
+            "도토리묵무침",
+            FlavorProfile.of(1, 2, 0, 1, 0),
+            Set.of(AllergyType.SOYBEAN, AllergyType.WHEAT),
+            AnjuBase.VEGETABLE,
+            ServingStyle.APPETIZER,
+            false),
+    CATALOG_DAK_KKOCHI(
+            "닭꼬치",
+            FlavorProfile.of(2, 0, 0, 1, 0),
+            Set.of(AllergyType.CHICKEN, AllergyType.SOYBEAN, AllergyType.WHEAT),
+            AnjuBase.POULTRY,
+            ServingStyle.APPETIZER,
+            false),
+    CATALOG_JJIMDAK(
+            "찜닭",
+            FlavorProfile.of(2, 0, 0, 1, 0),
+            Set.of(AllergyType.CHICKEN, AllergyType.SOYBEAN, AllergyType.WHEAT),
+            AnjuBase.POULTRY,
+            ServingStyle.MAIN,
+            false),
+    CATALOG_DAKGANGJEONG(
+            "닭강정",
+            FlavorProfile.of(2, 0, 0, 2, 0),
+            Set.of(AllergyType.CHICKEN, AllergyType.PEANUT, AllergyType.SOYBEAN, AllergyType.WHEAT),
+            AnjuBase.POULTRY,
+            ServingStyle.MAIN,
+            true),
+    CATALOG_DAKTTONGJIP_BOKKEUM(
+            "닭똥집볶음",
+            FlavorProfile.of(2, 0, 0, 2, 0),
+            Set.of(AllergyType.CHICKEN),
+            AnjuBase.POULTRY,
+            ServingStyle.MAIN,
+            false),
+    CATALOG_SMOKED_SALMON(
+            "훈제연어",
+            FlavorProfile.of(1, 0, 0, 3, 3),
+            Set.of(),
+            AnjuBase.RICH_FISH,
+            ServingStyle.APPETIZER,
+            false),
+    CATALOG_KKANPUNGGI(
+            "깐풍기",
+            FlavorProfile.of(2, 0, 0, 2, 4),
+            Set.of(AllergyType.CHICKEN, AllergyType.SOYBEAN, AllergyType.WHEAT),
+            AnjuBase.POULTRY,
+            ServingStyle.MAIN,
+            true),
+    CATALOG_TOFU_KIMCHI(
+            "두부김치",
+            FlavorProfile.of(1, 0, 0, 2, 3),
+            Set.of(AllergyType.PORK, AllergyType.SOYBEAN),
+            AnjuBase.PORK,
+            ServingStyle.MAIN,
+            true);
 
     private final String name;
     private final FlavorProfile flavorProfile;

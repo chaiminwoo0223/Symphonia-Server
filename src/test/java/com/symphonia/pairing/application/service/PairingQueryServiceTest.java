@@ -27,6 +27,7 @@ import com.symphonia.pairing.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.RecommendPairingQueryFixture;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,8 @@ class PairingQueryServiceTest extends UnitTest {
     @Nested
     @DisplayName("recommend 메서드는")
     class Recommend {
+        // 골든 세트 조합의 안주가 들어야 하는 순위다. 추천 결과가 최대 5개라 그보다 좁게 잡는다.
+        private static final int GOLDEN_TOP_RANK = 3;
 
         @Test
         @DisplayName("후보 조합 중 점수가 높은 순으로 PairingResult 목록을 반환한다")
@@ -926,6 +929,60 @@ class PairingQueryServiceTest extends UnitTest {
                     .doesNotContain(PairingReason.MOOD_MATCH.message());
         }
 
+        // 맛 유사도 0.580으로 카탈로그 173개 중 164위다. 무게감 차이(1, 5)가 그대로 거리 감점이 된다.
+        @Disabled("기름진 안주를 소주가 씻어 주는 효과를 반영하는 점수 규칙이 아직 없다")
+        @Test
+        @DisplayName("소주에는 골든 세트 안주 중 삼겹살구이를 상위 3위 안에 추천한다")
+        void shouldRankSamgyeopsalGuiWithinTopThreeWhenDrinkIsSoju() {
+            // given: DrinkFixture.SOJU는 카탈로그의 시드 소주와 이름, 도수, 맛이 같다
+            givenGoldenCatalog(DrinkFixture.SOJU.createWithId());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+                    .extracting(PairingResult::anjuName)
+                    .contains(AnjuFixture.CATALOG_SAMGYEOPSAL_GUI.getName());
+        }
+
+        // 맛 유사도 0.553으로 카탈로그 173개 중 24위다. 쓴맛(3, 0)과 산미(4, 0) 차이가 거리 감점이 된다.
+        @Disabled("와인의 Harmonize(Hard Cheese 등)를 점수에 반영하는 규칙이 아직 없다")
+        @Test
+        @DisplayName("레드 와인에는 골든 세트 안주 중 치즈플래터를 상위 3위 안에 추천한다")
+        void shouldRankCheesePlatterWithinTopThreeWhenDrinkIsRedWine() {
+            // given
+            givenGoldenCatalog(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.createWithId());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+                    .extracting(PairingResult::anjuName)
+                    .contains(AnjuFixture.CATALOG_CHEESE_PLATTER.getName());
+        }
+
+        // 맛 유사도 0.434로 카탈로그 173개 중 117위다. 안주의 탄산은 늘 0이라 탄산(5, 0) 차이가 거리 감점이 된다.
+        @Disabled("탄산, 산미의 기름진 안주 대비 규칙이 없다(#106에서 해제)")
+        @Test
+        @DisplayName("라거에는 골든 세트 안주 중 후라이드치킨을 상위 3위 안에 추천한다")
+        void shouldRankFriedChickenWithinTopThreeWhenDrinkIsLager() {
+            // given
+            givenGoldenCatalog(DrinkFixture.CASS_FRESH.createWithId());
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+                    .extracting(PairingResult::anjuName)
+                    .contains(AnjuFixture.CATALOG_FRIED_CHICKEN.getName());
+        }
+
         private void givenStandardCatalog() {
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
@@ -985,6 +1042,28 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            givenCasualAcousticMusicMood();
+        }
+
+        // 음료와 음악을 하나씩만 두어 결과 순위가 곧 그 음료의 안주 순위가 되게 한다.
+        // 안주 풀에 골든 세트 음료별 카탈로그 상위 3위 안주를 넣어, 풀에서 3위 안에 들면 카탈로그에서도 3위 안에 들게 한다.
+        private void givenGoldenCatalog(Drink drink) {
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(List.of(drink));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.CATALOG_SAMGYEOPSAL_GUI.createWithId(),
+                                    AnjuFixture.CATALOG_FRIED_CHICKEN.createWithId(),
+                                    AnjuFixture.CATALOG_CHEESE_PLATTER.createWithId(),
+                                    AnjuFixture.CATALOG_DOTORIMUK_MUCHIM.createWithId(),
+                                    AnjuFixture.CATALOG_DAK_KKOCHI.createWithId(),
+                                    AnjuFixture.CATALOG_JJIMDAK.createWithId(),
+                                    AnjuFixture.CATALOG_DAKGANGJEONG.createWithId(),
+                                    AnjuFixture.CATALOG_DAKTTONGJIP_BOKKEUM.createWithId(),
+                                    AnjuFixture.CATALOG_SMOKED_SALMON.createWithId(),
+                                    AnjuFixture.CATALOG_KKANPUNGGI.createWithId(),
+                                    AnjuFixture.CATALOG_TOFU_KIMCHI.createWithId()));
             givenCasualAcousticMusicMood();
         }
     }

@@ -17,7 +17,11 @@ public enum DrinkStyleFixture {
     BOURBON("버번 위스키", DrinkCategory.WHISKY, FlavorProfile.of(2, 3, 0, 4, 1)),
     PINOT_NOIR("피노 누아", DrinkCategory.WINE, FlavorProfile.of(2, 2, 0, 3, 4)),
     SODA("탄산음료", DrinkCategory.NON_ALCOHOLIC, FlavorProfile.of(4, 0, 5, 0, 1)),
-    FRUIT_JUICE("과일주스", DrinkCategory.NON_ALCOHOLIC, FlavorProfile.of(4, 0, 0, 2, 3));
+    FRUIT_JUICE("과일주스", DrinkCategory.NON_ALCOHOLIC, FlavorProfile.of(4, 0, 0, 2, 3)),
+    // 골든 세트 음료의 스타일이다. 맛은 BJCP 2A와 wine-type.csv Red를 적재 규칙으로 계산한 값이다.
+    INTERNATIONAL_PALE_LAGER(
+            "International Pale Lager", DrinkCategory.BEER, FlavorProfile.of(2, 3, 5, 2, 1)),
+    RED_WINE("Red Wine", DrinkCategory.WINE, FlavorProfile.of(1, 3, 0, 4, 3));
 
     private final String name;
     private final DrinkCategory category;
