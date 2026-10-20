@@ -65,5 +65,5 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 
 - **사용자가 명시적으로 요청하기 전까지는 push하지 않는다.**
 - **`git push --force`는 사용하지 않는다.**
-- `main`/`develop`에 직접 push하지 않는다.
+- `main`/`develop`에 직접 push하지 않는다. 예외는 admin이 `develop`에 `[HotFix]`를 직접 push하는 경우 하나뿐이다(`git-workflow` 스킬의 Branch 보호 참고).
 - `git push` 직전에 `.claude/hooks/pre-push-check.sh`(PreToolUse)가 `check-all.sh`(`check-test-conventions.sh` + `./gradlew clean build`)를 자동으로 돌려 실패 시 push 자체를 막는다. `spotlessCheck`가 Gradle `check` 태스크에 연결되어 있어 이 `clean build`에 포맷 검증도 자동으로 포함된다. 빠르게 끝나는 정적 아키텍처 검증 수단은 아직 없어 전체 빌드+테스트로 게이트를 걸기 때문에 push마다 수 분이 걸릴 수 있다(2026-09-04 결정).
