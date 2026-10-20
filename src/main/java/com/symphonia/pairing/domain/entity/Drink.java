@@ -25,6 +25,9 @@ public class Drink {
     private boolean nonAlcoholic;
     private Set<Harmonize> harmonizes;
 
+    @Getter(AccessLevel.NONE)
+    private long harmonizeMask;
+
     @Builder
     private Drink(
             Long id,
@@ -45,6 +48,7 @@ public class Drink {
         this.flavorProfile = flavorProfile;
         this.nonAlcoholic = nonAlcoholic;
         this.harmonizes = harmonizes == null ? Set.of() : Set.copyOf(harmonizes);
+        this.harmonizeMask = Harmonize.maskOf(this.harmonizes);
     }
 
     public static Drink of(
@@ -75,6 +79,7 @@ public class Drink {
         this.abv = imported.abv;
         this.flavorProfile = imported.flavorProfile;
         this.harmonizes = imported.harmonizes;
+        this.harmonizeMask = imported.harmonizeMask;
         return this;
     }
 
@@ -87,14 +92,9 @@ public class Drink {
     }
 
     // 이 술에 어울리는 음식 계열(Harmonize) 중 하나라도 안주에 맞는지 본다.
-    // 요청마다 음료×안주 쌍 전체에서 불리므로 스트림을 만들지 않고 반복문으로 둔다.
+    // 요청마다 음료×안주 쌍 전체에서 불리므로 미리 계산한 비트 집합끼리 비교한다.
     public boolean harmonizesWith(Anju anju) {
-        for (Harmonize harmonize : harmonizes) {
-            if (harmonize.matches(anju)) {
-                return true;
-            }
-        }
-        return false;
+        return (harmonizeMask & anju.harmonizeMask()) != 0;
     }
 
     // 도수가 높은 술은 무게감 있는 안주의 기름기를 씻어 준다. 가벼운 안주에는 씻어 낼 기름기가 없다.

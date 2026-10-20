@@ -1,6 +1,7 @@
 package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.pairing.domain.entity.Anju;
+import java.util.Collection;
 import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +34,30 @@ public enum Harmonize {
 
     public boolean matches(Anju anju) {
         return condition.test(anju);
+    }
+
+    // 추천은 요청마다 음료×안주 쌍 전체에서 음식 계열이 겹치는지 본다. 그래서 계열 집합을 비트 하나씩으로 나타내
+    // 쌍마다 비트 AND 한 번으로 판정하게 한다. 계열은 20개라 long에 들어간다.
+    public static long maskOf(Collection<Harmonize> harmonizes) {
+        long mask = 0;
+        for (Harmonize harmonize : harmonizes) {
+            mask |= harmonize.bit();
+        }
+        return mask;
+    }
+
+    public static long maskMatching(Anju anju) {
+        long mask = 0;
+        for (Harmonize harmonize : values()) {
+            if (harmonize.matches(anju)) {
+                mask |= harmonize.bit();
+            }
+        }
+        return mask;
+    }
+
+    private long bit() {
+        return 1L << ordinal();
     }
 
     private static Predicate<Anju> base(AnjuBase base) {
