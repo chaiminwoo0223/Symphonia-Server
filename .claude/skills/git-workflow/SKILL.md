@@ -27,12 +27,14 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 | 승인 뒤 새 커밋이 push되면 기존 승인 무효화 | ✅ | ✅ |
 | 모든 리뷰 대화(conversation) Resolve 필수 | ✅ | ✅ |
 | force push 차단, 브랜치 삭제 차단 | ✅ | ✅ |
+| CI `check` job 통과 필수 (브랜치 최신화는 요구하지 않음, 이슈 #112) | ✅ | ✅ |
 | Bypass | Repository admin (Always) | 없음 |
 
 - 저장소가 개인 계정 소유라 Maintain 역할이 없다. 그래서 bypass 대상은 Repository admin 역할 하나뿐이다.
-- admin bypass는 `develop`에 `[HotFix]`를 직접 push할 때만 쓴다. PR 머지 화면의 우회 체크박스로 승인이나 코멘트 Resolve를 건너뛰지 않는다.
+- admin bypass는 `develop`에 `[HotFix]`를 직접 push할 때만 쓴다. PR 머지 화면의 우회 체크박스로 승인, 코멘트 Resolve, CI `check` 실패를 건너뛰지 않는다.
 - admin이 아닌 협업자는 bypass할 수 없으므로 `[HotFix]`도 PR로 보낸다.
 - `develop`의 bypass는 위 규칙 전부에 적용된다. 그래서 admin에게는 force push 차단과 삭제 차단도 GitHub가 강제하지 않는다. 이를 막는 것은 위의 사용 범위 규칙과 `commit-push` 스킬의 `--force` 금지다.
+- admin이 `develop`에 직접 push한 `[HotFix]`는 CI를 거치지 않는다. Claude Code 세션에서 push하면 `pre-push-check.sh`가 검증하고, 세션 밖에서 push한다면 push 전에 `check-all.sh`를 직접 실행한다. 이 커밋은 이후 `develop` → `main` PR의 CI에서 다시 검증된다.
 - `main`은 bypass가 없어 누구도 직접 push하거나 승인 없이 머지할 수 없다.
 
 ## Commit & Push

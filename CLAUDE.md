@@ -130,6 +130,7 @@ com.symphonia
 ```
 
 > `check-all.sh`는 `check-test-conventions.sh`를 먼저 실행한 뒤 `./gradlew clean build`를 실행한다. `clean`을 붙이는 이유는 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
+> `develop`, `main` 대상 PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 같은 `check-all.sh`를 실행한다(`commit-push` 스킬 참고).
 > 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 포맷을 적용한다.
 > 아키텍처 규칙 자동검증(ArchUnit 등) 미도입 사유는 위 "운영 원칙" 참고.
 > 카탈로그(음료, 안주) 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 영속성 절 참고.
