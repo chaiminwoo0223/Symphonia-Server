@@ -75,6 +75,11 @@ public class DrinkJpaEntity {
     }
 
     public Drink toDomain() {
+        return toDomain(harmonizes);
+    }
+
+    // 음식 계열을 컬렉션이 아니라 따로 읽은 행으로 채울 때 쓴다. 이때 harmonizes 컬렉션은 읽지 않는다.
+    public Drink toDomain(Set<Harmonize> harmonizes) {
         return Drink.builder()
                 .id(id)
                 .drinkStyleId(drinkStyleId)

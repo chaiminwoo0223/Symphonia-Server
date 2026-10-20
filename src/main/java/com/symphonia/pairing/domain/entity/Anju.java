@@ -4,6 +4,7 @@ import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AnjuBase;
 import com.symphonia.pairing.domain.vo.AnjuSource;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.domain.vo.ServingStyle;
 import java.util.Collections;
 import java.util.Set;
@@ -25,6 +26,10 @@ public class Anju {
     private ServingStyle serving;
     private boolean spicy;
 
+    // 맞는 음식 계열은 저장하지 않고 속성으로 정해지므로(#78), 만들 때 한 번 계산해 둔다.
+    @Getter(AccessLevel.NONE)
+    private long harmonizeMask;
+
     @Builder
     private Anju(
             Long id,
@@ -45,6 +50,7 @@ public class Anju {
         this.base = base;
         this.serving = serving;
         this.spicy = spicy;
+        this.harmonizeMask = Harmonize.maskMatching(this);
     }
 
     public static Anju of(
@@ -76,7 +82,12 @@ public class Anju {
         this.base = imported.base;
         this.serving = imported.serving;
         this.spicy = imported.spicy;
+        this.harmonizeMask = imported.harmonizeMask;
         return this;
+    }
+
+    long harmonizeMask() {
+        return harmonizeMask;
     }
 
     public boolean conflictsWith(Set<AllergyType> attendeeAllergies) {
