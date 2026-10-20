@@ -94,7 +94,7 @@ public class Drink {
     // 이 술에 어울리는 음식 계열(Harmonize) 중 하나라도 안주에 맞는지 본다.
     // 요청마다 음료×안주 쌍 전체에서 불리므로 미리 계산한 비트 집합끼리 비교한다.
     public boolean harmonizesWith(Anju anju) {
-        return (harmonizeMask & anju.harmonizeMask()) != 0;
+        return (harmonizeMask & anju.getHarmonizeMask()) != 0;
     }
 
     // 도수가 높은 술은 무게감 있는 안주의 기름기를 씻어 준다. 가벼운 안주에는 씻어 낼 기름기가 없다.
