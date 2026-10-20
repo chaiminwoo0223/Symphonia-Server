@@ -29,6 +29,8 @@ import com.symphonia.pairing.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.RecommendPairingQueryFixture;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -1109,12 +1111,12 @@ class PairingQueryServiceTest extends UnitTest {
 
         // 삼겹살구이, 대창구이, 소막창구이처럼 맛 값이 같은 안주는 순서가 id로만 갈리므로, 안주 하나가 아니라 상위 3위의 성질을 본다.
         // 소주에 음식 계열이 없으면 맛 값이 같은 고다치즈, 팝콘 같은 안주도 고기 요리와 동점이 된다.
-        @Disabled("소주의 Harmonize가 아직 없다")
         @Test
         @DisplayName("소주에는 기름진 고기 요리를 상위 3위로 추천한다")
         void shouldRankRichMeatDishesWithinTopThreeWhenDrinkIsSoju() {
-            // given: DrinkFixture.SOJU는 카탈로그의 시드 소주와 이름, 도수, 맛이 같다
-            givenGoldenCatalog(DrinkFixture.SOJU.createWithId());
+            // given: 카탈로그의 시드 소주와 이름, 도수, 맛이 같고 V8이 넣은 음식 계열(PORK, BEEF)을 갖는다
+            givenGoldenCatalog(
+                    DrinkFixture.SOJU.createWithHarmonizes(Set.of(Harmonize.PORK, Harmonize.BEEF)));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1233,27 +1235,42 @@ class PairingQueryServiceTest extends UnitTest {
 
         // 음료와 음악을 하나씩만 두어 결과 순위가 곧 그 음료의 안주 순위가 되게 한다.
         // 안주 풀에는 골든 세트 음료별로 현재 규칙의 카탈로그 상위 안주(동점 포함)를 넣어 풀의 순위가 카탈로그 순위와 같게 한다.
-        // 기대 성질에 맞지 않는 안주 중 가장 높은 안주와, 이전 규칙의 상위 안주도 넣어 규칙이 되돌아가면 실패하게 한다.
+        // 기대 성질에 맞지 않는 함정 안주(성질에 맞지 않는 안주 중 가장 높은 안주, 이전 규칙의 상위 안주)도 넣어 규칙이 되돌아가면 실패하게 한다.
+        // 함정 안주를 앞에 두고 순서대로 id를 매겨, 동점이면 함정 안주가 먼저 오는 가장 불리한 경우를 검증한다.
         private void givenGoldenCatalog(Drink drink) {
+            List<AnjuFixture> traps =
+                    List.of(
+                            AnjuFixture.CATALOG_GOUDA_CHEESE,
+                            AnjuFixture.CATALOG_GOPCHANG_JEONGOL,
+                            AnjuFixture.DRIED_SNACK,
+                            AnjuFixture.CATALOG_DOTORIMUK_MUCHIM,
+                            AnjuFixture.CATALOG_DAK_KKOCHI,
+                            AnjuFixture.CATALOG_JJIMDAK,
+                            AnjuFixture.CATALOG_SMOKED_SALMON,
+                            AnjuFixture.CATALOG_BUDAE_JJIGAE,
+                            AnjuFixture.CATALOG_CHEESE_PLATTER,
+                            AnjuFixture.CATALOG_DAKGANGJEONG,
+                            AnjuFixture.CATALOG_DAKTTONGJIP_BOKKEUM);
+            List<AnjuFixture> topRanked =
+                    List.of(
+                            AnjuFixture.CATALOG_DWAEJI_KKEOPDEGI_GUI,
+                            AnjuFixture.CATALOG_SOMAKCHANG_GUI,
+                            AnjuFixture.CATALOG_DAECHANG_GUI,
+                            AnjuFixture.CATALOG_SAMGYEOPSAL_GUI,
+                            AnjuFixture.CATALOG_GOCHUJANG_SAMGYEOPSAL,
+                            AnjuFixture.CATALOG_KKANPUNGGI,
+                            AnjuFixture.CATALOG_TOFU_KIMCHI,
+                            AnjuFixture.CATALOG_KIMCHI_JJIGAE,
+                            AnjuFixture.CATALOG_TANGSUYUK,
+                            AnjuFixture.CATALOG_FRIED_CHICKEN);
+            List<AnjuFixture> pool = Stream.concat(traps.stream(), topRanked.stream()).toList();
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(drink));
             given(anjuRepository.findAll())
                     .willReturn(
-                            List.of(
-                                    AnjuFixture.CATALOG_SAMGYEOPSAL_GUI.createWithId(),
-                                    AnjuFixture.CATALOG_FRIED_CHICKEN.createWithId(),
-                                    AnjuFixture.CATALOG_CHEESE_PLATTER.createWithId(),
-                                    AnjuFixture.CATALOG_DOTORIMUK_MUCHIM.createWithId(),
-                                    AnjuFixture.CATALOG_DAK_KKOCHI.createWithId(),
-                                    AnjuFixture.CATALOG_JJIMDAK.createWithId(),
-                                    AnjuFixture.CATALOG_DAKGANGJEONG.createWithId(),
-                                    AnjuFixture.CATALOG_DAKTTONGJIP_BOKKEUM.createWithId(),
-                                    AnjuFixture.CATALOG_SMOKED_SALMON.createWithId(),
-                                    AnjuFixture.CATALOG_KKANPUNGGI.createWithId(),
-                                    AnjuFixture.CATALOG_TOFU_KIMCHI.createWithId(),
-                                    AnjuFixture.CATALOG_KIMCHI_JJIGAE.createWithId(),
-                                    AnjuFixture.CATALOG_TANGSUYUK.createWithId(),
-                                    AnjuFixture.CATALOG_BUDAE_JJIGAE.createWithId()));
+                            IntStream.range(0, pool.size())
+                                    .mapToObj(index -> pool.get(index).createWithId(index + 1L))
+                                    .toList());
             givenCasualAcousticMusicMood();
         }
 

@@ -8,6 +8,7 @@ import com.symphonia.pairing.domain.vo.AnjuBase;
 import com.symphonia.pairing.domain.vo.AnjuSource;
 import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.domain.vo.ServingStyle;
 import com.symphonia.pairing.fixture.AnjuFixture;
 import com.symphonia.pairing.fixture.DrinkFixture;
@@ -16,6 +17,7 @@ import com.symphonia.pairing.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.XWineFixture;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +73,23 @@ class PairingSeedMigrationTest extends RepositoryTest {
         assertThat(drinkJpaRepository.findAllBySource(DrinkSource.SEED))
                 .extracting(DrinkJpaEntity::getExternalId)
                 .doesNotContain("red-wine");
+    }
+
+    // 시드 소주는 적재 러너가 다루지 않으므로 음식 계열이 빠지면 Harmonize 점수를 받지 못한다.
+    @Test
+    @DisplayName("시드 소주에는 돼지고기, 소고기 음식 계열이 채워진다")
+    void shouldFillSeedSojuHarmonizes() {
+        // given: 시드 마이그레이션이 적재된 상태
+
+        // when
+        List<DrinkJpaEntity> seedDrinks = drinkJpaRepository.findAllBySource(DrinkSource.SEED);
+
+        // then
+        assertThat(seedDrinks)
+                .filteredOn(drink -> drink.getExternalId().equals("soju"))
+                .singleElement()
+                .extracting(DrinkJpaEntity::getHarmonizes)
+                .isEqualTo(Set.of(Harmonize.PORK, Harmonize.BEEF));
     }
 
     // check 제약에 X_WINES가 빠지면 와인 적재의 첫 INSERT가 제약 위반으로 실패한다.
