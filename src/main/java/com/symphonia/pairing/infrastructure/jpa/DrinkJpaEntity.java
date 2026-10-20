@@ -1,11 +1,11 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
+import static java.util.stream.Collectors.toCollection;
+
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.Harmonize;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,14 +13,15 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.EnumSet;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "drink")
@@ -53,13 +54,11 @@ public class DrinkJpaEntity {
     @Column(nullable = false)
     private boolean nonAlcoholic;
 
-    @ElementCollection
-    @CollectionTable(name = "drink_harmonize", joinColumns = @JoinColumn(name = "drink_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "harmonize", nullable = false)
-    private Set<Harmonize> harmonizes;
+    // 추천이 요청마다 음료 전체를 읽으므로 컬렉션 테이블 대신 배열 컬럼에 담는다. 값은 Harmonize 이름이다.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(nullable = false)
+    private String[] harmonizes;
 
-    // Hibernate는 저장한 컬렉션을 감싸 두었다가 다시 저장할 때 비우고 채운다. 도메인의 불변 Set을 그대로 넘기면 그때 실패한다.
     public static DrinkJpaEntity from(Drink drink) {
         return DrinkJpaEntity.builder()
                 .id(drink.getId())
@@ -70,16 +69,15 @@ public class DrinkJpaEntity {
                 .abv(drink.getAbv())
                 .flavorProfile(FlavorProfileEmbeddable.from(drink.getFlavorProfile()))
                 .nonAlcoholic(drink.isNonAlcoholic())
-                .harmonizes(new HashSet<>(drink.getHarmonizes()))
+                .harmonizes(
+                        drink.getHarmonizes().stream()
+                                .map(Harmonize::name)
+                                .sorted()
+                                .toArray(String[]::new))
                 .build();
     }
 
     public Drink toDomain() {
-        return toDomain(harmonizes);
-    }
-
-    // 음식 계열을 컬렉션이 아니라 따로 읽은 행으로 채울 때 쓴다. 이때 harmonizes 컬렉션은 읽지 않는다.
-    public Drink toDomain(Set<Harmonize> harmonizes) {
         return Drink.builder()
                 .id(id)
                 .drinkStyleId(drinkStyleId)
@@ -89,7 +87,10 @@ public class DrinkJpaEntity {
                 .abv(abv)
                 .flavorProfile(flavorProfile.toDomain())
                 .nonAlcoholic(nonAlcoholic)
-                .harmonizes(harmonizes)
+                .harmonizes(
+                        Arrays.stream(harmonizes)
+                                .map(Harmonize::valueOf)
+                                .collect(toCollection(() -> EnumSet.noneOf(Harmonize.class))))
                 .build();
     }
 }

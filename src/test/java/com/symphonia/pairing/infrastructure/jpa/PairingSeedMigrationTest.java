@@ -88,7 +88,7 @@ class PairingSeedMigrationTest extends RepositoryTest {
         assertThat(seedDrinks)
                 .filteredOn(drink -> drink.getExternalId().equals("soju"))
                 .singleElement()
-                .extracting(DrinkJpaEntity::getHarmonizes)
+                .extracting(drink -> drink.toDomain().getHarmonizes())
                 .isEqualTo(Set.of(Harmonize.PORK, Harmonize.BEEF));
     }
 
