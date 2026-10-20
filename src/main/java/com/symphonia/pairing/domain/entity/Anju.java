@@ -27,7 +27,7 @@ public class Anju {
     private boolean spicy;
 
     // 맞는 음식 계열은 저장하지 않고 속성으로 정해지므로(#78), 만들 때 한 번 계산해 둔다.
-    @Getter(AccessLevel.NONE)
+    @Getter(AccessLevel.PACKAGE)
     private long harmonizeMask;
 
     @Builder
@@ -84,10 +84,6 @@ public class Anju {
         this.spicy = imported.spicy;
         this.harmonizeMask = imported.harmonizeMask;
         return this;
-    }
-
-    long harmonizeMask() {
-        return harmonizeMask;
     }
 
     public boolean conflictsWith(Set<AllergyType> attendeeAllergies) {

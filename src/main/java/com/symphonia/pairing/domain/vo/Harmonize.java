@@ -56,15 +56,15 @@ public enum Harmonize {
         return mask;
     }
 
-    private long bit() {
-        return 1L << ordinal();
-    }
-
     private static Predicate<Anju> base(AnjuBase base) {
         return anju -> anju.getBase() == base;
     }
 
     private static Predicate<Anju> serving(ServingStyle serving) {
         return anju -> anju.getServing() == serving;
+    }
+
+    private long bit() {
+        return 1L << ordinal();
     }
 }
