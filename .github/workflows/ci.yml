@@ -30,3 +30,5 @@ jobs:
 
       # 로컬 pre-push 게이트와 같은 스크립트를 실행해 검증 기준을 하나로 유지한다.
       - run: ./.claude/scripts/check-all.sh
+
+      - run: exit 1
