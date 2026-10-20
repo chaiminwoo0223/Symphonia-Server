@@ -42,8 +42,9 @@ public enum DrinkFixture {
             FlavorProfile.of(4, 0, 0, 2, 3),
             true,
             Set.of()),
-    // 골든 세트 음료다. 카탈로그에 적재된 제품의 이름, 도수, 맛을 그대로 쓴다.
-    // Louis Jadot Beaujolais의 음식 계열은 X-Wines Harmonize(Pasta, Veal, Pork, Poultry)다.
+    // 골든 세트 음료다. 카탈로그에 적재된 제품의 이름, 도수, 맛, 음식 계열을 그대로 쓴다.
+    // 카스 프레시의 음식 계열은 beer-harmonize.csv의 2A 규칙, Louis Jadot Beaujolais는 X-Wines Harmonize(Pasta,
+    // Veal, Pork, Poultry)다.
     // 카스 프레시는 스타일(BJCP 2A) 맛을, Louis Jadot Beaujolais는 Red 맛에 Medium-bodied, High Acidity를 덮어쓴 맛을
     // 받는다.
     CASS_FRESH(
@@ -52,7 +53,11 @@ public enum DrinkFixture {
             4.5,
             FlavorProfile.of(2, 3, 5, 2, 1),
             false,
-            Set.of()),
+            Set.of(
+                    Harmonize.POULTRY,
+                    Harmonize.VEGETARIAN,
+                    Harmonize.RICH_FISH,
+                    Harmonize.CURED_MEAT)),
     LOUIS_JADOT_BEAUJOLAIS(
             DrinkStyleFixture.RED_WINE,
             "Louis Jadot Beaujolais",

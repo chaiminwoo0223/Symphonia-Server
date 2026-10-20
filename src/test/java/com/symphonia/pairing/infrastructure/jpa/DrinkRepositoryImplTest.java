@@ -7,7 +7,9 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.repository.DrinkRepository;
 import com.symphonia.pairing.domain.vo.DrinkSource;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.fixture.DrinkFixture;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -26,6 +28,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     @Autowired private DrinkRepository drinkRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
+    @Autowired private EntityManager entityManager;
 
     @Nested
     @DisplayName("save 메서드는")
@@ -78,18 +81,27 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             Drink saved =
                     drinkRepository.save(
                             DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.createWithStyle(drinkStyleId));
+            entityManager.flush();
+            entityManager.clear();
             saved.overwriteWith(
-                    DrinkFixture.WINE.createWithStyleAndExternalId(
-                            drinkStyleId, saved.getExternalId()));
+                    Drink.builder()
+                            .drinkStyleId(drinkStyleId)
+                            .name(saved.getName())
+                            .abv(saved.getAbv())
+                            .flavorProfile(saved.getFlavorProfile())
+                            .harmonizes(Set.of(Harmonize.PORK, Harmonize.SHELLFISH))
+                            .build());
 
             // when
             drinkRepository.save(saved);
 
             // then
+            entityManager.flush();
+            entityManager.clear();
             assertThat(drinkRepository.findById(saved.getId()))
                     .get()
                     .extracting(Drink::getHarmonizes)
-                    .isEqualTo(DrinkFixture.WINE.getHarmonizes());
+                    .isEqualTo(Set.of(Harmonize.PORK, Harmonize.SHELLFISH));
         }
     }
 
@@ -103,6 +115,8 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             // given
             DrinkJpaEntity wine = saveDrink(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS);
             DrinkJpaEntity soju = saveDrink(DrinkFixture.SOJU);
+            entityManager.flush();
+            entityManager.clear();
 
             // when
             List<Drink> result = drinkRepository.findAllByAbvLessThanEqual(Double.MAX_VALUE);
@@ -256,6 +270,8 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         void shouldReturnDrinksWithHarmonizes() {
             // given
             DrinkJpaEntity saved = saveDrink(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS);
+            entityManager.flush();
+            entityManager.clear();
 
             // when
             List<Drink> result = drinkRepository.findAllBySource(DrinkSource.SEED);

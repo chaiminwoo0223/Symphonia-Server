@@ -943,7 +943,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Drink의 Harmonize에 맞는 Anju는 맛이 같아도 맞지 않는 Anju보다 점수가 높다")
         void shouldScoreHigherWhenAnjuMatchesDrinkHarmonize() {
             // given
-            // 수육과 감자튀김은 맛이 같고 주재료 계열만 PORK, VEGETABLE로 다르다
+            // 수육과 감자튀김은 맛이 같고, 음료의 음식 계열(PORK)에는 수육만 맞는다
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
                             List.of(
@@ -1111,6 +1111,7 @@ class PairingQueryServiceTest extends UnitTest {
 
         // 삼겹살구이, 대창구이, 소막창구이처럼 맛 값이 같은 안주는 순서가 id로만 갈리므로, 안주 하나가 아니라 상위 3위의 성질을 본다.
         // 소주에 음식 계열이 없으면 맛 값이 같은 고다치즈, 팝콘 같은 안주도 고기 요리와 동점이 된다.
+        // 기름진 고기 요리라는 성질은 도수 대비와 Harmonize가 함께 만들므로 두 사유를 같이 본다. 둘 중 하나를 되돌려도 실패한다.
         @Test
         @DisplayName("소주에는 기름진 고기 요리를 상위 3위로 추천한다")
         void shouldRankRichMeatDishesWithinTopThreeWhenDrinkIsSoju() {
@@ -1154,6 +1155,7 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         // 맛 유사도 0.434로 카탈로그 173개 중 117위다. 안주의 탄산은 늘 0이라 탄산(5, 0) 차이가 거리 감점이 된다.
+        // #106에서 대비 규칙의 추천 이유가 생기면 소주, 레드 와인처럼 상위 3위의 성질로 검증하도록 바꾼다.
         @Disabled("탄산, 산미의 기름진 안주 대비 규칙이 없다(#106에서 해제)")
         @Test
         @DisplayName("라거에는 골든 세트 안주 중 후라이드치킨을 상위 3위 안에 추천한다")
