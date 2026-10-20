@@ -10,6 +10,7 @@ import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.fixture.DrinkFixture;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -68,11 +69,56 @@ class DrinkRepositoryImplTest extends RepositoryTest {
                     .usingRecursiveComparison()
                     .isEqualTo(DrinkFixture.WINE.getFlavorProfile());
         }
+
+        @Test
+        @DisplayName("id가 있는 Drink면 음식 계열을 새 값으로 바꾼다")
+        void shouldReplaceHarmonizesWhenIdExists() {
+            // given
+            Long drinkStyleId = saveDrinkStyle(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS);
+            Drink saved =
+                    drinkRepository.save(
+                            DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.createWithStyle(drinkStyleId));
+            saved.overwriteWith(
+                    DrinkFixture.WINE.createWithStyleAndExternalId(
+                            drinkStyleId, saved.getExternalId()));
+
+            // when
+            drinkRepository.save(saved);
+
+            // then
+            assertThat(drinkRepository.findById(saved.getId()))
+                    .get()
+                    .extracting(Drink::getHarmonizes)
+                    .isEqualTo(DrinkFixture.WINE.getHarmonizes());
+        }
     }
 
     @Nested
     @DisplayName("findAllByAbvLessThanEqual 메서드는")
     class FindAllByAbvLessThanEqual {
+
+        @Test
+        @DisplayName("Drink의 음식 계열을 함께 반환한다")
+        void shouldReturnDrinksWithHarmonizes() {
+            // given
+            DrinkJpaEntity wine = saveDrink(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS);
+            DrinkJpaEntity soju = saveDrink(DrinkFixture.SOJU);
+
+            // when
+            List<Drink> result = drinkRepository.findAllByAbvLessThanEqual(Double.MAX_VALUE);
+
+            // then
+            assertThat(result)
+                    .filteredOn(drink -> drink.getId().equals(wine.getId()))
+                    .singleElement()
+                    .extracting(Drink::getHarmonizes)
+                    .isEqualTo(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.getHarmonizes());
+            assertThat(result)
+                    .filteredOn(drink -> drink.getId().equals(soju.getId()))
+                    .singleElement()
+                    .extracting(Drink::getHarmonizes)
+                    .isEqualTo(Set.of());
+        }
 
         @Test
         @DisplayName("도수가 상한 이하인 Drink만 반환하고 상한과 같은 도수도 포함한다")
@@ -203,6 +249,23 @@ class DrinkRepositoryImplTest extends RepositoryTest {
                     .singleElement()
                     .extracting(Drink::getExternalId)
                     .isEqualTo(DrinkFixture.BEER.getExternalId());
+        }
+
+        @Test
+        @DisplayName("Drink의 음식 계열을 함께 반환한다")
+        void shouldReturnDrinksWithHarmonizes() {
+            // given
+            DrinkJpaEntity saved = saveDrink(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS);
+
+            // when
+            List<Drink> result = drinkRepository.findAllBySource(DrinkSource.SEED);
+
+            // then
+            assertThat(result)
+                    .filteredOn(drink -> drink.getId().equals(saved.getId()))
+                    .singleElement()
+                    .extracting(Drink::getHarmonizes)
+                    .isEqualTo(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.getHarmonizes());
         }
 
         @Test

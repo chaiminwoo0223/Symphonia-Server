@@ -1,0 +1,47 @@
+tag,harmonizes
+Poultry,POULTRY
+Beef,BEEF
+Lamb,LAMB
+Game Meat,GAME_MEAT
+Pork,PORK
+Shellfish,SHELLFISH
+Veal,VEAL
+Vegetarian,VEGETARIAN
+Rich Fish,RICH_FISH
+Pasta,PASTA
+Spicy Food,SPICY_FOOD
+Maturated Cheese,MATURATED_CHEESE
+Hard Cheese,HARD_CHEESE
+Cured Meat,CURED_MEAT
+Appetizer,APPETIZER
+Snack,SNACK
+Soft Cheese,SOFT_CHEESE
+Lean Fish,LEAN_FISH
+Sweet Dessert,SWEET_DESSERT
+Goat Cheese,GOAT_CHEESE
+Blue Cheese,MATURATED_CHEESE
+Fruit Dessert,SWEET_DESSERT
+Mushrooms,VEGETARIAN
+Salad,VEGETARIAN
+Fruit,SWEET_DESSERT
+Seafood,SHELLFISH|LEAN_FISH
+Chicken,POULTRY
+Cake,SWEET_DESSERT
+Fish,LEAN_FISH|RICH_FISH
+Pizza,
+Grilled,
+Aperitif,APPETIZER
+Cheese,HARD_CHEESE|SOFT_CHEESE|MATURATED_CHEESE
+Ham,CURED_MEAT
+Chocolate,SWEET_DESSERT
+Tomato Dishes,
+Barbecue,
+Risotto,
+Light Stews,
+Cold Cuts,CURED_MEAT
+Codfish,LEAN_FISH
+Soufflé,
+Cream,
+Dessert,SWEET_DESSERT
+French Fries,SNACK
+Duck,GAME_MEAT

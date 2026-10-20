@@ -2,12 +2,16 @@ package com.symphonia.pairing.infrastructure.reader;
 
 import static com.symphonia.pairing.infrastructure.reader.HeaderCsv.column;
 import static com.symphonia.pairing.infrastructure.reader.HeaderCsv.readRows;
+import static com.symphonia.pairing.infrastructure.reader.HeaderCsv.values;
+import static java.util.stream.Collectors.toSet;
 
 import com.symphonia.pairing.domain.reader.WineFlavorRuleReader;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.domain.vo.WineAcidityRule;
 import com.symphonia.pairing.domain.vo.WineBodyRule;
 import com.symphonia.pairing.domain.vo.WineFlavorRule;
+import com.symphonia.pairing.domain.vo.WineHarmonizeRule;
 import com.symphonia.pairing.domain.vo.WineTypeRule;
 import java.util.Map;
 import org.springframework.core.io.ClassPathResource;
@@ -24,8 +28,10 @@ public class CsvWineFlavorRuleReader implements WineFlavorRuleReader {
                 readRows(new ClassPathResource(RULES_DIR + "wine-type.csv"), this::toTypeRule),
                 readRows(new ClassPathResource(RULES_DIR + "wine-body.csv"), this::toBodyRule),
                 readRows(
-                        new ClassPathResource(RULES_DIR + "wine-acidity.csv"),
-                        this::toAcidityRule));
+                        new ClassPathResource(RULES_DIR + "wine-acidity.csv"), this::toAcidityRule),
+                readRows(
+                        new ClassPathResource(RULES_DIR + "wine-harmonize.csv"),
+                        this::toHarmonizeRule));
     }
 
     private WineTypeRule toTypeRule(Map<String, String> row) {
@@ -47,5 +53,14 @@ public class CsvWineFlavorRuleReader implements WineFlavorRuleReader {
 
     private WineAcidityRule toAcidityRule(Map<String, String> row) {
         return new WineAcidityRule(column(row, "acidity"), Integer.parseInt(column(row, "value")));
+    }
+
+    // 맞는 계열이 없는 태그는 칸을 비워 두고, 둘 이상에 걸치는 태그는 |로 나눠 적는다.
+    private WineHarmonizeRule toHarmonizeRule(Map<String, String> row) {
+        return new WineHarmonizeRule(
+                column(row, "tag"),
+                values(column(row, "harmonizes")).stream()
+                        .map(Harmonize::valueOf)
+                        .collect(toSet()));
     }
 }

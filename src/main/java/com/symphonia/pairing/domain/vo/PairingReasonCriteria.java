@@ -25,6 +25,14 @@ final class PairingReasonCriteria {
         return candidate.drink().matchesFlavorOf(candidate.anju());
     }
 
+    public static boolean harmonizeMatch(PairingCandidate candidate) {
+        return candidate.drink().harmonizesWith(candidate.anju());
+    }
+
+    public static boolean richnessCutting(PairingCandidate candidate) {
+        return candidate.drink().cutsRichnessOf(candidate.anju());
+    }
+
     public static boolean moodMatch(PairingCandidate candidate) {
         return candidate.musicMood().fitsFor(candidate.occasion().toMoodProfile());
     }
