@@ -70,7 +70,9 @@ public class ImportCatalogRunner implements ApplicationRunner {
 
     private static void reportCuratedDrinks(ImportCuratedDrinkResult result) {
         log.info("[ImportCatalog] 적재한 국내 유통 맥주: {}개", result.importedCount());
-        log.info("[ImportCatalog] 매핑한 스타일이 없어 제외한 맥주: {}개", result.unmappedItems().size());
+        log.info(
+                "[ImportCatalog] 매핑한 스타일이나 음식 계열 규칙이 없어 제외한 맥주: {}개",
+                result.unmappedItems().size());
 
         result.unmappedItems().forEach(ImportCatalogRunner::logUnmappedItem);
     }

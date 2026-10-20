@@ -8,7 +8,7 @@ public record ImportCuratedDrinkResult(int importedCount, List<UnmappedItem> unm
         unmappedItems = List.copyOf(unmappedItems);
     }
 
-    // 매핑표의 전체 행 중 스타일을 찾지 못한 행을 뺀 나머지가 적재된 제품이다.
+    // 매핑표의 전체 행 중 스타일이나 스타일의 음식 계열 규칙을 찾지 못한 행을 뺀 나머지가 적재된 제품이다.
     public static ImportCuratedDrinkResult of(int totalCount, List<UnmappedItem> unmappedItems) {
         return new ImportCuratedDrinkResult(totalCount - unmappedItems.size(), unmappedItems);
     }

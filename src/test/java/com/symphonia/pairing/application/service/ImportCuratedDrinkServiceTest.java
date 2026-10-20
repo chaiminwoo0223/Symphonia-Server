@@ -11,15 +11,20 @@ import com.symphonia.pairing.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.pairing.application.dto.result.ImportCuratedDrinkResult.UnmappedItem;
 import com.symphonia.pairing.domain.entity.Drink;
 import com.symphonia.pairing.domain.entity.DrinkStyle;
+import com.symphonia.pairing.domain.reader.BeerHarmonizeRuleReader;
 import com.symphonia.pairing.domain.reader.CuratedDrinkReader;
 import com.symphonia.pairing.domain.repository.DrinkRepository;
 import com.symphonia.pairing.domain.repository.DrinkStyleRepository;
+import com.symphonia.pairing.domain.vo.BeerHarmonizeRule;
 import com.symphonia.pairing.domain.vo.CuratedDrink;
 import com.symphonia.pairing.domain.vo.DrinkSource;
 import com.symphonia.pairing.domain.vo.DrinkStyleSource;
+import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.fixture.CuratedDrinkFixture;
 import com.symphonia.pairing.fixture.DrinkStyleFixture;
 import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,9 +35,14 @@ import org.mockito.Mock;
 @DisplayName("ImportCuratedDrinkService 단위 테스트")
 class ImportCuratedDrinkServiceTest extends UnitTest {
 
+    // 규칙표에는 CASS_FRESH의 스타일(2A)만 두어, HOEGAARDEN의 스타일(24A)은 음식 계열 규칙이 없는 상황을 만든다.
+    private static final Set<Harmonize> LAGER_HARMONIZES =
+            Set.of(Harmonize.POULTRY, Harmonize.VEGETARIAN);
+
     @InjectMocks private ImportCuratedDrinkService importCuratedDrinkService;
 
     @Mock private CuratedDrinkReader curatedDrinkReader;
+    @Mock private BeerHarmonizeRuleReader beerHarmonizeRuleReader;
     @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private DrinkRepository drinkRepository;
 
@@ -40,12 +50,18 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
     @DisplayName("importCuratedBeers 메서드는")
     class ImportCuratedBeers {
 
+        @BeforeEach
+        void setUp() {
+            given(beerHarmonizeRuleReader.read())
+                    .willReturn(List.of(new BeerHarmonizeRule("2A", LAGER_HARMONIZES)));
+        }
+
         @Nested
         @DisplayName("처음 보는 제품인 경우")
         class WhenDrinkNotImported {
 
             @Test
-            @DisplayName("source는 CURATED, externalId는 매핑표 값, 스타일의 id와 맛을 복사해 새로 저장한다")
+            @DisplayName("source는 CURATED, externalId는 매핑표 값, 스타일의 id와 맛, 음식 계열을 복사해 새로 저장한다")
             void shouldSaveNewDrinkWithMappedStyle() {
                 // given
                 CuratedDrink curatedDrink = CuratedDrinkFixture.CASS_FRESH.create();
@@ -68,6 +84,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 assertThat(saved.getFlavorProfile())
                         .usingRecursiveComparison()
                         .isEqualTo(mappedStyle.getFlavorProfile());
+                assertThat(saved.getHarmonizes()).isEqualTo(LAGER_HARMONIZES);
                 assertThat(result.importedCount()).isEqualTo(1);
                 assertThat(result.unmappedItems()).isEmpty();
             }
@@ -78,7 +95,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         class WhenDrinkAlreadyImported {
 
             @Test
-            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛을 갱신해 저장한다")
+            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛, 음식 계열을 갱신해 저장한다")
             void shouldUpdateExistingDrink() {
                 // given
                 CuratedDrink curatedDrink =
@@ -107,6 +124,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 assertThat(saved.getFlavorProfile())
                         .usingRecursiveComparison()
                         .isEqualTo(mappedStyle.getFlavorProfile());
+                assertThat(saved.getHarmonizes()).isEqualTo(LAGER_HARMONIZES);
                 assertThat(result.importedCount()).isEqualTo(1);
             }
         }
@@ -136,6 +154,30 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                                         curatedDrink.externalId(),
                                         curatedDrink.name(),
                                         curatedDrink.bjcpStyleId()));
+            }
+        }
+
+        @Nested
+        @DisplayName("매핑한 BJCP 스타일의 음식 계열 규칙이 없는 경우")
+        class WhenHarmonizeRuleNotFound {
+
+            @Test
+            @DisplayName("스타일이 적재되어 있어도 저장하지 않고 unmappedItems에 담는다")
+            void shouldLeaveUnmappedItemWithoutSaving() {
+                // given
+                CuratedDrink curatedDrink = CuratedDrinkFixture.HOEGAARDEN.create();
+                givenMappedStyle(curatedDrink);
+                given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
+
+                // when
+                ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
+
+                // then
+                verify(drinkRepository, never()).save(any());
+                assertThat(result.importedCount()).isZero();
+                assertThat(result.unmappedItems())
+                        .extracting(UnmappedItem::externalId)
+                        .containsExactly(curatedDrink.externalId());
             }
         }
 
