@@ -55,7 +55,7 @@ public record AnjuRule(
                         sweetness.orElseThrow(),
                         maxTaste(allRules, IngredientRule::bitterness),
                         ABSENT_TASTE,
-                        servingAdjusted(richness.orElseThrow(), curatedAnju.serving()),
+                        servingAdjusted(richness.orElseThrow(), curatedAnju),
                         maxTaste(allRules, IngredientRule::acidity));
         Anju anju =
                 curatedAnju.toAnju(
@@ -122,10 +122,10 @@ public record AnjuRule(
         return rules.stream().mapToInt(taste).max().orElse(ABSENT_TASTE);
     }
 
-    // 형태 보정 규칙이 없는 형태는 지방 구간의 무게감을 그대로 쓴다.
-    private int servingAdjusted(int richness, ServingStyle serving) {
+    // 형태 보정 규칙이 없는 형태와 튀김 여부는 지방 구간의 무게감을 그대로 쓴다.
+    private int servingAdjusted(int richness, CuratedAnju curatedAnju) {
         return servingRichnessRules.stream()
-                .filter(rule -> rule.matches(serving))
+                .filter(rule -> rule.matches(curatedAnju))
                 .findFirst()
                 .map(rule -> rule.apply(richness))
                 .orElse(richness);

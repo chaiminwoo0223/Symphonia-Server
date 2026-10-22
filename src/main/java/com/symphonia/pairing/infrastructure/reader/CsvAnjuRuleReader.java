@@ -48,6 +48,7 @@ public class CsvAnjuRuleReader implements AnjuRuleReader {
     private ServingRichnessRule toServingRichnessRule(Map<String, String> row) {
         return new ServingRichnessRule(
                 ServingStyle.valueOf(column(row, "serving")),
+                Boolean.parseBoolean(column(row, "fried")),
                 Integer.parseInt(column(row, "richness_offset")));
     }
 

@@ -45,14 +45,14 @@ class CsvAnjuRuleReaderTest {
         }
 
         @Test
-        @DisplayName("집어 먹는 안주만 무게감을 1 낮추는 형태 보정 규칙으로 읽는다")
+        @DisplayName("튀기지 않은 집어 먹는 안주만 무게감을 1 낮추는 형태 보정 규칙으로 읽는다")
         void shouldReadServingRichnessRules() {
             // when
             AnjuRule anjuRule = csvAnjuRuleReader.read();
 
             // then
             assertThat(anjuRule.servingRichnessRules())
-                    .containsExactly(new ServingRichnessRule(ServingStyle.SNACK, -1));
+                    .containsExactly(new ServingRichnessRule(ServingStyle.SNACK, false, -1));
         }
 
         @Test

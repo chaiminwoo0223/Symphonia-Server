@@ -147,6 +147,23 @@ class ImportAnjuServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("집어 먹는 안주라도 튀긴 요리면 지방 구간의 무게감을 그대로 쓴다")
+            void shouldKeepRichnessWhenSnackIsFried() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.CHICKEN_NUGGET;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getFlavorProfile())
+                        .usingRecursiveComparison()
+                        .isEqualTo(FlavorProfile.of(1, 0, 0, 4, 0));
+            }
+
+            @Test
             @DisplayName("집어 먹는 안주라도 무게감을 가장 낮은 구간보다 낮추지 않는다")
             void shouldKeepLowestRichnessWhenSnackIsAlreadyLightest() {
                 // given

@@ -261,14 +261,29 @@ public enum AnjuFixture {
             ServingStyle.APPETIZER,
             false),
     // 아래는 집어 먹는 안주의 무게감을 1 낮춘 뒤(#117)의 카탈로그 순위로 더한 안주다.
-    // 카스 프레시는 콜드컷플래터가 1위, 도토리묵무침이 2위, 장어구이가 3위다.
-    // 팝콘, 볶음땅콩, 견과류모둠은 무게감 4로 후라이드치킨과 동점 4위다.
+    // 카스 프레시는 콜드컷플래터가 1위, 도토리묵무침이 2위, 장어구이와 핫도그가 동점 3위다.
+    // 핫도그와 감자튀김은 튀긴 요리라 형태 보정을 받지 않는다.
+    // 팝콘, 볶음땅콩, 견과류모둠은 무게감 4로 후라이드치킨, 감자튀김과 동점 5위다.
     CATALOG_JANGEO_GUI(
             "장어구이",
             FlavorProfile.of(2, 0, 0, 4, 0),
             Set.of(AllergyType.SOYBEAN, AllergyType.WHEAT),
             AnjuBase.RICH_FISH,
             ServingStyle.MAIN,
+            false),
+    CATALOG_HOTDOG(
+            "핫도그",
+            FlavorProfile.of(2, 0, 0, 4, 2),
+            Set.of(AllergyType.PORK, AllergyType.WHEAT, AllergyType.TOMATO),
+            AnjuBase.CURED_MEAT,
+            ServingStyle.SNACK,
+            false),
+    CATALOG_FRENCH_FRIES(
+            "감자튀김",
+            FlavorProfile.of(1, 0, 0, 4, 0),
+            Set.of(),
+            AnjuBase.VEGETABLE,
+            ServingStyle.SNACK,
             false);
 
     private final String name;
