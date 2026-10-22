@@ -103,7 +103,10 @@ public class Drink {
     }
 
     // 탄산이나 산미가 강한 술도 무게감 있는 안주의 기름기를 씻어 준다.
+    // 도수로 이미 씻어 주는 술은 같은 효과를 두 번 세지 않도록 도수 쪽만 본다.
     public boolean cutsRichnessWithCarbonationOrAcidityOf(Anju anju) {
-        return flavorProfile.cutsRichness() && !anju.getFlavorProfile().isLight();
+        return flavorProfile.cutsRichness()
+                && !anju.getFlavorProfile().isLight()
+                && !cutsRichnessOf(anju);
     }
 }

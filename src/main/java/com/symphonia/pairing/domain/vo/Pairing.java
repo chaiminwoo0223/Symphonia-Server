@@ -108,16 +108,19 @@ public class Pairing {
     }
 
     // 안주가 무거울수록 씻어 줄 기름기가 많아 무게감 5에서 최대가 된다.
-    // 도수와 탄산, 산미는 같은 기름기를 씻는 효과라 더하지 않고 큰 쪽만 준다.
+    // 도수와 탄산, 산미는 같은 기름기를 씻는 효과라 둘 중 하나만 준다.
+    // 도수 대비가 탄산, 산미 대비의 최대치와 같아서, 둘 다 해당하는 술은 도수 대비를 받는다.
     private static double richnessCuttingBonus(Drink drink, Anju anju) {
-        double byAbv = drink.cutsRichnessOf(anju) ? RICHNESS_CUTTING_BONUS : 0;
-        double byCarbonationOrAcidity =
-                drink.cutsRichnessWithCarbonationOrAcidityOf(anju)
-                        ? CARBONATION_ACIDITY_CUTTING_BONUS
-                                * drink.getFlavorProfile().richnessCuttingStrength()
-                        : 0;
-
-        return Math.max(byAbv, byCarbonationOrAcidity) * anju.getFlavorProfile().heaviness();
+        double heaviness = anju.getFlavorProfile().heaviness();
+        if (drink.cutsRichnessOf(anju)) {
+            return RICHNESS_CUTTING_BONUS * heaviness;
+        }
+        if (drink.cutsRichnessWithCarbonationOrAcidityOf(anju)) {
+            return CARBONATION_ACIDITY_CUTTING_BONUS
+                    * drink.getFlavorProfile().richnessCuttingStrength()
+                    * heaviness;
+        }
+        return 0;
     }
 
     private static double lightAnjuPenalty(Anju anju, Occasion occasion) {

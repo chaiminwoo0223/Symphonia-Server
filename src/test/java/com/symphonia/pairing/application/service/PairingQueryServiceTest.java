@@ -1242,6 +1242,29 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
+        @DisplayName("도수 대비를 받는 Drink는 탄산이 4 이상이어도 reasons에 RICHNESS_CUTTING만 포함한다")
+        void shouldIncludeOnlyRichnessCuttingReasonWhenDrinkAlsoCutsRichnessByAbv() {
+            // given: 도수 16.5%인 소주에 탄산 5를 준다
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithFlavorProfile(
+                                            FlavorProfile.of(2, 2, 5, 1, 1))));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
+            givenCasualAcousticMusicMood();
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().reasons())
+                    .contains(PairingReason.RICHNESS_CUTTING.message())
+                    .doesNotContain(PairingReason.CARBONATION_ACIDITY_CUTTING.message());
+        }
+
+        @Test
         @DisplayName("탄산이 4 이상이어도 Anju가 가벼우면 reasons에 CARBONATION_ACIDITY_CUTTING을 포함하지 않는다")
         void shouldNotIncludeCarbonationAcidityCuttingReasonWhenAnjuIsLight() {
             // given
