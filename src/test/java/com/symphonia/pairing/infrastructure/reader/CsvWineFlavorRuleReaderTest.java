@@ -1,6 +1,7 @@
 package com.symphonia.pairing.infrastructure.reader;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.pairing.domain.vo.Harmonize;
 import com.symphonia.pairing.domain.vo.WineAcidityRule;
@@ -10,7 +11,6 @@ import com.symphonia.pairing.domain.vo.WineFlavorRule;
 import com.symphonia.pairing.domain.vo.WineHarmonizeRule;
 import com.symphonia.pairing.domain.vo.WineTypeRule;
 import com.symphonia.pairing.infrastructure.reader.config.properties.XWinesProperties;
-import java.util.Arrays;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -70,9 +70,28 @@ class CsvWineFlavorRuleReaderTest {
 
             // then
             assertThat(rule.harmonizeRules().subList(0, Harmonize.values().length))
-                    .extracting(WineHarmonizeRule::harmonizes)
-                    .containsExactlyElementsOf(
-                            Arrays.stream(Harmonize.values()).map(Set::of).toList());
+                    .extracting(WineHarmonizeRule::tag, WineHarmonizeRule::harmonizes)
+                    .containsExactly(
+                            tuple("Poultry", Set.of(Harmonize.POULTRY)),
+                            tuple("Beef", Set.of(Harmonize.BEEF)),
+                            tuple("Lamb", Set.of(Harmonize.LAMB)),
+                            tuple("Game Meat", Set.of(Harmonize.GAME_MEAT)),
+                            tuple("Pork", Set.of(Harmonize.PORK)),
+                            tuple("Shellfish", Set.of(Harmonize.SHELLFISH)),
+                            tuple("Veal", Set.of(Harmonize.VEAL)),
+                            tuple("Vegetarian", Set.of(Harmonize.VEGETARIAN)),
+                            tuple("Rich Fish", Set.of(Harmonize.RICH_FISH)),
+                            tuple("Pasta", Set.of(Harmonize.PASTA)),
+                            tuple("Spicy Food", Set.of(Harmonize.SPICY_FOOD)),
+                            tuple("Maturated Cheese", Set.of(Harmonize.MATURATED_CHEESE)),
+                            tuple("Hard Cheese", Set.of(Harmonize.HARD_CHEESE)),
+                            tuple("Cured Meat", Set.of(Harmonize.CURED_MEAT)),
+                            tuple("Appetizer", Set.of(Harmonize.APPETIZER)),
+                            tuple("Snack", Set.of(Harmonize.SNACK)),
+                            tuple("Soft Cheese", Set.of(Harmonize.SOFT_CHEESE)),
+                            tuple("Lean Fish", Set.of(Harmonize.LEAN_FISH)),
+                            tuple("Sweet Dessert", Set.of(Harmonize.SWEET_DESSERT)),
+                            tuple("Goat Cheese", Set.of(Harmonize.GOAT_CHEESE)));
         }
 
         @Test

@@ -1235,6 +1235,14 @@ class PairingQueryServiceTest extends UnitTest {
             givenCasualAcousticMusicMood();
         }
 
+        private double scoreOf(List<PairingResult> results, AnjuFixture anju) {
+            return results.stream()
+                    .filter(result -> result.anjuName().equals(anju.getName()))
+                    .findFirst()
+                    .orElseThrow()
+                    .score();
+        }
+
         // 음료와 음악을 하나씩만 두어 결과 순위가 곧 그 음료의 안주 순위가 되게 한다.
         // 안주 풀에는 골든 세트 음료별로 현재 규칙의 카탈로그 상위 안주(동점 포함)를 넣어 풀의 순위가 카탈로그 순위와 같게 한다.
         // 기대 성질에 맞지 않는 함정 안주(성질에 맞지 않는 안주 중 가장 높은 안주, 이전 규칙의 상위 안주)도 넣어 규칙이 되돌아가면 실패하게 한다.
@@ -1274,14 +1282,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     .mapToObj(index -> pool.get(index).createWithId(index + 1L))
                                     .toList());
             givenCasualAcousticMusicMood();
-        }
-
-        private double scoreOf(List<PairingResult> results, AnjuFixture anju) {
-            return results.stream()
-                    .filter(result -> result.anjuName().equals(anju.getName()))
-                    .findFirst()
-                    .orElseThrow()
-                    .score();
         }
     }
 }
