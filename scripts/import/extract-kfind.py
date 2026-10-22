@@ -183,11 +183,14 @@ def per_100g(row, nutrient):
     """100g 기준 행은 원본 값을 그대로 쓰고, 100ml 기준 행은 성분 합에 대한 비율로 바꾼다.
 
     100ml 기준 행은 회분이 비어 있어 0으로 더한다. 회분은 수 g이라 등급을 거의 바꾸지 않는다.
+    값이나 성분 합이 없으면 빈 값으로 두어, 100g 기준 행처럼 적재에서 측정 안 됨으로 제외되게 한다.
     """
     value = row[nutrient].strip()
-    if row["영양성분함량기준량"].strip() != "100ml":
+    if row["영양성분함량기준량"].strip() != "100ml" or not value:
         return value
-    mass = sum(float(row[component] or 0) for component in PROXIMATE_COMPONENTS)
+    mass = sum(float(row[component].strip() or 0) for component in PROXIMATE_COMPONENTS)
+    if mass == 0:
+        return ""
     return f"{float(value) * 100 / mass:.2f}"
 
 
