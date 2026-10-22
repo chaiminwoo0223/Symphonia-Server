@@ -1353,11 +1353,12 @@ class PairingQueryServiceTest extends UnitTest {
 
         // 탄산, 산미 대비 이전에는 후라이드치킨이 맛 유사도 0.434로 카탈로그 173개 중 117위였다.
         // 안주의 탄산이 늘 0이라 탄산(5, 0) 차이가 거리 감점이 됐다.
-        // 지금은 공동 9위이고, 무게감 5인 팝콘, 볶음땅콩, 견과류모둠, 콜드컷플래터가 동점 1위라 안주 하나가 아니라 상위 3위의 성질을 본다.
-        // 기름진 안주라는 성질은 탄산 대비와 Harmonize가 함께 만들므로 두 사유를 같이 본다. 둘 중 하나를 되돌려도 실패한다.
+        // #106 이후에는 지방 함량만 높은 팝콘, 볶음땅콩, 견과류모둠이 콜드컷플래터와 동점 1위였다.
+        // 집어 먹는 안주의 무게감을 1 낮춘 뒤(#117)에는 콜드컷플래터, 도토리묵무침, 장어구이 순이고 세 스낵은 후라이드치킨과 동점 4위다.
+        // 상위 3위는 모두 음식 계열에 맞고, 1위는 탄산이 기름기를 씻어 준다. 형태 보정을 되돌리면 세 스낵이 상위 3위에 들어 실패한다.
         @Test
-        @DisplayName("라거에는 탄산이 기름기를 씻어 주는 안주를 상위 3위로 추천한다")
-        void shouldRankRichAnjusWithinTopThreeWhenDrinkIsLager() {
+        @DisplayName("라거에는 지방 함량만 높은 스낵보다 음식 계열에 맞는 안주를 상위 3위로 추천한다")
+        void shouldRankHarmonizingAnjusOverHighFatSnacksWithinTopThreeWhenDrinkIsLager() {
             // given
             givenGoldenCatalog(DrinkFixture.CASS_FRESH.createWithId());
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -1366,15 +1367,21 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
-            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+            List<PairingResult> topRanked = results.subList(0, GOLDEN_TOP_RANK);
+            assertThat(topRanked)
+                    .extracting(PairingResult::anjuName)
+                    .doesNotContain(
+                            AnjuFixture.CATALOG_POPCORN.getName(),
+                            AnjuFixture.CATALOG_ROASTED_PEANUTS.getName(),
+                            AnjuFixture.CATALOG_MIXED_NUTS.getName());
+            assertThat(topRanked)
                     .extracting(PairingResult::reasons)
                     .allSatisfy(
                             reasons ->
                                     assertThat(reasons)
-                                            .contains(
-                                                    PairingReason.CARBONATION_ACIDITY_CUTTING
-                                                            .message(),
-                                                    PairingReason.HARMONIZE_MATCH.message()));
+                                            .contains(PairingReason.HARMONIZE_MATCH.message()));
+            assertThat(topRanked.getFirst().reasons())
+                    .contains(PairingReason.CARBONATION_ACIDITY_CUTTING.message());
         }
 
         private void givenStandardCatalog() {
@@ -1472,7 +1479,10 @@ class PairingQueryServiceTest extends UnitTest {
                             AnjuFixture.CATALOG_BUDAE_JJIGAE,
                             AnjuFixture.CATALOG_CHEESE_PLATTER,
                             AnjuFixture.CATALOG_DAKGANGJEONG,
-                            AnjuFixture.CATALOG_DAKTTONGJIP_BOKKEUM);
+                            AnjuFixture.CATALOG_DAKTTONGJIP_BOKKEUM,
+                            AnjuFixture.CATALOG_POPCORN,
+                            AnjuFixture.CATALOG_ROASTED_PEANUTS,
+                            AnjuFixture.CATALOG_MIXED_NUTS);
             List<AnjuFixture> topRanked =
                     List.of(
                             AnjuFixture.CATALOG_DWAEJI_KKEOPDEGI_GUI,
@@ -1485,10 +1495,8 @@ class PairingQueryServiceTest extends UnitTest {
                             AnjuFixture.CATALOG_KIMCHI_JJIGAE,
                             AnjuFixture.CATALOG_TANGSUYUK,
                             AnjuFixture.CATALOG_FRIED_CHICKEN,
-                            AnjuFixture.CATALOG_POPCORN,
-                            AnjuFixture.CATALOG_ROASTED_PEANUTS,
-                            AnjuFixture.CATALOG_MIXED_NUTS,
-                            AnjuFixture.CATALOG_COLD_CUT_PLATTER);
+                            AnjuFixture.CATALOG_COLD_CUT_PLATTER,
+                            AnjuFixture.CATALOG_JANGEO_GUI);
             List<AnjuFixture> pool = Stream.concat(traps.stream(), topRanked.stream()).toList();
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(drink));

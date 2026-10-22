@@ -11,10 +11,11 @@ import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-// 매핑표의 안주를 영양성분과 재료 규칙표에 대어 맛, 알레르기, 매운맛을 계산한다.
+// 매핑표의 안주를 영양성분, 형태, 재료 규칙표에 대어 맛, 알레르기, 매운맛을 계산한다.
 public record AnjuRule(
         List<NutrientRule> sugarRules,
         List<NutrientRule> fatRules,
+        List<ServingRichnessRule> servingRichnessRules,
         List<IngredientRule> ingredientRules) {
     // 안주에는 탄산이 없고, 산미와 쓴맛을 내는 재료가 없으면 그 맛도 없다.
     private static final int ABSENT_TASTE = 0;
@@ -22,6 +23,7 @@ public record AnjuRule(
     public AnjuRule {
         sugarRules = List.copyOf(sugarRules);
         fatRules = List.copyOf(fatRules);
+        servingRichnessRules = List.copyOf(servingRichnessRules);
         ingredientRules = List.copyOf(ingredientRules);
     }
 
@@ -53,7 +55,7 @@ public record AnjuRule(
                         sweetness.orElseThrow(),
                         maxTaste(allRules, IngredientRule::bitterness),
                         ABSENT_TASTE,
-                        richness.orElseThrow(),
+                        servingAdjusted(richness.orElseThrow(), curatedAnju.serving()),
                         maxTaste(allRules, IngredientRule::acidity));
         Anju anju =
                 curatedAnju.toAnju(
@@ -68,6 +70,15 @@ public record AnjuRule(
                 .filter(rule -> rule.contains(grams))
                 .map(NutrientRule::value)
                 .findFirst();
+    }
+
+    // 형태 보정 규칙이 없는 형태는 지방 구간의 무게감을 그대로 쓴다.
+    private int servingAdjusted(int richness, ServingStyle serving) {
+        return servingRichnessRules.stream()
+                .filter(rule -> rule.matches(serving))
+                .findFirst()
+                .map(rule -> rule.apply(richness))
+                .orElse(richness);
     }
 
     private Set<String> unknownIngredients(List<String> ingredients) {

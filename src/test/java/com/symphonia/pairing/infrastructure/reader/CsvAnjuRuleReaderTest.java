@@ -6,6 +6,8 @@ import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AnjuRule;
 import com.symphonia.pairing.domain.vo.IngredientRule;
 import com.symphonia.pairing.domain.vo.NutrientRule;
+import com.symphonia.pairing.domain.vo.ServingRichnessRule;
+import com.symphonia.pairing.domain.vo.ServingStyle;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
@@ -40,6 +42,17 @@ class CsvAnjuRuleReaderTest {
 
             // then
             assertContiguousFromZero(anjuRule.fatRules());
+        }
+
+        @Test
+        @DisplayName("집어 먹는 안주만 무게감을 1 낮추는 형태 보정 규칙으로 읽는다")
+        void shouldReadServingRichnessRules() {
+            // when
+            AnjuRule anjuRule = csvAnjuRuleReader.read();
+
+            // then
+            assertThat(anjuRule.servingRichnessRules())
+                    .containsExactly(new ServingRichnessRule(ServingStyle.SNACK, -1));
         }
 
         @Test

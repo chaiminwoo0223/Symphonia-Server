@@ -79,6 +79,8 @@ public enum AnjuFixture {
             false),
     // CATALOG_ 상수는 골든 세트 안주다. 맛, 알레르기는 anjus.csv와 K-FIND 영양성분을 적재 규칙으로 계산한 값이다.
     // 위의 FRIED_CHICKEN, CHEESE_PLATTER는 V2 시드 값이라 실제 카탈로그 값과 다르다.
+    // 아래 주석의 순위는 그 안주를 더한 시점의 규칙으로 계산했다.
+    // 맛 값은 #117의 형태 보정과 100ml 환산을 반영한 현재 값이다.
     CATALOG_SAMGYEOPSAL_GUI(
             "삼겹살구이",
             FlavorProfile.of(1, 0, 0, 5, 0),
@@ -146,7 +148,7 @@ public enum AnjuFixture {
             false),
     CATALOG_KKANPUNGGI(
             "깐풍기",
-            FlavorProfile.of(2, 0, 0, 2, 4),
+            FlavorProfile.of(2, 0, 0, 3, 4),
             Set.of(AllergyType.CHICKEN, AllergyType.SOYBEAN, AllergyType.WHEAT),
             AnjuBase.POULTRY,
             ServingStyle.MAIN,
@@ -171,7 +173,7 @@ public enum AnjuFixture {
             true),
     CATALOG_TANGSUYUK(
             "탕수육",
-            FlavorProfile.of(2, 0, 0, 2, 4),
+            FlavorProfile.of(3, 0, 0, 2, 4),
             Set.of(AllergyType.PORK, AllergyType.EGG, AllergyType.WHEAT),
             AnjuBase.PORK,
             ServingStyle.MAIN,
@@ -184,7 +186,7 @@ public enum AnjuFixture {
             ServingStyle.MAIN,
             true),
     // 소주(음식 계열 PORK, BEEF)는 돼지껍데기구이가 1위, 소막창구이, 대창구이, 삼겹살구이, 고추장삼겹살이 동점 2위다.
-    // 곱창전골은 음식 계열에 맞지만 가벼운 안주 중 1위, 고다치즈는 무게감 5지만 음식 계열에 맞지 않는 안주다.
+    // 곱창전골은 음식 계열에 맞지만 가벼운 안주 중 1위, 고다치즈는 무게감이 높지만 음식 계열에 맞지 않는 안주다.
     CATALOG_DWAEJI_KKEOPDEGI_GUI(
             "돼지껍데기구이",
             FlavorProfile.of(2, 0, 0, 5, 0),
@@ -215,14 +217,14 @@ public enum AnjuFixture {
             true),
     CATALOG_GOPCHANG_JEONGOL(
             "곱창전골",
-            FlavorProfile.of(1, 0, 0, 1, 0),
+            FlavorProfile.of(1, 0, 0, 2, 0),
             Set.of(AllergyType.BEEF, AllergyType.SOYBEAN),
             AnjuBase.BEEF,
             ServingStyle.MAIN,
             true),
     CATALOG_GOUDA_CHEESE(
             "고다치즈",
-            FlavorProfile.of(1, 0, 0, 5, 0),
+            FlavorProfile.of(1, 0, 0, 4, 0),
             Set.of(AllergyType.MILK, AllergyType.WHEAT),
             AnjuBase.HARD_CHEESE,
             ServingStyle.SNACK,
@@ -232,21 +234,21 @@ public enum AnjuFixture {
     // 도토리묵무침은 음식 계열에 맞지만 가벼운 안주 중 1위, 돼지껍데기구이와 고다치즈는 무게감 5지만 음식 계열에 맞지 않는 안주다.
     CATALOG_POPCORN(
             "팝콘",
-            FlavorProfile.of(1, 0, 0, 5, 0),
+            FlavorProfile.of(1, 0, 0, 4, 0),
             Set.of(AllergyType.MILK),
             AnjuBase.VEGETABLE,
             ServingStyle.SNACK,
             false),
     CATALOG_ROASTED_PEANUTS(
             "볶음땅콩",
-            FlavorProfile.of(3, 0, 0, 5, 0),
+            FlavorProfile.of(3, 0, 0, 4, 0),
             Set.of(AllergyType.PEANUT),
             AnjuBase.VEGETABLE,
             ServingStyle.SNACK,
             false),
     CATALOG_MIXED_NUTS(
             "견과류모둠",
-            FlavorProfile.of(3, 0, 0, 5, 0),
+            FlavorProfile.of(3, 0, 0, 4, 0),
             Set.of(AllergyType.WALNUT),
             AnjuBase.VEGETABLE,
             ServingStyle.SNACK,
@@ -257,6 +259,16 @@ public enum AnjuFixture {
             Set.of(AllergyType.PORK, AllergyType.WHEAT),
             AnjuBase.CURED_MEAT,
             ServingStyle.APPETIZER,
+            false),
+    // 아래는 집어 먹는 안주의 무게감을 1 낮춘 뒤(#117)의 카탈로그 순위로 더한 안주다.
+    // 카스 프레시는 콜드컷플래터가 1위, 도토리묵무침이 2위, 장어구이가 3위다.
+    // 팝콘, 볶음땅콩, 견과류모둠은 무게감 4로 후라이드치킨과 동점 4위다.
+    CATALOG_JANGEO_GUI(
+            "장어구이",
+            FlavorProfile.of(2, 0, 0, 4, 0),
+            Set.of(AllergyType.SOYBEAN, AllergyType.WHEAT),
+            AnjuBase.RICH_FISH,
+            ServingStyle.MAIN,
             false);
 
     private final String name;
