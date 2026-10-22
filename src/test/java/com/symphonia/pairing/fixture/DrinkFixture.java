@@ -94,6 +94,11 @@ public enum DrinkFixture {
         return build(ordinal() + 1L, defaultDrinkStyleId(), profile);
     }
 
+    // 같은 픽스처에서 맛만 다른 음료를 함께 둘 때 쓴다.
+    public Drink createWithIdAndFlavorProfile(Long id, FlavorProfile profile) {
+        return build(id, defaultDrinkStyleId(), profile);
+    }
+
     // 음식 계열만 바꿔 Harmonize 점수와 추천 이유를 검증할 때 쓴다.
     public Drink createWithHarmonizes(Set<Harmonize> harmonizes) {
         return build(

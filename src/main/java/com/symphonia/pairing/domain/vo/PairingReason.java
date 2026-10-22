@@ -14,6 +14,8 @@ public enum PairingReason {
     FLAVOR_MATCH("술과 안주의 맛이 잘 어울려요", PairingReasonCriteria::flavorMatch),
     HARMONIZE_MATCH("이 술과 즐겨 곁들이는 음식이에요", PairingReasonCriteria::harmonizeMatch),
     RICHNESS_CUTTING("높은 도수가 안주의 기름진 맛을 깔끔하게 잡아줘요", PairingReasonCriteria::richnessCutting),
+    CARBONATION_ACIDITY_CUTTING(
+            "탄산이나 산미가 안주의 기름진 맛을 씻어줘요", PairingReasonCriteria::carbonationAcidityCutting),
     MOOD_MATCH("분위기와 잘 맞는 음악이에요", PairingReasonCriteria::moodMatch),
     ;
 
