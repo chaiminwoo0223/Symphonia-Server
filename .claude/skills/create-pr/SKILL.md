@@ -14,10 +14,10 @@ description: Load when creating a pull request. PR 대상/제목/본문 구성 �
 - PR 대상은 항상 `develop`이다.
 - PR 본문에 Claude 어트리뷰션 트레일러(`Co-Authored-By: Claude ...`, `Claude-Session: ...`)를 붙이지 않는다(`commit-push` 스킬 참고). `.claude/hooks/check-no-claude-trailer.sh`가 `gh pr create`/`gh pr edit`에 섞이면 차단한다.
 - 현재 브랜치(`<type>/<이슈번호>`)에 연결된 이슈의 TODO 체크리스트는 `gh pr create` 전에 전부 체크(`- [x]`)해 둔다. `.claude/hooks/check-issue-todo-checked.sh`가 체크 안 된 항목이 남아 있으면 `gh pr create` 자체를 차단한다. 이번 PR 범위에서 뺀 TODO가 있다면 체크하지 말고 이슈 본문에서 별도 이슈로 옮기거나 범위 제외로 명시한 뒤 진행한다.
-- 제목 포맷은 `[Type] 설명`이다. 이슈 번호는 제목에 넣지 않는다. 이슈 연결은 본문의 `closes #이슈번호`만으로 한다. `Type`은 `create-issue` 스킬의 타입 표(Feature/Bug/Refactor/Chore/Performance/Docs)를 그대로 쓴다. 여러 유형이 섞였으면 가장 비중이 큰 변경의 타입을 대표로 쓴다. 비중은 diff만이 아니라 저장소 밖에서 한 작업(GitHub 설정 등)까지 포함해 판단한다. 커밋 type(`commit-push` 스킬)에서 PR 타입을 그대로 가져오지 않는다.
+- 제목 포맷은 `[Type] 설명`이다. 이슈 번호는 제목에 넣지 않는다. 이슈 연결은 본문의 `closes #이슈번호`만으로 한다. `Type`은 `create-issue` 스킬의 타입 표(Feature/Bug/Refactor/Chore/Performance/Docs/Test)를 그대로 쓴다. 여러 유형이 섞였으면 가장 비중이 큰 변경의 타입을 대표로 쓴다. 비중은 diff만이 아니라 저장소 밖에서 한 작업(GitHub 설정 등)까지 포함해 판단한다. 커밋 type(`commit-push` 스킬)에서 PR 타입을 그대로 가져오지 않는다.
 - 본문은 `.github/PULL_REQUEST_TEMPLATE.md` 구조(PR 유형 체크박스 → 작업 내용 → 관련 이슈 → 추가 사항)를 그대로 따른다. 구분선(`---`)과 섹션 순서를 임의로 바꾸지 않는다.
 - **assignee는 항상 `--assignee @me`로 지정한다.** PR을 생성하는 사람이 곧 작업자이므로 별도 판단 없이 고정값으로 둔다.
-- **label은 제목의 대표 `Type`에 대응하는 라벨을 `--label`로 지정한다.** 매핑은 `create-issue` 스킬의 타입→라벨 표(`✨ feature`/`🐛 bug`/`♻️ refactor`/`⚙️ chore`/`⚡️ performance`/`📄 docs`)를 그대로 재사용한다. 이슈와 마찬가지로 PR도 라벨 하나로 대표 타입만 표시하고, 위 title의 대표 타입과 항상 같은 라벨을 쓴다.
+- **label은 제목의 대표 `Type`에 대응하는 라벨을 `--label`로 지정한다.** 매핑은 `create-issue` 스킬의 타입→라벨 표(`✨ feature`/`🐛 bug`/`♻️ refactor`/`⚙️ chore`/`⚡️ performance`/`📄 docs`/`✅ test`)를 그대로 재사용한다. 이슈와 마찬가지로 PR도 라벨 하나로 대표 타입만 표시하고, 위 title의 대표 타입과 항상 같은 라벨을 쓴다.
 - **`gh pr create` 실행 전 반드시 `code-reviewer` 에이전트를 호출한다.** 빌드/테스트/이슈 TODO/커밋 트레일러처럼 결정론적인 항목은 훅이 강제하지만, 계층 의존 방향·컨벤션 위반처럼 판단이 섞이는 항목은 이 스킬 절차에 박아둔 `code-reviewer` 호출이 유일한 검토 지점이다(정적분석 도구 미도입 사유는 `architecture` 스킬 참고). CRITICAL/MAJOR 발견 사항은 PR 생성 전에 수정하고, MINOR/INFO는 판단해 반영하거나 근거를 남기고 넘어간다.
 
 ## 절차
