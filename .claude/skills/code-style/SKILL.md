@@ -1,6 +1,6 @@
 ---
 name: code-style
-description: Load when writing or formatting Java code. 포맷터(Spotless + Google Java Format), 자동 적용/검증 방식, 멤버 선언 순서.
+description: Load when writing or formatting Java code. 포맷터(Spotless + Google Java Format), 자동 적용/검증 방식, 긴 주석 줄바꿈, 멤버 선언 순서.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -26,6 +26,12 @@ spotless {
 - **직접 스타일을 맞추려 하지 않는다.** Google Java Format(AOSP 스타일)은 들여쓰기(4칸), 줄바꿈, import 순서, 중괄호 위치까지 전부 고정된 규칙으로 결정한다. 사람이 임의로 다르게 포맷하면 다음 `spotlessApply` 실행 때 되돌아간다.
 - **자동 포맷을 신뢰한다.** `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일을 편집할 때마다 자동으로 `spotlessApply`를 실행한다. 직접 `./gradlew spotlessApply`를 실행할 필요는 거의 없다.
 - **`spotlessCheck`는 `check` 태스크에 연결되어 있다.** 즉 `./gradlew clean build`(`check-all.sh`, `pre-push-check.sh`가 실행하는 명령)에 포맷 검증이 자동으로 포함된다. 별도로 `spotlessCheck` 스텝을 추가할 필요가 없다.
+
+## 긴 주석 줄바꿈
+
+`//` 주석이 한 줄 100자를 넘을 것 같으면 포맷터에 맡기지 않고 문장 경계에서 직접 줄을 나눈다. 한 줄에는 완결된 문장을 하나 이상 담고, 문장 하나가 100자를 넘으면 쉼표나 절 경계에서 나눈다. Google Java Format은 100자를 넘는 `//` 주석을 글자 수 기준으로 다시 감싼다. 그래서 "거리 감점이"와 "됐다"처럼 문장 중간에서 잘린 줄이 생긴다. 포맷터가 정하지 않는 것이 아니라 의미를 모르고 정하는 영역이라, 위 "직접 스타일을 맞추려 하지 않는다" 원칙의 예외다.
+
+**(2026-10-22 결정, 이슈 #106)**: #106에서 라거 골든 테스트의 주석 한 줄이 100자를 넘어 `spotlessApply`가 "거리 감점이 / 됐다"로 잘랐다. 문장 중간 줄바꿈은 읽는 흐름을 끊는 안티패턴이라 규칙으로 정했다. 포맷터 설정으로 주석 재배치를 끄는 안은 택하지 않았다. Google Java Format은 주석 감싸기를 끄는 옵션이 없고, 끄더라도 100자를 넘는 줄이 그대로 남기 때문이다. 결정론적 검사도 넣지 않았다. 잘린 줄인지 의도한 줄바꿈인지는 문장 구조를 봐야 알 수 있어 `code-reviewer` 체크리스트로 검토한다.
 
 ## 멤버 선언 순서
 
@@ -66,4 +72,4 @@ spotless {
 
 ## 이 스킬이 다루지 않는 것
 
-네이밍 규칙, 계층별 타입 어휘, 클린코드 원칙(YAGNI, 단일 책임 등)은 이 스킬의 범위가 아니다. `architecture` 스킬과 `code-reviewer` 에이전트의 체크리스트를 참고한다. 이 스킬은 기계적으로 결정되는 포맷(공백, 줄바꿈, import 순서)과 포맷터가 정하지 않는 멤버 선언 순서만 다룬다.
+네이밍 규칙, 계층별 타입 어휘, 클린코드 원칙(YAGNI, 단일 책임 등)은 이 스킬의 범위가 아니다. `architecture` 스킬과 `code-reviewer` 에이전트의 체크리스트를 참고한다. 이 스킬은 기계적으로 결정되는 포맷(공백, 줄바꿈, import 순서)과 포맷터가 정하지 않거나 의미를 모르고 정하는 영역(멤버 선언 순서, 긴 주석 줄바꿈)만 다룬다.
