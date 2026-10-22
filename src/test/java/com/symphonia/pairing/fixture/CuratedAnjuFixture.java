@@ -26,6 +26,7 @@ public enum CuratedAnjuFixture {
             List.of("고추장", "간장", "마늘"),
             AnjuBase.POULTRY,
             ServingStyle.MAIN,
+            false,
             3.0,
             12.0,
             ""),
@@ -39,6 +40,7 @@ public enum CuratedAnjuFixture {
             List.of("밀가루", "달걀", "고춧가루"),
             AnjuBase.POULTRY,
             ServingStyle.MAIN,
+            true,
             1.0,
             15.0,
             ""),
@@ -52,6 +54,7 @@ public enum CuratedAnjuFixture {
             List.of("소면", "식초"),
             AnjuBase.SEAFOOD,
             ServingStyle.MAIN,
+            false,
             6.0,
             2.0,
             ""),
@@ -65,9 +68,24 @@ public enum CuratedAnjuFixture {
             List.of("간장"),
             AnjuBase.BEEF,
             ServingStyle.SNACK,
+            false,
             20.0,
             4.0,
-            "쇠고기, 간장, 설탕, 땅콩분태");
+            "쇠고기, 간장, 설탕, 땅콩분태"),
+    // 집어 먹는 안주지만 튀긴 요리라 무게감 형태 보정을 받지 않는다.
+    CHICKEN_NUGGET(
+            AnjuSource.K_FIND,
+            "fixture-anju-005",
+            "fixture-D105",
+            "치킨너겟",
+            List.of("닭고기"),
+            List.of("밀가루", "달걀"),
+            AnjuBase.POULTRY,
+            ServingStyle.SNACK,
+            true,
+            1.0,
+            12.0,
+            "");
 
     private final AnjuSource source;
     private final String externalId;
@@ -77,6 +95,7 @@ public enum CuratedAnjuFixture {
     private final List<String> subIngredients;
     private final AnjuBase base;
     private final ServingStyle serving;
+    private final boolean fried;
     private final Double sugarGrams;
     private final Double fatGrams;
     private final String rawMaterials;
@@ -131,6 +150,7 @@ public enum CuratedAnjuFixture {
                 mainIngredients,
                 subIngredients,
                 base,
-                serving);
+                serving,
+                fried);
     }
 }

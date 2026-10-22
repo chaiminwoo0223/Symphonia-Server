@@ -37,6 +37,7 @@ ORIGIN_PRIORITY = [
     "초등학교급식(재료량 기반 산출 함량)",
 ]
 CANDIDATE_LIMIT = 5
+PROXIMATE_COMPONENTS = ["수분(g)", "단백질(g)", "지방(g)", "탄수화물(g)", "회분(g)"]
 NUTRITION_HEADER = ["kfind_code", "food_name", "sugar_grams", "fat_grams", "raw_materials"]
 
 
@@ -178,10 +179,26 @@ def candidates():
     print(f"✓ 후보 목록: {CANDIDATES_CSV.relative_to(ROOT)} (안주 {anju_count}개, 후보 없음 {no_candidate}개)")
 
 
+def per_100g(row, nutrient):
+    """100g 기준 행은 원본 값을 그대로 쓰고, 100ml 기준 행은 성분 합에 대한 비율로 바꾼다.
+
+    100ml 기준 행은 회분이 비어 있어 0으로 더한다. 회분은 수 g이라 등급을 거의 바꾸지 않는다.
+    값이나 성분 합이 없으면 빈 값으로 두어, 100g 기준 행처럼 적재에서 측정 안 됨으로 제외되게 한다.
+    """
+    value = row[nutrient].strip()
+    if row["영양성분함량기준량"].strip() != "100ml" or not value:
+        return value
+    mass = sum(float(row[component].strip() or 0) for component in PROXIMATE_COMPONENTS)
+    if mass == 0:
+        return ""
+    return f"{float(value) * 100 / mass:.2f}"
+
+
 def extract():
     """anjus.csv가 가리키는 식품코드의 100g당 당류와 지방을 nutrition.csv로 뽑는다.
 
-    100ml 기준 행도 100g과 같다고 본다. 구간 경계가 2~25g 단위라 밀도 차이로 등급이 거의 바뀌지 않기 때문이다.
+    100ml 기준 행은 재료량으로 산출한 외식, 급식 값이고 성분 합이 28~161g이라 100g당 값으로 볼 수 없다.
+    그래서 당류와 지방을 성분 합에 대한 비율로 100g당 값으로 바꾼다.
     가공식품의 원재료와 알레르기는 HACCP 포장지표기정보(공공데이터포털 15033307)로 대조한 뒤 채우므로 지금은 비워 둔다.
     """
     _, anjus = read_anjus()
@@ -198,7 +215,7 @@ def extract():
         writer.writerow(NUTRITION_HEADER)
         for code in sorted(found):
             row = found[code]
-            writer.writerow([code, row["식품명"].strip(), row["당류(g)"].strip(), row["지방(g)"].strip(), ""])
+            writer.writerow([code, row["식품명"].strip(), per_100g(row, "당류(g)"), per_100g(row, "지방(g)"), ""])
 
     missing = sorted(codes - found.keys())
     print(f"✓ 영양성분을 뽑은 식품코드: {len(found)}개 → {NUTRITION_CSV.relative_to(ROOT)}")

@@ -9,6 +9,8 @@ import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AnjuRule;
 import com.symphonia.pairing.domain.vo.IngredientRule;
 import com.symphonia.pairing.domain.vo.NutrientRule;
+import com.symphonia.pairing.domain.vo.ServingRichnessRule;
+import com.symphonia.pairing.domain.vo.ServingStyle;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,6 +28,9 @@ public class CsvAnjuRuleReader implements AnjuRuleReader {
                 nutrientRules("anju-sugar.csv", "sweetness"),
                 nutrientRules("anju-fat.csv", "richness"),
                 readRows(
+                        new ClassPathResource(RULES_DIR + "anju-serving-richness.csv"),
+                        this::toServingRichnessRule),
+                readRows(
                         new ClassPathResource(RULES_DIR + "ingredients.csv"),
                         this::toIngredientRule));
     }
@@ -38,6 +43,13 @@ public class CsvAnjuRuleReader implements AnjuRuleReader {
                                 Double.parseDouble(column(row, "min_grams")),
                                 Double.parseDouble(column(row, "max_grams")),
                                 Integer.parseInt(column(row, valueColumn))));
+    }
+
+    private ServingRichnessRule toServingRichnessRule(Map<String, String> row) {
+        return new ServingRichnessRule(
+                ServingStyle.valueOf(column(row, "serving")),
+                Boolean.parseBoolean(column(row, "fried")),
+                Integer.parseInt(column(row, "richness_offset")));
     }
 
     private IngredientRule toIngredientRule(Map<String, String> row) {

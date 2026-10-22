@@ -128,6 +128,59 @@ class ImportAnjuServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("집어 먹는 안주면 지방 구간의 무게감을 형태 규칙만큼 낮춘다")
+            void shouldLowerRichnessWhenAnjuIsSnack() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.BEEF_JERKY;
+                givenCuratedAnjus(
+                        List.of(fixture.create()),
+                        List.of(fixture.createNutrition(fixture.getSugarGrams(), 15.0)));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getFlavorProfile())
+                        .usingRecursiveComparison()
+                        .isEqualTo(FlavorProfile.of(4, 0, 0, 3, 0));
+            }
+
+            @Test
+            @DisplayName("집어 먹는 안주라도 튀긴 요리면 지방 구간의 무게감을 그대로 쓴다")
+            void shouldKeepRichnessWhenSnackIsFried() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.CHICKEN_NUGGET;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getFlavorProfile())
+                        .usingRecursiveComparison()
+                        .isEqualTo(FlavorProfile.of(1, 0, 0, 4, 0));
+            }
+
+            @Test
+            @DisplayName("집어 먹는 안주라도 무게감을 가장 낮은 구간보다 낮추지 않는다")
+            void shouldKeepLowestRichnessWhenSnackIsAlreadyLightest() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.BEEF_JERKY;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getFlavorProfile())
+                        .usingRecursiveComparison()
+                        .isEqualTo(FlavorProfile.of(4, 0, 0, 1, 0));
+            }
+
+            @Test
             @DisplayName("가공식품이면 원재료명에서 찾은 알레르기도 함께 넣는다")
             void shouldIncludeAllergiesOfRawMaterials() {
                 // given

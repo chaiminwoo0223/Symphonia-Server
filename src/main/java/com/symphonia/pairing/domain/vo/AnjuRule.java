@@ -11,10 +11,11 @@ import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-// 매핑표의 안주를 영양성분과 재료 규칙표에 대어 맛, 알레르기, 매운맛을 계산한다.
+// 매핑표의 안주를 영양성분, 형태, 재료 규칙표에 대어 맛, 알레르기, 매운맛을 계산한다.
 public record AnjuRule(
         List<NutrientRule> sugarRules,
         List<NutrientRule> fatRules,
+        List<ServingRichnessRule> servingRichnessRules,
         List<IngredientRule> ingredientRules) {
     // 안주에는 탄산이 없고, 산미와 쓴맛을 내는 재료가 없으면 그 맛도 없다.
     private static final int ABSENT_TASTE = 0;
@@ -22,6 +23,7 @@ public record AnjuRule(
     public AnjuRule {
         sugarRules = List.copyOf(sugarRules);
         fatRules = List.copyOf(fatRules);
+        servingRichnessRules = List.copyOf(servingRichnessRules);
         ingredientRules = List.copyOf(ingredientRules);
     }
 
@@ -53,7 +55,7 @@ public record AnjuRule(
                         sweetness.orElseThrow(),
                         maxTaste(allRules, IngredientRule::bitterness),
                         ABSENT_TASTE,
-                        richness.orElseThrow(),
+                        servingAdjusted(richness.orElseThrow(), curatedAnju),
                         maxTaste(allRules, IngredientRule::acidity));
         Anju anju =
                 curatedAnju.toAnju(
@@ -118,6 +120,15 @@ public record AnjuRule(
     // 산미와 쓴맛은 식초, 케첩, 커피처럼 소스와 양념인 부재료가 정하는 경우가 많아 재료 전체에서 가장 큰 값을 쓴다.
     private int maxTaste(List<IngredientRule> rules, ToIntFunction<IngredientRule> taste) {
         return rules.stream().mapToInt(taste).max().orElse(ABSENT_TASTE);
+    }
+
+    // 형태 보정 규칙이 없는 형태와 튀김 여부는 지방 구간의 무게감을 그대로 쓴다.
+    private int servingAdjusted(int richness, CuratedAnju curatedAnju) {
+        return servingRichnessRules.stream()
+                .filter(rule -> rule.matches(curatedAnju))
+                .findFirst()
+                .map(rule -> rule.apply(richness))
+                .orElse(richness);
     }
 
     // 알레르기는 부재료와 가공식품 원재료명까지 모두 본다. 원재료명은 문장이라 재료 단위로 나누지 않고 키워드를 찾는다.
