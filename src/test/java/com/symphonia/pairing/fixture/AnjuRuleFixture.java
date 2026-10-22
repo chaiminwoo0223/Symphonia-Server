@@ -4,6 +4,8 @@ import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AnjuRule;
 import com.symphonia.pairing.domain.vo.IngredientRule;
 import com.symphonia.pairing.domain.vo.NutrientRule;
+import com.symphonia.pairing.domain.vo.ServingRichnessRule;
+import com.symphonia.pairing.domain.vo.ServingStyle;
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -16,6 +18,7 @@ public enum AnjuRuleFixture {
     STANDARD(
             List.of(new NutrientRule(0, 5, 1), new NutrientRule(5, 999, 4)),
             List.of(new NutrientRule(0, 10, 1), new NutrientRule(10, 999, 4)),
+            List.of(new ServingRichnessRule(ServingStyle.SNACK, -1)),
             List.of(
                     new IngredientRule("닭", Set.of(AllergyType.CHICKEN), false, 0, 0),
                     new IngredientRule("소고기", Set.of(AllergyType.BEEF), false, 0, 0),
@@ -35,9 +38,10 @@ public enum AnjuRuleFixture {
 
     private final List<NutrientRule> sugarRules;
     private final List<NutrientRule> fatRules;
+    private final List<ServingRichnessRule> servingRichnessRules;
     private final List<IngredientRule> ingredientRules;
 
     public AnjuRule create() {
-        return new AnjuRule(sugarRules, fatRules, ingredientRules);
+        return new AnjuRule(sugarRules, fatRules, servingRichnessRules, ingredientRules);
     }
 }
