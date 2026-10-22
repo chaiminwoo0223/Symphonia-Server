@@ -1355,10 +1355,12 @@ class PairingQueryServiceTest extends UnitTest {
         // 안주의 탄산이 늘 0이라 탄산(5, 0) 차이가 거리 감점이 됐다.
         // #106 이후에는 지방 함량만 높은 팝콘, 볶음땅콩, 견과류모둠이 콜드컷플래터와 동점 1위였다.
         // 집어 먹는 안주의 무게감을 1 낮춘 뒤(#117)에는 콜드컷플래터, 도토리묵무침, 장어구이 순이고 세 스낵은 후라이드치킨과 동점 4위다.
-        // 상위 3위는 모두 음식 계열에 맞고, 1위는 탄산이 기름기를 씻어 준다. 형태 보정을 되돌리면 세 스낵이 상위 3위에 들어 실패한다.
+        // 세 스낵도 VEGETARIAN에 맞아 Harmonize 사유만으로는 걸러지지 않으므로, 상위 3위에 세 스낵이 없는지를 직접 본다.
+        // 세 스낵의 무게감을 보정 전 값(5)으로 되돌리면 콜드컷플래터와 동점 1위가 되어 실패한다.
+        // 보정 로직 자체는 ImportAnjuServiceTest가 검증한다.
         @Test
-        @DisplayName("라거에는 지방 함량만 높은 스낵보다 음식 계열에 맞는 안주를 상위 3위로 추천한다")
-        void shouldRankHarmonizingAnjusOverHighFatSnacksWithinTopThreeWhenDrinkIsLager() {
+        @DisplayName("라거에는 지방 함량만 높은 스낵을 상위 3위에 두지 않고 1위는 탄산이 기름기를 씻어 준다")
+        void shouldExcludeHighFatSnacksFromTopThreeWhenDrinkIsLager() {
             // given
             givenGoldenCatalog(DrinkFixture.CASS_FRESH.createWithId());
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
