@@ -110,6 +110,11 @@ public enum DrinkFixture {
         return build(null, drinkStyleId, externalId, flavorProfile);
     }
 
+    // 다시 적재할 때 같은 식별 키의 음료가 음식 계열만 바뀐 상황을 만든다.
+    public Drink createWithStyleAndHarmonizes(Long drinkStyleId, Set<Harmonize> harmonizes) {
+        return build(null, drinkStyleId, getExternalId(), flavorProfile, harmonizes);
+    }
+
     // 단위 테스트에서 여러 음료가 같은 스타일을 공유하거나 서로 다른 스타일로 나뉘게 만들 때 쓴다.
     public Drink createWithIdAndStyle(Long id, Long drinkStyleId) {
         return build(id, drinkStyleId, flavorProfile);

@@ -84,13 +84,8 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             entityManager.flush();
             entityManager.clear();
             saved.overwriteWith(
-                    Drink.builder()
-                            .drinkStyleId(drinkStyleId)
-                            .name(saved.getName())
-                            .abv(saved.getAbv())
-                            .flavorProfile(saved.getFlavorProfile())
-                            .harmonizes(Set.of(Harmonize.PORK, Harmonize.SHELLFISH))
-                            .build());
+                    DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.createWithStyleAndHarmonizes(
+                            drinkStyleId, Set.of(Harmonize.PORK, Harmonize.SHELLFISH)));
 
             // when
             drinkRepository.save(saved);
