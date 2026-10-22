@@ -119,7 +119,8 @@ class CsvCuratedAnjuReaderTest {
                                     List.of("닭고기"),
                                     List.of("밀가루", "전분", "달걀"),
                                     AnjuBase.POULTRY,
-                                    ServingStyle.MAIN));
+                                    ServingStyle.MAIN,
+                                    true));
         }
 
         @Test

@@ -33,6 +33,7 @@ public class CsvCuratedAnjuReader implements CuratedAnjuReader {
                 values(column(row, "main_ingredients")),
                 values(column(row, "sub_ingredients")),
                 AnjuBase.valueOf(column(row, "base")),
-                ServingStyle.valueOf(column(row, "serving")));
+                ServingStyle.valueOf(column(row, "serving")),
+                Boolean.parseBoolean(column(row, "fried")));
     }
 }

@@ -18,7 +18,7 @@ public enum AnjuRuleFixture {
     STANDARD(
             List.of(new NutrientRule(0, 5, 1), new NutrientRule(5, 999, 4)),
             List.of(new NutrientRule(0, 10, 1), new NutrientRule(10, 999, 4)),
-            List.of(new ServingRichnessRule(ServingStyle.SNACK, -1)),
+            List.of(new ServingRichnessRule(ServingStyle.SNACK, false, -1)),
             List.of(
                     new IngredientRule("닭", Set.of(AllergyType.CHICKEN), false, 0, 0),
                     new IngredientRule("소고기", Set.of(AllergyType.BEEF), false, 0, 0),
