@@ -73,7 +73,10 @@ public class ImportCuratedDrinkService implements ImportCuratedDrinkUseCase {
         Optional<Set<Harmonize>> harmonizes =
                 Optional.ofNullable(harmonizesByStyleId.get(curatedDrink.bjcpStyleId()));
 
-        return style.flatMap(found -> harmonizes.map(rule -> curatedDrink.toDrink(found, rule)));
+        return style.flatMap(
+                found ->
+                        harmonizes.map(
+                                styleHarmonizes -> curatedDrink.toDrink(found, styleHarmonizes)));
     }
 
     private void upsert(Drink imported, Map<String, Drink> existingByExternalId) {
