@@ -101,4 +101,9 @@ public class Drink {
     public boolean cutsRichnessOf(Anju anju) {
         return abv >= RICHNESS_CUTTING_ABV && !anju.getFlavorProfile().isLight();
     }
+
+    // 탄산이나 산미가 강한 술도 무게감 있는 안주의 기름기를 씻어 준다.
+    public boolean cutsRichnessWithCarbonationOrAcidityOf(Anju anju) {
+        return flavorProfile.cutsRichness() && !anju.getFlavorProfile().isLight();
+    }
 }

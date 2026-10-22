@@ -25,9 +25,11 @@ public class Pairing {
     private static final double HIGH_ABV_PENALTY = 0.15;
     // 음식 계열이 맞으면 가벼운 안주 감점과 같은 크기만큼 더한다. 맛 유사도로 약 0.17 차이를 뒤집는 크기다.
     private static final double HARMONIZE_BONUS = 0.1;
-    // 무게감 차이로 깎이는 맛 유사도 점수(소주와 무게감 5 안주에서 약 0.12)보다 커야
-    // 도수 높은 술이 기름진 안주를 가벼운 안주보다 앞에 둔다.
+    // 무게감 차이로 깎이는 맛 유사도 점수보다 커야 도수 높은 술이 기름진 안주를 가벼운 안주보다 앞에 둔다.
+    // 그 점수는 소주와 삼겹살구이를, 삼겹살구이의 무게감만 1로 바꾼 경우와 비교하면 약 0.13이다.
     private static final double RICHNESS_CUTTING_BONUS = 0.2;
+    // 도수 대비와 같은 크기로 둬서, 탄산 5인 맥주가 기름진 안주에서 소주와 같은 대비 점수를 받는다.
+    private static final double CARBONATION_ACIDITY_CUTTING_BONUS = 0.2;
     private static final int RECOMMENDATION_LIMIT = 5;
     // 서로 다른 점수에 같은 값을 더하면 반올림으로 동점이 될 수 있다. 경계와 이 오차 안에 있는 후보는 모두 남긴다.
     private static final double TIE_TOLERANCE = 1e-9;
@@ -106,10 +108,16 @@ public class Pairing {
     }
 
     // 안주가 무거울수록 씻어 줄 기름기가 많아 무게감 5에서 최대가 된다.
+    // 도수와 탄산, 산미는 같은 기름기를 씻는 효과라 더하지 않고 큰 쪽만 준다.
     private static double richnessCuttingBonus(Drink drink, Anju anju) {
-        return drink.cutsRichnessOf(anju)
-                ? RICHNESS_CUTTING_BONUS * anju.getFlavorProfile().heaviness()
-                : 0;
+        double byAbv = drink.cutsRichnessOf(anju) ? RICHNESS_CUTTING_BONUS : 0;
+        double byCarbonationOrAcidity =
+                drink.cutsRichnessWithCarbonationOrAcidityOf(anju)
+                        ? CARBONATION_ACIDITY_CUTTING_BONUS
+                                * drink.getFlavorProfile().richnessCuttingStrength()
+                        : 0;
+
+        return Math.max(byAbv, byCarbonationOrAcidity) * anju.getFlavorProfile().heaviness();
     }
 
     private static double lightAnjuPenalty(Anju anju, Occasion occasion) {

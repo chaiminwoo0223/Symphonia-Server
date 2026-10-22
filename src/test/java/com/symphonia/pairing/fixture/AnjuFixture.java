@@ -226,6 +226,37 @@ public enum AnjuFixture {
             Set.of(AllergyType.MILK, AllergyType.WHEAT),
             AnjuBase.HARD_CHEESE,
             ServingStyle.SNACK,
+            false),
+    // 아래는 탄산을 유사도에서 빼고 탄산, 산미 대비 점수를 넣은 뒤의 카탈로그 순위로 더한 안주다.
+    // 카스 프레시(음식 계열 POULTRY, VEGETARIAN, RICH_FISH, CURED_MEAT)는 이 네 안주가 동점 1위다.
+    // 도토리묵무침은 음식 계열에 맞지만 가벼운 안주 중 1위, 돼지껍데기구이와 고다치즈는 무게감 5지만 음식 계열에 맞지 않는 안주다.
+    CATALOG_POPCORN(
+            "팝콘",
+            FlavorProfile.of(1, 0, 0, 5, 0),
+            Set.of(AllergyType.MILK),
+            AnjuBase.VEGETABLE,
+            ServingStyle.SNACK,
+            false),
+    CATALOG_ROASTED_PEANUTS(
+            "볶음땅콩",
+            FlavorProfile.of(3, 0, 0, 5, 0),
+            Set.of(AllergyType.PEANUT),
+            AnjuBase.VEGETABLE,
+            ServingStyle.SNACK,
+            false),
+    CATALOG_MIXED_NUTS(
+            "견과류모둠",
+            FlavorProfile.of(3, 0, 0, 5, 0),
+            Set.of(AllergyType.WALNUT),
+            AnjuBase.VEGETABLE,
+            ServingStyle.SNACK,
+            false),
+    CATALOG_COLD_CUT_PLATTER(
+            "콜드컷플래터",
+            FlavorProfile.of(1, 0, 0, 5, 0),
+            Set.of(AllergyType.PORK, AllergyType.WHEAT),
+            AnjuBase.CURED_MEAT,
+            ServingStyle.APPETIZER,
             false);
 
     private final String name;

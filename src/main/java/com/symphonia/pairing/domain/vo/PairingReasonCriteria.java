@@ -33,6 +33,10 @@ final class PairingReasonCriteria {
         return candidate.drink().cutsRichnessOf(candidate.anju());
     }
 
+    public static boolean carbonationAcidityCutting(PairingCandidate candidate) {
+        return candidate.drink().cutsRichnessWithCarbonationOrAcidityOf(candidate.anju());
+    }
+
     public static boolean moodMatch(PairingCandidate candidate) {
         return candidate.musicMood().fitsFor(candidate.occasion().toMoodProfile());
     }
