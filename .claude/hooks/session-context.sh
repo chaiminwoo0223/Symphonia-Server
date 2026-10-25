@@ -10,7 +10,11 @@ EXPECTED_GH_USER="chaiminwoo0223"
 ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}"
 cd "$ROOT" || exit 0
 
-branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+if branch="$(git symbolic-ref -q --short HEAD 2>/dev/null)"; then
+    :
+elif git rev-parse --verify HEAD >/dev/null 2>&1; then
+    branch="detached HEAD"
+fi
 gh_user="$(gh config get -h github.com user 2>/dev/null)"
 
 echo "현재 브랜치: ${branch:-알 수 없음}"
