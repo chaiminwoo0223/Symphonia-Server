@@ -1,6 +1,7 @@
 ---
 name: run-checks
 description: PR 전 전체 검증(check-all.sh)을 실행한다
+disable-model-invocation: true
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
