@@ -47,7 +47,7 @@ PR 대상, 제목·본문 구성, 생성 절차는 `create-pr` 스킬 참고. PR
 
 ## CodeRabbit 리뷰
 
-`develop`, `main` 대상 PR에는 CodeRabbit이 자동으로 리뷰를 남긴다(2026-10-25, 이슈 #86).
+`develop` 대상 PR에는 CodeRabbit이 자동으로 리뷰를 남긴다(2026-10-25, 이슈 #86).
 
 | 리뷰어 | 시점 | 범위 |
 |---|---|---|
@@ -58,7 +58,8 @@ PR 대상, 제목·본문 구성, 생성 절차는 `create-pr` 스킬 참고. PR
 - CodeRabbit은 리뷰 대상 PR의 head 브랜치에 있는 `.coderabbit.yaml`을 읽는다. 설정 변경은 그 설정을 바꾸는 PR 자체에서 바로 확인할 수 있다.
 - 핵심 제약은 CodeRabbit의 검토 대상이 아니라 가드레일이다. `path_instructions`에는 제약과 반대되는 수정을 제안하지 말라는 짧은 목록만 두고, 근거는 `code_guidelines`로 `architecture`, `error-handling` 스킬을 직접 읽게 한다. 규칙을 YAML에 복사하면 스킬과 두 벌로 갈라지기 때문이다. 스킬 문서는 제안을 거르는 근거로만 쓰고 위반 지적에는 쓰지 않는다고 지시문에 적어 둔다. `code-style`, `testing`은 `code-reviewer`만 보는 컨벤션이라 읽히지 않는다.
 - 위 표의 CodeRabbit 범위는 `.coderabbit.yaml`의 `**/*` 지시문에도 적혀 있다. 범위를 바꿀 때는 두 곳을 함께 고친다.
-- `auto_review.base_branches`는 기본 브랜치에 더해 리뷰할 브랜치 목록이다. 그래서 기본 브랜치인 `main` 대상 PR(`develop` → `main` 릴리스 PR)도 자동 리뷰된다. 같은 커밋을 다시 보게 되지만, 릴리스 직전의 마지막 점검으로 그대로 둔다.
+- `develop` → `main` 릴리스 PR은 자동 리뷰하지 않는다. 이미 `develop` 대상 PR에서 리뷰한 커밋을 다시 보는 셈이라서다. CodeRabbit은 기본 브랜치와 `auto_review.base_branches`에 적은 브랜치만 자동 리뷰하는데, 저장소의 기본 브랜치가 `develop`이고 `main`은 목록에 없다. 기본 브랜치를 `main`으로 바꾸면 릴리스 PR도 리뷰 대상이 되므로 바꾸지 않는다.
+- `main` Ruleset(PR 필수, 승인 1명, CI `check` 통과)은 코드 리뷰가 아니라 릴리스 승인과 CI 게이트 역할이다. 각각 통과한 `develop` PR들을 합친 결과를 CI가 한 번 더 검증하고, 승인자는 배포 시점을 확인한다.
 - CodeRabbit은 승인하거나 변경을 요청하지 않고 코멘트만 남긴다. 머지에 필요한 승인 1명은 여전히 사람이 한다.
 - Ruleset이 모든 리뷰 대화의 Resolve를 요구하므로 CodeRabbit 코멘트도 Resolve해야 머지할 수 있다. 반영하지 않는 코멘트는 이유를 답글로 남기고 Resolve한다.
 
