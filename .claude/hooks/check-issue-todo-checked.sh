@@ -7,17 +7,13 @@
 # <type>/<이슈번호> 패턴이 아닌 브랜치(main, develop 등)는 강제할 기준이 없으므로 통과시킨다.
 # gh 인증/네트워크 문제로 이슈를 못 읽으면 PR 생성 자체를 막지 않는다(fail-open).
 
-payload="$(cat)"
-command="$(jq -r '.tool_input.command // empty' <<<"$payload" 2>/dev/null)"
+source "$(dirname "$0")/lib.sh"
 
+read_command
 [[ "$command" =~ (^|[[:space:]\&\|\;])gh[[:space:]]+pr[[:space:]]+create ]] || exit 0
+cd_project_root || exit 0
 
-ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}"
-cd "$ROOT" || exit 0
-
-branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
-[[ "$branch" =~ ^[a-z]+/([0-9]+)$ ]] || exit 0
-issue_number="${BASH_REMATCH[1]}"
+issue_number="$(branch_issue_number)" || exit 0
 
 body="$(gh issue view "$issue_number" --json body -q .body 2>/dev/null)"
 [[ -z "$body" ]] && exit 0
@@ -25,9 +21,7 @@ body="$(gh issue view "$issue_number" --json body -q .body 2>/dev/null)"
 unchecked="$(grep -cE '^[[:space:]]*-[[:space:]]\[[[:space:]]\]' <<<"$body")"
 
 if [[ "$unchecked" -gt 0 ]]; then
-    reason="이슈 #${issue_number}의 TODO 체크리스트에 아직 체크되지 않은 항목이 ${unchecked}개 있다. 완료된 항목은 'gh issue edit ${issue_number}'로 체크(- [x])하고, 아직 안 끝난 항목이 있다면 이번 PR 범위에 포함할지부터 판단해라."
-    jq -n --arg reason "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
-    exit 0
+    deny "이슈 #${issue_number}의 TODO 체크리스트에 아직 체크되지 않은 항목이 ${unchecked}개 있다. 완료된 항목은 'gh issue edit ${issue_number}'로 체크(- [x])하고, 아직 안 끝난 항목이 있다면 이번 PR 범위에 포함할지부터 판단해라."
 fi
 
 exit 0

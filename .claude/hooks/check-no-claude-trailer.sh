@@ -9,27 +9,26 @@
 # 문서/PR 본문 문장("훅이 Co-Authored-By: Claude ...를 차단한다" 같은 프로즈)까지 오탐하지 않도록
 # 패턴을 줄 시작(선행 공백만 허용)에 앵커한다.
 
-payload="$(cat)"
-command="$(jq -r '.tool_input.command // empty' <<<"$payload" 2>/dev/null)"
+source "$(dirname "$0")/lib.sh"
 
-is_git_commit=false
-is_gh_pr=false
+read_command
 
-[[ "$command" =~ (^|[[:space:]\&\|\;])git[[:space:]]+commit ]] && is_git_commit=true
-[[ "$command" =~ (^|[[:space:]\&\|\;])gh[[:space:]]+pr[[:space:]]+(create|edit) ]] && is_gh_pr=true
+git_commit=false
+gh_pr=false
 
-if [[ "$is_git_commit" == false && "$is_gh_pr" == false ]]; then
+is_git_commit && git_commit=true
+[[ "$command" =~ (^|[[:space:]\&\|\;])gh[[:space:]]+pr[[:space:]]+(create|edit) ]] && gh_pr=true
+
+if [[ "$git_commit" == false && "$gh_pr" == false ]]; then
     exit 0
 fi
 
-if [[ "$is_git_commit" == true && "$is_gh_pr" == false ]]; then
-    [[ "$command" =~ (^|[[:space:]])-m([[:space:]]|=) ]] || exit 0
+if [[ "$git_commit" == true && "$gh_pr" == false ]]; then
+    has_message_flag || exit 0
 fi
 
 if grep -qiE '^[[:space:]]*(co-authored-by:[[:space:]]*claude|claude-session:)' <<<"$command"; then
-    reason="git commit/gh pr 명령에 Claude 어트리뷰션 트레일러(Co-Authored-By/Claude-Session)가 포함되어 있다. 이 저장소는 그 트레일러를 원하지 않으니(commit-push 스킬 참고) 트레일러를 제거하고 다시 실행해라."
-    jq -n --arg reason "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
-    exit 0
+    deny "git commit/gh pr 명령에 Claude 어트리뷰션 트레일러(Co-Authored-By/Claude-Session)가 포함되어 있다. 이 저장소는 그 트레일러를 원하지 않으니(commit-push 스킬 참고) 트레일러를 제거하고 다시 실행해라."
 fi
 
 exit 0

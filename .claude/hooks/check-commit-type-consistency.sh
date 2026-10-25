@@ -8,14 +8,11 @@
 # 실행 전 raw command 텍스트를 그대로 검사한다.
 # -m 없이 에디터로 메시지를 작성하는 커밋(예: --amend --no-edit)은 최종 메시지를 알 수 없으므로 검증하지 않고 통과시킨다(fail-open).
 
-payload="$(cat)"
-command="$(jq -r '.tool_input.command // empty' <<<"$payload" 2>/dev/null)"
+source "$(dirname "$0")/lib.sh"
 
-if [[ ! "$command" =~ (^|[[:space:]\&\|\;])git[[:space:]]+commit ]]; then
-    exit 0
-fi
-
-[[ "$command" =~ (^|[[:space:]])-m([[:space:]]|=) ]] || exit 0
+read_command
+is_git_commit || exit 0
+has_message_flag || exit 0
 
 top_type="$(grep -oE '\[#[0-9]+\][[:space:]]*[a-z]+:' <<<"$command" \
     | head -1 \
@@ -25,13 +22,11 @@ bullet_types="$(grep -oE '^\*[[:space:]]*[a-z]+:' <<<"$command" \
     | sed -E 's/^\*[[:space:]]*([a-z]+):.*/\1/')"
 
 all_types="$(printf '%s\n%s\n' "$top_type" "$bullet_types" | grep -v '^$' | sort -u)"
-type_count="$(grep -c . <<<"$all_types" 2>/dev/null || echo 0)"
+type_count="$(grep -c . <<<"$all_types")"
 
 if [[ "$type_count" -gt 1 ]]; then
     types_joined="$(tr '\n' ',' <<<"$all_types" | sed 's/,$//')"
-    reason="커밋 메시지 안에 서로 다른 type이 섞여 있다 (${types_joined}). commit-push 스킬 규칙상 하나의 커밋에는 하나의 type만 담아야 하니, type별로 커밋을 나눠서 다시 커밋해라."
-    jq -n --arg reason "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
-    exit 0
+    deny "커밋 메시지 안에 서로 다른 type이 섞여 있다 (${types_joined}). commit-push 스킬 규칙상 하나의 커밋에는 하나의 type만 담아야 하니, type별로 커밋을 나눠서 다시 커밋해라."
 fi
 
 exit 0
