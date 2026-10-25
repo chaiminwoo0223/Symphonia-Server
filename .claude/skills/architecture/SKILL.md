@@ -105,11 +105,11 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 영속성 (PostgreSQL / pgvector)
 
-DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설정, 카탈로그 적재 러너에 관한 결정은 [`persistence.md`](persistence.md)에 있다. 엔티티와 `*JpaEntity` 매핑, `db/migration`의 마이그레이션 파일, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때 읽는다. 다만 Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`)와 `drink.harmonizes` 컬럼(#105), 안주 무게감 보정 규칙표(`anju-serving-richness.csv`, #117)에 관한 결정은 같은 작업에 필요해도 `pairing.md`에 있다.
+DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설정, 카탈로그 적재 러너에 관한 결정은 [`persistence.md`](persistence.md)에 있다. 엔티티와 `*JpaEntity` 매핑, `db/migration`의 마이그레이션 파일, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때 읽는다. 다만 적재 규칙표라도 추천 점수 때문에 정한 Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`)와 `drink.harmonizes` 컬럼(#105), 안주 무게감 보정 규칙표(`anju-serving-richness.csv`, #117)에 관한 결정은 `pairing.md`에 있다.
 
 ## pairing 추천 규칙
 
-`Pairing.recommend`의 점수 규칙(맛 유사도, 감점, 대비 점수, Harmonize), 후보 선정과 스타일 다양성, 추천 성능에 관한 결정은 [`pairing.md`](pairing.md)에 있다. `pairing` 도메인의 추천 로직이나 점수에 쓰는 값을 바꿀 때 읽는다. Harmonize 규칙표, `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표를 바꿀 때도 읽는다.
+`Pairing.recommend`의 점수 규칙(맛 유사도, 감점, 대비 점수, Harmonize), 후보 선정과 스타일 다양성, 추천 성능에 관한 결정은 [`pairing.md`](pairing.md)에 있다. `pairing` 도메인의 추천 로직이나 점수에 쓰는 값을 바꿀 때 읽는다. Harmonize 규칙표, `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표를 바꿀 때도 읽는다. 점수에 쓰는 맛 값 자체를 계산하는 규칙표(`FlavorRule`, `WineFlavorRule`, `AnjuRule`, #76~#78, #107. `AnjuRule`의 형태 보정(#117)은 빼고)와 `Drink`, `DrinkStyle` 애그리거트 분리(#75)는 `persistence.md`에 있다.
 
 ## DDD 핵심 원칙
 
