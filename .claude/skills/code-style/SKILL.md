@@ -24,12 +24,12 @@ spotless {
 ## 원칙
 
 - **직접 스타일을 맞추려 하지 않는다.** Google Java Format(AOSP 스타일)은 들여쓰기(4칸), 줄바꿈, import 순서, 중괄호 위치까지 전부 고정된 규칙으로 결정한다. 사람이 임의로 다르게 포맷하면 다음 `spotlessApply` 실행 때 되돌아간다.
-- **자동 포맷을 신뢰한다.** `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일을 편집할 때마다 자동으로 `spotlessApply`를 실행한다. 직접 `./gradlew spotlessApply`를 실행할 필요는 거의 없다.
+- **자동 포맷을 신뢰한다.** `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일을 편집할 때마다 그 파일 하나에만 자동으로 `spotlessApply`를 실행한다(`-PspotlessIdeHook`). 직접 `./gradlew spotlessApply`를 실행할 필요는 거의 없다.
 - **`spotlessCheck`는 `check` 태스크에 연결되어 있다.** 즉 `./gradlew clean build`(`check-all.sh`, `pre-push-check.sh`가 실행하는 명령)에 포맷 검증이 자동으로 포함된다. 별도로 `spotlessCheck` 스텝을 추가할 필요가 없다.
 
 ## 타입 선언 뒤 빈 줄
 
-`src/main`에서는 타입 선언(class, interface, enum, record)의 여는 중괄호 바로 다음 줄에 빈 줄을 두지 않는다. Google Java Format은 사람이 넣은 빈 줄 하나를 지우지 않아서 이 규칙을 잡지 못한다. 그래서 `post-edit-format.sh`가 `.claude/scripts/strip-type-open-blank-line.awk`로 이 빈 줄을 지운다. `src/test`는 대상에서 뺀다. `testing` 스킬의 이중 `@Nested` 구조가 이 위치의 빈 줄을 의도적으로 쓰기 때문이다.
+`src/main`에서는 타입 선언(class, interface, enum, record)의 여는 중괄호 바로 다음 줄에 빈 줄을 두지 않는다. Google Java Format은 사람이 넣은 빈 줄 하나를 지우지 않아서 이 규칙을 잡지 못한다. 그래서 `post-edit-format.sh`가 `.claude/scripts/strip-type-open-blank-line.awk`로 편집한 파일의 이 빈 줄을 지운다. `src/test`는 대상에서 뺀다. `testing` 스킬의 이중 `@Nested` 구조가 이 위치의 빈 줄을 의도적으로 쓰기 때문이다.
 
 ## 긴 주석 줄바꿈
 

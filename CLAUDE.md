@@ -19,9 +19,9 @@
 | 하네스 아티팩트 | 대응 | 책임 |
 |---|---|---|
 | `CLAUDE.md` | 매니페스트 | 뭐가 있고 언제 로드하는지만 담는다. 디테일은 절대 넣지 않는 작고 안정적인 라우터다 |
-| `settings.json` | 보안/거버넌스 게이트 | 위험 명령 차단·승인 조건을 규칙으로 강제 (LLM 판단에 맡기지 않음) |
+| `settings.json` | 보안/거버넌스 게이트 | 위험 명령 차단·승인 조건을 `permissions.deny` 규칙으로 강제 (LLM 판단에 맡기지 않음). 차단 대상은 `commit-push` 스킬 참고 |
 | `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 훅별 역할은 각 스크립트의 머리 주석이, 커밋과 push 게이트 동작은 `commit-push` 스킬이, PR 생성 게이트는 `create-pr` 스킬이 단일 소스다 |
-| `.claude/commands/*` (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점 |
+| 사용자 호출 전용 스킬 (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점. `disable-model-invocation: true`로 Claude가 스스로 로드하지 않는다 |
 | 서브에이전트 (`domain-scaffolder`, `code-reviewer`, `test-*`) | Service | 격리된 컨텍스트에서 여러 단계를 조율 |
 | `.claude/skills/<name>/SKILL.md` | SRP 컴포넌트 | 하나의 지식 영역 = 그 규칙의 단일 소스 |
 | `.claude/scripts/*` (`check-all.sh`, `check-test-conventions.sh`) | 결정론적 코어 | 절대 흔들리면 안 되는 컨벤션/검증을 담당한다. LLM 판단이 아니라 코드로 실행한다 |
@@ -31,11 +31,11 @@
 - **필요성 원칙 (progressive disclosure)**: 현재 작업에 필요한 컨텍스트만 로드한다. 아래 "작업별 로딩" 표가 그 구체적 시행 장치.
 - **결정론적인 것은 스크립트, 판단이 필요한 것은 LLM**: 코드 스타일·EOF 개행처럼 완전히 결정론적인 것만 스크립트로 강제한다. 계층 의존 방향처럼 판단이 섞이는 규칙은 `code-reviewer` 에이전트가 체크리스트 기반으로 검토한다. (정적분석 도구 미도입 사유는 `architecture` 스킬 참고)
 - **"예외 상황 → 질문"**: 되돌리기 어렵거나 대외적인 행동(삭제, 배포, force-push, 게시)은 확인 없이 임의로 진행하지 않는다.
-- **하네스 아티팩트도 리뷰 대상**: 스킬·훅·커맨드도 소스코드처럼 피드백을 받아 고도화한다. 특정 스킬이 토큰을 과도하게 쓰거나 체크리스트를 잘못 적용하는 게 확인되면, 그 스킬 문서 자체가 수정 대상이다.
+- **하네스 아티팩트도 리뷰 대상**: 스킬·훅·에이전트도 소스코드처럼 피드백을 받아 고도화한다. 특정 스킬이 토큰을 과도하게 쓰거나 체크리스트를 잘못 적용하는 게 확인되면, 그 스킬 문서 자체가 수정 대상이다.
 
 ## 작업별 로딩 (Pre-Task)
 
-상세 규칙은 **스킬**(`.claude/skills/<name>/SKILL.md`), 절차는 **커맨드**(`.claude/commands/`)에 있다. 아래 작업이 감지되면 스킬이 자동 로드된다 (수동 호출: `/<name>`).
+상세 규칙과 절차는 모두 **스킬**(`.claude/skills/<name>/SKILL.md`)에 있다. 아래 작업이 감지되면 규칙 스킬이 자동 로드된다 (수동 호출: `/<name>`). `/`로 표기한 절차 스킬은 사용자만 호출할 수 있다.
 
 | 작업 유형 | 로드 |
 |---|---|
@@ -131,6 +131,6 @@ com.symphonia
 
 > `check-all.sh`는 `check-test-conventions.sh`를 먼저 실행한 뒤 `./gradlew clean build`를 실행한다. `clean`을 붙이는 이유는 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
 > `develop`, `main` 대상 PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 같은 `check-all.sh`를 실행한다(`commit-push` 스킬 참고).
-> 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 포맷을 적용한다.
+> 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 그 파일에 자동으로 포맷을 적용한다.
 > 아키텍처 규칙 자동검증(ArchUnit 등) 미도입 사유는 위 "운영 원칙" 참고.
 > 카탈로그(음료, 안주) 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 영속성 절 참고.
