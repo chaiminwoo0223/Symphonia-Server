@@ -1,6 +1,6 @@
 # Symphonia
 
-- 술, 안주, 음악을 조합해 추천하는 페어링 서비스이다.
+- 술, 안주, 음악을 조합해 추천하는 페어링 서비스이고, 술자리 정산 기능을 함께 제공한다.
 - 웹 클라이언트를 대상으로 하는 Spring Boot API 서버로 제공된다.
 - 베이스 패키지는 `com.symphonia`이다.
 
@@ -96,6 +96,7 @@ com.symphonia
 ├── member/     {domain, application, presentation, infrastructure}
 ├── auth/       {domain, application, presentation, infrastructure}
 ├── pairing/    {domain, application, presentation, infrastructure} (술, 안주, 음악 페어링 추천, 이슈 #45)
+├── gathering/  {domain, application, presentation, infrastructure} (술자리 정산, 이슈 #122)
 ├── common/     공통 예외, 응답 포맷, BaseTimeEntity, CQRS 트랜잭션 애노테이션 (공유 커널: domain/application도 참조)
 └── global/     Security, JPA/Redis/Swagger 설정 등 기술 부트스트랩 (domain/application은 참조하지 않음)
 ```

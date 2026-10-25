@@ -28,6 +28,7 @@ com.symphonia
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨. 파일을 읽는 적재는 UseCase 단위로 분리: ImportDrinkStyleService, ImportCuratedDrinkService, ImportXWineService, ImportAnjuService)
 │   ├── presentation/      # Controller, *Api, 수동 적재 진입점 ImportCatalogRunner(runner)
 │   └── infrastructure/    # DrinkRepository/AnjuRepository/PairingFeedbackRepository 구현체, JPA 엔티티, *Reader 구현체(reader: JsonBjcpStyleReader, CsvFlavorRuleReader, CsvCuratedDrinkReader, CsvXWineReader, CsvWineFlavorRuleReader, CsvBeerHarmonizeRuleReader, CsvCuratedAnjuReader, CsvAnjuNutritionReader, CsvAnjuRuleReader)
+├── gathering/             # 술자리 정산 (이슈 #122, 구현은 #123~#131)
 ├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
 └── global/                # 기술 부트스트랩: Security/JPA/Redis/Swagger 설정 (config), 인증 필터·핸들러 (security)
 ```
