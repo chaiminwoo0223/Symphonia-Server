@@ -54,9 +54,9 @@ knowledge_base:
   code_guidelines:
     enabled: true
     # CLAUDE.md는 기본 패턴에 포함된다. 리뷰 기준이 되는 스킬만 추가로 읽는다.
+    # 문자열 항목은 가이드 파일이 있는 디렉터리에만 적용되므로 applyTo로 소스 경로를 지정한다.
     filePatterns:
-      - ".claude/skills/architecture/SKILL.md"
-      - ".claude/skills/error-handling/SKILL.md"
-      - ".claude/skills/code-style/SKILL.md"
+      - files: ".claude/skills/architecture/SKILL.md,.claude/skills/error-handling/SKILL.md,.claude/skills/code-style/SKILL.md"
+        applyTo: "src/**"
       - files: ".claude/skills/testing/SKILL.md"
         applyTo: "src/test/**"
