@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md).
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), 메시지 큐(RabbitMQ) 사용 범위.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -33,7 +33,7 @@ com.symphonia
 ```
 
 > 도메인 모델과 JPA 엔티티는 완전히 분리한다. `domain`은 영속성 기술을 전혀 알지 못한다. Domain↔JPA 변환은 기본적으로 `*JpaEntity`의 정적 팩토리 메서드(`from(도메인객체)`, `toDomain()`)로 처리한다. 같은 변환을 여러 곳에서 재사용하거나 필드 매핑이 단순 대입을 넘어 계산·검증을 포함하게 되는 시점에만 별도 `*Mapper` 클래스로 분리한다 (YAGNI: 호출자가 하나뿐인 단순 매핑에 별도 클래스를 미리 만들지 않는다).
-> 도메인은 총 3개(`member`, `auth`, `pairing`)다. 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 `pairing`이 회원 정보를 반영하는 등 크로스 도메인 의존이 생기고, 그중 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다.
+> 도메인은 총 4개(`member`, `auth`, `pairing`, `gathering`)다(#122에서 변경). 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 `pairing`이 회원 정보를 반영하는 등 크로스 도메인 의존이 생기고, 그중 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다. 4번째 도메인 `gathering`을 추가하면서 이 조건을 다시 확인했다(2026-10-25, 이슈 #122). `gathering`은 크로스 도메인 `*UseCase`로 `pairing`의 `SubmitPairingFeedbackUseCase` 하나만 의존하므로(#131) 재검토 조건에 해당하지 않는다.
 
 ## 계층 의존 방향
 
@@ -110,6 +110,14 @@ DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설�
 ## pairing 추천 규칙
 
 `Pairing.recommend`의 점수 규칙(맛 유사도, 감점, 대비 점수, Harmonize), 후보 선정과 스타일 다양성, 추천 성능에 관한 결정은 [`pairing.md`](pairing.md)에 있다. `pairing` 도메인의 추천 로직이나 점수에 쓰는 값을 바꿀 때 읽는다. Harmonize 규칙표, `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표를 바꿀 때도 읽는다. 점수에 쓰는 맛 값 자체를 계산하는 규칙표(`FlavorRule`, `WineFlavorRule`, `AnjuRule`, #76~#78, #107. `AnjuRule`의 형태 보정(#117)은 빼고)와 `Drink`, `DrinkStyle` 애그리거트 분리(#75)는 `persistence.md`에 있다.
+
+## gathering 정산 규칙
+
+`gathering` 도메인의 애그리거트 경계(`Gathering`, `Settlement`), 분담 방식, 입금 상태 전이, 발송 시각과 리마인드, 개인정보 암호화와 단계적 파기, 익명 페어링 피드백에 관한 결정은 [`gathering.md`](gathering.md)에 있다. `gathering` 도메인의 모델, 정산 흐름, 개인정보 처리를 바꿀 때 읽는다. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 쪽 규칙을 다룰 때도 읽는다. 큐를 쓰는 범위는 메시지 큐 절에 있다.
+
+## 메시지 큐 (RabbitMQ)
+
+**(2026-10-25 결정, 이슈 #122)**: 메시지 큐는 RabbitMQ를 쓴다. 지금 쓰는 곳은 `gathering`의 정산 메시지와 리마인드 지연 발송(#126, #127)뿐이다. 도입 근거는 세 가지다. 첫째, 발송 시각이 사람마다 달라 예약이 시각별로 흩어진다. 둘째, 서버가 재시작돼도 예약이 유실되면 안 된다. 셋째, 외부 발송 장애가 API 서버로 번지지 않아야 하고 재시도와 DLQ가 필요하다. 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다. 큐에 개인정보가 남지 않게 하고, 그사이 입금되거나 파기된 건을 보내지 않기 위해서다. 리마인드 횟수 제한 같은 도메인 규칙은 큐 설정이 아니라 애그리거트가 판단한다. 큐를 쓸 근거가 없는 곳에는 쓰지 않는다. 개인정보 파기(#128)는 주기적 스윕으로 처리한다. 지연 메시지가 유실되면 데이터가 영구히 남기 때문이다. 페어링 피드백 집계(#130)는 피드백 저장 트랜잭션 안에서 UPSERT로 갱신한다. 수 ms 작업이고, 같은 트랜잭션이 일관성에 유리하기 때문이다. 지연 발송 방식(메시지별 TTL의 head-of-line 문제 등)은 #126에서 정한다. 다른 곳에 큐를 새로 쓰려면 위 세 근거 중 하나에 해당하는지 먼저 따진다.
 
 ## DDD 핵심 원칙
 
