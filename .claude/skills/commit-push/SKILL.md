@@ -13,6 +13,7 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 
 - `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`check-test-conventions.sh` + `./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
 - `git status`로 `.env`가 스테이징에 포함되지 않았는지 확인한다 (`.env` 커밋 금지는 Profiles 규칙과 동일).
+- `settings.json`의 `permissions.deny`가 `.env`와 `.env.*`의 Read, Edit 도구 사용을 막는다(이슈 #133). 이 규칙은 `cat .env` 같은 Bash 명령까지 막지는 못하므로, Bash로도 `.env`를 읽지 않는다.
 - 포맷은 `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 적용한다(Spotless + Google Java Format, `code-style` 스킬 참고). 수동으로 신경 쓸 필요는 없다.
 - `.claude/hooks/check-commit-issue-number.sh`(PreToolUse)가 `<type>/<이슈번호>` 브랜치(`feat/9`, `refactor/22`, `chore/29` 등)에서 커밋 메시지의 `[#이슈번호]`가 브랜치 번호와 다르거나 없으면 커밋 자체를 막는다. 수동으로 이슈 번호를 맞춰 볼 필요 없이 훅이 강제한다.
 - `.claude/hooks/check-commit-type-consistency.sh`(PreToolUse, 2026-09-06 추가)가 커밋 메시지 안의 상단 `[#이슈번호] type:`과 하위 `* type:` 불릿들의 type이 서로 다르면 커밋을 막는다. "같은 커밋에는 하나의 type만" 규칙을 판단에 맡기지 않고 기계적으로 강제한다.
@@ -32,7 +33,7 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 
 - 포맷: `[#이슈번호] type: 설명`
 - 하위 항목이 있을 경우 `* type: 설명` 형식으로 나열.
-- **type은 `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore` 중 하나를 쓴다(2026-10-15 결정, `docs`는 2026-10-17 이슈 #101에서 추가).** 동작을 바꾸지 않고 성능을 개선하는 변경은 `refactor`가 아니라 `perf`로 쓴다. 스킬, CLAUDE.md 같은 문서의 서술만 고치거나 설계 결정을 기록하는 변경은 `docs`로 쓴다. 다만 이슈의 본체가 설정 작업(GitHub Ruleset처럼 저장소 밖에서 한 설정 포함)이고 문서 변경이 그 설정 사실을 기록하는 것이라면 `chore`로 쓴다(2026-10-20, 이슈 #85). 훅, 스크립트, `settings.json`, 빌드 설정처럼 실행되는 하네스와 설정을 바꾸는 변경과 코드 주석 수정은 `chore`로 쓴다. 에이전트(`.claude/agents/*`)와 커맨드(`.claude/commands/*`) 정의는 서술만 고치면 `docs`, 절차나 도구 권한, 모델 같은 동작을 바꾸면 `chore`로 쓴다. 이슈·PR 제목의 `[Performance]`, `[Docs]`와 라벨은 `create-issue` 스킬의 타입 표를 따른다.
+- **type은 `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `chore` 중 하나를 쓴다(2026-10-15 결정, `docs`는 2026-10-17 이슈 #101에서 추가).** 동작을 바꾸지 않고 성능을 개선하는 변경은 `refactor`가 아니라 `perf`로 쓴다. 스킬, CLAUDE.md 같은 문서의 서술만 고치거나 설계 결정을 기록하는 변경은 `docs`로 쓴다. 다만 이슈의 본체가 설정 작업(GitHub Ruleset처럼 저장소 밖에서 한 설정 포함)이고 문서 변경이 그 설정 사실을 기록하는 것이라면 `chore`로 쓴다(2026-10-20, 이슈 #85). 훅, 스크립트, `settings.json`, 빌드 설정처럼 실행되는 하네스와 설정을 바꾸는 변경과 코드 주석 수정은 `chore`로 쓴다. 에이전트(`.claude/agents/*`)와 사용자 호출 전용 절차 스킬(`new-domain`, `new-feature`, `run-checks`) 정의는 서술만 고치면 `docs`, 절차나 도구 권한, 모델 같은 동작을 바꾸면 `chore`로 쓴다. 이슈·PR 제목의 `[Performance]`, `[Docs]`와 라벨은 `create-issue` 스킬의 타입 표를 따른다.
 - 한국어 사용 가능.
 - **모호한 제목은 금지한다.** 예: "구조 개선" ❌ → 실제 변경 대상을 명시한다 (예: "MemberService 트랜잭션 경계 정리").
 - **하나의 브랜치·PR·이슈 번호로 관리한다(2026-09-05 결정).** `feat/<이슈번호>` 브랜치에서는 그 브랜치의 이슈 번호만 커밋에 쓴다. 다른 이슈 번호(예: 별도로 만든 후속 작업 이슈)는 그 이슈용 브랜치를 새로 파서 별도 PR로 처리하고, 지금 브랜치에 섞지 않는다.
@@ -64,7 +65,7 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 ## Push
 
 - **사용자가 명시적으로 요청하기 전까지는 push하지 않는다.**
-- **`git push --force`는 사용하지 않는다.**
+- **`git push --force`는 사용하지 않는다.** `settings.json`의 `permissions.deny`가 `--force`, `-f`, `--force-with-lease`, `+<refspec>` 형태의 push를 막는다(이슈 #133).
 - `main`/`develop`에 직접 push하지 않는다. 예외는 admin이 `develop`에 `[HotFix]`를 직접 push하는 경우 하나뿐이다(`git-workflow` 스킬의 Branch 보호 참고).
 - `git push` 직전에 `.claude/hooks/pre-push-check.sh`(PreToolUse)가 `check-all.sh`(`check-test-conventions.sh` + `./gradlew clean build`)를 자동으로 돌려 실패 시 push 자체를 막는다. `spotlessCheck`가 Gradle `check` 태스크에 연결되어 있어 이 `clean build`에 포맷 검증도 자동으로 포함된다. 빠르게 끝나는 정적 아키텍처 검증 수단은 아직 없어 전체 빌드+테스트로 게이트를 걸기 때문에 push마다 수 분이 걸릴 수 있다(2026-09-04 결정).
 - `pre-push-check.sh`는 Claude Code 훅이라 세션 밖에서 push하면 실행되지 않는다. 그래서 `develop`, `main` 대상 PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 같은 `check-all.sh`를 한 번 더 실행한다. 로컬 게이트와 CI가 같은 스크립트를 쓰므로 검증 기준은 하나다(2026-10-20, 이슈 #112).
