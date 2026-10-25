@@ -9,7 +9,7 @@ description: 기존 도메인에 새 기능(UseCase → Service → Api → Cont
 
 기능 설명: $ARGUMENTS
 
-> 계층별 타입 어휘와 UseCase 분리 판단 기준은 `architecture` 스킬을 그대로 따른다.
+> 계층 규칙, UseCase 분리 판단 기준, DDD 원칙, 크로스 도메인 참조는 `architecture` 스킬을 그대로 따른다.
 
 ## Work Order
 
