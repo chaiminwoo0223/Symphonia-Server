@@ -20,7 +20,7 @@
 |---|---|---|
 | `CLAUDE.md` | 매니페스트 | 뭐가 있고 언제 로드하는지만 담는다. 디테일은 절대 넣지 않는 작고 안정적인 라우터다 |
 | `settings.json` | 보안/거버넌스 게이트 | 위험 명령 차단·승인 조건을 규칙으로 강제 (LLM 판단에 맡기지 않음) |
-| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 현재 10개 작성됨: `block-main-commit.sh`(main 브랜치 직접 커밋 차단), `check-commit-issue-number.sh`(<type>/<이슈번호> 브랜치에서 커밋 메시지의 이슈 번호 불일치 차단), `check-commit-type-consistency.sh`(커밋 메시지 안에 서로 다른 type이 섞이면 차단), `check-develop-hotfix-commit.sh`(develop에서 [HotFix] 태그 없는 직접 커밋 차단), `check-no-claude-trailer.sh`(git commit/gh pr create,edit에 Claude 어트리뷰션 트레일러 포함 시 차단), `check-issue-todo-checked.sh`(gh pr create 전 연결된 이슈의 TODO 체크리스트에 미체크 항목이 있으면 차단), `pre-push-check.sh`(git push 전 check-all.sh 게이트), `post-edit-format.sh`(Java 파일 편집 후 Spotless 자동 포맷), `check-writing-style.sh`(응답 종료 시 글쓰기 스타일 검사), `stop-eof-newline.sh`(세션 종료 시 EOF 개행 자동 보정) |
+| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 훅별 역할은 각 스크립트의 머리 주석이, 커밋과 push 게이트 동작은 `commit-push` 스킬이 단일 소스다 |
 | `.claude/commands/*` (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점 |
 | 서브에이전트 (`domain-scaffolder`, `code-reviewer`, `test-*`) | Service | 격리된 컨텍스트에서 여러 단계를 조율 |
 | `.claude/skills/<name>/SKILL.md` | SRP 컴포넌트 | 하나의 지식 영역 = 그 규칙의 단일 소스 |
@@ -54,7 +54,6 @@
 
 > `develop` 대상 PR에는 CodeRabbit이 일반 버그와 보안 리뷰를 자동으로 남긴다. 설정은 `.coderabbit.yaml`, `code-reviewer`와의 역할 분담은 `git-workflow` 스킬 참고.
 > 도메인 스캐폴딩은 `domain-scaffolder`, 코드 리뷰는 `code-reviewer`, 테스트 작성은 `test-writer`, 실패 테스트 원인 진단(수정 제외)은 `test-validator` 에이전트에 위임한다.
-> `architecture`/`testing`/`git-workflow`/`commit-push`/`error-handling`/`create-issue`/`create-pr`/`code-style`/`design-decision` 스킬은 작성 완료. `domain-scaffolder`/`code-reviewer`/`test-writer`/`test-validator` 에이전트와 `/new-domain`/`/new-feature`/`/run-checks` 커맨드, `check-all.sh`, `check-test-conventions.sh`도 작성 완료.
 
 ## 핵심 제약 (Critical Constraints)
 

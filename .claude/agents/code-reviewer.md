@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: CLAUDE.md 핵심 제약과 architecture/error-handling 스킬 기준으로 계층 위반·컨벤션 위반을 검토한다. 코드를 수정하지 않고 리뷰만 수행한다.
+description: CLAUDE.md 핵심 제약과 architecture/error-handling/testing/code-style 스킬 기준으로 계층 위반·컨벤션 위반을 검토한다. 코드를 수정하지 않고 리뷰만 수행한다.
 tools: Read, Grep, Glob
 ---
 
