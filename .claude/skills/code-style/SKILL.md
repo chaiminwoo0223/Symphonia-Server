@@ -27,6 +27,10 @@ spotless {
 - **자동 포맷을 신뢰한다.** `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일을 편집할 때마다 자동으로 `spotlessApply`를 실행한다. 직접 `./gradlew spotlessApply`를 실행할 필요는 거의 없다.
 - **`spotlessCheck`는 `check` 태스크에 연결되어 있다.** 즉 `./gradlew clean build`(`check-all.sh`, `pre-push-check.sh`가 실행하는 명령)에 포맷 검증이 자동으로 포함된다. 별도로 `spotlessCheck` 스텝을 추가할 필요가 없다.
 
+## 타입 선언 뒤 빈 줄
+
+`src/main`에서는 타입 선언(class, interface, enum, record)의 여는 중괄호 바로 다음 줄에 빈 줄을 두지 않는다. Google Java Format은 사람이 넣은 빈 줄 하나를 지우지 않아서 이 규칙을 잡지 못한다. 그래서 `post-edit-format.sh`가 `.claude/scripts/strip-type-open-blank-line.awk`로 이 빈 줄을 지운다. `src/test`는 대상에서 뺀다. `testing` 스킬의 이중 `@Nested` 구조가 이 위치의 빈 줄을 의도적으로 쓰기 때문이다.
+
 ## 긴 주석 줄바꿈
 
 `//` 주석이 한 줄 100자를 넘을 것 같으면 포맷터에 맡기지 않고 문장 경계에서 직접 줄을 나눈다. 한 줄에는 완결된 문장을 하나 이상 담고, 문장 하나가 100자를 넘으면 쉼표나 절 경계에서 나눈다. Google Java Format은 100자를 넘는 `//` 주석을 글자 수 기준으로 다시 감싼다. 그래서 "거리 감점이"와 "됐다"처럼 문장 중간에서 잘린 줄이 생긴다. 포맷터가 정하지 않는 것이 아니라 의미를 모르고 정하는 영역이라, 위 "직접 스타일을 맞추려 하지 않는다" 원칙의 예외다.
