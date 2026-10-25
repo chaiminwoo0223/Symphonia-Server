@@ -20,7 +20,7 @@
 |---|---|---|
 | `CLAUDE.md` | 매니페스트 | 뭐가 있고 언제 로드하는지만 담는다. 디테일은 절대 넣지 않는 작고 안정적인 라우터다 |
 | `settings.json` | 보안/거버넌스 게이트 | 위험 명령 차단·승인 조건을 규칙으로 강제 (LLM 판단에 맡기지 않음) |
-| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 훅별 역할은 각 스크립트의 머리 주석이, 커밋과 push 게이트 동작은 `commit-push` 스킬이 단일 소스다 |
+| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 훅별 역할은 각 스크립트의 머리 주석이, 커밋과 push 게이트 동작은 `commit-push` 스킬이, PR 생성 게이트는 `create-pr` 스킬이 단일 소스다 |
 | `.claude/commands/*` (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점 |
 | 서브에이전트 (`domain-scaffolder`, `code-reviewer`, `test-*`) | Service | 격리된 컨텍스트에서 여러 단계를 조율 |
 | `.claude/skills/<name>/SKILL.md` | SRP 컴포넌트 | 하나의 지식 영역 = 그 규칙의 단일 소스 |

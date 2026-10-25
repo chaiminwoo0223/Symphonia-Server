@@ -1,6 +1,6 @@
 ---
 name: code-style
-description: Load when writing or formatting Java code. 포맷터(Spotless + Google Java Format), 자동 적용/검증 방식, 긴 주석 줄바꿈, 멤버 선언 순서.
+description: Load when writing or formatting Java code. 포맷터(Spotless + Google Java Format), 자동 적용/검증 방식, 타입 선언 뒤 빈 줄, 긴 주석 줄바꿈, 멤버 선언 순서.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
