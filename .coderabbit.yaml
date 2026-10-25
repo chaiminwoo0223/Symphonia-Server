@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit 설정의 단일 소스다. 대시보드에서 설정을 바꾸지 않는다(이슈 #86).
+language: ko-KR
+
+reviews:
+  profile: chill
+  # 승인과 변경 요청은 사람이 한다. CodeRabbit은 코멘트만 남긴다.
+  auto_approvals:
+    enabled: false
+  # PR 본문은 사람이 쓴 그대로 두고, 요약은 walkthrough 코멘트에만 남긴다.
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  poem: false
+  in_progress_fortune: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "^develop$"
+  path_filters:
+    - "!build/**"
+    - "!**/*.jar"
+    - "!scripts/import/data/**"
+    - "!src/main/resources/import/kfind/nutrition.csv"
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        이 저장소는 리뷰 범위를 둘로 나눈다.
+        CodeRabbit은 일반적인 버그, 보안, 동시성, null 처리, 자원 누수, 성능 문제를 본다.
+        계층 의존 방향, 계층별 타입 어휘, 네이밍, 멤버 선언 순서, 테스트 컨벤션은 code-reviewer 에이전트가 보므로 지적하지 않는다.
+        포맷은 Spotless(Google Java Format)가 강제하므로 공백, 줄바꿈, import 순서는 지적하지 않는다.
+        아래 핵심 제약과 반대되는 수정은 제안하지 않는다.
+        Kotlin 도입, 헥사고날 Port/Adapter 명칭, 멀티모듈 구조를 제안하지 않는다.
+        RuntimeException을 직접 throw하는 코드를 제안하지 않는다. 예외는 BusinessException 하위 타입과 ErrorCode로 만든다.
+        메서드 단위 @Transactional을 제안하지 않는다. 트랜잭션 경계는 @CommandService, @QueryService 클래스 단위로 선언한다.
+        Facade 클래스를 제안하지 않는다. 크로스 도메인 조율은 대상 UseCase에 직접 의존한다.
+    - path: "src/main/resources/db/migration/**"
+      instructions: |
+        Flyway 마이그레이션이다. 이미 머지된 버전 파일을 수정하는 변경이 있으면 지적한다.
+        데이터 손실, 긴 테이블 잠금, 기존 행과 맞지 않는 NOT NULL 또는 제약 추가 같은 운영 위험을 본다.
+    - path: "src/main/resources/import/**"
+      instructions: |
+        카탈로그 적재 데이터와 점수 규칙 표다.
+        열 개수가 헤더와 다른 행, 같은 키의 중복 행, 다른 행과 단위나 범위가 맞지 않는 값을 지적한다.
+    - path: ".claude/**/*.sh"
+      instructions: |
+        Claude Code 훅과 검증 스크립트다. macOS 기본 bash 3.2와 BSD 유틸리티에서도 동작해야 한다.
+        차단해야 할 입력을 통과시키거나 정상 입력을 차단하는 정규식, 따옴표 누락, 실패를 삼키는 파이프를 본다.
+    - path: ".github/workflows/**"
+      instructions: |
+        CI는 로컬 pre-push 게이트와 같은 check-all.sh를 실행해야 한다. 두 검증 기준을 갈라놓는 변경을 지적한다.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # CLAUDE.md는 기본 패턴에 포함된다. 리뷰 기준이 되는 스킬만 추가로 읽는다.
+    filePatterns:
+      - ".claude/skills/architecture/SKILL.md"
+      - ".claude/skills/error-handling/SKILL.md"
+      - ".claude/skills/code-style/SKILL.md"
+      - files: ".claude/skills/testing/SKILL.md"
+        applyTo: "src/test/**"
