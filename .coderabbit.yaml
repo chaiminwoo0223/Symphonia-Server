@@ -18,6 +18,8 @@ reviews:
     base_branches:
       - "^develop$"
   path_filters:
+    # 기본 필터가 CSV를 제외하므로 같은 패턴으로 해제해 점수 규칙 표를 리뷰 대상에 넣는다.
+    - "**/*.csv"
     - "!build/**"
     - "!**/*.jar"
     - "!scripts/import/data/**"
