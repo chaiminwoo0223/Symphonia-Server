@@ -29,7 +29,7 @@ spotless {
 
 ## 타입 선언 뒤 빈 줄
 
-`src/main`에서는 타입 선언(class, interface, enum, record)의 여는 중괄호 바로 다음 줄에 빈 줄을 두지 않는다. Google Java Format은 사람이 넣은 빈 줄 하나를 지우지 않아서 이 규칙을 잡지 못한다. 그래서 `post-edit-format.sh`가 `.claude/scripts/strip-type-open-blank-line.awk`로 편집한 파일의 이 빈 줄을 지운다. `src/test`는 대상에서 뺀다. `testing` 스킬의 이중 `@Nested` 구조가 이 위치의 빈 줄을 의도적으로 쓰기 때문이다.
+`src/main`에서는 타입 선언(class, interface, enum, record)의 여는 중괄호 바로 다음 줄에 빈 줄을 두지 않는다. Google Java Format은 사람이 넣은 빈 줄 하나를 지우지 않아서 이 규칙을 잡지 못한다. 그래서 `post-edit-format.sh`가 `.claude/scripts/strip-type-open-blank-line.awk`로 편집한 파일의 이 빈 줄을 지운다. 이 훅은 Edit, Write 도구로 편집한 파일에만 동작하고 `spotlessCheck`도 이 빈 줄을 잡지 못한다. 그래서 Bash나 IDE로 만든 `src/main` 파일은 이 빈 줄을 직접 확인한다. `src/test`는 대상에서 뺀다. `testing` 스킬의 이중 `@Nested` 구조가 이 위치의 빈 줄을 의도적으로 쓰기 때문이다.
 
 ## 긴 주석 줄바꿈
 

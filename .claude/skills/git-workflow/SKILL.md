@@ -15,7 +15,7 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 |---|---|
 | `main` | 운영 배포 |
 | `develop` | 통합 (PR 대상). 직접 커밋은 긴급 `[HotFix]` 대응에만 허용 (`commit-push` 스킬 참고) |
-| `<type>/이슈번호` | 이슈 작업 (`develop`에서 분기). 접두어는 그 작업의 주된 커밋 type을 그대로 쓴다 (예: `feat/9`, `refactor/22`, `perf/79`, `docs/101`, `chore/29`). 이슈 번호 앞에 `#`을 붙이지 않는다 — `check-commit-issue-number.sh`의 브랜치 매칭 정규식(`^[a-z]+/([0-9]+)$`)도 `#` 없는 형식만 인식한다 |
+| `<type>/이슈번호` | 이슈 작업 (`develop`에서 분기). 접두어는 그 작업의 주된 커밋 type을 그대로 쓴다 (예: `feat/9`, `refactor/22`, `perf/79`, `docs/101`, `chore/29`). 이슈 번호 앞에 `#`을 붙이지 않는다 — 이슈번호 검사 훅과 TODO 검사 훅이 함께 쓰는 `.claude/hooks/lib.sh`의 `branch_issue_number` 정규식(`^[a-z]+/([0-9]+)$`)도 `#` 없는 형식만 인식한다 |
 
 ## Branch 보호 (Ruleset)
 
@@ -33,7 +33,7 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 - 저장소가 개인 계정 소유라 Maintain 역할이 없다. 그래서 bypass 대상은 Repository admin 역할 하나뿐이다.
 - admin bypass는 `develop`에 `[HotFix]`를 직접 push할 때만 쓴다. PR 머지 화면의 우회 체크박스로 승인, 코멘트 Resolve, CI `check` 실패를 건너뛰지 않는다.
 - admin이 아닌 협업자는 bypass할 수 없으므로 `[HotFix]`도 PR로 보낸다.
-- `develop`의 bypass는 위 규칙 전부에 적용된다. 그래서 admin에게는 force push 차단과 삭제 차단도 GitHub가 강제하지 않는다. 이를 막는 것은 위의 사용 범위 규칙과 `commit-push` 스킬의 `--force` 금지, 그리고 그 금지를 강제하는 `settings.json`의 `permissions.deny`다.
+- `develop`의 bypass는 위 규칙 전부에 적용된다. 그래서 admin에게는 force push 차단과 삭제 차단도 GitHub가 강제하지 않는다. 이를 막는 것은 위의 사용 범위 규칙과 `commit-push` 스킬의 `--force` 금지, 그리고 그 금지를 강제하는 `settings.json`의 `permissions.deny`다. `permissions.deny`는 force push만 막고 브랜치 삭제는 막지 않는다.
 - admin이 `develop`에 직접 push한 `[HotFix]`는 CI를 거치지 않는다. Claude Code 세션에서 push하면 `pre-push-check.sh`가 검증하고, 세션 밖에서 push한다면 push 전에 `check-all.sh`를 직접 실행한다. 이 커밋은 이후 `develop` → `main` PR의 CI에서 다시 검증된다.
 - `main`은 bypass가 없어 누구도 직접 push하거나 승인 없이 머지할 수 없다.
 
