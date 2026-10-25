@@ -18,7 +18,7 @@ cd "$ROOT" || exit 0
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
 [[ "$branch" == "main" ]] || exit 0
 
-reason="main 브랜치는 직접 커밋할 수 없다. develop에서 분기한 feat/#이슈번호 브랜치에서 작업한 뒤 PR로 병합해라."
+reason="main 브랜치는 직접 커밋할 수 없다. develop에서 분기한 <type>/<이슈번호> 브랜치(예: feat/9)에서 작업한 뒤 PR로 병합해라."
 
 jq -n --arg reason "$reason" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
 exit 0
