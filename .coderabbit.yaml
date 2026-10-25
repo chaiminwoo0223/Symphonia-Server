@@ -63,5 +63,5 @@ knowledge_base:
     # code-style과 testing은 code-reviewer만 보는 컨벤션이라 넣지 않는다.
     # 문자열 항목은 가이드 파일이 있는 디렉터리에만 적용되므로 applyTo로 소스 경로를 지정한다.
     filePatterns:
-      - files: ".claude/skills/architecture/SKILL.md,.claude/skills/error-handling/SKILL.md"
+      - files: ".claude/skills/architecture/SKILL.md,.claude/skills/architecture/persistence.md,.claude/skills/architecture/pairing.md,.claude/skills/error-handling/SKILL.md"
         applyTo: "src/**"
