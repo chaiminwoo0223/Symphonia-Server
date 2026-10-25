@@ -111,9 +111,9 @@ com.symphonia
 | 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, 기본 프로파일) | `application.yaml` |
 | 환경별 값 (`datasource`, `data.redis`, SQL 로그, `logging.level`) | `application-{profile}.yaml` |
 
-> 속성별 배치, dev/prod 연결 변수, 테스트 프로파일 동작은 `architecture` 스킬의 영속성 절(#96 결정) 참고.
+> 속성별 배치, dev/prod 연결 변수, 테스트 프로파일 동작은 `architecture` 스킬의 `persistence.md`(#96 결정) 참고.
 
-> 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 변경한다. 규칙은 `architecture` 스킬의 영속성 절 참고.
+> 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 변경한다. 규칙은 `architecture` 스킬의 `persistence.md` 참고.
 
 - 활성 프로파일: `--spring.profiles.active={profile}` 또는 `SPRING_PROFILES_ACTIVE`. 지정하지 않으면 `local`로 실행하고, dev, prod는 반드시 지정한다
 - **DB/Redis 연결 정보는 값이 같아도 프로파일별로 각각 명시** (환경 간 독립적 분기). 비밀값은 하드코딩 금지, `${ENV_VAR}` 주입 (`.env` 커밋 금지)
@@ -133,4 +133,4 @@ com.symphonia
 > `develop`, `main` 대상 PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 같은 `check-all.sh`를 실행한다(`commit-push` 스킬 참고).
 > 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 그 파일에 자동으로 포맷을 적용한다.
 > 아키텍처 규칙 자동검증(ArchUnit 등) 미도입 사유는 위 "운영 원칙" 참고.
-> 카탈로그(음료, 안주) 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 영속성 절 참고.
+> 카탈로그(음료, 안주) 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 `persistence.md` 참고.
