@@ -1,6 +1,7 @@
 ---
 name: new-domain
 description: 새 도메인의 4계층(domain/application/presentation/infrastructure) 패키지와 기본 골격을 스캐폴딩한다
+disable-model-invocation: true
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
