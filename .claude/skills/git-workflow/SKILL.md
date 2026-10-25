@@ -45,6 +45,22 @@ description: Load when branching/committing/pushing/creating PRs or issues. Bran
 
 PR 대상, 제목·본문 구성, 생성 절차는 `create-pr` 스킬 참고. PR 제목은 `[Type] 설명` 형식(이슈 번호 없음)이며 커밋 메시지 포맷(`[#이슈번호] type: 설명`)과는 다르다.
 
+## CodeRabbit 리뷰
+
+`develop` 대상 PR에는 CodeRabbit이 자동으로 리뷰를 남긴다(2026-10-25, 이슈 #86).
+
+| 리뷰어 | 시점 | 범위 |
+|---|---|---|
+| `code-reviewer` 에이전트 | `gh pr create` 전 (`create-pr` 스킬) | 계층 의존 방향, 계층별 타입 어휘, 네이밍, 멤버 선언 순서, 테스트 컨벤션 |
+| CodeRabbit | PR 생성 후와 새 커밋 push마다 | 일반 버그, 보안, 동시성, null 처리, 자원 누수, 마이그레이션 운영 위험, 셸과 워크플로 오류 |
+
+- 설정은 저장소 루트의 `.coderabbit.yaml`에서만 바꾼다. 대시보드 설정은 쓰지 않는다. 그래서 저장소를 Organization으로 옮겨도 설정이 그대로 따라간다.
+- CodeRabbit은 리뷰 대상 PR의 head 브랜치에 있는 `.coderabbit.yaml`을 읽는다. 설정 변경은 그 설정을 바꾸는 PR 자체에서 바로 확인할 수 있다.
+- 핵심 제약은 CodeRabbit의 검토 대상이 아니라 가드레일이다. `path_instructions`에는 제약과 반대되는 수정을 제안하지 말라는 짧은 목록만 두고, 규칙 본문은 `code_guidelines`로 스킬 파일을 직접 읽게 한다. 규칙을 YAML에 복사하면 스킬과 두 벌로 갈라지기 때문이다.
+- `develop` → `main` PR은 자동 리뷰하지 않는다. 이미 `develop` 대상 PR에서 리뷰한 커밋들이기 때문이다. 필요하면 PR에 `@coderabbitai review` 코멘트를 남겨 수동으로 요청한다.
+- CodeRabbit은 승인하거나 변경을 요청하지 않고 코멘트만 남긴다. 머지에 필요한 승인 1명은 여전히 사람이 한다.
+- Ruleset이 모든 리뷰 대화의 Resolve를 요구하므로 CodeRabbit 코멘트도 Resolve해야 머지할 수 있다. 반영하지 않는 코멘트는 이유를 답글로 남기고 Resolve한다.
+
 ## GitHub 이슈
 
 GitHub 이슈 생성 규칙(템플릿 매핑, 제목·라벨, 표현 규칙, 생성 절차)은 `create-issue` 스킬 참고. 브랜치명(`<type>/이슈번호`)과 커밋 메시지(`[#이슈번호] type: 설명`)는 그렇게 생성된 이슈 번호를 그대로 쓴다.

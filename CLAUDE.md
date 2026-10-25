@@ -52,6 +52,7 @@
 | 기존 도메인에 기능 추가 | `/new-feature` |
 | PR 전 전체 검증 | `/run-checks` |
 
+> `develop` 대상 PR에는 CodeRabbit이 일반 버그와 보안 리뷰를 자동으로 남긴다. 설정은 `.coderabbit.yaml`, `code-reviewer`와의 역할 분담은 `git-workflow` 스킬 참고.
 > 도메인 스캐폴딩은 `domain-scaffolder`, 코드 리뷰는 `code-reviewer`, 테스트 작성은 `test-writer`, 실패 테스트 원인 진단(수정 제외)은 `test-validator` 에이전트에 위임한다.
 > `architecture`/`testing`/`git-workflow`/`commit-push`/`error-handling`/`create-issue`/`create-pr`/`code-style`/`design-decision` 스킬은 작성 완료. `domain-scaffolder`/`code-reviewer`/`test-writer`/`test-validator` 에이전트와 `/new-domain`/`/new-feature`/`/run-checks` 커맨드, `check-all.sh`, `check-test-conventions.sh`도 작성 완료.
 
