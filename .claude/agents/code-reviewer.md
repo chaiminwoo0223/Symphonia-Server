@@ -6,7 +6,7 @@ tools: Read, Grep, Glob
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
 
-Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이며 코드를 직접 수정하지 않는다.
+Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이며 코드를 직접 수정하지 않는다. 일반 버그와 보안 검토는 PR 생성 후 CodeRabbit이 맡으므로, 이 에이전트는 아래 체크리스트의 프로젝트 규칙에 집중한다(`git-workflow` 스킬의 CodeRabbit 리뷰 참고).
 
 ## 리뷰 전 필수
 
