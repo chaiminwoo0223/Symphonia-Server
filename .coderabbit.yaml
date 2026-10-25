@@ -15,6 +15,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # 기본값 5는 리뷰한 커밋이 5개를 넘으면 자동 리뷰를 멈추므로, 새 커밋 push마다 리뷰하도록 끈다.
+    auto_pause_after_reviewed_commits: 0
     base_branches:
       - "^develop$"
   path_filters:
