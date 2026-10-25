@@ -19,7 +19,7 @@ Symphonia는 이미 결정을 관련 스킬 파일에 날짜와 이슈 번호를
 
 - 여러 도메인에 걸치는 계층 구조, 크로스 도메인 규칙 관련 결정 → `architecture`
 - DB 스키마, 마이그레이션, 프로파일 설정, 카탈로그 적재(적재 러너, 음료와 안주의 맛 계산 규칙표, 외부 데이터 선정) 관련 결정 → `architecture/persistence.md`
-- 한 도메인 안의 모델링과 실행 중 규칙(애그리거트 경계, 추천 점수 공식, 후보 선정 등) 관련 결정 → `architecture/<도메인>.md` (지금은 `pairing.md`)
+- 한 도메인 안의 모델링과 실행 중 규칙(애그리거트 경계, 추천 점수 공식, 후보 선정 등) 관련 결정 → `architecture/<도메인>.md` (지금은 `pairing.md`, `gathering.md`(#122에서 변경))
 - 예외/에러 코드 관련 결정 → `error-handling`
 - 커밋/브랜치 관련 결정 → `commit-push`
 - Branch 보호(Ruleset), CI, 리뷰 도구 관련 결정 → `git-workflow`
