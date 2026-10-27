@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
+import com.symphonia.catalog.application.service.CatalogQueryService;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
@@ -31,20 +32,29 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 @DisplayName("PairingQueryService 단위 테스트")
 class PairingQueryServiceTest extends UnitTest {
 
-    @InjectMocks private PairingQueryService pairingQueryService;
+    private PairingQueryService pairingQueryService;
 
     @Mock private DrinkRepository drinkRepository;
     @Mock private AnjuRepository anjuRepository;
     @Mock private MusicMoodRepository musicMoodRepository;
+
+    // 카탈로그 조회는 실제 CatalogQueryService에 맡긴다. 그래서 Repository 스텁만으로 카탈로그 상태를 준비한다.
+    @BeforeEach
+    void setUp() {
+        pairingQueryService =
+                new PairingQueryService(
+                        new CatalogQueryService(
+                                drinkRepository, anjuRepository, musicMoodRepository));
+    }
 
     @Nested
     @DisplayName("recommend 메서드는")
@@ -144,7 +154,8 @@ class PairingQueryServiceTest extends UnitTest {
             MoodType moodType = MoodType.FORMAL;
             Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
             MusicMood musicMood =
-                    MusicMoodFixture.FORMAL_JAZZ.createWithMoodProfile(occasion.toMoodProfile());
+                    MusicMoodFixture.FORMAL_JAZZ.createWithMoodProfile(
+                            catalogMoodProfileOf(occasion));
             // 산미가 없는 와인은 맛 유사도상 후라이드치킨(0.700)이 과일안주(0.576)보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
@@ -1547,5 +1558,14 @@ class PairingQueryServiceTest extends UnitTest {
                                     .toList());
             givenCasualAcousticMusicMood();
         }
+    }
+
+    // 자리의 분위기와 같은 값을 가진 카탈로그 음악 무드를 만들 때 쓴다.
+    private static MoodProfile catalogMoodProfileOf(Occasion occasion) {
+        return MoodProfile.of(
+                occasion.toMoodProfile().getFormality(),
+                occasion.toMoodProfile().getRomance(),
+                occasion.toMoodProfile().getCelebration(),
+                occasion.toMoodProfile().getComfort());
     }
 }

@@ -1,6 +1,5 @@
 package com.symphonia.catalog.domain.vo;
 
-import com.symphonia.pairing.domain.vo.AxisDistance;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,13 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FlavorProfile {
-    private static final double MATCH_THRESHOLD = 0.7;
-    private static final int LIGHT_RICHNESS_THRESHOLD = 3;
-    private static final int MAX_RICHNESS = 5;
-    private static final int MAX_AXIS_VALUE = 5;
-    private static final int RICHNESS_CUTTING_THRESHOLD = 4;
-    private static final int AXIS_COUNT = 4;
-
     private int sweetness;
     private int bitterness;
     private int carbonation;
@@ -35,44 +27,6 @@ public class FlavorProfile {
                 .build();
     }
 
-    // 안주의 탄산은 늘 0이라 탄산을 넣으면 탄산 있는 술이 모든 안주와 멀어진다. 그래서 탄산은 유사도에서 빼고 대비로만 본다.
-    public double similarity(FlavorProfile other) {
-        int distanceSquared =
-                AxisDistance.square(sweetness - other.sweetness)
-                        + AxisDistance.square(bitterness - other.bitterness)
-                        + AxisDistance.square(richness - other.richness)
-                        + AxisDistance.square(acidity - other.acidity);
-
-        return AxisDistance.similarity(distanceSquared, AXIS_COUNT);
-    }
-
-    public boolean matches(FlavorProfile other) {
-        return similarity(other) >= MATCH_THRESHOLD;
-    }
-
-    public boolean isLight() {
-        return richness <= LIGHT_RICHNESS_THRESHOLD;
-    }
-
-    // 가벼운 범위를 넘는 무게감을 0~1로 나타낸다. 가벼우면 0, 무게감 4는 0.5, 5는 1이다.
-    public double heaviness() {
-        if (isLight()) {
-            return 0;
-        }
-        return (double) (richness - LIGHT_RICHNESS_THRESHOLD)
-                / (MAX_RICHNESS - LIGHT_RICHNESS_THRESHOLD);
-    }
-
-    // 탄산이나 산미가 강하면 기름진 안주를 씻어 준다.
-    public boolean cutsRichness() {
-        return strongerCuttingAxis() >= RICHNESS_CUTTING_THRESHOLD;
-    }
-
-    // 씻어 주는 힘을 0~1로 나타낸다. 탄산과 산미는 같은 효과라 더하지 않고 강한 쪽만 본다.
-    public double richnessCuttingStrength() {
-        return (double) strongerCuttingAxis() / MAX_AXIS_VALUE;
-    }
-
     // 다른 축은 그대로 두고 한 축만 바꾼 새 FlavorProfile을 만든다. 원래 값은 바꾸지 않는다.
     public FlavorProfile withRichness(int richness) {
         return FlavorProfile.of(sweetness, bitterness, carbonation, richness, acidity);
@@ -80,9 +34,5 @@ public class FlavorProfile {
 
     public FlavorProfile withAcidity(int acidity) {
         return FlavorProfile.of(sweetness, bitterness, carbonation, richness, acidity);
-    }
-
-    private int strongerCuttingAxis() {
-        return Math.max(carbonation, acidity);
     }
 }

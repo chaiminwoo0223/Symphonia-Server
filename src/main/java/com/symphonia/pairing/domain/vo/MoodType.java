@@ -1,6 +1,5 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.catalog.domain.vo.MoodProfile;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor

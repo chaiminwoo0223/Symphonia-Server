@@ -1,9 +1,5 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.catalog.domain.entity.Anju;
-import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
-import com.symphonia.catalog.domain.vo.MoodProfile;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -41,16 +37,19 @@ public class Pairing {
                     .thenComparing(combination -> combination.anju().getId())
                     .thenComparing(combination -> combination.musicMood().getId());
 
-    private final Drink drink;
-    private final Anju anju;
-    private final MusicMood musicMood;
+    private final PairingDrink drink;
+    private final PairingAnju anju;
+    private final PairingMusicMood musicMood;
     private final double score;
     private final List<PairingReason> reasons;
 
     // 조합 점수는 음료×안주 점수와 음악 점수의 합이다. 그래서 전체 조합을 만들지 않고
     // 각 선정 규칙(상위 5개, 스타일별 최고, 무알코올 최고)에 들 수 있는 음료×안주 쌍과 상위 음악만 결합한다.
     public static List<Pairing> recommend(
-            List<Drink> drinks, List<Anju> anjus, List<MusicMood> musicMoods, Occasion occasion) {
+            List<PairingDrink> drinks,
+            List<PairingAnju> anjus,
+            List<PairingMusicMood> musicMoods,
+            Occasion occasion) {
         List<ScoredDrinkAnju> drinkAnjus = candidateDrinkAnjus(drinks, anjus, occasion);
         List<ScoredMusicMood> topMusicMoods =
                 nearTop(
@@ -73,7 +72,7 @@ public class Pairing {
     // 음료×안주 쌍은 카탈로그 크기의 곱이라 요청마다 수십만 개가 된다(#107).
     // 그래서 점수는 배열에만 담고, 세 선정 규칙의 경계를 구한 뒤 경계를 넘는 쌍만 객체로 만든다.
     private static List<ScoredDrinkAnju> candidateDrinkAnjus(
-            List<Drink> drinks, List<Anju> anjus, Occasion occasion) {
+            List<PairingDrink> drinks, List<PairingAnju> anjus, Occasion occasion) {
         DrinkAnjuScores scores =
                 DrinkAnjuScores.of(
                         drinks.stream()
@@ -94,7 +93,7 @@ public class Pairing {
                 .toList();
     }
 
-    private static double drinkAnjuScore(Drink drink, Anju anju, Occasion occasion) {
+    private static double drinkAnjuScore(PairingDrink drink, PairingAnju anju, Occasion occasion) {
         double flavorSimilarity = drink.flavorSimilarityTo(anju);
 
         return FLAVOR_WEIGHT * flavorSimilarity
@@ -104,14 +103,14 @@ public class Pairing {
                 - highAbvPenalty(drink);
     }
 
-    private static double harmonizeBonus(Drink drink, Anju anju) {
+    private static double harmonizeBonus(PairingDrink drink, PairingAnju anju) {
         return drink.harmonizesWith(anju) ? HARMONIZE_BONUS : 0;
     }
 
     // 안주가 무거울수록 씻어 줄 기름기가 많아 무게감 5에서 최대가 된다.
     // 도수와 탄산, 산미는 같은 기름기를 씻는 효과라 둘 중 하나만 준다.
     // 도수 대비가 탄산, 산미 대비의 최대치와 같아서, 둘 다 해당하는 술은 도수 대비를 받는다.
-    private static double richnessCuttingBonus(Drink drink, Anju anju) {
+    private static double richnessCuttingBonus(PairingDrink drink, PairingAnju anju) {
         double heaviness = anju.getFlavorProfile().heaviness();
         if (drink.cutsRichnessOf(anju)) {
             return RICHNESS_CUTTING_BONUS * heaviness;
@@ -124,14 +123,14 @@ public class Pairing {
         return 0;
     }
 
-    private static double lightAnjuPenalty(Anju anju, Occasion occasion) {
+    private static double lightAnjuPenalty(PairingAnju anju, Occasion occasion) {
         boolean heavyAnjuDespitePreference =
                 occasion.prefersLightAnju() && !anju.getFlavorProfile().isLight();
 
         return heavyAnjuDespitePreference ? LIGHT_ANJU_PENALTY : 0;
     }
 
-    private static double highAbvPenalty(Drink drink) {
+    private static double highAbvPenalty(PairingDrink drink) {
         return drink.getAbv() > HIGH_ABV_THRESHOLD ? HIGH_ABV_PENALTY : 0;
     }
 
@@ -155,11 +154,11 @@ public class Pairing {
     }
 
     private static List<ScoredMusicMood> scoreMusicMoods(
-            List<MusicMood> musicMoods, Occasion occasion) {
+            List<PairingMusicMood> musicMoods, Occasion occasion) {
         MoodProfile occasionMoodProfile = occasion.toMoodProfile();
 
         List<ScoredMusicMood> scoredMusicMoods = new ArrayList<>();
-        for (MusicMood musicMood : musicMoods) {
+        for (PairingMusicMood musicMood : musicMoods) {
             double moodFitness = musicMood.fitnessFor(occasionMoodProfile);
             scoredMusicMoods.add(new ScoredMusicMood(musicMood, MOOD_WEIGHT * moodFitness));
         }
@@ -226,21 +225,23 @@ public class Pairing {
         return replaced;
     }
 
-    private record ScoredMusicMood(MusicMood musicMood, double score) {}
+    private record ScoredMusicMood(PairingMusicMood musicMood, double score) {}
 
     // 순위를 매기는 동안 쓰는 후보 조합이다. 추천 사유는 최종으로 고른 조합에만 계산한다.
     // 순위는 감점이 반영된 원점수로 매긴다. 0으로 뭉개면 나쁜 조합끼리의 순서가 id 순으로 바뀐다.
-    private record Combination(Drink drink, Anju anju, MusicMood musicMood, double rawScore) {
+    private record Combination(
+            PairingDrink drink, PairingAnju anju, PairingMusicMood musicMood, double rawScore) {
         // 사용자에게 보여주는 점수만 음수가 되지 않게 0에서 자른다.
         private Pairing toPairing(Occasion occasion) {
-            PairingCandidate candidate = PairingCandidate.of(drink, anju, musicMood, occasion);
+            PairingReasonContext context =
+                    PairingReasonContext.of(drink, anju, musicMood, occasion);
 
             return new Pairing(
                     drink,
                     anju,
                     musicMood,
                     Math.max(0, rawScore),
-                    PairingReason.allApplicableTo(candidate));
+                    PairingReason.allApplicableTo(context));
         }
     }
 }

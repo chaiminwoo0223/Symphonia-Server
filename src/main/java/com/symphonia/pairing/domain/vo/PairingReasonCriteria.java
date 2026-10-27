@@ -3,41 +3,39 @@ package com.symphonia.pairing.domain.vo;
 final class PairingReasonCriteria {
     private PairingReasonCriteria() {}
 
-    public static boolean abvLimit(PairingCandidate candidate) {
-        return candidate.occasion().hasAbvLimit();
+    public static boolean abvLimit(PairingReasonContext context) {
+        return context.occasion().hasAbvLimit();
     }
 
-    public static boolean allergyExcluded(PairingCandidate candidate) {
-        return candidate.occasion().hasAllergyInput();
+    public static boolean allergyExcluded(PairingReasonContext context) {
+        return context.occasion().hasAllergyInput();
     }
 
-    public static boolean lightAnju(PairingCandidate candidate) {
-        return candidate.occasion().prefersLightAnju()
-                && candidate.anju().getFlavorProfile().isLight();
+    public static boolean lightAnju(PairingReasonContext context) {
+        return context.occasion().prefersLightAnju() && context.anju().getFlavorProfile().isLight();
     }
 
-    public static boolean nonAlcoholicOption(PairingCandidate candidate) {
-        return candidate.occasion().requiresNonAlcoholicOption()
-                && candidate.drink().isNonAlcoholic();
+    public static boolean nonAlcoholicOption(PairingReasonContext context) {
+        return context.occasion().requiresNonAlcoholicOption() && context.drink().isNonAlcoholic();
     }
 
-    public static boolean flavorMatch(PairingCandidate candidate) {
-        return candidate.drink().matchesFlavorOf(candidate.anju());
+    public static boolean flavorMatch(PairingReasonContext context) {
+        return context.drink().matchesFlavorOf(context.anju());
     }
 
-    public static boolean harmonizeMatch(PairingCandidate candidate) {
-        return candidate.drink().harmonizesWith(candidate.anju());
+    public static boolean harmonizeMatch(PairingReasonContext context) {
+        return context.drink().harmonizesWith(context.anju());
     }
 
-    public static boolean richnessCutting(PairingCandidate candidate) {
-        return candidate.drink().cutsRichnessOf(candidate.anju());
+    public static boolean richnessCutting(PairingReasonContext context) {
+        return context.drink().cutsRichnessOf(context.anju());
     }
 
-    public static boolean carbonationAcidityCutting(PairingCandidate candidate) {
-        return candidate.drink().cutsRichnessWithCarbonationOrAcidityOf(candidate.anju());
+    public static boolean carbonationAcidityCutting(PairingReasonContext context) {
+        return context.drink().cutsRichnessWithCarbonationOrAcidityOf(context.anju());
     }
 
-    public static boolean moodMatch(PairingCandidate candidate) {
-        return candidate.musicMood().fitsFor(candidate.occasion().toMoodProfile());
+    public static boolean moodMatch(PairingReasonContext context) {
+        return context.musicMood().fitsFor(context.occasion().toMoodProfile());
     }
 }

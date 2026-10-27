@@ -6,7 +6,6 @@ import com.symphonia.catalog.domain.vo.AnjuSource;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.domain.vo.ServingStyle;
-import java.util.Collections;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -83,9 +82,5 @@ public class Anju {
         this.spicy = imported.spicy;
         this.harmonizeMask = imported.harmonizeMask;
         return this;
-    }
-
-    public boolean conflictsWith(Set<AllergyType> attendeeAllergies) {
-        return !Collections.disjoint(allergyTypes, attendeeAllergies);
     }
 }

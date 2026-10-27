@@ -20,17 +20,17 @@ public enum PairingReason {
     ;
 
     private final String message;
-    private final Predicate<PairingCandidate> predicate;
+    private final Predicate<PairingReasonContext> predicate;
 
     public String message() {
         return message;
     }
 
-    private boolean appliesTo(PairingCandidate candidate) {
-        return predicate.test(candidate);
+    private boolean appliesTo(PairingReasonContext context) {
+        return predicate.test(context);
     }
 
-    public static List<PairingReason> allApplicableTo(PairingCandidate candidate) {
-        return Arrays.stream(values()).filter(reason -> reason.appliesTo(candidate)).toList();
+    public static List<PairingReason> allApplicableTo(PairingReasonContext context) {
+        return Arrays.stream(values()).filter(reason -> reason.appliesTo(context)).toList();
     }
 }

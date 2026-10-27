@@ -12,9 +12,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Drink {
-    // 희석식 소주(16~17%)와 증류주, 주정강화 와인부터 해당한다. 일반 와인은 대부분 15% 미만이다.
-    private static final double RICHNESS_CUTTING_ABV = 15.0;
-
     private Long id;
     private Long drinkStyleId;
     private DrinkSource source;
@@ -79,32 +76,5 @@ public class Drink {
         this.harmonizes = imported.harmonizes;
         this.harmonizeMask = imported.harmonizeMask;
         return this;
-    }
-
-    public double flavorSimilarityTo(Anju anju) {
-        return flavorProfile.similarity(anju.getFlavorProfile());
-    }
-
-    public boolean matchesFlavorOf(Anju anju) {
-        return flavorProfile.matches(anju.getFlavorProfile());
-    }
-
-    // 이 술에 어울리는 음식 계열(Harmonize) 중 하나라도 안주에 맞는지 본다.
-    // 요청마다 음료×안주 쌍 전체에서 불리므로 미리 계산한 비트 집합끼리 비교한다.
-    public boolean harmonizesWith(Anju anju) {
-        return (harmonizeMask & anju.getHarmonizeMask()) != 0;
-    }
-
-    // 도수가 높은 술은 무게감 있는 안주의 기름기를 씻어 준다. 가벼운 안주에는 씻어 낼 기름기가 없다.
-    public boolean cutsRichnessOf(Anju anju) {
-        return abv >= RICHNESS_CUTTING_ABV && !anju.getFlavorProfile().isLight();
-    }
-
-    // 탄산이나 산미가 강한 술도 무게감 있는 안주의 기름기를 씻어 준다.
-    // 도수로 이미 씻어 주는 술은 같은 효과를 두 번 세지 않도록 도수 쪽만 본다.
-    public boolean cutsRichnessWithCarbonationOrAcidityOf(Anju anju) {
-        return flavorProfile.cutsRichness()
-                && !anju.getFlavorProfile().isLight()
-                && !cutsRichnessOf(anju);
     }
 }
