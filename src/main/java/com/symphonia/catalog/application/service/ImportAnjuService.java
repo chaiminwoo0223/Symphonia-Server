@@ -16,7 +16,6 @@ import com.symphonia.catalog.domain.vo.AnjuNutrition;
 import com.symphonia.catalog.domain.vo.AnjuRule;
 import com.symphonia.catalog.domain.vo.AnjuSource;
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,7 +30,6 @@ public class ImportAnjuService implements ImportAnjuUseCase {
     private final AnjuNutritionReader anjuNutritionReader;
     private final AnjuRuleReader anjuRuleReader;
     private final AnjuRepository anjuRepository;
-    private final PairingFeedbackRepository pairingFeedbackRepository;
 
     // 맛이나 알레르기를 정할 수 없는 안주는 저장하지 않고 제외 사유와 함께 결과에 남긴다.
     // 이미 적재된 안주는 (source, external_id)로 찾아 갱신하므로 여러 번 실행해도 결과가 같다.
@@ -83,7 +81,7 @@ public class ImportAnjuService implements ImportAnjuUseCase {
         Set<Long> referencedIds =
                 stale.isEmpty()
                         ? Set.of()
-                        : pairingFeedbackRepository.findReferencedAnjuIds(
+                        : anjuRepository.findReferencedIds(
                                 stale.stream().map(Anju::getId).toList());
 
         return stale.stream().collect(partitioningBy(anju -> referencedIds.contains(anju.getId())));

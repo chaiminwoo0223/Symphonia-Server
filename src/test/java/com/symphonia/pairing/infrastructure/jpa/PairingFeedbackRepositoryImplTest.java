@@ -18,8 +18,6 @@ import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaRepository;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
-import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -87,49 +85,5 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
             assertThat(saved.getRating())
                     .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
         }
-    }
-
-    @Nested
-    @DisplayName("findReferencedAnjuIds 메서드는")
-    class FindReferencedAnjuIds {
-
-        @Test
-        @DisplayName("주어진 안주 중 피드백이 참조하는 안주의 id만 반환한다")
-        void shouldReturnOnlyReferencedAnjuIds() {
-            // given
-            Long referencedAnjuId = saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            Long unreferencedAnjuId = saveAnju(AnjuFixture.FRIED_CHICKEN);
-            saveFeedbackOn(referencedAnjuId);
-
-            // when
-            Set<Long> result =
-                    pairingFeedbackRepository.findReferencedAnjuIds(
-                            List.of(referencedAnjuId, unreferencedAnjuId));
-
-            // then
-            assertThat(result).containsExactly(referencedAnjuId);
-        }
-    }
-
-    private Long saveAnju(AnjuFixture anjuFixture) {
-        return anjuJpaRepository.save(AnjuJpaEntity.from(anjuFixture.create())).getId();
-    }
-
-    private void saveFeedbackOn(Long anjuId) {
-        Long drinkStyleId =
-                drinkStyleJpaRepository
-                        .save(DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()))
-                        .getId();
-        Long drinkId =
-                drinkJpaRepository
-                        .save(DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
-                        .getId();
-        Long musicMoodId =
-                musicMoodJpaRepository
-                        .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
-                        .getId();
-        pairingFeedbackRepository.save(
-                PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                        drinkId, anjuId, musicMoodId));
     }
 }
