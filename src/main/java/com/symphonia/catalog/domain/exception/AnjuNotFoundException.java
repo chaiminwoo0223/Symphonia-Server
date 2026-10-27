@@ -1,10 +1,10 @@
 package com.symphonia.catalog.domain.exception;
 
+import com.symphonia.catalog.domain.error.CatalogErrorCode;
 import com.symphonia.common.exception.NotFoundException;
-import com.symphonia.pairing.domain.error.PairingErrorCode;
 
 public class AnjuNotFoundException extends NotFoundException {
     public AnjuNotFoundException() {
-        super(PairingErrorCode.ANJU_NOT_FOUND);
+        super(CatalogErrorCode.ANJU_NOT_FOUND);
     }
 }

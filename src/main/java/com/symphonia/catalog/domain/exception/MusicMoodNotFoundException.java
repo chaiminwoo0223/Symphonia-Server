@@ -1,10 +1,10 @@
 package com.symphonia.catalog.domain.exception;
 
+import com.symphonia.catalog.domain.error.CatalogErrorCode;
 import com.symphonia.common.exception.NotFoundException;
-import com.symphonia.pairing.domain.error.PairingErrorCode;
 
 public class MusicMoodNotFoundException extends NotFoundException {
     public MusicMoodNotFoundException() {
-        super(PairingErrorCode.MUSIC_MOOD_NOT_FOUND);
+        super(CatalogErrorCode.MUSIC_MOOD_NOT_FOUND);
     }
 }
