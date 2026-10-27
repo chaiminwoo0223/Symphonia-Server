@@ -54,7 +54,7 @@ spotless {
 
 **(2026-10-18 결정, 이슈 #107)**: 중첩 타입을 공개 범위에 따라 둘로 나눴다. public 중첩 타입(결과 DTO의 항목 record 등)은 public 메서드 뒤에, private 중첩 타입은 private 메서드 뒤에 둔다. #77 규칙대로 중첩 타입을 모두 맨 아래에 두면 `ImportAnjuResult`처럼 public 메서드, private 메서드, public record 순서가 되어 공개 API가 두 덩어리로 갈라지기 때문이다. 이 결정으로 `ImportAnjuResult`, `ImportResult`의 항목 record를 private 메서드 앞으로 옮겼다. 나머지 파일은 private 메서드가 없거나 중첩 타입이 private이라 이미 맞다.
 
-**(2026-10-13 결정, 이슈 #77)**: record마다 중첩 타입 위치가 달라(`ImportResult`는 중간, `KakaoUserInfoResponse`는 맨 위) 순서 규칙을 정했다. static 멤버를 모두 위로 모으는 안은 private 헬퍼가 공개 API보다 먼저 나와 읽는 흐름이 끊기고 기존 코드 대부분을 바꿔야 해서 택하지 않았다. 검증은 `code-reviewer` 체크리스트로 한다. 호출 순서처럼 판단이 섞이는 규칙이라 결정론적 검사에 맞지 않기 때문이다. Checkstyle(`DeclarationOrder`, `InnerTypeLast`)은 상수, 생성자, 중첩 타입 위치만 잡고 팩토리와 private 메서드 순서는 잡지 못해 새 도구를 들일 만큼 이득이 크지 않았다. awk 스크립트는 Java 구조를 정규식으로 해석해야 해서 오탐이 많아 택하지 않았다. 리뷰에서 같은 위반이 반복해서 나오면 Checkstyle 도입을 재검토한다. 이번에는 record만 맞췄고, class와 enum은 수정하는 파일부터 리뷰에서 맞춘다.
+**(2026-10-13 결정, 이슈 #77)**: record마다 중첩 타입 위치가 달라(`ImportResult`(#140에서 `ImportDrinkStyleResult`로 이름 변경)는 중간, `KakaoUserInfoResponse`는 맨 위) 순서 규칙을 정했다. static 멤버를 모두 위로 모으는 안은 private 헬퍼가 공개 API보다 먼저 나와 읽는 흐름이 끊기고 기존 코드 대부분을 바꿔야 해서 택하지 않았다. 검증은 `code-reviewer` 체크리스트로 한다. 호출 순서처럼 판단이 섞이는 규칙이라 결정론적 검사에 맞지 않기 때문이다. Checkstyle(`DeclarationOrder`, `InnerTypeLast`)은 상수, 생성자, 중첩 타입 위치만 잡고 팩토리와 private 메서드 순서는 잡지 못해 새 도구를 들일 만큼 이득이 크지 않았다. awk 스크립트는 Java 구조를 정규식으로 해석해야 해서 오탐이 많아 택하지 않았다. 리뷰에서 같은 위반이 반복해서 나오면 Checkstyle 도입을 재검토한다. 이번에는 record만 맞췄고, class와 enum은 수정하는 파일부터 리뷰에서 맞춘다.
 
 ## 중첩 타입 위치
 
@@ -65,7 +65,7 @@ spotless {
 - 바깥 클래스의 private 생성자를 써야 하는 타입은 바깥 클래스 안에 private으로 둔다. `Pairing.Combination`은 `Pairing`을 만드는 길을 `recommend` 하나로 묶어 두므로 꺼내지 않는다.
 - 도메인 개념이 아닌 구현 세부는 쓰는 클래스 안에 private으로 둔다. 가변 누적기 `SelectionThresholds.TopScores`가 여기에 해당한다. 꺼내면 값 객체가 모이는 `domain/vo`에 가변 객체가 섞이고, 패키지 전체에 열린다.
 
-**(2026-10-18 결정, 이슈 #107)**: `Pairing`의 후보 계산 클래스를 분리하면서 어떤 중첩 타입은 꺼내고 어떤 타입은 남길지 판단이 갈렸다. 그래서 소속과 공개 범위를 나눠 보는 기준을 정했다. public이면 무조건 최상위로 꺼내는 안은 택하지 않았다. 결과 DTO의 항목 record처럼 바깥 타입에 속한 타입이 흩어지고, `ImportResult.ExcludedItem`과 `ImportAnjuResult.ExcludedItem`처럼 이름이 겹쳐 출처를 이름에 붙여야 하기 때문이다. 쓰는 곳이 하나인 구현 세부를 범용 유틸로 미리 꺼내는 안도 YAGNI라 택하지 않았다. 두 번째로 쓰는 곳이 생기면 그때 꺼낸다.
+**(2026-10-18 결정, 이슈 #107)**: `Pairing`의 후보 계산 클래스를 분리하면서 어떤 중첩 타입은 꺼내고 어떤 타입은 남길지 판단이 갈렸다. 그래서 소속과 공개 범위를 나눠 보는 기준을 정했다. public이면 무조건 최상위로 꺼내는 안은 택하지 않았다. 결과 DTO의 항목 record처럼 바깥 타입에 속한 타입이 흩어지기 때문이다. 이 결정 당시에는 `ImportResult.ExcludedItem`과 `ImportAnjuResult.ExcludedItem`처럼 이름도 겹쳤다(#140에서 `ExcludedStyle`, `ExcludedAnju`로 이름 변경). 쓰는 곳이 하나인 구현 세부를 범용 유틸로 미리 꺼내는 안도 YAGNI라 택하지 않았다. 두 번째로 쓰는 곳이 생기면 그때 꺼낸다.
 
 ## 명령어
 
