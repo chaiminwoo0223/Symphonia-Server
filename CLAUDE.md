@@ -95,6 +95,7 @@
 com.symphonia
 ├── member/     {domain, application, presentation, infrastructure}
 ├── auth/       {domain, application, presentation, infrastructure}
+├── catalog/    {domain, application, presentation, infrastructure} (음료, 안주, 음악 무드 카탈로그와 적재, 이슈 #139)
 ├── pairing/    {domain, application, presentation, infrastructure} (술, 안주, 음악 페어링 추천, 이슈 #45)
 ├── gathering/  {domain, application, presentation, infrastructure} (술자리 정산, 이슈 #122)
 ├── common/     공통 예외, 응답 포맷, BaseTimeEntity, CQRS 트랜잭션 애노테이션 (공유 커널: domain/application도 참조)

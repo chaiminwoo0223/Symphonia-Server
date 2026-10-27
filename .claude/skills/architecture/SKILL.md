@@ -23,7 +23,8 @@ com.symphonia
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체, 1 UseCase = 1 Service (예: RefreshUseCase/RefreshService, LogoutUseCase/LogoutService), listener(다른 도메인 이벤트 구독, 예: MemberDeletedEventListener)
 │   ├── presentation/
 │   └── infrastructure/    # Redis 기반 RefreshToken/BlacklistAccessToken 구현, JPA 엔티티
-├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45)
+├── catalog/               # 음료, 안주, 음악 무드 카탈로그와 적재 (이슈 #139, 코드 이동은 #140)
+├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45). 아래 카탈로그 코드는 #140에서 catalog로 옮긴다
 │   ├── domain/            # 순수 도메인 모델(Drink, DrinkStyle, Anju, MusicMood, Pairing), FlavorProfile/MoodProfile/Occasion 값 객체, PairingFeedback, *Repository 인터페이스, 규칙표로 맛을 계산하는 FlavorRule/WineFlavorRule/AnjuRule, 추천 후보를 계산하는 DrinkAnjuScores/CandidateThresholds, 적재 원본을 읽는 *Reader 인터페이스(reader)
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨. 파일을 읽는 적재는 UseCase 단위로 분리: ImportDrinkStyleService, ImportCuratedDrinkService, ImportXWineService, ImportAnjuService)
 │   ├── presentation/      # Controller, *Api, 수동 적재 진입점 ImportCatalogRunner(runner)
@@ -34,7 +35,9 @@ com.symphonia
 ```
 
 > 도메인 모델과 JPA 엔티티는 완전히 분리한다. `domain`은 영속성 기술을 전혀 알지 못한다. Domain↔JPA 변환은 기본적으로 `*JpaEntity`의 정적 팩토리 메서드(`from(도메인객체)`, `toDomain()`)로 처리한다. 같은 변환을 여러 곳에서 재사용하거나 필드 매핑이 단순 대입을 넘어 계산·검증을 포함하게 되는 시점에만 별도 `*Mapper` 클래스로 분리한다 (YAGNI: 호출자가 하나뿐인 단순 매핑에 별도 클래스를 미리 만들지 않는다).
-> 도메인은 총 4개(`member`, `auth`, `pairing`, `gathering`)다(#122에서 변경). 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 어느 도메인이든(#122에서 변경) 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다. 4번째 도메인 `gathering`을 추가하면서 이 조건을 다시 확인했다(2026-10-25, 이슈 #122). 현재 설계(#123~#131) 기준으로 `gathering`은 크로스 도메인 `*UseCase`로 `pairing`의 `SubmitPairingFeedbackUseCase` 하나만 의존하므로(#131) 재검토 조건에 해당하지 않는다.
+> 도메인은 총 5개(`member`, `auth`, `catalog`, `pairing`, `gathering`)다(#139에서 변경). 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 어느 도메인이든(#122에서 변경) 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다. 4번째 도메인 `gathering`을 추가하면서 이 조건을 다시 확인했다(2026-10-25, 이슈 #122). 현재 설계(#123~#131) 기준으로 `gathering`은 크로스 도메인 `*UseCase`로 `pairing`의 `SubmitPairingFeedbackUseCase` 하나만 의존하므로(#131) 재검토 조건에 해당하지 않는다. 5번째 도메인 `catalog`를 분리하면서 이 조건을 다시 확인했다(2026-10-27, 이슈 #139). `PairingQueryService`와 `PairingCommandService`는 크로스 도메인 `*UseCase`로 `catalog`의 `CatalogQueryUseCase` 하나씩만 의존하므로 재검토 조건에 해당하지 않는다.
+
+**(2026-10-27 결정, 이슈 #139)**: `pairing`에서 카탈로그를 `catalog` 도메인으로 분리한다. `catalog`는 음료, 안주, 음악 무드가 무엇이고 맛과 분위기 값이 얼마인지를 책임진다. `Drink`, `DrinkStyle`, `Anju`, `MusicMood`, 적재 규칙표, `*Reader`, 적재 러너가 여기에 속한다. `pairing`은 자리에 맞는 조합을 고르는 일을 책임진다. `Occasion`, 점수 계산, `Pairing`, `PairingFeedback`이 여기에 속한다. 근거는 두 가지다. 첫째, 적재 코드는 출처 데이터가 바뀔 때 바뀌고, 추천 코드는 점수 규칙이 바뀔 때 바뀐다. 분리 전 `pairing/domain` 파일 75개 중 34개가 적재용이었다. 둘째, 추천은 서비스의 핵심 도메인이고 카탈로그는 이를 받쳐 주는 지원 도메인이다. `pairing` 안에서 패키지만 나누는 안은 택하지 않았다. 크로스 도메인 규칙이 적용되지 않아 경계가 이름뿐이기 때문이다. 의존 방향은 `pairing → catalog` 한 방향이다. `FlavorProfile`과 `MoodProfile`은 두 도메인이 각자 가진다. `catalog`의 것은 적재 규칙이 계산한 값을 담는다. `pairing`의 것은 유사도, 무게감, 분위기 적합도 같은 점수 계산 메서드를 가진다. 하나를 `common`에 두는 안은 택하지 않았다. `common`은 기술 공통 요소만 두는 곳이다. 또 점수 계산 메서드를 공유하면 `catalog`가 추천 규칙에 묶인다. `Drink.cutsRichnessOf`처럼 엔티티에 있던 점수 계산 메서드는 `pairing`의 후보 모델로 옮긴다. 음식 계열(`Harmonize`) 판정은 안주 속성으로 정해지는 분류라서 `catalog`에 둔다. `catalog`는 `CatalogQueryUseCase` 하나를 연다. 이 UseCase는 도수 상한 조건으로 추천 후보를 일괄 조회하고, 피드백 대상이 있는지 확인한다. 둘 다 부수효과 없는 단순 조회라서 Query 레벨 Service 하나로 둔다. 후보는 맛과 분위기 축, 도수, 음식 계열 판정 결과를 원시 값으로 담은 `*Result`로 넘긴다. `pairing`은 이를 자기 후보 모델로 바꾼다. 테이블과 FK는 바꾸지 않는다. 결정 문서의 위치는 design-decision 스킬의 #134 기준을 따른다. `catalog`에 적재 외의 실행 중 규칙이 생기면 그때 `catalog.md`를 만든다.
 
 ## 계층 의존 방향
 
@@ -106,7 +109,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 영속성 (PostgreSQL / pgvector)
 
-DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설정, 카탈로그 적재 러너에 관한 결정은 [`persistence.md`](persistence.md)에 있다. 엔티티와 `*JpaEntity` 매핑, `db/migration`의 마이그레이션 파일, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때 읽는다. 다만 적재 규칙표라도 추천 점수 때문에 정한 Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`)와 `drink.harmonizes` 컬럼(#105), 안주 무게감 보정 규칙표(`anju-serving-richness.csv`, #117)에 관한 결정은 `pairing.md`에 있다.
+DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설정, 카탈로그 적재 러너에 관한 결정은 [`persistence.md`](persistence.md)에 있다. 엔티티와 `*JpaEntity` 매핑, `db/migration`의 마이그레이션 파일, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때 읽는다. 다만 적재 규칙표라도 추천 점수 때문에 정한 Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`)와 `drink.harmonizes` 컬럼(#105), 안주 무게감 보정 규칙표(`anju-serving-richness.csv`, #117)에 관한 결정은 `pairing.md`에 있다. 적재 코드가 `catalog` 도메인으로 옮겨져도(#139) 이 위치는 바뀌지 않는다.
 
 ## pairing 추천 규칙
 
