@@ -63,7 +63,7 @@ class PairingQueryServiceTest extends UnitTest {
         private static final int GOLDEN_TOP_RANK = 3;
 
         @Test
-        @DisplayName("후보 조합 중 점수가 높은 순으로 PairingResult 목록을 반환한다")
+        @DisplayName("조합 중 점수가 높은 순으로 PairingResult 목록을 반환한다")
         void shouldReturnPairingResultsSortedByScore() {
             // given
             givenStandardCatalog();
@@ -430,7 +430,7 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("무알코올 Drink 후보가 없으면 기존 상위 결과를 그대로 반환한다")
+        @DisplayName("무알코올 Drink가 없으면 기존 상위 결과를 그대로 반환한다")
         void shouldReturnTopResultsWhenNoNonAlcoholicDrinkExists() {
             // given
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
@@ -582,7 +582,7 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("동점 후보가 있어도 Repository 조회 순서가 바뀌면 추천 결과가 같다")
+        @DisplayName("동점 조합이 있어도 Repository 조회 순서가 바뀌면 추천 결과가 같다")
         void shouldReturnSameResultsWhenRepositoryOrderChanges() {
             // given
             // 수육과 감자튀김은 flavorProfile이 같아 같은 Drink, MusicMood와 항상 같은 점수가 나온다

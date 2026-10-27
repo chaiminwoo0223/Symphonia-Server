@@ -61,9 +61,9 @@ spotless {
 중첩 타입을 바깥 타입 안에 둘지 최상위로 꺼낼지는 그 타입이 무엇에 속하는지로 정한다. 공개 범위는 누가 쓰는지로 따로 정한다.
 
 - 바깥 타입 없이 의미가 없는 타입은 public이어도 바깥 타입 안에 둔다. 결과 DTO의 항목 record(`ImportAnjuResult.ExcludedAnju`)가 여기에 해당한다. 다른 패키지에서 읽으면 public으로 둔다.
-- 다른 클래스가 함께 쓰거나, 바깥 클래스와 다른 도메인 책임을 맡을 때만 최상위로 꺼낸다. `Pairing`과 `DrinkAnjuScores`가 함께 쓰는 `ScoredDrinkAnju`, 추천 정책과 별개로 대량의 쌍을 계산하는 `DrinkAnjuScores`와 `CandidateThresholds`가 여기에 해당한다.
+- 다른 클래스가 함께 쓰거나, 바깥 클래스와 다른 도메인 책임을 맡을 때만 최상위로 꺼낸다. `Pairing`과 `DrinkAnjuScores`가 함께 쓰는 `ScoredDrinkAnju`, 추천 정책과 별개로 대량의 쌍을 계산하는 `DrinkAnjuScores`와 `SelectionThresholds`가 여기에 해당한다.
 - 바깥 클래스의 private 생성자를 써야 하는 타입은 바깥 클래스 안에 private으로 둔다. `Pairing.Combination`은 `Pairing`을 만드는 길을 `recommend` 하나로 묶어 두므로 꺼내지 않는다.
-- 도메인 개념이 아닌 구현 세부는 쓰는 클래스 안에 private으로 둔다. 가변 누적기 `CandidateThresholds.TopScores`가 여기에 해당한다. 꺼내면 값 객체가 모이는 `domain/vo`에 가변 객체가 섞이고, 패키지 전체에 열린다.
+- 도메인 개념이 아닌 구현 세부는 쓰는 클래스 안에 private으로 둔다. 가변 누적기 `SelectionThresholds.TopScores`가 여기에 해당한다. 꺼내면 값 객체가 모이는 `domain/vo`에 가변 객체가 섞이고, 패키지 전체에 열린다.
 
 **(2026-10-18 결정, 이슈 #107)**: `Pairing`의 후보 계산 클래스를 분리하면서 어떤 중첩 타입은 꺼내고 어떤 타입은 남길지 판단이 갈렸다. 그래서 소속과 공개 범위를 나눠 보는 기준을 정했다. public이면 무조건 최상위로 꺼내는 안은 택하지 않았다. 결과 DTO의 항목 record처럼 바깥 타입에 속한 타입이 흩어지고, `ImportResult.ExcludedItem`과 `ImportAnjuResult.ExcludedItem`처럼 이름이 겹쳐 출처를 이름에 붙여야 하기 때문이다. 쓰는 곳이 하나인 구현 세부를 범용 유틸로 미리 꺼내는 안도 YAGNI라 택하지 않았다. 두 번째로 쓰는 곳이 생기면 그때 꺼낸다.
 
