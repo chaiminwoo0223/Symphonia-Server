@@ -21,9 +21,9 @@ import com.symphonia.catalog.domain.exception.MusicMoodNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
 import com.symphonia.catalog.domain.repository.MusicMoodRepository;
-import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
+import com.symphonia.catalog.domain.vo.MoodProfile;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.MusicMoodFixture;
@@ -64,7 +64,9 @@ class CatalogQueryServiceTest extends UnitTest {
             Anju anju =
                     AnjuFixture.DRIED_SNACK.createWithIdAndFlavorProfile(
                             ANJU_ID, FlavorProfile.of(5, 4, 0, 2, 1));
-            MusicMood musicMood = MusicMoodFixture.FORMAL_JAZZ.createWithId(MUSIC_MOOD_ID);
+            MusicMood musicMood =
+                    MusicMoodFixture.FORMAL_JAZZ.createWithIdAndMoodProfile(
+                            MUSIC_MOOD_ID, MoodProfile.of(1, 2, 3, 4));
             given(drinkRepository.findAllByAbvLessThanEqual(MAX_ABV)).willReturn(List.of(beer));
             given(anjuRepository.findAll()).willReturn(List.of(anju));
             given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
@@ -97,18 +99,18 @@ class CatalogQueryServiceTest extends UnitTest {
                                     0,
                                     2,
                                     1,
-                                    Set.of(AllergyType.SQUID, AllergyType.PEANUT),
+                                    AnjuFixture.DRIED_SNACK.getAllergyTypes(),
                                     anju.getHarmonizeMask()));
             assertThat(result.musicMoods())
                     .containsExactly(
                             new MusicMoodResult(
                                     MUSIC_MOOD_ID,
-                                    "잔잔한 재즈",
-                                    "https://open.spotify.com/playlist/formal-jazz",
-                                    5,
+                                    MusicMoodFixture.FORMAL_JAZZ.getTitle(),
+                                    MusicMoodFixture.FORMAL_JAZZ.getStreamingUrl(),
                                     1,
-                                    1,
-                                    2));
+                                    2,
+                                    3,
+                                    4));
         }
 
         @Test

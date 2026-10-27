@@ -30,6 +30,12 @@ public enum PairingFeedbackFixture {
         return build(null, drinkId, anjuId, musicMoodId);
     }
 
+    // 저장된 피드백을 흉내 낼 때 id와 참조 id를 함께 받는다.
+    public PairingFeedback createWithIdAndReferences(
+            Long id, Long drinkId, Long anjuId, Long musicMoodId) {
+        return build(id, drinkId, anjuId, musicMoodId);
+    }
+
     private PairingFeedback build(Long id, Long drinkId, Long anjuId, Long musicMoodId) {
         return PairingFeedback.builder()
                 .id(id)

@@ -32,6 +32,7 @@ class PairingCommandServiceTest extends UnitTest {
     private static final Long DRINK_ID = 1L;
     private static final Long ANJU_ID = 2L;
     private static final Long MUSIC_MOOD_ID = 3L;
+    private static final Long FEEDBACK_ID = 4L;
 
     @InjectMocks private PairingCommandService pairingCommandService;
 
@@ -70,8 +71,8 @@ class PairingCommandServiceTest extends UnitTest {
             void shouldSaveFeedbackAndReturnResult() {
                 // given
                 PairingFeedback savedFeedback =
-                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                                DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
+                        PairingFeedbackFixture.FRIEND_FORMAL.createWithIdAndReferences(
+                                FEEDBACK_ID, DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
                 given(pairingFeedbackRepository.save(any(PairingFeedback.class)))
                         .willReturn(savedFeedback);
 
@@ -82,6 +83,7 @@ class PairingCommandServiceTest extends UnitTest {
                 then(verifyCatalogReferencesUseCase)
                         .should()
                         .verify(VerifyCatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                assertThat(result.id()).isEqualTo(FEEDBACK_ID);
                 assertThat(result.memberId()).isEqualTo(MEMBER_ID);
                 assertThat(result.drinkId()).isEqualTo(DRINK_ID);
                 assertThat(result.anjuId()).isEqualTo(ANJU_ID);
