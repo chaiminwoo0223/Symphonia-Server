@@ -1,7 +1,7 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.pairing.domain.entity.Anju;
-import com.symphonia.pairing.domain.entity.Drink;
+import com.symphonia.catalog.domain.entity.Anju;
+import com.symphonia.catalog.domain.entity.Drink;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;

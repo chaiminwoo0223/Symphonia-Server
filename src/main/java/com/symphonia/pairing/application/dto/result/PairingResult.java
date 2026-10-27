@@ -1,6 +1,6 @@
 package com.symphonia.pairing.application.dto.result;
 
-import com.symphonia.pairing.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.Pairing;
 import com.symphonia.pairing.domain.vo.PairingReason;
 import java.util.List;

@@ -1,6 +1,8 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.pairing.domain.entity.Anju;
+import com.symphonia.catalog.domain.entity.Anju;
+import com.symphonia.catalog.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.MoodProfile;
 import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

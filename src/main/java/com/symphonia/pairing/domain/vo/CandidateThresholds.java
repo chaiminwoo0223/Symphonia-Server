@@ -1,6 +1,6 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.pairing.domain.entity.Drink;
+import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.pairing.domain.exception.InvalidTopLimitException;
 import java.util.Arrays;
 import java.util.List;

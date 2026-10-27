@@ -7,20 +7,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
+import com.symphonia.catalog.domain.entity.Anju;
+import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.entity.MusicMood;
+import com.symphonia.catalog.fixture.AnjuFixture;
+import com.symphonia.catalog.fixture.DrinkFixture;
+import com.symphonia.catalog.fixture.MusicMoodFixture;
+import com.symphonia.catalog.helper.CatalogHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
-import com.symphonia.pairing.domain.entity.Anju;
-import com.symphonia.pairing.domain.entity.Drink;
-import com.symphonia.pairing.domain.entity.MusicMood;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
-import com.symphonia.pairing.fixture.AnjuFixture;
-import com.symphonia.pairing.fixture.DrinkFixture;
-import com.symphonia.pairing.fixture.MusicMoodFixture;
-import com.symphonia.pairing.helper.PairingHelper;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,10 +30,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 
-@Sql("/sql/clear-pairing-catalog.sql")
+@Sql("/sql/clear-catalog.sql")
 class PairingControllerTest extends IntegrationTest {
 
-    @Autowired private PairingHelper pairingHelper;
+    @Autowired private CatalogHelper pairingHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
 

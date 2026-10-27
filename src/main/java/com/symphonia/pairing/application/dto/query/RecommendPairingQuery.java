@@ -1,6 +1,6 @@
 package com.symphonia.pairing.application.dto.query;
 
-import com.symphonia.pairing.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.RelationshipType;

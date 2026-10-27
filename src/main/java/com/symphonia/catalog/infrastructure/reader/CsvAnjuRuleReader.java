@@ -1,0 +1,65 @@
+package com.symphonia.catalog.infrastructure.reader;
+
+import static com.symphonia.catalog.infrastructure.reader.HeaderCsv.column;
+import static com.symphonia.catalog.infrastructure.reader.HeaderCsv.readRows;
+import static com.symphonia.catalog.infrastructure.reader.HeaderCsv.values;
+
+import com.symphonia.catalog.domain.reader.AnjuRuleReader;
+import com.symphonia.catalog.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.AnjuRule;
+import com.symphonia.catalog.domain.vo.IngredientRule;
+import com.symphonia.catalog.domain.vo.NutrientRule;
+import com.symphonia.catalog.domain.vo.ServingRichnessRule;
+import com.symphonia.catalog.domain.vo.ServingStyle;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
+// 규칙표는 버전 관리되는 설정이라 클래스패스(import/rules)에서 읽는다.
+@Component
+public class CsvAnjuRuleReader implements AnjuRuleReader {
+    private static final String RULES_DIR = "import/rules/";
+
+    @Override
+    public AnjuRule read() {
+        return new AnjuRule(
+                nutrientRules("anju-sugar.csv", "sweetness"),
+                nutrientRules("anju-fat.csv", "richness"),
+                readRows(
+                        new ClassPathResource(RULES_DIR + "anju-serving-richness.csv"),
+                        this::toServingRichnessRule),
+                readRows(
+                        new ClassPathResource(RULES_DIR + "ingredients.csv"),
+                        this::toIngredientRule));
+    }
+
+    private List<NutrientRule> nutrientRules(String fileName, String valueColumn) {
+        return readRows(
+                new ClassPathResource(RULES_DIR + fileName),
+                row ->
+                        new NutrientRule(
+                                Double.parseDouble(column(row, "min_grams")),
+                                Double.parseDouble(column(row, "max_grams")),
+                                Integer.parseInt(column(row, valueColumn))));
+    }
+
+    private ServingRichnessRule toServingRichnessRule(Map<String, String> row) {
+        return new ServingRichnessRule(
+                ServingStyle.valueOf(column(row, "serving")),
+                Boolean.parseBoolean(column(row, "fried")),
+                Integer.parseInt(column(row, "richness_offset")));
+    }
+
+    private IngredientRule toIngredientRule(Map<String, String> row) {
+        return new IngredientRule(
+                column(row, "keyword"),
+                values(column(row, "allergy_types")).stream()
+                        .map(AllergyType::valueOf)
+                        .collect(Collectors.toSet()),
+                Boolean.parseBoolean(column(row, "spicy")),
+                Integer.parseInt(column(row, "acidity")),
+                Integer.parseInt(column(row, "bitterness")));
+    }
+}

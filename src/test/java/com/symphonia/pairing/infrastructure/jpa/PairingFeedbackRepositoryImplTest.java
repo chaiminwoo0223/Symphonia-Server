@@ -3,12 +3,20 @@ package com.symphonia.pairing.infrastructure.jpa;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.symphonia.RepositoryTest;
+import com.symphonia.catalog.fixture.AnjuFixture;
+import com.symphonia.catalog.fixture.DrinkFixture;
+import com.symphonia.catalog.fixture.DrinkStyleFixture;
+import com.symphonia.catalog.fixture.MusicMoodFixture;
+import com.symphonia.catalog.infrastructure.jpa.AnjuJpaEntity;
+import com.symphonia.catalog.infrastructure.jpa.AnjuJpaRepository;
+import com.symphonia.catalog.infrastructure.jpa.DrinkJpaEntity;
+import com.symphonia.catalog.infrastructure.jpa.DrinkJpaRepository;
+import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaEntity;
+import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
+import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaEntity;
+import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaRepository;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
-import com.symphonia.pairing.fixture.AnjuFixture;
-import com.symphonia.pairing.fixture.DrinkFixture;
-import com.symphonia.pairing.fixture.DrinkStyleFixture;
-import com.symphonia.pairing.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import java.util.List;
 import java.util.Set;
@@ -20,7 +28,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.jdbc.Sql;
 
 @Import(PairingFeedbackRepositoryImpl.class)
-@Sql("/sql/clear-pairing-catalog.sql")
+@Sql("/sql/clear-catalog.sql")
 class PairingFeedbackRepositoryImplTest extends RepositoryTest {
 
     @Autowired private PairingFeedbackRepository pairingFeedbackRepository;
