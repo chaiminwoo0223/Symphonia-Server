@@ -19,13 +19,13 @@ pairing 도메인의 `GET /api/v1/pairings/recommend`를 대상으로 한 K6 부
 ## 실행
 
 ```bash
-k6 run loadtest/recommend-load-test.js
+k6 run k6/recommend.js
 ```
 
 서버가 기본 포트(8080)가 아니거나 dev 환경을 대상으로 하려면 `BASE_URL`을 넘긴다.
 
 ```bash
-k6 run -e BASE_URL=https://dev.symphonia.example.com loadtest/recommend-load-test.js
+k6 run -e BASE_URL=https://dev.symphonia.example.com k6/recommend.js
 ```
 
 ## 결과 확인
@@ -33,10 +33,10 @@ k6 run -e BASE_URL=https://dev.symphonia.example.com loadtest/recommend-load-tes
 K6는 실행이 끝나면 `http_req_duration`, `http_req_failed` 등 기본 지표와 `thresholds` 통과 여부를 콘솔에 요약해서 보여준다. 기준선을 파일로 남기려면 `--summary-export`를 추가한다.
 
 ```bash
-k6 run --summary-export=loadtest/results/recommend-baseline.json loadtest/recommend-load-test.js
+k6 run --summary-export=k6/results/recommend-baseline.json k6/recommend.js
 ```
 
-`loadtest/results/`는 실행 시점마다 값이 달라지는 산출물이라 저장소에 커밋하지 않는다.
+`k6/results/`는 실행 시점마다 값이 달라지는 산출물이라 저장소에 커밋하지 않는다.
 
 ## 시나리오
 
