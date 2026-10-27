@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum PairingErrorCode implements ErrorCode {
     // 500
-    INVALID_TOP_LIMIT(HttpStatus.INTERNAL_SERVER_ERROR, "상위 선정 개수는 1 이상이어야 합니다."),
+    INVALID_TOP_LIMIT(HttpStatus.INTERNAL_SERVER_ERROR, "상위로 고를 개수는 1 이상이어야 합니다."),
     ;
 
     private final HttpStatus status;

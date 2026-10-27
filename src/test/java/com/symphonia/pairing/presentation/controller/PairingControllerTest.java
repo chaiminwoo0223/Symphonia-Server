@@ -33,7 +33,7 @@ import org.springframework.test.context.jdbc.Sql;
 @Sql("/sql/clear-catalog.sql")
 class PairingControllerTest extends IntegrationTest {
 
-    @Autowired private CatalogHelper pairingHelper;
+    @Autowired private CatalogHelper catalogHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
 
@@ -75,10 +75,10 @@ class PairingControllerTest extends IntegrationTest {
         @DisplayName("attendeeAllergies와 겹치는 안주는 추천 목록에서 제외한다")
         void shouldExcludeAnjuConflictingWithAttendeeAllergies() throws Exception {
             // given
-            pairingHelper.saveDrink(DrinkFixture.SOJU);
-            pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            pairingHelper.saveAnju(AnjuFixture.DRIED_SNACK);
-            pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
+            catalogHelper.saveDrink(DrinkFixture.SOJU);
+            catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+            catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
 
             // when & then
             mockMvc.perform(
@@ -100,10 +100,10 @@ class PairingControllerTest extends IntegrationTest {
         @DisplayName("attendeeConstraints를 반영해 무알코올 Drink를 응답에 포함한다")
         void shouldIncludeNonAlcoholicDrinkWhenAttendeeConstraintsGiven() throws Exception {
             // given
-            pairingHelper.saveDrink(DrinkFixture.SOJU);
-            pairingHelper.saveDrink(DrinkFixture.SODA);
-            pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
+            catalogHelper.saveDrink(DrinkFixture.SOJU);
+            catalogHelper.saveDrink(DrinkFixture.SODA);
+            catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
 
             // when & then
             mockMvc.perform(
@@ -231,9 +231,9 @@ class PairingControllerTest extends IntegrationTest {
     }
 
     private void seedCatalog() {
-        pairingHelper.saveDrink(DrinkFixture.SOJU);
-        pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        pairingHelper.saveMusicMood(MusicMoodFixture.CASUAL_ACOUSTIC);
+        catalogHelper.saveDrink(DrinkFixture.SOJU);
+        catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+        catalogHelper.saveMusicMood(MusicMoodFixture.CASUAL_ACOUSTIC);
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest() {
@@ -241,9 +241,9 @@ class PairingControllerTest extends IntegrationTest {
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest(PairingRating rating) {
-        Drink drink = pairingHelper.saveDrink(DrinkFixture.SOJU);
-        Anju anju = pairingHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        MusicMood musicMood = pairingHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
+        Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
+        Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+        MusicMood musicMood = catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
         return new SubmitPairingFeedbackRequest(
                 drink.getId(),
                 anju.getId(),

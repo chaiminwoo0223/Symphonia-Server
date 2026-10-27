@@ -310,17 +310,26 @@ public enum AnjuFixture {
         return build(id, AnjuSource.SEED, getExternalId());
     }
 
+    // 축마다 값이 다른 맛을 넣어 결과로 옮긴 축의 순서를 검증할 때 쓴다.
+    public Anju createWithIdAndFlavorProfile(Long id, FlavorProfile profile) {
+        return build(id, AnjuSource.SEED, getExternalId(), profile);
+    }
+
     public Anju createWithIdentity(AnjuSource source, String externalId) {
         return build(null, source, externalId);
     }
 
     private Anju build(Long id, AnjuSource source, String externalId) {
+        return build(id, source, externalId, flavorProfile);
+    }
+
+    private Anju build(Long id, AnjuSource source, String externalId, FlavorProfile profile) {
         return Anju.builder()
                 .id(id)
                 .source(source)
                 .externalId(externalId)
                 .name(name)
-                .flavorProfile(flavorProfile)
+                .flavorProfile(profile)
                 .allergyTypes(allergyTypes)
                 .base(base)
                 .serving(serving)
