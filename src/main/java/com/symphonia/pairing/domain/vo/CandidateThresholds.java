@@ -1,6 +1,5 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.pairing.domain.exception.InvalidTopLimitException;
 import java.util.Arrays;
 import java.util.List;
@@ -19,7 +18,7 @@ import java.util.stream.Stream;
 public record CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
     public static CandidateThresholds of(
             DrinkAnjuScores scores, int topLimit, boolean nonAlcoholicOption, double tolerance) {
-        List<Drink> drinks = scores.drinks();
+        List<PairingDrink> drinks = scores.drinks();
         double top = topThreshold(scores, topLimit);
         double[] bestByDrink =
                 IntStream.range(0, drinks.size()).mapToDouble(scores::bestOf).toArray();
