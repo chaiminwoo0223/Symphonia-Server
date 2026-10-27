@@ -8,8 +8,8 @@ import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult;
-import com.symphonia.catalog.application.dto.result.ImportXWineResult.AbvExceededItem;
-import com.symphonia.catalog.application.dto.result.ImportXWineResult.UndeterminedItem;
+import com.symphonia.catalog.application.dto.result.ImportXWineResult.AbvExceededWine;
+import com.symphonia.catalog.application.dto.result.ImportXWineResult.UndeterminedWine;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.entity.DrinkStyle;
 import com.symphonia.catalog.domain.reader.WineFlavorRuleReader;
@@ -167,8 +167,8 @@ class ImportXWineServiceTest extends UnitTest {
                         .containsExactlyInAnyOrder(
                                 Harmonize.BEEF, Harmonize.LAMB, Harmonize.VEAL, Harmonize.PASTA);
                 assertThat(result.importedDrinkCount()).isEqualTo(1);
-                assertThat(result.abvExceededItems()).isEmpty();
-                assertThat(result.undeterminedItems()).isEmpty();
+                assertThat(result.abvExceededWines()).isEmpty();
+                assertThat(result.undeterminedWines()).isEmpty();
             }
         }
 
@@ -213,8 +213,8 @@ class ImportXWineServiceTest extends UnitTest {
         class WhenAbvExceedsLimit {
 
             @Test
-            @DisplayName("저장하지 않고 abvExceededItems에 담는다")
-            void shouldLeaveAbvExceededItemWithoutSaving() {
+            @DisplayName("저장하지 않고 abvExceededWines에 담는다")
+            void shouldLeaveAbvExceededWineWithoutSaving() {
                 // given
                 XWine wine = XWineFixture.ORIGEM_MERLOT.createWithAbv(48.0);
                 givenRedStyleSaved();
@@ -226,9 +226,9 @@ class ImportXWineServiceTest extends UnitTest {
                 // then
                 verify(drinkRepository, never()).save(any());
                 assertThat(result.importedDrinkCount()).isZero();
-                assertThat(result.abvExceededItems())
+                assertThat(result.abvExceededWines())
                         .containsExactly(
-                                new AbvExceededItem(
+                                new AbvExceededWine(
                                         wine.wineId(), "Casa Valduga Origem Merlot", 48.0));
             }
         }
@@ -251,7 +251,7 @@ class ImportXWineServiceTest extends UnitTest {
 
                 // then
                 assertThat(captureSavedDrink().getAbv()).isEqualTo(25.0);
-                assertThat(result.abvExceededItems()).isEmpty();
+                assertThat(result.abvExceededWines()).isEmpty();
             }
         }
 
@@ -260,8 +260,8 @@ class ImportXWineServiceTest extends UnitTest {
         class WhenAttributesUnknown {
 
             @Test
-            @DisplayName("저장하지 않고 규칙이 없는 속성을 undeterminedItems에 담는다")
-            void shouldLeaveUndeterminedItemWithoutSaving() {
+            @DisplayName("저장하지 않고 규칙이 없는 속성을 undeterminedWines에 담는다")
+            void shouldLeaveUndeterminedWineWithoutSaving() {
                 // given
                 XWine unknownEveryAttribute = XWineFixture.RESERVA_CHARDONNAY.create();
                 XWine unknownBody = XWineFixture.ORIGEM_MERLOT.createWithBody("Watery");
@@ -279,9 +279,9 @@ class ImportXWineServiceTest extends UnitTest {
                 // then
                 verify(drinkRepository, never()).save(any());
                 assertThat(result.importedDrinkCount()).isZero();
-                assertThat(result.undeterminedItems())
+                assertThat(result.undeterminedWines())
                         .containsExactly(
-                                new UndeterminedItem(
+                                new UndeterminedWine(
                                         unknownEveryAttribute.wineId(),
                                         "Aurora Reserva Chardonnay",
                                         Set.of(
@@ -289,11 +289,11 @@ class ImportXWineServiceTest extends UnitTest {
                                                 WineAttribute.BODY,
                                                 WineAttribute.ACIDITY,
                                                 WineAttribute.HARMONIZE)),
-                                new UndeterminedItem(
+                                new UndeterminedWine(
                                         unknownBody.wineId(),
                                         "Casa Valduga Origem Merlot",
                                         Set.of(WineAttribute.BODY)),
-                                new UndeterminedItem(
+                                new UndeterminedWine(
                                         unknownHarmonizeTag.wineId(),
                                         "Casa Valduga Origem Merlot",
                                         Set.of(WineAttribute.HARMONIZE)));

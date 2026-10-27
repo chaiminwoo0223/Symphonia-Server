@@ -16,14 +16,14 @@ import java.util.stream.Collectors;
 
 public record ImportAnjuResult(
         int importedCount,
-        List<ExcludedItem> excludedItems,
-        List<RemovedItem> deletedItems,
-        List<RemovedItem> retainedItems,
+        List<ExcludedAnju> excludedAnjus,
+        List<RemovedAnju> deletedAnjus,
+        List<RemovedAnju> retainedAnjus,
         Map<Harmonize, Integer> harmonizeCounts) {
     public ImportAnjuResult {
-        excludedItems = List.copyOf(excludedItems);
-        deletedItems = List.copyOf(deletedItems);
-        retainedItems = List.copyOf(retainedItems);
+        excludedAnjus = List.copyOf(excludedAnjus);
+        deletedAnjus = List.copyOf(deletedAnjus);
+        retainedAnjus = List.copyOf(retainedAnjus);
         harmonizeCounts = immutableEnumMap(harmonizeCounts);
     }
 
@@ -36,29 +36,29 @@ public record ImportAnjuResult(
             List<Anju> retained) {
         return new ImportAnjuResult(
                 importedAnjus.size(),
-                excluded.stream().map(ExcludedItem::from).toList(),
-                deleted.stream().map(RemovedItem::from).toList(),
-                retained.stream().map(RemovedItem::from).toList(),
+                excluded.stream().map(ExcludedAnju::from).toList(),
+                deleted.stream().map(RemovedAnju::from).toList(),
+                retained.stream().map(RemovedAnju::from).toList(),
                 harmonizeCounts(importedAnjus));
     }
 
     // 규칙표에 추가해야 할 재료를 한 번에 보도록 제외된 안주 전체에서 모아 이름순으로 돌려준다.
     public Set<String> unknownIngredients() {
-        return excludedItems.stream()
-                .flatMap(item -> item.unknownIngredients().stream())
+        return excludedAnjus.stream()
+                .flatMap(anju -> anju.unknownIngredients().stream())
                 .collect(
                         Collectors.collectingAndThen(
                                 Collectors.toCollection(TreeSet::new),
                                 Collections::unmodifiableSet));
     }
 
-    public record ExcludedItem(
+    public record ExcludedAnju(
             String externalId,
             String name,
             Set<AnjuExclusionReason> reasons,
             Set<String> unknownIngredients) {
-        public static ExcludedItem from(AnjuEvaluation evaluation) {
-            return new ExcludedItem(
+        public static ExcludedAnju from(AnjuEvaluation evaluation) {
+            return new ExcludedAnju(
                     evaluation.curatedAnju().externalId(),
                     evaluation.curatedAnju().name(),
                     evaluation.exclusionReasons(),
@@ -66,9 +66,9 @@ public record ImportAnjuResult(
         }
     }
 
-    public record RemovedItem(String externalId, String name) {
-        public static RemovedItem from(Anju anju) {
-            return new RemovedItem(anju.getExternalId(), anju.getName());
+    public record RemovedAnju(String externalId, String name) {
+        public static RemovedAnju from(Anju anju) {
+            return new RemovedAnju(anju.getExternalId(), anju.getName());
         }
     }
 

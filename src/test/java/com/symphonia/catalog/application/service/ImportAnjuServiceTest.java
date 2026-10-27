@@ -9,8 +9,8 @@ import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.result.ImportAnjuResult;
-import com.symphonia.catalog.application.dto.result.ImportAnjuResult.ExcludedItem;
-import com.symphonia.catalog.application.dto.result.ImportAnjuResult.RemovedItem;
+import com.symphonia.catalog.application.dto.result.ImportAnjuResult.ExcludedAnju;
+import com.symphonia.catalog.application.dto.result.ImportAnjuResult.RemovedAnju;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.reader.AnjuNutritionReader;
 import com.symphonia.catalog.domain.reader.AnjuRuleReader;
@@ -88,7 +88,7 @@ class ImportAnjuServiceTest extends UnitTest {
                 assertThat(saved.getBase()).isEqualTo(fixture.getBase());
                 assertThat(saved.getServing()).isEqualTo(fixture.getServing());
                 assertThat(result.importedCount()).isEqualTo(1);
-                assertThat(result.excludedItems()).isEmpty();
+                assertThat(result.excludedAnjus()).isEmpty();
             }
 
             @Test
@@ -286,13 +286,13 @@ class ImportAnjuServiceTest extends UnitTest {
 
                 // then
                 verify(anjuRepository).deleteAllById(List.of(7L));
-                assertThat(result.deletedItems())
+                assertThat(result.deletedAnjus())
                         .containsExactly(
-                                new RemovedItem(
+                                new RemovedAnju(
                                         unreferenced.getExternalId(), unreferenced.getName()));
-                assertThat(result.retainedItems())
+                assertThat(result.retainedAnjus())
                         .containsExactly(
-                                new RemovedItem(referenced.getExternalId(), referenced.getName()));
+                                new RemovedAnju(referenced.getExternalId(), referenced.getName()));
             }
 
             @Test
@@ -333,9 +333,9 @@ class ImportAnjuServiceTest extends UnitTest {
                 // then
                 verify(anjuRepository, never()).save(any());
                 assertThat(result.importedCount()).isZero();
-                assertThat(result.excludedItems())
+                assertThat(result.excludedAnjus())
                         .singleElement()
-                        .extracting(ExcludedItem::reasons)
+                        .extracting(ExcludedAnju::reasons)
                         .isEqualTo(
                                 Set.of(
                                         AnjuExclusionReason.MISSING_EXTERNAL_ID,
@@ -358,9 +358,9 @@ class ImportAnjuServiceTest extends UnitTest {
 
                 // then
                 verify(anjuRepository, never()).save(any());
-                assertThat(result.excludedItems())
+                assertThat(result.excludedAnjus())
                         .singleElement()
-                        .extracting(ExcludedItem::reasons)
+                        .extracting(ExcludedAnju::reasons)
                         .isEqualTo(Set.of(AnjuExclusionReason.NUTRITION_NOT_FOUND));
             }
         }
@@ -382,9 +382,9 @@ class ImportAnjuServiceTest extends UnitTest {
 
                 // then
                 verify(anjuRepository, never()).save(any());
-                assertThat(result.excludedItems())
+                assertThat(result.excludedAnjus())
                         .singleElement()
-                        .extracting(ExcludedItem::reasons)
+                        .extracting(ExcludedAnju::reasons)
                         .isEqualTo(
                                 Set.of(
                                         AnjuExclusionReason.SUGAR_NOT_MEASURED,
@@ -409,14 +409,14 @@ class ImportAnjuServiceTest extends UnitTest {
 
                 // then
                 verify(anjuRepository, never()).save(any());
-                assertThat(result.excludedItems())
+                assertThat(result.excludedAnjus())
                         .singleElement()
                         .satisfies(
-                                item -> {
-                                    assertThat(item.reasons())
+                                anju -> {
+                                    assertThat(anju.reasons())
                                             .containsExactly(
                                                     AnjuExclusionReason.UNKNOWN_INGREDIENT);
-                                    assertThat(item.unknownIngredients()).containsExactly("청경채");
+                                    assertThat(anju.unknownIngredients()).containsExactly("청경채");
                                 });
                 assertThat(result.unknownIngredients()).containsExactly("청경채");
             }

@@ -7,7 +7,7 @@ import static org.mockito.Mockito.mock;
 
 import com.symphonia.catalog.application.dto.result.ImportAnjuResult;
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
-import com.symphonia.catalog.application.dto.result.ImportResult;
+import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult;
 import com.symphonia.catalog.application.usecase.ImportAnjuUseCase;
 import com.symphonia.catalog.application.usecase.ImportCuratedDrinkUseCase;
@@ -119,7 +119,7 @@ class ImportCatalogRunnerTest {
         void shouldImportBjcpStylesCuratedBeersXWinesAndAnjusInOrder() {
             // given
             given(importDrinkStyleUseCase.importBjcpStyles())
-                    .willReturn(new ImportResult(1, List.of(), Map.of()));
+                    .willReturn(new ImportDrinkStyleResult(1, List.of(), Map.of()));
             given(importCuratedDrinkUseCase.importCuratedBeers())
                     .willReturn(new ImportCuratedDrinkResult(1, List.of()));
             given(importXWineUseCase.importXWines())

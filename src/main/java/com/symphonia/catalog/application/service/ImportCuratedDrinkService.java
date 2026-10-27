@@ -3,7 +3,7 @@ package com.symphonia.catalog.application.service;
 import static java.util.stream.Collectors.toMap;
 
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
-import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedItem;
+import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedDrink;
 import com.symphonia.catalog.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.entity.DrinkStyle;
@@ -52,16 +52,18 @@ public class ImportCuratedDrinkService implements ImportCuratedDrinkUseCase {
         Map<String, Drink> existingByExternalId =
                 drinkRepository.findAllBySource(DrinkSource.CURATED).stream()
                         .collect(toMap(Drink::getExternalId, Function.identity()));
-        List<UnmappedItem> unmappedItems = new ArrayList<>();
+        List<UnmappedDrink> unmappedDrinks = new ArrayList<>();
 
         curatedDrinks.forEach(
                 curatedDrink ->
                         toDrink(curatedDrink, stylesByExternalId, harmonizesByStyleId)
                                 .ifPresentOrElse(
                                         drink -> upsert(drink, existingByExternalId),
-                                        () -> unmappedItems.add(UnmappedItem.from(curatedDrink))));
+                                        () ->
+                                                unmappedDrinks.add(
+                                                        UnmappedDrink.from(curatedDrink))));
 
-        return ImportCuratedDrinkResult.of(curatedDrinks.size(), unmappedItems);
+        return ImportCuratedDrinkResult.of(curatedDrinks.size(), unmappedDrinks);
     }
 
     private Optional<Drink> toDrink(
