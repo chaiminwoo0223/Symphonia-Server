@@ -68,7 +68,7 @@
 - `domain`이 `infrastructure` 패키지 참조 (`architecture`)
 - `application`에서 `*Request`/`*Response` DTO 임포트 (`architecture`)
 - 다른 도메인의 구현체·infrastructure·Repository 직접 참조 (`architecture`)
-- 다른 도메인의 엔티티, 값 객체, 메서드가 있는 enum 참조 (`architecture`)
+- 다른 도메인의 `domain` 패키지에서 enum 외의 타입 참조, 다른 도메인 enum의 메서드 호출 (`architecture`)
 - `*Result`가 도메인 엔티티를 직접 감싸거나 그대로 노출 (`architecture`)
 
 ### ✅ 필수
