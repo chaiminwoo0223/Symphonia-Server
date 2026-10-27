@@ -3,7 +3,6 @@ package com.symphonia.catalog.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
@@ -22,6 +21,8 @@ import com.symphonia.catalog.domain.exception.MusicMoodNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
 import com.symphonia.catalog.domain.repository.MusicMoodRepository;
+import com.symphonia.catalog.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
@@ -40,8 +41,8 @@ class CatalogQueryServiceTest extends UnitTest {
 
     private static final double MAX_ABV = 12.0;
     private static final Long DRINK_ID = 1L;
-    private static final Long ANJU_ID = 1L;
-    private static final Long MUSIC_MOOD_ID = 1L;
+    private static final Long ANJU_ID = 2L;
+    private static final Long MUSIC_MOOD_ID = 3L;
 
     @InjectMocks private CatalogQueryService catalogQueryService;
 
@@ -56,10 +57,14 @@ class CatalogQueryServiceTest extends UnitTest {
         @Test
         @DisplayName("도수 상한 이하의 음료와 전체 안주, 음악 무드를 CatalogResult로 반환한다")
         void shouldReturnCatalogResultWithinMaxAbv() {
-            // given
-            Drink beer = DrinkFixture.BEER.createWithId();
-            Anju anju = AnjuFixture.DRIED_SNACK.createWithId();
-            MusicMood musicMood = MusicMoodFixture.FORMAL_JAZZ.createWithId();
+            // given: 축마다 값이 달라 축 순서가 바뀌면 결과가 달라진다
+            Drink beer =
+                    DrinkFixture.BEER.createWithIdAndFlavorProfile(
+                            DRINK_ID, FlavorProfile.of(1, 2, 3, 4, 5));
+            Anju anju =
+                    AnjuFixture.DRIED_SNACK.createWithIdAndFlavorProfile(
+                            ANJU_ID, FlavorProfile.of(5, 4, 0, 2, 1));
+            MusicMood musicMood = MusicMoodFixture.FORMAL_JAZZ.createWithId(MUSIC_MOOD_ID);
             given(drinkRepository.findAllByAbvLessThanEqual(MAX_ABV)).willReturn(List.of(beer));
             given(anjuRepository.findAll()).willReturn(List.of(anju));
             given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
@@ -69,14 +74,41 @@ class CatalogQueryServiceTest extends UnitTest {
 
             // then
             assertThat(result.drinks())
-                    .extracting(DrinkResult::id, DrinkResult::name, DrinkResult::abv)
-                    .containsExactly(tuple(beer.getId(), beer.getName(), beer.getAbv()));
+                    .containsExactly(
+                            new DrinkResult(
+                                    DRINK_ID,
+                                    beer.getDrinkStyleId(),
+                                    DrinkFixture.BEER.getName(),
+                                    DrinkFixture.BEER.getAbv(),
+                                    DrinkFixture.BEER.isNonAlcoholic(),
+                                    1,
+                                    2,
+                                    3,
+                                    4,
+                                    5,
+                                    beer.getHarmonizeMask()));
             assertThat(result.anjus())
-                    .extracting(AnjuResult::id, AnjuResult::name, AnjuResult::allergyTypes)
-                    .containsExactly(tuple(anju.getId(), anju.getName(), anju.getAllergyTypes()));
+                    .containsExactly(
+                            new AnjuResult(
+                                    ANJU_ID,
+                                    AnjuFixture.DRIED_SNACK.getName(),
+                                    5,
+                                    4,
+                                    0,
+                                    2,
+                                    1,
+                                    Set.of(AllergyType.SQUID, AllergyType.PEANUT),
+                                    anju.getHarmonizeMask()));
             assertThat(result.musicMoods())
-                    .extracting(MusicMoodResult::id, MusicMoodResult::title)
-                    .containsExactly(tuple(musicMood.getId(), musicMood.getTitle()));
+                    .containsExactly(
+                            new MusicMoodResult(
+                                    MUSIC_MOOD_ID,
+                                    "잔잔한 재즈",
+                                    "https://open.spotify.com/playlist/formal-jazz",
+                                    5,
+                                    1,
+                                    1,
+                                    2));
         }
 
         @Test

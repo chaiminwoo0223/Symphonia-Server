@@ -146,7 +146,7 @@ class AnjuRepositoryImplTest extends RepositoryTest {
 
         @Test
         @DisplayName("주어진 안주 중 피드백이 참조하는 안주의 id만 반환한다")
-        void shouldReturnOnlyReferencedAnjuIds() {
+        void shouldReturnOnlyReferencedIds() {
             // given
             Long referencedAnjuId = saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
             Long unreferencedAnjuId = saveAnju(AnjuFixture.FRIED_CHICKEN);
