@@ -4,20 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 
 import com.symphonia.UnitTest;
-import com.symphonia.catalog.domain.entity.Anju;
-import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
-import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
+import com.symphonia.catalog.application.dto.query.VerifyCatalogReferencesQuery;
+import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
-import com.symphonia.catalog.domain.exception.MusicMoodNotFoundException;
-import com.symphonia.catalog.domain.repository.AnjuRepository;
-import com.symphonia.catalog.domain.repository.DrinkRepository;
-import com.symphonia.catalog.domain.repository.MusicMoodRepository;
-import com.symphonia.catalog.fixture.AnjuFixture;
-import com.symphonia.catalog.fixture.DrinkFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.pairing.application.dto.command.SubmitPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
@@ -26,7 +19,6 @@ import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
-import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,9 +35,7 @@ class PairingCommandServiceTest extends UnitTest {
 
     @InjectMocks private PairingCommandService pairingCommandService;
 
-    @Mock private DrinkRepository drinkRepository;
-    @Mock private AnjuRepository anjuRepository;
-    @Mock private MusicMoodRepository musicMoodRepository;
+    @Mock private VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
     @Mock private PairingFeedbackRepository pairingFeedbackRepository;
 
     @Nested
@@ -53,56 +43,21 @@ class PairingCommandServiceTest extends UnitTest {
     class Submit {
 
         @Nested
-        @DisplayName("Drink가 존재하지 않는 경우")
-        class WhenDrinkNotFound {
+        @DisplayName("참조하는 카탈로그가 존재하지 않는 경우")
+        class WhenCatalogReferenceNotFound {
 
             @Test
-            @DisplayName("DrinkNotFoundException을 던진다")
+            @DisplayName("카탈로그 검증 예외를 그대로 던지고 피드백을 저장하지 않는다")
             void shouldThrowDrinkNotFoundException() {
                 // given
-                given(drinkRepository.findById(DRINK_ID)).willReturn(Optional.empty());
+                willThrow(new DrinkNotFoundException())
+                        .given(verifyCatalogReferencesUseCase)
+                        .verify(VerifyCatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
 
                 // when & then
                 assertThatThrownBy(() -> pairingCommandService.submit(command()))
                         .isInstanceOf(DrinkNotFoundException.class);
-            }
-        }
-
-        @Nested
-        @DisplayName("Anju가 존재하지 않는 경우")
-        class WhenAnjuNotFound {
-
-            @Test
-            @DisplayName("AnjuNotFoundException을 던진다")
-            void shouldThrowAnjuNotFoundException() {
-                // given
-                Drink drink = DrinkFixture.SOJU.create();
-                given(drinkRepository.findById(DRINK_ID)).willReturn(Optional.of(drink));
-                given(anjuRepository.findById(ANJU_ID)).willReturn(Optional.empty());
-
-                // when & then
-                assertThatThrownBy(() -> pairingCommandService.submit(command()))
-                        .isInstanceOf(AnjuNotFoundException.class);
-            }
-        }
-
-        @Nested
-        @DisplayName("MusicMood가 존재하지 않는 경우")
-        class WhenMusicMoodNotFound {
-
-            @Test
-            @DisplayName("MusicMoodNotFoundException을 던진다")
-            void shouldThrowMusicMoodNotFoundException() {
-                // given
-                Drink drink = DrinkFixture.SOJU.create();
-                Anju anju = AnjuFixture.GOLBAENGI_MUCHIM.create();
-                given(drinkRepository.findById(DRINK_ID)).willReturn(Optional.of(drink));
-                given(anjuRepository.findById(ANJU_ID)).willReturn(Optional.of(anju));
-                given(musicMoodRepository.findById(MUSIC_MOOD_ID)).willReturn(Optional.empty());
-
-                // when & then
-                assertThatThrownBy(() -> pairingCommandService.submit(command()))
-                        .isInstanceOf(MusicMoodNotFoundException.class);
+                then(pairingFeedbackRepository).shouldHaveNoInteractions();
             }
         }
 
@@ -114,14 +69,6 @@ class PairingCommandServiceTest extends UnitTest {
             @DisplayName("피드백을 저장하고 PairingFeedbackResult를 반환한다")
             void shouldSaveFeedbackAndReturnResult() {
                 // given
-                Drink drink = DrinkFixture.SOJU.create();
-                Anju anju = AnjuFixture.GOLBAENGI_MUCHIM.create();
-                MusicMood musicMood = MusicMoodFixture.FORMAL_JAZZ.create();
-                given(drinkRepository.findById(DRINK_ID)).willReturn(Optional.of(drink));
-                given(anjuRepository.findById(ANJU_ID)).willReturn(Optional.of(anju));
-                given(musicMoodRepository.findById(MUSIC_MOOD_ID))
-                        .willReturn(Optional.of(musicMood));
-
                 PairingFeedback savedFeedback = PairingFeedbackFixture.FRIEND_FORMAL.create();
                 given(pairingFeedbackRepository.save(any(PairingFeedback.class)))
                         .willReturn(savedFeedback);

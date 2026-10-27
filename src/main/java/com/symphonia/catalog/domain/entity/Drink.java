@@ -24,8 +24,6 @@ public class Drink {
     private FlavorProfile flavorProfile;
     private boolean nonAlcoholic;
     private Set<Harmonize> harmonizes;
-
-    @Getter(AccessLevel.NONE)
     private long harmonizeMask;
 
     @Builder
