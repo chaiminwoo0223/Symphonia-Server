@@ -46,7 +46,7 @@ out/
 **/.ai
 
 ### Load Test ###
-loadtest/results/
+k6/results/
 
 ### Import Data ###
 scripts/import/data/bjcp/
