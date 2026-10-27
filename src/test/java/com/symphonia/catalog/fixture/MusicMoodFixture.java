@@ -41,6 +41,11 @@ public enum MusicMoodFixture {
         return build(ordinal() + 1L, profile);
     }
 
+    // 축마다 값이 다른 분위기를 넣어 결과로 옮긴 축의 순서를 검증할 때 쓴다.
+    public MusicMood createWithIdAndMoodProfile(Long id, MoodProfile profile) {
+        return build(id, profile);
+    }
+
     private MusicMood build(Long id, MoodProfile profile) {
         return MusicMood.builder()
                 .id(id)
