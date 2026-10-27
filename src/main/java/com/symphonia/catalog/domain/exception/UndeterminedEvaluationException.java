@@ -1,10 +1,10 @@
 package com.symphonia.catalog.domain.exception;
 
+import com.symphonia.catalog.domain.error.CatalogErrorCode;
 import com.symphonia.common.exception.InternalServerException;
-import com.symphonia.pairing.domain.error.PairingErrorCode;
 
 public class UndeterminedEvaluationException extends InternalServerException {
     public UndeterminedEvaluationException() {
-        super(PairingErrorCode.UNDETERMINED_EVALUATION);
+        super(CatalogErrorCode.UNDETERMINED_EVALUATION);
     }
 }
