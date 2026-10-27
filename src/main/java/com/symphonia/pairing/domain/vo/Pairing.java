@@ -1,8 +1,9 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.pairing.domain.entity.Anju;
-import com.symphonia.pairing.domain.entity.Drink;
-import com.symphonia.pairing.domain.entity.MusicMood;
+import com.symphonia.catalog.domain.entity.Anju;
+import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.entity.MusicMood;
+import com.symphonia.catalog.domain.vo.MoodProfile;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;

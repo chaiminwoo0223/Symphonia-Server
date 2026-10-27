@@ -1,7 +1,7 @@
 package com.symphonia.pairing.presentation.dto.response;
 
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.pairing.application.dto.result.PairingResult;
-import com.symphonia.pairing.domain.vo.AllergyType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.Set;

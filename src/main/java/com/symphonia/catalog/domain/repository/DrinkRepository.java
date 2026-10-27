@@ -1,0 +1,16 @@
+package com.symphonia.catalog.domain.repository;
+
+import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.vo.DrinkSource;
+import java.util.List;
+import java.util.Optional;
+
+public interface DrinkRepository {
+    Drink save(Drink drink);
+
+    List<Drink> findAllByAbvLessThanEqual(double maxAbv);
+
+    Optional<Drink> findById(Long drinkId);
+
+    List<Drink> findAllBySource(DrinkSource source);
+}

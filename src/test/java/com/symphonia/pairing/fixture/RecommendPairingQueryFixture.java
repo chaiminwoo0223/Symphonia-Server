@@ -1,7 +1,7 @@
 package com.symphonia.pairing.fixture;
 
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
-import com.symphonia.pairing.domain.vo.AllergyType;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.RelationshipType;
