@@ -28,7 +28,7 @@ public class Pairing {
     // 도수 대비와 같은 크기로 둬서, 탄산 5인 맥주가 기름진 안주에서 소주와 같은 대비 점수를 받는다.
     private static final double CARBONATION_ACIDITY_CUTTING_BONUS = 0.2;
     private static final int RECOMMENDATION_LIMIT = 5;
-    // 서로 다른 점수에 같은 값을 더하면 반올림으로 동점이 될 수 있다. 경계와 이 오차 안에 있는 후보는 모두 남긴다.
+    // 서로 다른 점수에 같은 값을 더하면 반올림으로 동점이 될 수 있다. 경계와 이 오차 안에 있는 쌍과 음악은 모두 남긴다.
     private static final double TIE_TOLERANCE = 1e-9;
     private static final Comparator<Combination> RANKING =
             Comparator.comparingDouble(Combination::rawScore)
@@ -50,7 +50,7 @@ public class Pairing {
             List<PairingAnju> anjus,
             List<PairingMusicMood> musicMoods,
             Occasion occasion) {
-        List<ScoredDrinkAnju> drinkAnjus = candidateDrinkAnjus(drinks, anjus, occasion);
+        List<ScoredDrinkAnju> drinkAnjus = selectableDrinkAnjus(drinks, anjus, occasion);
         List<ScoredMusicMood> topMusicMoods =
                 nearTop(
                         scoreMusicMoods(musicMoods, occasion),
@@ -71,7 +71,7 @@ public class Pairing {
 
     // 음료×안주 쌍은 카탈로그 크기의 곱이라 요청마다 수십만 개가 된다(#107).
     // 그래서 점수는 배열에만 담고, 세 선정 규칙의 경계를 구한 뒤 경계를 넘는 쌍만 객체로 만든다.
-    private static List<ScoredDrinkAnju> candidateDrinkAnjus(
+    private static List<ScoredDrinkAnju> selectableDrinkAnjus(
             List<PairingDrink> drinks, List<PairingAnju> anjus, Occasion occasion) {
         DrinkAnjuScores scores =
                 DrinkAnjuScores.of(
@@ -80,8 +80,8 @@ public class Pairing {
                                 .toList(),
                         anjus.stream().filter(anju -> !occasion.hasAllergyConflict(anju)).toList(),
                         (drink, anju) -> drinkAnjuScore(drink, anju, occasion));
-        CandidateThresholds thresholds =
-                CandidateThresholds.of(
+        SelectionThresholds thresholds =
+                SelectionThresholds.of(
                         scores,
                         RECOMMENDATION_LIMIT,
                         occasion.requiresNonAlcoholicOption(),
@@ -89,7 +89,7 @@ public class Pairing {
 
         return IntStream.range(0, scores.drinkCount())
                 .boxed()
-                .flatMap(thresholds::candidatesOf)
+                .flatMap(thresholds::selectablePairsOf)
                 .toList();
     }
 
@@ -227,7 +227,7 @@ public class Pairing {
 
     private record ScoredMusicMood(PairingMusicMood musicMood, double score) {}
 
-    // 순위를 매기는 동안 쓰는 후보 조합이다. 추천 사유는 최종으로 고른 조합에만 계산한다.
+    // 순위를 매기는 동안 쓰는 조합이다. 추천 사유는 최종으로 고른 조합에만 계산한다.
     // 순위는 감점이 반영된 원점수로 매긴다. 0으로 뭉개면 나쁜 조합끼리의 순서가 id 순으로 바뀐다.
     private record Combination(
             PairingDrink drink, PairingAnju anju, PairingMusicMood musicMood, double rawScore) {

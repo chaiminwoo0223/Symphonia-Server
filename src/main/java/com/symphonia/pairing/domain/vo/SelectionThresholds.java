@@ -9,14 +9,14 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-// 쌍이 추천 후보에 드는 경계 점수를 음료마다 하나씩 들고 있다.
+// 쌍이 선정 규칙에 들 수 있는 경계 점수를 음료마다 하나씩 들고 있다.
 // 선정 규칙은 상위 topLimit개, 스타일별 최고, 무알코올 최고(무알코올 옵션이 필요할 때)다.
 // 상위 topLimit개의 경계는 topLimit번째로 높은 점수이고, 스타일별 최고와 무알코올 최고의 경계는 최고 점수다.
-// 쌍은 경계 중 하나라도 넘으면 후보이므로, 음료의 경계는 그 음료에 해당하는 경계 중 가장 낮은 값이다.
+// 쌍은 경계 중 하나라도 넘으면 선정될 수 있으므로, 음료의 경계는 그 음료에 해당하는 경계 중 가장 낮은 값이다.
 // 각 경계와 tolerance 안에 있는 쌍도 남기도록 thresholdByDrink에는 tolerance를 뺀 값을 담는다.
-// thresholdByDrink는 DrinkAnjuScores의 scores처럼 비교하지 않고 후보 계산에만 쓰므로 복사하지 않는다.
-public record CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
-    public static CandidateThresholds of(
+// thresholdByDrink는 DrinkAnjuScores의 scores처럼 비교하지 않고 선정 계산에만 쓰므로 복사하지 않는다.
+public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
+    public static SelectionThresholds of(
             DrinkAnjuScores scores, int topLimit, boolean nonAlcoholicOption, double tolerance) {
         List<PairingDrink> drinks = scores.drinks();
         double top = topThreshold(scores, topLimit);
@@ -55,10 +55,10 @@ public record CandidateThresholds(DrinkAnjuScores scores, double[] thresholdByDr
                                                 - tolerance)
                         .toArray();
 
-        return new CandidateThresholds(scores, thresholdByDrink);
+        return new SelectionThresholds(scores, thresholdByDrink);
     }
 
-    public Stream<ScoredDrinkAnju> candidatesOf(int drinkIndex) {
+    public Stream<ScoredDrinkAnju> selectablePairsOf(int drinkIndex) {
         return scores.pairsOf(drinkIndex, thresholdByDrink[drinkIndex]);
     }
 
