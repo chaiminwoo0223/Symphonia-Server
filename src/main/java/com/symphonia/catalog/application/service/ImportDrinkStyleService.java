@@ -3,7 +3,7 @@ package com.symphonia.catalog.application.service;
 import static java.util.stream.Collectors.partitioningBy;
 import static java.util.stream.Collectors.toMap;
 
-import com.symphonia.catalog.application.dto.result.ImportResult;
+import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult;
 import com.symphonia.catalog.application.usecase.ImportDrinkStyleUseCase;
 import com.symphonia.catalog.domain.entity.DrinkStyle;
 import com.symphonia.catalog.domain.reader.BjcpStyleReader;
@@ -30,7 +30,7 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
     // 이미 적재된 스타일은 (source, external_id)로 찾아 갱신하므로 여러 번 실행해도 결과가 같다.
     // 기존 스타일은 스타일마다 조회하지 않고 한 번에 불러와 external_id로 찾는다.
     @Override
-    public ImportResult importBjcpStyles() {
+    public ImportDrinkStyleResult importBjcpStyles() {
         FlavorRule flavorRule = flavorRuleReader.read();
         Map<Boolean, List<FlavorEvaluation>> evaluationsByDetermined = evaluateStyles(flavorRule);
         List<FlavorEvaluation> determined = evaluationsByDetermined.get(true);
@@ -42,7 +42,7 @@ public class ImportDrinkStyleService implements ImportDrinkStyleUseCase {
 
         determined.forEach(evaluation -> upsert(evaluation.toDrinkStyle(), existingByExternalId));
 
-        return ImportResult.of(determined, undetermined);
+        return ImportDrinkStyleResult.of(determined, undetermined);
     }
 
     // 맛을 정할 수 있는 스타일(true)과 정할 수 없는 스타일(false)로 나눈다.

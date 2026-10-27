@@ -1,13 +1,15 @@
 package com.symphonia.catalog.presentation.runner;
 
 import com.symphonia.catalog.application.dto.result.ImportAnjuResult;
+import com.symphonia.catalog.application.dto.result.ImportAnjuResult.ExcludedAnju;
+import com.symphonia.catalog.application.dto.result.ImportAnjuResult.RemovedAnju;
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
-import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedItem;
-import com.symphonia.catalog.application.dto.result.ImportResult;
-import com.symphonia.catalog.application.dto.result.ImportResult.ExcludedItem;
+import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedDrink;
+import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult;
+import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult.ExcludedStyle;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult;
-import com.symphonia.catalog.application.dto.result.ImportXWineResult.AbvExceededItem;
-import com.symphonia.catalog.application.dto.result.ImportXWineResult.UndeterminedItem;
+import com.symphonia.catalog.application.dto.result.ImportXWineResult.AbvExceededWine;
+import com.symphonia.catalog.application.dto.result.ImportXWineResult.UndeterminedWine;
 import com.symphonia.catalog.application.usecase.ImportAnjuUseCase;
 import com.symphonia.catalog.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.catalog.application.usecase.ImportDrinkStyleUseCase;
@@ -48,20 +50,20 @@ public class ImportCatalogRunner implements ApplicationRunner {
         reportAnjus(importAnjuUseCase.importCuratedAnjus());
     }
 
-    private static void reportStyles(ImportResult result) {
+    private static void reportStyles(ImportDrinkStyleResult result) {
         log.info("[ImportCatalog] 적재한 BJCP 스타일: {}개", result.importedCount());
-        log.info("[ImportCatalog] 맛을 정할 수 없어 제외한 스타일: {}개", result.excludedItems().size());
+        log.info("[ImportCatalog] 맛을 정할 수 없어 제외한 스타일: {}개", result.excludedStyles().size());
 
-        result.excludedItems().forEach(ImportCatalogRunner::logExcludedItem);
+        result.excludedStyles().forEach(ImportCatalogRunner::logExcludedStyle);
         result.defaultedExternalIds().forEach(ImportCatalogRunner::logDefaultedAxis);
     }
 
-    private static void logExcludedItem(ExcludedItem item) {
+    private static void logExcludedStyle(ExcludedStyle style) {
         log.info(
                 "[ImportCatalog]   {} {} (규칙 없는 축: {})",
-                item.externalId(),
-                item.name(),
-                item.missingAxes());
+                style.externalId(),
+                style.name(),
+                style.missingAxes());
     }
 
     private static void logDefaultedAxis(FlavorAxis axis, List<String> externalIds) {
@@ -72,50 +74,50 @@ public class ImportCatalogRunner implements ApplicationRunner {
         log.info("[ImportCatalog] 적재한 국내 유통 맥주: {}개", result.importedCount());
         log.info(
                 "[ImportCatalog] 매핑한 스타일이나 음식 계열 규칙이 없어 제외한 맥주: {}개",
-                result.unmappedItems().size());
+                result.unmappedDrinks().size());
 
-        result.unmappedItems().forEach(ImportCatalogRunner::logUnmappedItem);
+        result.unmappedDrinks().forEach(ImportCatalogRunner::logUnmappedDrink);
     }
 
-    private static void logUnmappedItem(UnmappedItem item) {
+    private static void logUnmappedDrink(UnmappedDrink drink) {
         log.info(
                 "[ImportCatalog]   {} {} (BJCP 스타일: {})",
-                item.externalId(),
-                item.name(),
-                item.bjcpStyleId());
+                drink.externalId(),
+                drink.name(),
+                drink.bjcpStyleId());
     }
 
     private static void reportXWines(ImportXWineResult result) {
         log.info("[ImportCatalog] 적재한 와인 스타일: {}개", result.importedStyleCount());
         log.info("[ImportCatalog] 적재한 X-Wines 와인: {}개", result.importedDrinkCount());
-        log.info("[ImportCatalog] 도수 상한을 넘어 제외한 와인: {}개", result.abvExceededItems().size());
-        log.info("[ImportCatalog] 맛을 정할 수 없어 제외한 와인: {}개", result.undeterminedItems().size());
+        log.info("[ImportCatalog] 도수 상한을 넘어 제외한 와인: {}개", result.abvExceededWines().size());
+        log.info("[ImportCatalog] 맛을 정할 수 없어 제외한 와인: {}개", result.undeterminedWines().size());
 
-        result.abvExceededItems().forEach(ImportCatalogRunner::logAbvExceededItem);
-        result.undeterminedItems().forEach(ImportCatalogRunner::logUndeterminedItem);
+        result.abvExceededWines().forEach(ImportCatalogRunner::logAbvExceededWine);
+        result.undeterminedWines().forEach(ImportCatalogRunner::logUndeterminedWine);
     }
 
-    private static void logAbvExceededItem(AbvExceededItem item) {
-        log.info("[ImportCatalog]   {} {} (도수: {}%)", item.externalId(), item.name(), item.abv());
+    private static void logAbvExceededWine(AbvExceededWine wine) {
+        log.info("[ImportCatalog]   {} {} (도수: {}%)", wine.externalId(), wine.name(), wine.abv());
     }
 
-    private static void logUndeterminedItem(UndeterminedItem item) {
+    private static void logUndeterminedWine(UndeterminedWine wine) {
         log.info(
                 "[ImportCatalog]   {} {} (규칙 없는 속성: {})",
-                item.externalId(),
-                item.name(),
-                item.unknownAttributes());
+                wine.externalId(),
+                wine.name(),
+                wine.unknownAttributes());
     }
 
     private static void reportAnjus(ImportAnjuResult result) {
         log.info("[ImportCatalog] 적재한 안주: {}개", result.importedCount());
-        log.info("[ImportCatalog] 맛이나 알레르기를 정할 수 없어 제외한 안주: {}개", result.excludedItems().size());
+        log.info("[ImportCatalog] 맛이나 알레르기를 정할 수 없어 제외한 안주: {}개", result.excludedAnjus().size());
 
-        result.excludedItems().forEach(ImportCatalogRunner::logExcludedAnju);
-        log.info("[ImportCatalog] 매핑표에서 빠지거나 제외되어 지운 안주: {}개", result.deletedItems().size());
-        result.deletedItems().forEach(ImportCatalogRunner::logRemovedAnju);
-        log.info("[ImportCatalog] 지워야 하지만 피드백이 참조해 남긴 안주: {}개", result.retainedItems().size());
-        result.retainedItems().forEach(ImportCatalogRunner::logRemovedAnju);
+        result.excludedAnjus().forEach(ImportCatalogRunner::logExcludedAnju);
+        log.info("[ImportCatalog] 매핑표에서 빠지거나 제외되어 지운 안주: {}개", result.deletedAnjus().size());
+        result.deletedAnjus().forEach(ImportCatalogRunner::logRemovedAnju);
+        log.info("[ImportCatalog] 지워야 하지만 피드백이 참조해 남긴 안주: {}개", result.retainedAnjus().size());
+        result.retainedAnjus().forEach(ImportCatalogRunner::logRemovedAnju);
         Set<String> unknownIngredients = result.unknownIngredients();
         log.info(
                 "[ImportCatalog] 규칙표에 없는 재료: {}개 {}",
@@ -124,13 +126,13 @@ public class ImportCatalogRunner implements ApplicationRunner {
         result.harmonizeCounts().forEach(ImportCatalogRunner::logHarmonizeCount);
     }
 
-    private static void logExcludedAnju(ImportAnjuResult.ExcludedItem item) {
+    private static void logExcludedAnju(ExcludedAnju anju) {
         log.info(
-                "[ImportCatalog]   {} {} (사유: {})", item.externalId(), item.name(), item.reasons());
+                "[ImportCatalog]   {} {} (사유: {})", anju.externalId(), anju.name(), anju.reasons());
     }
 
-    private static void logRemovedAnju(ImportAnjuResult.RemovedItem item) {
-        log.info("[ImportCatalog]   {} {}", item.externalId(), item.name());
+    private static void logRemovedAnju(RemovedAnju anju) {
+        log.info("[ImportCatalog]   {} {}", anju.externalId(), anju.name());
     }
 
     private static void logHarmonizeCount(Harmonize harmonize, int count) {

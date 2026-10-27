@@ -60,7 +60,7 @@ spotless {
 
 중첩 타입을 바깥 타입 안에 둘지 최상위로 꺼낼지는 그 타입이 무엇에 속하는지로 정한다. 공개 범위는 누가 쓰는지로 따로 정한다.
 
-- 바깥 타입 없이 의미가 없는 타입은 public이어도 바깥 타입 안에 둔다. 결과 DTO의 항목 record(`ImportAnjuResult.ExcludedItem`)가 여기에 해당한다. 다른 패키지에서 읽으면 public으로 둔다.
+- 바깥 타입 없이 의미가 없는 타입은 public이어도 바깥 타입 안에 둔다. 결과 DTO의 항목 record(`ImportAnjuResult.ExcludedAnju`)가 여기에 해당한다. 다른 패키지에서 읽으면 public으로 둔다.
 - 다른 클래스가 함께 쓰거나, 바깥 클래스와 다른 도메인 책임을 맡을 때만 최상위로 꺼낸다. `Pairing`과 `DrinkAnjuScores`가 함께 쓰는 `ScoredDrinkAnju`, 추천 정책과 별개로 대량의 쌍을 계산하는 `DrinkAnjuScores`와 `CandidateThresholds`가 여기에 해당한다.
 - 바깥 클래스의 private 생성자를 써야 하는 타입은 바깥 클래스 안에 private으로 둔다. `Pairing.Combination`은 `Pairing`을 만드는 길을 `recommend` 하나로 묶어 두므로 꺼내지 않는다.
 - 도메인 개념이 아닌 구현 세부는 쓰는 클래스 안에 private으로 둔다. 가변 누적기 `CandidateThresholds.TopScores`가 여기에 해당한다. 꺼내면 값 객체가 모이는 `domain/vo`에 가변 객체가 섞이고, 패키지 전체에 열린다.

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
-import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedItem;
+import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedDrink;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.entity.DrinkStyle;
 import com.symphonia.catalog.domain.reader.BeerHarmonizeRuleReader;
@@ -86,7 +86,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                         .isEqualTo(mappedStyle.getFlavorProfile());
                 assertThat(saved.getHarmonizes()).isEqualTo(LAGER_HARMONIZES);
                 assertThat(result.importedCount()).isEqualTo(1);
-                assertThat(result.unmappedItems()).isEmpty();
+                assertThat(result.unmappedDrinks()).isEmpty();
             }
         }
 
@@ -134,8 +134,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         class WhenMappedStyleNotFound {
 
             @Test
-            @DisplayName("저장하지 않고 unmappedItems에 담는다")
-            void shouldLeaveUnmappedItemWithoutSaving() {
+            @DisplayName("저장하지 않고 unmappedDrinks에 담는다")
+            void shouldLeaveUnmappedDrinkWithoutSaving() {
                 // given
                 CuratedDrink curatedDrink = CuratedDrinkFixture.HOEGAARDEN.create();
                 given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
@@ -148,9 +148,9 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 // then
                 verify(drinkRepository, never()).save(any());
                 assertThat(result.importedCount()).isZero();
-                assertThat(result.unmappedItems())
+                assertThat(result.unmappedDrinks())
                         .containsExactly(
-                                new UnmappedItem(
+                                new UnmappedDrink(
                                         curatedDrink.externalId(),
                                         curatedDrink.name(),
                                         curatedDrink.bjcpStyleId()));
@@ -162,8 +162,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         class WhenHarmonizeRuleNotFound {
 
             @Test
-            @DisplayName("스타일이 적재되어 있어도 저장하지 않고 unmappedItems에 담는다")
-            void shouldLeaveUnmappedItemWithoutSaving() {
+            @DisplayName("스타일이 적재되어 있어도 저장하지 않고 unmappedDrinks에 담는다")
+            void shouldLeaveUnmappedDrinkWithoutSaving() {
                 // given
                 CuratedDrink curatedDrink = CuratedDrinkFixture.HOEGAARDEN.create();
                 givenMappedStyle(curatedDrink);
@@ -175,8 +175,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 // then
                 verify(drinkRepository, never()).save(any());
                 assertThat(result.importedCount()).isZero();
-                assertThat(result.unmappedItems())
-                        .extracting(UnmappedItem::externalId)
+                assertThat(result.unmappedDrinks())
+                        .extracting(UnmappedDrink::externalId)
                         .containsExactly(curatedDrink.externalId());
             }
         }
@@ -202,8 +202,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 // then
                 assertThat(captureSavedDrink().getExternalId()).isEqualTo(mapped.externalId());
                 assertThat(result.importedCount()).isEqualTo(1);
-                assertThat(result.unmappedItems())
-                        .extracting(UnmappedItem::externalId)
+                assertThat(result.unmappedDrinks())
+                        .extracting(UnmappedDrink::externalId)
                         .containsExactly(unmapped.externalId());
             }
         }

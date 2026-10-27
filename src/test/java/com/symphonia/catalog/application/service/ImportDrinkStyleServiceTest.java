@@ -7,8 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
-import com.symphonia.catalog.application.dto.result.ImportResult;
-import com.symphonia.catalog.application.dto.result.ImportResult.ExcludedItem;
+import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult;
+import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult.ExcludedStyle;
 import com.symphonia.catalog.domain.entity.DrinkStyle;
 import com.symphonia.catalog.domain.reader.BjcpStyleReader;
 import com.symphonia.catalog.domain.reader.FlavorRuleReader;
@@ -63,7 +63,7 @@ class ImportDrinkStyleServiceTest extends UnitTest {
                         .willReturn(List.of());
 
                 // when
-                ImportResult result = importDrinkStyleService.importBjcpStyles();
+                ImportDrinkStyleResult result = importDrinkStyleService.importBjcpStyles();
 
                 // then
                 DrinkStyle saved = captureSavedDrinkStyle();
@@ -97,7 +97,7 @@ class ImportDrinkStyleServiceTest extends UnitTest {
                         .willReturn(List.of(existing));
 
                 // when
-                ImportResult result = importDrinkStyleService.importBjcpStyles();
+                ImportDrinkStyleResult result = importDrinkStyleService.importBjcpStyles();
 
                 // then
                 DrinkStyle saved = captureSavedDrinkStyle();
@@ -117,21 +117,21 @@ class ImportDrinkStyleServiceTest extends UnitTest {
         class WhenFlavorUndetermined {
 
             @Test
-            @DisplayName("저장하지 않고 규칙이 없는 축과 함께 excludedItems에 담는다")
+            @DisplayName("저장하지 않고 규칙이 없는 축과 함께 excludedStyles에 담는다")
             void shouldExcludeStyleWithoutSaving() {
                 // given
                 BjcpStyle style = BjcpStyleFixture.COMMERCIAL_SPECIALTY_BEER.create();
                 given(bjcpStyleReader.read()).willReturn(List.of(style));
 
                 // when
-                ImportResult result = importDrinkStyleService.importBjcpStyles();
+                ImportDrinkStyleResult result = importDrinkStyleService.importBjcpStyles();
 
                 // then
                 verify(drinkStyleRepository, never()).save(any());
                 assertThat(result.importedCount()).isZero();
-                assertThat(result.excludedItems())
+                assertThat(result.excludedStyles())
                         .containsExactly(
-                                new ExcludedItem(
+                                new ExcludedStyle(
                                         style.styleId(),
                                         style.name(),
                                         EnumSet.of(
@@ -160,12 +160,12 @@ class ImportDrinkStyleServiceTest extends UnitTest {
                         .willReturn(List.of());
 
                 // when
-                ImportResult result = importDrinkStyleService.importBjcpStyles();
+                ImportDrinkStyleResult result = importDrinkStyleService.importBjcpStyles();
 
                 // then
                 assertThat(result.importedCount()).isEqualTo(3);
-                assertThat(result.excludedItems())
-                        .extracting(ExcludedItem::externalId)
+                assertThat(result.excludedStyles())
+                        .extracting(ExcludedStyle::externalId)
                         .containsExactly(undetermined.styleId());
                 assertThat(result.defaultedExternalIds())
                         .containsOnlyKeys(FlavorAxis.SWEETNESS, FlavorAxis.ACIDITY);
