@@ -26,6 +26,8 @@ description: Load when writing or modifying tests. JUnit5/Mockito/Testcontainers
 
 - **`domain` 계층 테스트는 만들지 않는다.** 도메인 로직은 그 로직을 쓰는 `*Service` 테스트로 검증한다(예: `Pairing.recommend`는 `PairingQueryServiceTest`). 최적화 검증처럼 일시적으로 도메인 테스트가 필요하면 커밋하지 않고 작업이 끝나면 삭제한다.
 
+**(2026-10-27 결정, 이슈 #140)**: `PairingQueryServiceTest`는 `GetCatalogUseCase`를 mock하지 않는다. mock Repository를 넣은 실제 `CatalogQueryService`로 `@BeforeEach`에서 SUT를 조립한다. 추천 테스트는 Repository 스텁으로 카탈로그 상태를 준비한다. 이 스텁은 헬퍼 메서드와 연속 반환에 흩어져 있어서 UseCase 스텁으로 옮기면 기존 테스트를 대부분 고쳐야 한다. catalog 분리는 동작을 바꾸지 않는 리팩터링이라 기존 테스트를 그대로 두어 안전망으로 썼다. `CatalogQueryService`는 Repository 결과를 `CatalogResult`로 옮기기만 해서, 함께 실행해도 검증 대상이 흐려지지 않는다. `CatalogQueryService` 자체는 `CatalogQueryServiceTest`가 검증한다.
+
 ## 명명 규칙
 
 각 이름은 **자기 레벨에서만 새로운 정보를 더한다.** 상위 레벨(클래스명·`@DisplayName`)이 이미 표현한 내용을 하위 레벨(메서드명)에서 다시 쓰지 않는다. 사람이 읽을 설명은 전부 `@DisplayName`(한국어)에 담고, 식별자(클래스명·메서드명)에는 한국어를 쓰지 않는다.
