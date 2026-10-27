@@ -25,7 +25,6 @@ import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.fixture.AnjuRuleFixture;
 import com.symphonia.catalog.fixture.CuratedAnjuFixture;
-import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +45,6 @@ class ImportAnjuServiceTest extends UnitTest {
     @Mock private AnjuNutritionReader anjuNutritionReader;
     @Mock private AnjuRuleReader anjuRuleReader;
     @Mock private AnjuRepository anjuRepository;
-    @Mock private PairingFeedbackRepository pairingFeedbackRepository;
 
     @BeforeEach
     void setUp() {
@@ -277,8 +275,7 @@ class ImportAnjuServiceTest extends UnitTest {
                 Anju seed = CuratedAnjuFixture.FRIED_CHICKEN.createImportedAnju(2L);
                 givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
                 given(anjuRepository.findAll()).willReturn(List.of(unreferenced, referenced, seed));
-                given(pairingFeedbackRepository.findReferencedAnjuIds(any()))
-                        .willReturn(Set.of(8L));
+                given(anjuRepository.findReferencedIds(any())).willReturn(Set.of(8L));
                 givenSaveReturnsArgument();
 
                 // when
