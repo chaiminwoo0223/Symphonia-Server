@@ -1,11 +1,6 @@
 package com.symphonia.pairing.application.service;
 
-import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
-import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
-import com.symphonia.catalog.domain.exception.MusicMoodNotFoundException;
-import com.symphonia.catalog.domain.repository.AnjuRepository;
-import com.symphonia.catalog.domain.repository.DrinkRepository;
-import com.symphonia.catalog.domain.repository.MusicMoodRepository;
+import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.pairing.application.dto.command.SubmitPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
@@ -17,18 +12,12 @@ import lombok.RequiredArgsConstructor;
 @CommandService
 @RequiredArgsConstructor
 public class PairingCommandService implements SubmitPairingFeedbackUseCase {
-    private final DrinkRepository drinkRepository;
-    private final AnjuRepository anjuRepository;
-    private final MusicMoodRepository musicMoodRepository;
+    private final VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
     private final PairingFeedbackRepository pairingFeedbackRepository;
 
     @Override
     public PairingFeedbackResult submit(SubmitPairingFeedbackCommand command) {
-        drinkRepository.findById(command.drinkId()).orElseThrow(DrinkNotFoundException::new);
-        anjuRepository.findById(command.anjuId()).orElseThrow(AnjuNotFoundException::new);
-        musicMoodRepository
-                .findById(command.musicMoodId())
-                .orElseThrow(MusicMoodNotFoundException::new);
+        verifyCatalogReferencesUseCase.verify(command.toVerifyCatalogReferencesQuery());
 
         PairingFeedback pairingFeedback =
                 PairingFeedback.of(
