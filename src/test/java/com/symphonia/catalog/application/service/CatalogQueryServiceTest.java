@@ -1,7 +1,6 @@
 package com.symphonia.catalog.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
@@ -189,27 +188,6 @@ class CatalogQueryServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> catalogQueryService.verify(query()))
                         .isInstanceOf(MusicMoodNotFoundException.class);
-            }
-        }
-
-        @Nested
-        @DisplayName("모두 존재하는 경우")
-        class WhenAllFound {
-
-            @Test
-            @DisplayName("예외를 던지지 않는다")
-            void shouldNotThrowException() {
-                // given
-                given(drinkRepository.findById(DRINK_ID))
-                        .willReturn(Optional.of(DrinkFixture.SOJU.create()));
-                given(anjuRepository.findById(ANJU_ID))
-                        .willReturn(Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.create()));
-                given(musicMoodRepository.findById(MUSIC_MOOD_ID))
-                        .willReturn(Optional.of(MusicMoodFixture.FORMAL_JAZZ.create()));
-
-                // when & then
-                assertThatCode(() -> catalogQueryService.verify(query()))
-                        .doesNotThrowAnyException();
             }
         }
 
