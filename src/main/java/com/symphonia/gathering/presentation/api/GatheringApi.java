@@ -4,8 +4,8 @@ import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.dto.request.CreateGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
-import com.symphonia.gathering.presentation.dto.response.GatheringJoinInfoResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
+import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,7 +34,7 @@ public interface GatheringApi {
 
     @GetMapping(GatheringEndpoints.JOIN)
     @Operation(summary = "참여 화면 조회", description = "참여 토큰으로 모임 이름, 참여 가능 여부, 동의 안내 버전을 조회합니다.")
-    ResponseEntity<StandardResponse<GatheringJoinInfoResponse>> getJoinInfo(
+    ResponseEntity<StandardResponse<GatheringResponse>> getByJoinToken(
             @PathVariable String joinToken);
 
     @PostMapping(GatheringEndpoints.JOIN)

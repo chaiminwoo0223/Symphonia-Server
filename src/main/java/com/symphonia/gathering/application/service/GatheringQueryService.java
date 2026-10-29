@@ -1,8 +1,8 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.QueryService;
-import com.symphonia.gathering.application.dto.result.GatheringJoinInfoResult;
-import com.symphonia.gathering.application.usecase.GetGatheringJoinInfoUseCase;
+import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
@@ -13,12 +13,12 @@ import lombok.RequiredArgsConstructor;
 
 @QueryService
 @RequiredArgsConstructor
-public class GatheringQueryService implements GetGatheringJoinInfoUseCase {
+public class GatheringQueryService implements GetGatheringUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
 
     @Override
-    public GatheringJoinInfoResult getJoinInfo(String joinToken) {
+    public GatheringResult getByJoinToken(String joinToken) {
         Long gatheringId =
                 gatheringJoinTokenRepository
                         .findGatheringIdByValue(joinToken)
@@ -31,7 +31,6 @@ public class GatheringQueryService implements GetGatheringJoinInfoUseCase {
                 GatheringPolicy.isWithinRecordingPeriod(
                         gathering.getCreatedAt(), LocalDateTime.now());
 
-        return GatheringJoinInfoResult.of(
-                gathering.getName(), joinable, GatheringPolicy.CONSENT_VERSION);
+        return GatheringResult.of(gathering.getName(), joinable, GatheringPolicy.CONSENT_VERSION);
     }
 }
