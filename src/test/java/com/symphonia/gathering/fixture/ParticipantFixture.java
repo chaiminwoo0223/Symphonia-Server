@@ -1,6 +1,7 @@
 package com.symphonia.gathering.fixture;
 
 import com.symphonia.gathering.domain.entity.Participant;
+import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.LocalDateTime;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public enum ParticipantFixture {
                 .name(name)
                 .phoneNumber(new PhoneNumber(phoneNumber))
                 .nonDrinker(nonDrinker)
+                .consentVersion(GatheringPolicy.CONSENT_VERSION)
                 .consentedAt(CONSENTED_AT)
                 .build();
     }

@@ -7,6 +7,7 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
@@ -96,6 +97,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                         ParticipantFixture.LEE.getName(),
                         new PhoneNumber(ParticipantFixture.LEE.getPhoneNumber()),
                         ParticipantFixture.LEE.isNonDrinker(),
+                        GatheringPolicy.CONSENT_VERSION,
                         loaded.getCreatedAt().plusHours(1));
 
                 // when
