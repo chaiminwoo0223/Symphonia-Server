@@ -19,25 +19,24 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Gathering API", description = "술자리 모임 생성과 참여 API")
 public interface GatheringApi {
-    @PostMapping(GatheringEndpoints.GATHERINGS)
+    @PostMapping(GatheringEndpoints.CREATE)
     @Operation(summary = "모임 생성", description = "인증된 멤버가 모임을 만들고 참여 토큰을 발급받습니다.")
     ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> create(
             @AuthenticationPrincipal String memberId,
             @Valid @RequestBody CreateGatheringRequest request);
 
-    @PostMapping(GatheringEndpoints.GATHERING_JOIN_TOKEN)
+    @PostMapping(GatheringEndpoints.REISSUE)
     @Operation(
             summary = "참여 토큰 재발급",
             description = "모임을 만든 멤버가 참여 토큰을 다시 발급받습니다. 기존 참여 토큰은 무효가 됩니다.")
-    ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> reissueJoinToken(
+    ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> reissue(
             @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
 
-    @GetMapping(GatheringEndpoints.GATHERING_BY_JOIN_TOKEN)
+    @GetMapping(GatheringEndpoints.PREVIEW)
     @Operation(summary = "참여 화면 조회", description = "참여 토큰으로 모임 이름, 참여 가능 여부, 동의 안내 버전을 조회합니다.")
-    ResponseEntity<StandardResponse<GatheringResponse>> getByJoinToken(
-            @PathVariable String joinToken);
+    ResponseEntity<StandardResponse<GatheringResponse>> preview(@PathVariable String joinToken);
 
-    @PostMapping(GatheringEndpoints.PARTICIPANTS_BY_JOIN_TOKEN)
+    @PostMapping(GatheringEndpoints.JOIN)
     @Operation(
             summary = "모임 참여",
             description = "참여 토큰으로 모임에 참여하고 개인 링크 토큰을 발급받습니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다.")

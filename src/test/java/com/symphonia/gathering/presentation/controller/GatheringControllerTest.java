@@ -86,8 +86,8 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/gatherings/{gatheringId}/join-token은")
-    class ReissueJoinToken {
+    @DisplayName("POST /api/v1/gatherings/{gatheringId}/reissue는")
+    class Reissue {
 
         @Test
         @DisplayName("모임을 만든 회원이면 새 참여 토큰과 함께 201을 반환한다")
@@ -101,7 +101,7 @@ class GatheringControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            post("/api/v1/gatherings/{gatheringId}/join-token", gathering.getId())
+                            post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId())
                                     .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.data.gatheringId").value(gathering.getId()))
@@ -111,8 +111,8 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
-    @DisplayName("GET /api/v1/gatherings/by-join-token/{joinToken}은")
-    class GetByJoinToken {
+    @DisplayName("GET /api/v1/gatherings/preview/{joinToken}은")
+    class Preview {
 
         @Test
         @DisplayName("인증 없이도 모임 이름, 참여 가능 여부, 동의 안내 버전을 반환한다")
@@ -121,7 +121,7 @@ class GatheringControllerTest extends IntegrationTest {
             String joinToken = saveGatheringWithJoinToken();
 
             // when & then
-            mockMvc.perform(get("/api/v1/gatherings/by-join-token/{joinToken}", joinToken))
+            mockMvc.perform(get("/api/v1/gatherings/preview/{joinToken}", joinToken))
                     .andExpect(status().isOk())
                     .andExpect(
                             jsonPath("$.data.name").value(GatheringFixture.FRIDAY_DINNER.getName()))
@@ -133,7 +133,7 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/gatherings/by-join-token/{joinToken}/participants는")
+    @DisplayName("POST /api/v1/gatherings/join/{joinToken}은")
     class Join {
 
         @Test
@@ -149,9 +149,7 @@ class GatheringControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            post(
-                                            "/api/v1/gatherings/by-join-token/{joinToken}/participants",
-                                            joinToken)
+                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated())
@@ -174,9 +172,7 @@ class GatheringControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            post(
-                                            "/api/v1/gatherings/by-join-token/{joinToken}/participants",
-                                            joinToken)
+                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
@@ -195,9 +191,7 @@ class GatheringControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            post(
-                                            "/api/v1/gatherings/by-join-token/{joinToken}/participants",
-                                            joinToken)
+                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
@@ -213,9 +207,7 @@ class GatheringControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            post(
-                                            "/api/v1/gatherings/by-join-token/{joinToken}/participants",
-                                            joinToken)
+                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
