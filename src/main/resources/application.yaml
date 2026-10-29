@@ -50,3 +50,9 @@ import:
     path: ${BJCP_PATH:scripts/import/data/bjcp/bjcp_styleguide-2021.json}
   x-wines:
     path: ${X_WINES_PATH:scripts/import/data/x-wines/XWines_Slim_1K_wines.csv}
+
+# 모임 참여자의 이름과 휴대폰을 암호화하는 모임별 데이터 키를 감싸는 마스터 키(base64로 인코딩한 256비트 값).
+# `openssl rand -base64 32`로 만든 값을 넣는다. 마스터 키를 바꾸면 이미 감싼 데이터 키를 풀 수 없다.
+gathering:
+  crypto:
+    master-key: ${GATHERING_MASTER_KEY}
