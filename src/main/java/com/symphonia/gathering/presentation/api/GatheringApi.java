@@ -25,19 +25,19 @@ public interface GatheringApi {
             @AuthenticationPrincipal String memberId,
             @Valid @RequestBody CreateGatheringRequest request);
 
-    @PostMapping(GatheringEndpoints.JOIN_TOKEN)
+    @PostMapping(GatheringEndpoints.GATHERING_JOIN_TOKEN)
     @Operation(
             summary = "참여 토큰 재발급",
             description = "모임을 만든 멤버가 참여 토큰을 다시 발급받습니다. 기존 참여 토큰은 무효가 됩니다.")
     ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> reissueJoinToken(
             @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
 
-    @GetMapping(GatheringEndpoints.JOIN)
+    @GetMapping(GatheringEndpoints.GATHERING_BY_JOIN_TOKEN)
     @Operation(summary = "참여 화면 조회", description = "참여 토큰으로 모임 이름, 참여 가능 여부, 동의 안내 버전을 조회합니다.")
     ResponseEntity<StandardResponse<GatheringResponse>> getByJoinToken(
             @PathVariable String joinToken);
 
-    @PostMapping(GatheringEndpoints.JOIN)
+    @PostMapping(GatheringEndpoints.PARTICIPANTS_BY_JOIN_TOKEN)
     @Operation(
             summary = "모임 참여",
             description = "참여 토큰으로 모임에 참여하고 개인 링크 토큰을 발급받습니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다.")
