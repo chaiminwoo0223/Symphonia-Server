@@ -1,13 +1,13 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.gathering.application.dto.command.CreateGatheringCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
+import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
-import com.symphonia.gathering.application.usecase.CreateGatheringUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
+import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
@@ -24,15 +24,15 @@ import lombok.RequiredArgsConstructor;
 @CommandService
 @RequiredArgsConstructor
 public class GatheringCommandService
-        implements CreateGatheringUseCase, ReissueJoinTokenUseCase, JoinGatheringUseCase {
+        implements OpenGatheringUseCase, ReissueJoinTokenUseCase, JoinGatheringUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
 
     @Override
-    public GatheringJoinTokenResult create(CreateGatheringCommand command) {
-        Gathering gathering = Gathering.of(command.memberId(), command.name());
+    public GatheringJoinTokenResult open(OpenGatheringCommand command) {
+        Gathering gathering = Gathering.open(command.memberId(), command.name());
         Gathering savedGathering = gatheringRepository.save(gathering);
 
         return issueJoinToken(savedGathering.getId());

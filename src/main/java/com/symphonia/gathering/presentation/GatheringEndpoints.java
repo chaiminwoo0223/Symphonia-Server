@@ -5,8 +5,8 @@ public final class GatheringEndpoints {
 
     private static final String BASE = "/api/v1/gatherings";
 
-    // 인증된 회원이 모임을 만들고, 모임을 만든 회원이 참여 토큰을 재발급한다.
-    public static final String CREATE = BASE;
+    // 인증된 회원이 모임을 열고, 모임을 연 회원이 참여 토큰을 재발급한다.
+    public static final String OPEN = BASE + "/open";
     public static final String REISSUE = BASE + "/{gatheringId}/reissue";
 
     // 인증 없이 참여 QR의 참여 토큰으로 모임을 미리 보고 참여한다.

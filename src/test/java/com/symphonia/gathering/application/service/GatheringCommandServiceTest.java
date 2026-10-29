@@ -10,8 +10,8 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
-import com.symphonia.gathering.application.dto.command.CreateGatheringCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
+import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
@@ -62,8 +62,8 @@ class GatheringCommandServiceTest extends UnitTest {
     @Mock private GatheringTokenProvider gatheringTokenProvider;
 
     @Nested
-    @DisplayName("create 메서드는")
-    class Create {
+    @DisplayName("open 메서드는")
+    class Open {
 
         @Test
         @DisplayName("저장한 모임 id로 참여 토큰을 저장하고 반환한다")
@@ -74,11 +74,11 @@ class GatheringCommandServiceTest extends UnitTest {
                     .willReturn(
                             fixture.createWithIdAndCreatedAt(GATHERING_ID, LocalDateTime.now()));
             given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
-            CreateGatheringCommand command =
-                    new CreateGatheringCommand(fixture.getHostMemberId(), fixture.getName());
+            OpenGatheringCommand command =
+                    new OpenGatheringCommand(fixture.getHostMemberId(), fixture.getName());
 
             // when
-            GatheringJoinTokenResult result = gatheringCommandService.create(command);
+            GatheringJoinTokenResult result = gatheringCommandService.open(command);
 
             // then
             ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
