@@ -12,8 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("AccessTokenProvider 단위 테스트")
-class AccessTokenProviderTest extends UnitTest {
+@DisplayName("JwtAccessTokenProvider 단위 테스트")
+class JwtAccessTokenProviderTest extends UnitTest {
 
     private static final String SECRET =
             "test-only-fixed-jwt-secret-for-symphonia-integration-tests-do-not-use-in-prod";
@@ -22,12 +22,12 @@ class AccessTokenProviderTest extends UnitTest {
     private static final String ROLE = "ROLE_MEMBER";
     private static final String MALFORMED_TOKEN = "invalid.jwt.token";
 
-    private AccessTokenProvider accessTokenProvider;
+    private JwtAccessTokenProvider accessTokenProvider;
 
     @BeforeEach
     void setUp() {
         accessTokenProvider =
-                new AccessTokenProvider(new AccessTokenProperties(SECRET, EXPIRATION_TIME));
+                new JwtAccessTokenProvider(new AccessTokenProperties(SECRET, EXPIRATION_TIME));
     }
 
     @Nested
@@ -108,8 +108,8 @@ class AccessTokenProviderTest extends UnitTest {
             @DisplayName("false를 반환한다.")
             void shouldReturnFalse() {
                 // given
-                AccessTokenProvider expiredTokenProvider =
-                        new AccessTokenProvider(new AccessTokenProperties(SECRET, -1L));
+                JwtAccessTokenProvider expiredTokenProvider =
+                        new JwtAccessTokenProvider(new AccessTokenProperties(SECRET, -1L));
                 String expiredToken = expiredTokenProvider.generate(MEMBER_ID, ROLE);
 
                 // when

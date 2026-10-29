@@ -1,8 +1,8 @@
 package com.symphonia.auth.helper;
 
+import com.symphonia.auth.domain.provider.AccessTokenProvider;
+import com.symphonia.auth.domain.provider.RefreshTokenProvider;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
-import com.symphonia.auth.infrastructure.provider.RefreshTokenProvider;
 import com.symphonia.member.domain.entity.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;

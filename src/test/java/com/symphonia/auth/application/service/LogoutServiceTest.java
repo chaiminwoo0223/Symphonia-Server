@@ -5,9 +5,9 @@ import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.command.LogoutCommand;
+import com.symphonia.auth.domain.provider.AccessTokenProvider;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
