@@ -40,7 +40,7 @@ public class GatheringController implements GatheringApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> reissueJoinToken(
+    public ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> reissue(
             String memberId, Long gatheringId) {
         ReissueJoinTokenCommand command =
                 ReissueJoinTokenCommand.of(Long.parseLong(memberId), gatheringId);
@@ -52,7 +52,7 @@ public class GatheringController implements GatheringApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<GatheringResponse>> getByJoinToken(String joinToken) {
+    public ResponseEntity<StandardResponse<GatheringResponse>> preview(String joinToken) {
         GatheringResult result = getGatheringUseCase.getByJoinToken(joinToken);
         GatheringResponse response = GatheringResponse.from(result);
 

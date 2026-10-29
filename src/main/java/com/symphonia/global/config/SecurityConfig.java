@@ -43,8 +43,8 @@ public class SecurityConfig {
         AuthEndpoints.LOGIN,
         AuthEndpoints.REFRESH,
         PairingEndpoints.RECOMMEND,
-        GatheringEndpoints.GATHERING_BY_JOIN_TOKEN,
-        GatheringEndpoints.PARTICIPANTS_BY_JOIN_TOKEN
+        GatheringEndpoints.PREVIEW,
+        GatheringEndpoints.JOIN
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
