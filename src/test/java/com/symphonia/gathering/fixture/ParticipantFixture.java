@@ -24,7 +24,16 @@ public enum ParticipantFixture {
     }
 
     public Participant createWithPhoneNumber(String phoneNumber) {
+        return createWithIdAndPhoneNumber(null, phoneNumber);
+    }
+
+    public Participant createWithId(Long id) {
+        return createWithIdAndPhoneNumber(id, phoneNumber);
+    }
+
+    private Participant createWithIdAndPhoneNumber(Long id, String phoneNumber) {
         return Participant.builder()
+                .id(id)
                 .name(name)
                 .phoneNumber(new PhoneNumber(phoneNumber))
                 .nonDrinker(nonDrinker)

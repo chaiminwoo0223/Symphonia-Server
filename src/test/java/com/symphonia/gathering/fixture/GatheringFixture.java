@@ -29,4 +29,24 @@ public enum GatheringFixture {
                 .participants(participants)
                 .build();
     }
+
+    // 생성 시각은 저장할 때 채워지므로, 실제 생성 흐름처럼 생성 시각 없이 만든다.
+    public Gathering createWithHostMemberId(Long hostMemberId) {
+        return Gathering.of(hostMemberId, name);
+    }
+
+    public Gathering createWithIdAndCreatedAt(Long id, LocalDateTime createdAt) {
+        return createWithIdAndCreatedAt(id, createdAt, List.of());
+    }
+
+    public Gathering createWithIdAndCreatedAt(
+            Long id, LocalDateTime createdAt, List<Participant> participants) {
+        return Gathering.builder()
+                .id(id)
+                .hostMemberId(hostMemberId)
+                .name(name)
+                .createdAt(createdAt)
+                .participants(participants)
+                .build();
+    }
 }
