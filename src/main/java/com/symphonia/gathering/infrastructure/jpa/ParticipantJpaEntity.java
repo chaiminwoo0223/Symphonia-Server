@@ -41,6 +41,9 @@ public class ParticipantJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean nonDrinker;
 
+    @Column(nullable = false, length = 20)
+    private String consentVersion;
+
     @Column(nullable = false)
     private LocalDateTime consentedAt;
 
@@ -56,6 +59,7 @@ public class ParticipantJpaEntity extends BaseTimeEntity {
                 .encryptedPhoneNumber(dataKey.encrypt(phoneNumber))
                 .phoneNumberHmac(dataKey.hmac(phoneNumber))
                 .nonDrinker(participant.isNonDrinker())
+                .consentVersion(participant.getConsentVersion())
                 .consentedAt(participant.getConsentedAt())
                 .build();
     }
@@ -66,6 +70,7 @@ public class ParticipantJpaEntity extends BaseTimeEntity {
                 .name(dataKey.decrypt(encryptedName))
                 .phoneNumber(new PhoneNumber(dataKey.decrypt(encryptedPhoneNumber)))
                 .nonDrinker(nonDrinker)
+                .consentVersion(consentVersion)
                 .consentedAt(consentedAt)
                 .build();
     }

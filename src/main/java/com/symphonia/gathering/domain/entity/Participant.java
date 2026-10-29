@@ -17,15 +17,21 @@ public class Participant {
     private String name;
     private PhoneNumber phoneNumber;
     private boolean nonDrinker;
+    private String consentVersion;
     private LocalDateTime consentedAt;
 
     // 새 참여자는 Gathering.join으로 만든다.
     static Participant of(
-            String name, PhoneNumber phoneNumber, boolean nonDrinker, LocalDateTime consentedAt) {
+            String name,
+            PhoneNumber phoneNumber,
+            boolean nonDrinker,
+            String consentVersion,
+            LocalDateTime consentedAt) {
         return Participant.builder()
                 .name(name)
                 .phoneNumber(phoneNumber)
                 .nonDrinker(nonDrinker)
+                .consentVersion(consentVersion)
                 .consentedAt(consentedAt)
                 .build();
     }
