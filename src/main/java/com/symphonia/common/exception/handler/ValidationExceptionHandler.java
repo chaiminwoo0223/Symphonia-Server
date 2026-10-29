@@ -105,12 +105,14 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             @Nullable HttpHeaders headers,
             @Nullable HttpStatusCode statusCode,
             @Nullable WebRequest request) {
-        log.warn("[MethodArgumentNotValidException] message={}", ex.getMessage());
+        List<FieldError> fieldErrors = ex.getBindingResult().getFieldErrors();
+        // 예외 메시지에는 거부된 입력값이 그대로 들어가 개인정보가 로그에 남을 수 있어 필드 이름만 남긴다.
+        log.warn(
+                "[MethodArgumentNotValidException] fields={}",
+                fieldErrors.stream().map(FieldError::getField).toList());
 
         List<ValidationErrorResponse> violations =
-                ex.getBindingResult().getFieldErrors().stream()
-                        .map(this::toValidationErrorResponse)
-                        .toList();
+                fieldErrors.stream().map(this::toValidationErrorResponse).toList();
 
         return buildValidationResponse(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID, violations);
     }
