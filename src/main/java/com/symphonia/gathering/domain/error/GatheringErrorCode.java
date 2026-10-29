@@ -9,6 +9,7 @@ public enum GatheringErrorCode implements ErrorCode {
     // 400
     INVALID_PHONE_NUMBER(HttpStatus.BAD_REQUEST, "휴대폰 번호 형식이 올바르지 않습니다."),
     GATHERING_JOIN_CLOSED(HttpStatus.BAD_REQUEST, "참여 기간이 끝난 모임입니다."),
+    CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "개인정보 수집 및 이용 동의가 필요합니다."),
     OUTDATED_CONSENT_VERSION(HttpStatus.BAD_REQUEST, "개인정보 수집 안내가 바뀌었습니다. 참여 화면을 다시 불러와 주세요."),
 
     // 403
@@ -16,7 +17,6 @@ public enum GatheringErrorCode implements ErrorCode {
 
     // 404
     GATHERING_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 모임을 찾을 수 없습니다."),
-    PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 참여자를 찾을 수 없습니다."),
 
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),

@@ -10,6 +10,7 @@ import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
@@ -89,24 +90,72 @@ class GatheringControllerTest extends IntegrationTest {
     @DisplayName("POST /api/v1/gatherings/{gatheringId}/reissue는")
     class Reissue {
 
-        @Test
-        @DisplayName("모임을 만든 회원이면 새 참여 토큰과 함께 201을 반환한다")
-        void shouldReissueJoinTokenWhenMemberIsHost() throws Exception {
-            // given
-            Member member = memberHelper.save(MemberFixture.KAKAO);
-            String token = authHelper.bearerTokenFor(member);
-            Gathering gathering =
-                    gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
-            String oldJoinToken = gatheringHelper.issueJoinToken(gathering);
+        @Nested
+        @DisplayName("모임을 만든 회원의 요청인 경우")
+        class WhenMemberIsHost {
 
-            // when & then
-            mockMvc.perform(
-                            post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId())
-                                    .header(HttpHeaders.AUTHORIZATION, token))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.data.gatheringId").value(gathering.getId()))
-                    .andExpect(jsonPath("$.data.joinToken").isNotEmpty())
-                    .andExpect(jsonPath("$.data.joinToken").value(not(oldJoinToken)));
+            @Test
+            @DisplayName("새 참여 토큰과 함께 201을 반환한다")
+            void shouldReissueJoinToken() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+                String oldJoinToken = gatheringHelper.issueJoinToken(gathering);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.gatheringId").value(gathering.getId()))
+                        .andExpect(jsonPath("$.data.joinToken").isNotEmpty())
+                        .andExpect(jsonPath("$.data.joinToken").value(not(oldJoinToken)));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId()))
+                        .andExpect(status().isUnauthorized());
+            }
         }
     }
 
@@ -136,82 +185,109 @@ class GatheringControllerTest extends IntegrationTest {
     @DisplayName("POST /api/v1/gatherings/join/{joinToken}은")
     class Join {
 
-        @Test
-        @DisplayName("인증 없이도 참여시키고 마스킹한 휴대폰과 개인 링크 토큰을 담아 201을 반환한다")
-        void shouldJoinWithoutAuthentication() throws Exception {
-            // given
-            String joinToken = saveGatheringWithJoinToken();
-            JoinGatheringRequest request =
-                    joinRequest(
-                            ParticipantFixture.KIM.getName(),
-                            true,
-                            GatheringPolicy.CONSENT_VERSION);
+        @Nested
+        @DisplayName("참여할 수 있는 요청인 경우")
+        class WhenJoinable {
 
-            // when & then
-            mockMvc.perform(
-                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.data.id").isNumber())
-                    .andExpect(jsonPath("$.data.name").value(ParticipantFixture.KIM.getName()))
-                    .andExpect(jsonPath("$.data.maskedPhoneNumber").value(MASKED_PHONE_NUMBER))
-                    .andExpect(jsonPath("$.data.linkToken").isNotEmpty());
+            @Test
+            @DisplayName("인증 없이도 참여시키고 마스킹한 휴대폰과 개인 링크 토큰을 담아 201을 반환한다")
+            void shouldJoinWithoutAuthentication() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                JoinGatheringRequest request =
+                        joinRequest(
+                                ParticipantFixture.KIM.getName(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").isNumber())
+                        .andExpect(jsonPath("$.data.name").value(ParticipantFixture.KIM.getName()))
+                        .andExpect(jsonPath("$.data.maskedPhoneNumber").value(MASKED_PHONE_NUMBER))
+                        .andExpect(jsonPath("$.data.linkToken").isNotEmpty());
+            }
         }
 
-        @Test
-        @DisplayName("개인정보 수집 동의를 하지 않으면 400을 반환한다")
-        void shouldReturnBadRequestWhenConsentNotAgreed() throws Exception {
-            // given
-            String joinToken = saveGatheringWithJoinToken();
-            JoinGatheringRequest request =
-                    joinRequest(
-                            ParticipantFixture.KIM.getName(),
-                            false,
-                            GatheringPolicy.CONSENT_VERSION);
+        @Nested
+        @DisplayName("개인정보 수집 및 이용에 동의하지 않은 경우")
+        class WhenConsentNotAgreed {
 
-            // when & then
-            mockMvc.perform(
-                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(
-                            jsonPath("$.data.code")
-                                    .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
-                    .andExpect(jsonPath("$.data.violations[0].field").value("consentAgreed"));
+            @Test
+            @DisplayName("CONSENT_REQUIRED 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                JoinGatheringRequest request =
+                        joinRequest(
+                                ParticipantFixture.KIM.getName(),
+                                false,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.CONSENT_REQUIRED.getCode()));
+            }
         }
 
-        @Test
-        @DisplayName("이름이 공백이면 400을 반환한다")
-        void shouldReturnBadRequestWhenNameBlank() throws Exception {
-            // given
-            String joinToken = saveGatheringWithJoinToken();
-            JoinGatheringRequest request = joinRequest(" ", true, GatheringPolicy.CONSENT_VERSION);
+        @Nested
+        @DisplayName("이름이 공백인 경우")
+        class WhenNameBlank {
 
-            // when & then
-            mockMvc.perform(
-                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.data.violations[0].field").value("name"));
+            @Test
+            @DisplayName("name 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                JoinGatheringRequest request =
+                        joinRequest(" ", true, GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("name"));
+            }
         }
 
-        @Test
-        @DisplayName("동의 안내 버전이 공백이면 400을 반환한다")
-        void shouldReturnBadRequestWhenConsentVersionBlank() throws Exception {
-            // given
-            String joinToken = saveGatheringWithJoinToken();
-            JoinGatheringRequest request = joinRequest(ParticipantFixture.KIM.getName(), true, " ");
+        @Nested
+        @DisplayName("동의 안내 버전이 공백인 경우")
+        class WhenConsentVersionBlank {
 
-            // when & then
-            mockMvc.perform(
-                            post("/api/v1/gatherings/join/{joinToken}", joinToken)
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.data.violations[0].field").value("consentVersion"));
+            @Test
+            @DisplayName("consentVersion 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                JoinGatheringRequest request =
+                        joinRequest(ParticipantFixture.KIM.getName(), true, " ");
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("consentVersion"));
+            }
         }
 
         private JoinGatheringRequest joinRequest(

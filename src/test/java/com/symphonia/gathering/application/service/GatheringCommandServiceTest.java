@@ -17,6 +17,7 @@ import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
+import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
@@ -122,13 +123,34 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 참여 토큰을 저장하지 않는다")
             void shouldThrowNotGatheringHostException() {
                 // given
-                givenGathering();
+                givenGathering(LocalDateTime.now().minusHours(1));
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(OTHER_MEMBER_ID, GATHERING_ID);
 
                 // when & then
                 assertThatThrownBy(() -> gatheringCommandService.reissue(command))
                         .isInstanceOf(NotGatheringHostException.class);
+                then(gatheringTokenProvider).shouldHaveNoInteractions();
+                then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        class WhenRecordingPeriodPassed {
+
+            @Test
+            @DisplayName("예외를 던지고 참여 토큰을 발급하거나 저장하지 않는다")
+            void shouldThrowGatheringJoinClosedException() {
+                // given
+                givenGathering(LocalDateTime.now().minusHours(49));
+                ReissueJoinTokenCommand command =
+                        ReissueJoinTokenCommand.of(
+                                GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.reissue(command))
+                        .isInstanceOf(GatheringJoinClosedException.class);
                 then(gatheringTokenProvider).shouldHaveNoInteractions();
                 then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
             }
@@ -142,7 +164,7 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("새 참여 토큰을 저장하고 반환한다")
             void shouldSaveNewJoinToken() {
                 // given
-                givenGathering();
+                givenGathering(LocalDateTime.now().minusHours(1));
                 given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(
@@ -158,12 +180,12 @@ class GatheringCommandServiceTest extends UnitTest {
             }
         }
 
-        private void givenGathering() {
+        private void givenGathering(LocalDateTime createdAt) {
             given(gatheringRepository.findById(GATHERING_ID))
                     .willReturn(
                             Optional.of(
                                     GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
-                                            GATHERING_ID, LocalDateTime.now())));
+                                            GATHERING_ID, createdAt)));
         }
     }
 
@@ -206,6 +228,24 @@ class GatheringCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> gatheringCommandService.join(command))
                         .isInstanceOf(GatheringJoinClosedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("개인정보 수집 및 이용에 동의하지 않은 경우")
+        class WhenConsentNotAgreed {
+
+            @Test
+            @DisplayName("예외를 던지고 참여자와 개인 링크 토큰을 저장하지 않는다")
+            void shouldThrowConsentRequiredException() {
+                // given
+                givenJoinableGathering(List.of());
+                JoinGatheringCommand command = command(false, GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.join(command))
+                        .isInstanceOf(ConsentRequiredException.class);
                 thenNothingSaved();
             }
         }
@@ -262,6 +302,7 @@ class GatheringCommandServiceTest extends UnitTest {
                                 ParticipantFixture.KIM.getName(),
                                 "02-123-4567",
                                 ParticipantFixture.KIM.isNonDrinker(),
+                                true,
                                 GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
@@ -311,11 +352,16 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         private JoinGatheringCommand command(String consentVersion) {
+            return command(true, consentVersion);
+        }
+
+        private JoinGatheringCommand command(boolean consentAgreed, String consentVersion) {
             return new JoinGatheringCommand(
                     JOIN_TOKEN,
                     ParticipantFixture.KIM.getName(),
                     HYPHENATED_PHONE_NUMBER,
                     ParticipantFixture.KIM.isNonDrinker(),
+                    consentAgreed,
                     consentVersion);
         }
 

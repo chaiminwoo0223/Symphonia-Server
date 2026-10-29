@@ -45,6 +45,7 @@ public class GatheringCommandService
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
+        GatheringPolicy.validateJoinable(gathering.getCreatedAt(), LocalDateTime.now());
 
         return issueJoinToken(gathering.getId());
     }
@@ -62,7 +63,7 @@ public class GatheringCommandService
         PhoneNumber phoneNumber = PhoneNumber.from(command.phoneNumber());
         LocalDateTime now = LocalDateTime.now();
         GatheringPolicy.validateJoinable(gathering.getCreatedAt(), now);
-        GatheringPolicy.validateConsentVersion(command.consentVersion());
+        GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
         GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
 
         gathering.join(
