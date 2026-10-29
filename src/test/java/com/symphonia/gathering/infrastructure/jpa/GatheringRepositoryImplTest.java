@@ -93,12 +93,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                                         List.of(ParticipantFixture.KIM.create())));
                 clearPersistenceContext();
                 Gathering loaded = gatheringRepository.findById(saved.getId()).orElseThrow();
-                loaded.join(
-                        ParticipantFixture.LEE.getName(),
-                        new PhoneNumber(ParticipantFixture.LEE.getPhoneNumber()),
-                        ParticipantFixture.LEE.isNonDrinker(),
-                        GatheringPolicy.CONSENT_VERSION,
-                        loaded.getCreatedAt().plusHours(1));
+                joinLee(loaded);
 
                 // when
                 gatheringRepository.save(loaded);
@@ -113,6 +108,73 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                         .extracting(Participant::getName)
                         .containsExactly(
                                 ParticipantFixture.KIM.getName(), ParticipantFixture.LEE.getName());
+            }
+
+            @Test
+            @DisplayName("기존 참여자의 행은 다시 쓰지 않는다")
+            void shouldNotRewriteExistingParticipant() {
+                // given: 다시 암호화하면 IV가 바뀌어 암호문이 달라지는 상태
+                Gathering saved =
+                        gatheringRepository.save(
+                                GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                        List.of(ParticipantFixture.KIM.create())));
+                clearPersistenceContext();
+                byte[] encryptedNameBeforeJoin =
+                        participantJpaRepository
+                                .findAllByGatheringIdOrderById(saved.getId())
+                                .getFirst()
+                                .getEncryptedName();
+                Gathering loaded = gatheringRepository.findById(saved.getId()).orElseThrow();
+                joinLee(loaded);
+
+                // when
+                gatheringRepository.save(loaded);
+
+                // then
+                clearPersistenceContext();
+                assertThat(
+                                participantJpaRepository
+                                        .findAllByGatheringIdOrderById(saved.getId())
+                                        .getFirst()
+                                        .getEncryptedName())
+                        .isEqualTo(encryptedNameBeforeJoin);
+            }
+
+            @Test
+            @DisplayName("기존 참여자 다음에 id가 채워진 새 참여자를 담아 반환한다")
+            void shouldReturnExistingParticipantsBeforeJoinedParticipant() {
+                // given
+                Gathering saved =
+                        gatheringRepository.save(
+                                GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                        List.of(ParticipantFixture.KIM.create())));
+                Long existingParticipantId = saved.getParticipants().getFirst().getId();
+                clearPersistenceContext();
+                Gathering loaded = gatheringRepository.findById(saved.getId()).orElseThrow();
+                joinLee(loaded);
+
+                // when
+                Gathering result = gatheringRepository.save(loaded);
+
+                // then
+                List<Participant> participants = result.getParticipants();
+                assertThat(participants)
+                        .extracting(Participant::getName)
+                        .containsExactly(
+                                ParticipantFixture.KIM.getName(), ParticipantFixture.LEE.getName());
+                assertThat(participants.getFirst().getId()).isEqualTo(existingParticipantId);
+                assertThat(participants.getLast().getId())
+                        .isNotNull()
+                        .isNotEqualTo(existingParticipantId);
+            }
+
+            private void joinLee(Gathering gathering) {
+                gathering.join(
+                        ParticipantFixture.LEE.getName(),
+                        new PhoneNumber(ParticipantFixture.LEE.getPhoneNumber()),
+                        ParticipantFixture.LEE.isNonDrinker(),
+                        GatheringPolicy.CONSENT_VERSION,
+                        gathering.getCreatedAt().plusHours(1));
             }
         }
 

@@ -1,6 +1,5 @@
 package com.symphonia.gathering.domain.entity;
 
-import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,11 +47,12 @@ public class Gathering {
     }
 
     // 휴대폰은 모임 안에서 중복되지 않으므로, 저장 뒤 id가 채워진 참여자를 휴대폰으로 찾는다.
+    // 방금 참여시킨 참여자만 찾으므로, 찾지 못하면 클라이언트 요청이 아니라 서버 버그라서 500으로 둔다.
     public Participant getParticipant(PhoneNumber phoneNumber) {
         return participants.stream()
                 .filter(participant -> participant.getPhoneNumber().equals(phoneNumber))
                 .findFirst()
-                .orElseThrow(ParticipantNotFoundException::new);
+                .orElseThrow();
     }
 
     public List<Participant> getParticipants() {

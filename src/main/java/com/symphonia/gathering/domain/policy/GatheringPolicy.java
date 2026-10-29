@@ -1,5 +1,6 @@
 package com.symphonia.gathering.domain.policy;
 
+import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
@@ -27,7 +28,10 @@ public enum GatheringPolicy {
     }
 
     // 바뀌기 전 안내를 띄운 화면에서 받은 동의는 무엇에 동의했는지 입증할 수 없어 거절한다.
-    public static void validateConsentVersion(String consentVersion) {
+    public static void validateConsent(boolean consentAgreed, String consentVersion) {
+        if (!consentAgreed) {
+            throw new ConsentRequiredException();
+        }
         if (!CONSENT_VERSION.equals(consentVersion)) {
             throw new OutdatedConsentVersionException();
         }

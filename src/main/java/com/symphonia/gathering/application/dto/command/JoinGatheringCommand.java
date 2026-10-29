@@ -5,4 +5,5 @@ public record JoinGatheringCommand(
         String name,
         String phoneNumber,
         boolean nonDrinker,
+        boolean consentAgreed,
         String consentVersion) {}
