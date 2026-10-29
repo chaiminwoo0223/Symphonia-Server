@@ -1,7 +1,7 @@
 package com.symphonia.global.security.filter;
 
+import com.symphonia.auth.domain.provider.AccessTokenProvider;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
-import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

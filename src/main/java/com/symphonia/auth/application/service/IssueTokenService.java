@@ -2,9 +2,9 @@ package com.symphonia.auth.application.service;
 
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
+import com.symphonia.auth.domain.provider.AccessTokenProvider;
+import com.symphonia.auth.domain.provider.RefreshTokenProvider;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
-import com.symphonia.auth.infrastructure.provider.RefreshTokenProvider;
 import com.symphonia.common.annotation.CommandService;
 import lombok.RequiredArgsConstructor;
 

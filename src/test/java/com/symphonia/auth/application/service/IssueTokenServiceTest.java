@@ -6,9 +6,9 @@ import static org.mockito.Mockito.verify;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.result.TokenResult;
+import com.symphonia.auth.domain.provider.AccessTokenProvider;
+import com.symphonia.auth.domain.provider.RefreshTokenProvider;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
-import com.symphonia.auth.infrastructure.provider.AccessTokenProvider;
-import com.symphonia.auth.infrastructure.provider.RefreshTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

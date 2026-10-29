@@ -1,6 +1,7 @@
 package com.symphonia.auth.infrastructure.provider;
 
 import com.symphonia.auth.domain.exception.InvalidJwtTokenException;
+import com.symphonia.auth.domain.provider.AccessTokenProvider;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -14,17 +15,18 @@ import org.springframework.stereotype.Component;
 // 모바일: Response Body(JSON) → iOS Keychain / Android Keystore 저장
 // 클라이언트: Response Body(JSON), HttpOnly Secure Cookie(BFF 패턴) → XSS 공격 / CSRF 공격 차단
 @Component
-public class AccessTokenProvider {
+public class JwtAccessTokenProvider implements AccessTokenProvider {
     private final AccessTokenProperties accessTokenProperties;
     private final SecretKey secretKey;
 
-    public AccessTokenProvider(AccessTokenProperties accessTokenProperties) {
+    public JwtAccessTokenProvider(AccessTokenProperties accessTokenProperties) {
         this.accessTokenProperties = accessTokenProperties;
         this.secretKey = Keys.hmacShaKeyFor(accessTokenProperties.secret().getBytes());
     }
 
     private static final String ROLE_CLAIM = "role";
 
+    @Override
     public String generate(String memberId, String role) {
         Instant now = Instant.now();
         Instant expiry = now.plusSeconds(accessTokenProperties.expirationTime());
@@ -38,14 +40,17 @@ public class AccessTokenProvider {
                 .compact();
     }
 
+    @Override
     public String getMemberId(String accessToken) {
         return parse(accessToken).getSubject();
     }
 
+    @Override
     public String getRole(String accessToken) {
         return parse(accessToken).get(ROLE_CLAIM, String.class);
     }
 
+    @Override
     public long getRemainingTime(String accessToken) {
         Date expiration = parse(accessToken).getExpiration();
         long remaining = expiration.getTime() - System.currentTimeMillis();
@@ -53,6 +58,7 @@ public class AccessTokenProvider {
         return Math.max(remaining, 0) / 1000;
     }
 
+    @Override
     public boolean validate(String accessToken) {
         try {
             decode(accessToken);
