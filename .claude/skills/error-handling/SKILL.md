@@ -28,6 +28,8 @@ Symphonia는 단일 모듈이라 todakun처럼 `common-web` 모듈을 따로 두
 > **구현 완료 (2026-09-07, 이슈 #35)**: 아래 "예외 계층"은 목표 설계가 아니라 실제 코드 상태다. `BusinessException.from(...)`은 더 이상 존재하지 않으며, `member`/`auth` 모두 공통 예외(`BadRequestException` 등)와 도메인별 구체 예외(`MemberNotFoundException`, `RefreshTokenNotFoundException` 등)를 실제로 쓰고 있다. 새 도메인을 스캐폴딩하거나 예외 관련 코드를 새로 작성할 때 `member`/`auth`의 기존 구체 예외 클래스를 그대로 참고 구현으로 삼아도 된다.
 >
 > **`InternalServerException` 추가 (2026-09-12)**: 처음에는 공통 예외가 4xx 5종(`BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException`)뿐이었고, 500에 대응하는 공통 예외가 없어 `SocialAuthenticationFailedException`/`SocialMemberInfoFetchFailedException`이 `BusinessException`을 직접 상속했다. 여기에 `AccessTokenHashingFailedException`(체크 예외라 컴파일러가 강제로 잡게 만들지만 SHA-256처럼 실제로는 발생할 수 없는 JVM 불변조건 위반을 언체크로 바꾸는 방어적 분기)이 같은 패턴으로 세 번째 추가되면서, "예외적인 경우"라던 케이스 자체가 반복되는 패턴이 됐다(rule of three). 그래서 400/401/403/404/409와 동일하게 500도 공통 래퍼로 승격해 세 클래스 모두 `InternalServerException`을 상속하도록 통일했다.
+>
+> **(2026-10-29 결정, 이슈 #123)**: 토큰 SHA-256 해싱을 `common.crypto.Sha256`으로 모았다. auth의 `RefreshTokenRepositoryImpl`, `BlacklistAccessTokenRepositoryImpl`과 gathering의 `GatheringJoinTokenRepositoryImpl`, `ParticipantLinkTokenRepositoryImpl`에 같은 private `hash()`가 네 벌 있었기 때문이다. 해싱 실패는 `InternalServerException(CommonErrorCode.HASHING_FAILED)`로 던진다. 그래서 `AccessTokenHashingFailedException`, `RefreshTokenHashingFailedException`, `GatheringTokenHashingFailedException`과 각 에러 코드를 지웠다. 모든 JDK는 SHA-256을 지원해야 해서 이 실패는 실제로 일어나지 않는다. 도메인마다 다른 에러 코드를 둘 이유가 없다. `Sha256`이 실패를 그대로 넘기고 호출부가 도메인 예외로 바꾸는 안은 택하지 않았다. 호출부마다 try/catch가 남아 중복이 줄지 않기 때문이다. 유틸은 `global`이 아니라 `common`에 둔다. `global`은 설정과 보안 필터를 두는 기술 부트스트랩이기 때문이다.
 
 ## 예외 계층
 
@@ -35,7 +37,7 @@ Symphonia는 단일 모듈이라 todakun처럼 `common-web` 모듈을 따로 두
 BusinessException (common.exception, errorCode: ErrorCode)
 ├── BadRequestException / UnauthorizedException / ForbiddenException / NotFoundException / ConflictException / InternalServerException (common.exception)
 │     ├── MemberNotFoundException 등: 도메인별 구체 예외 ({domain}/domain/exception)
-│     └── SocialAuthenticationFailedException / SocialMemberInfoFetchFailedException / AccessTokenHashingFailedException: InternalServerException(500)을 상속하는 도메인별 구체 예외
+│     └── SocialAuthenticationFailedException / SocialMemberInfoFetchFailedException: InternalServerException(500)을 상속하는 도메인별 구체 예외
 └── (공통 6종 중에도 맞는 상태 코드가 없는 경우에만 도메인이 BusinessException을 직접 상속한다. 기본은 공통 6종 중 하나를 상속하는 것이다)
 ```
 
@@ -123,7 +125,7 @@ public enum MemberErrorCode implements ErrorCode {
 ## 원칙
 
 - `RuntimeException`을 직접 throw하지 않는다. 항상 `BusinessException`의 서브클래스(공통 6종 또는 도메인별 구체 예외)를 사용한다.
-- **도메인 실패는 반드시 공통 6종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_SERVER_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다. 체크 예외를 언체크로 바꿔야만 하는 "도달 불가능한" 방어적 분기도 마찬가지다 — `InternalServerException`을 상속한 도메인별 구체 예외를 만든다(예: `BlacklistAccessTokenRepositoryImpl.hash`의 `NoSuchAlgorithmException` → `AccessTokenHashingFailedException`, `AuthErrorCode.ACCESS_TOKEN_HASHING_FAILED`).
+- **도메인 실패는 반드시 공통 6종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_SERVER_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다. 체크 예외를 언체크로 바꿔야만 하는 "도달 불가능한" 방어적 분기도 마찬가지다 — `InternalServerException`을 상속한 도메인별 구체 예외를 만든다. 단, 여러 도메인이 함께 쓰는 `common` 유틸의 실패는 도메인과 무관하므로 `CommonErrorCode`로 공통 예외를 던진다(예: `Sha256.hash`의 `NoSuchAlgorithmException` → `InternalServerException(CommonErrorCode.HASHING_FAILED)`).
 - HTTP status는 **오직 `ErrorCode.getStatus()`를 통해서만** 표현한다. 핸들러나 예외 클래스에 하드코딩하지 않는다.
 - 예외 메시지는 한국어로 작성한다.
 - Controller 계층에서 비즈니스 예외를 직접 catch하지 않는다.
