@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
-import com.symphonia.gathering.application.dto.result.GatheringJoinInfoResult;
+import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
@@ -31,8 +31,8 @@ class GatheringQueryServiceTest extends UnitTest {
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
 
     @Nested
-    @DisplayName("getJoinInfo 메서드는")
-    class GetJoinInfo {
+    @DisplayName("getByJoinToken 메서드는")
+    class GetByJoinToken {
 
         @Nested
         @DisplayName("참여 토큰에 해당하는 모임이 없는 경우")
@@ -46,7 +46,7 @@ class GatheringQueryServiceTest extends UnitTest {
                         .willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> gatheringQueryService.getJoinInfo(JOIN_TOKEN))
+                assertThatThrownBy(() -> gatheringQueryService.getByJoinToken(JOIN_TOKEN))
                         .isInstanceOf(GatheringNotFoundException.class);
             }
         }
@@ -62,7 +62,7 @@ class GatheringQueryServiceTest extends UnitTest {
                 givenGatheringCreatedAt(LocalDateTime.now().minusHours(1));
 
                 // when
-                GatheringJoinInfoResult result = gatheringQueryService.getJoinInfo(JOIN_TOKEN);
+                GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
 
                 // then
                 assertThat(result.name()).isEqualTo(GatheringFixture.FRIDAY_DINNER.getName());
@@ -82,7 +82,7 @@ class GatheringQueryServiceTest extends UnitTest {
                 givenGatheringCreatedAt(LocalDateTime.now().minusHours(49));
 
                 // when
-                GatheringJoinInfoResult result = gatheringQueryService.getJoinInfo(JOIN_TOKEN);
+                GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
 
                 // then
                 assertThat(result.joinable()).isFalse();

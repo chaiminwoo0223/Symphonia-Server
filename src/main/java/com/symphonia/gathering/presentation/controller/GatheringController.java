@@ -2,18 +2,18 @@ package com.symphonia.gathering.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
-import com.symphonia.gathering.application.dto.result.GatheringJoinInfoResult;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
+import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.usecase.CreateGatheringUseCase;
-import com.symphonia.gathering.application.usecase.GetGatheringJoinInfoUseCase;
+import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
 import com.symphonia.gathering.presentation.dto.request.CreateGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
-import com.symphonia.gathering.presentation.dto.response.GatheringJoinInfoResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
+import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class GatheringController implements GatheringApi {
     private final CreateGatheringUseCase createGatheringUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
-    private final GetGatheringJoinInfoUseCase getGatheringJoinInfoUseCase;
+    private final GetGatheringUseCase getGatheringUseCase;
     private final JoinGatheringUseCase joinGatheringUseCase;
 
     @Override
@@ -52,10 +52,9 @@ public class GatheringController implements GatheringApi {
     }
 
     @Override
-    public ResponseEntity<StandardResponse<GatheringJoinInfoResponse>> getJoinInfo(
-            String joinToken) {
-        GatheringJoinInfoResult result = getGatheringJoinInfoUseCase.getJoinInfo(joinToken);
-        GatheringJoinInfoResponse response = GatheringJoinInfoResponse.from(result);
+    public ResponseEntity<StandardResponse<GatheringResponse>> getByJoinToken(String joinToken) {
+        GatheringResult result = getGatheringUseCase.getByJoinToken(joinToken);
+        GatheringResponse response = GatheringResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));

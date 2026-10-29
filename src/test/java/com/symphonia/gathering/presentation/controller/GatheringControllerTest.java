@@ -112,11 +112,11 @@ class GatheringControllerTest extends IntegrationTest {
 
     @Nested
     @DisplayName("GET /api/v1/gatherings/join/{joinToken}은")
-    class GetJoinInfo {
+    class GetByJoinToken {
 
         @Test
         @DisplayName("인증 없이도 모임 이름, 참여 가능 여부, 동의 안내 버전을 반환한다")
-        void shouldReturnJoinInfoWithoutAuthentication() throws Exception {
+        void shouldReturnGatheringWithoutAuthentication() throws Exception {
             // given
             String joinToken = saveGatheringWithJoinToken();
 
