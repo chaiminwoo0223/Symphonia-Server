@@ -21,7 +21,7 @@ public class Gathering {
     private LocalDateTime createdAt;
     private List<Participant> participants;
 
-    public static Gathering of(Long hostMemberId, String name) {
+    public static Gathering open(Long hostMemberId, String name) {
         return Gathering.builder()
                 .hostMemberId(hostMemberId)
                 .name(name)

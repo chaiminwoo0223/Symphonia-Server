@@ -2,8 +2,8 @@ package com.symphonia.gathering.presentation.api;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
-import com.symphonia.gathering.presentation.dto.request.CreateGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
@@ -19,11 +19,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "Gathering API", description = "술자리 모임 생성과 참여 API")
 public interface GatheringApi {
-    @PostMapping(GatheringEndpoints.CREATE)
-    @Operation(summary = "모임 생성", description = "인증된 멤버가 모임을 만들고 참여 토큰을 발급받습니다.")
-    ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> create(
+    @PostMapping(GatheringEndpoints.OPEN)
+    @Operation(summary = "모임 열기", description = "인증된 멤버가 모임을 열고 참여 토큰을 발급받습니다.")
+    ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> open(
             @AuthenticationPrincipal String memberId,
-            @Valid @RequestBody CreateGatheringRequest request);
+            @Valid @RequestBody OpenGatheringRequest request);
 
     @PostMapping(GatheringEndpoints.REISSUE)
     @Operation(

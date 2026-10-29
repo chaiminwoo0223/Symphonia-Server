@@ -15,8 +15,8 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
-import com.symphonia.gathering.presentation.dto.request.CreateGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
@@ -37,25 +37,25 @@ class GatheringControllerTest extends IntegrationTest {
     @Autowired private AuthHelper authHelper;
 
     @Nested
-    @DisplayName("POST /api/v1/gatherings는")
-    class Create {
+    @DisplayName("POST /api/v1/gatherings/open은")
+    class Open {
 
         @Nested
         @DisplayName("인증된 요청인 경우")
         class WhenAuthenticated {
 
             @Test
-            @DisplayName("모임을 만들고 참여 토큰과 함께 201을 반환한다")
-            void shouldCreateGathering() throws Exception {
+            @DisplayName("모임을 열고 참여 토큰과 함께 201을 반환한다")
+            void shouldOpenGathering() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 String token = authHelper.bearerTokenFor(member);
-                CreateGatheringRequest request =
-                        new CreateGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName());
+                OpenGatheringRequest request =
+                        new OpenGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName());
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings")
+                                post("/api/v1/gatherings/open")
                                         .header(HttpHeaders.AUTHORIZATION, token)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
@@ -73,12 +73,12 @@ class GatheringControllerTest extends IntegrationTest {
             @DisplayName("401을 반환한다")
             void shouldReturnUnauthorized() throws Exception {
                 // given
-                CreateGatheringRequest request =
-                        new CreateGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName());
+                OpenGatheringRequest request =
+                        new OpenGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName());
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings")
+                                post("/api/v1/gatherings/open")
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isUnauthorized());
