@@ -1,6 +1,7 @@
 package com.symphonia.global.config;
 
 import com.symphonia.auth.presentation.AuthEndpoints;
+import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.CorsProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
@@ -38,7 +39,11 @@ public class SecurityConfig {
         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
     };
     private static final String[] PERMIT_ALL_PATHS = {
-        AuthEndpoints.SIGNUP, AuthEndpoints.LOGIN, AuthEndpoints.REFRESH, PairingEndpoints.RECOMMEND
+        AuthEndpoints.SIGNUP,
+        AuthEndpoints.LOGIN,
+        AuthEndpoints.REFRESH,
+        PairingEndpoints.RECOMMEND,
+        GatheringEndpoints.JOIN
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
