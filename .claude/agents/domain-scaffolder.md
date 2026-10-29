@@ -19,7 +19,7 @@ Symphonia 프로젝트의 도메인 스캐폴딩 전담 에이전트다.
 2. `domain`에 순수 도메인 모델과 `*Repository` 인터페이스 골격을 만든다 (Spring/JPA import 없음).
 3. `application`에 `*UseCase` 인터페이스 + `*Service` 구현체(`@CommandService`/`@QueryService`) 골격을 만든다.
 4. `presentation`에 `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` 골격을 만든다.
-5. `infrastructure`에 `*RepositoryImpl`과 `*JpaEntity` 골격을 만든다. Domain↔JPA 변환은 `*JpaEntity`의 `from()`/`toDomain()`에 두고, 골격 단계에서는 별도 `*Mapper`를 만들지 않는다.
+5. `infrastructure`에 `*RepositoryImpl`과 `*JpaEntity` 골격을 만든다. Domain↔JPA 변환은 `*JpaEntity`의 `from()`/`toDomain()`에 두고, 별도 `*Mapper`는 만들지 않는다(`architecture` 스킬 참고).
 
 ## 완료 후
 
