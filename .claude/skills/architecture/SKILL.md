@@ -60,6 +60,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 **(2026-09-20 결정, 이슈 #47)**: `*Endpoints`가 경로의 단일 소스이고, `*Api` 자신도 `@GetMapping`/`@PostMapping` 등에 리터럴 경로 문자열 대신 같은 도메인의 `*Endpoints` 상수를 그대로 참조한다(예: `AuthApi`의 `@PostMapping(AuthEndpoints.LOGIN)`, `MemberApi`의 `@GetMapping(MemberEndpoints.ME)`). `*Api`가 리터럴 문자열을 따로 갖고 `*Endpoints`가 그걸 베끼는 구조가 아니다. 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 이미 완성해 둔 전체 경로를 각 메서드의 매핑 애노테이션에 직접 넣는다.
 
+**(2026-10-29 결정, 이슈 #147)**: `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 타입을 참조할 수 있다. 필터는 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`)를, 핸들러는 에러 코드(`AuthErrorCode`)를 참조한다. 요청의 토큰을 검증해 인증 정보를 채우고 인증 실패를 응답하는 것은 보안 wiring 목적이기 때문이다. 구현체(`JwtAccessTokenProvider` 등)와 `infrastructure` 패키지는 참조하지 않는다. 토큰 Provider도 Repository처럼 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. gathering의 `GatheringTokenProvider`와 같은 구조다. 인터페이스가 기본 이름을 갖고, 구현체 이름에는 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
+
 ## 계층별 역할
 
 | 계층 | 역할 |
