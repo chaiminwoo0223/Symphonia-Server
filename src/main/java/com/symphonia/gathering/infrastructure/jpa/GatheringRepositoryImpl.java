@@ -83,16 +83,6 @@ public class GatheringRepositoryImpl implements GatheringRepository {
         return gatheringMasterKey.unwrap(dataKeyEntity.toWrappedDataKey());
     }
 
-    private Gathering toDomain(
-            GatheringJpaEntity gatheringEntity,
-            List<ParticipantJpaEntity> participantEntities,
-            GatheringDataKey dataKey) {
-        return gatheringEntity.toDomain(
-                participantEntities.stream()
-                        .map(participantEntity -> participantEntity.toDomain(dataKey))
-                        .toList());
-    }
-
     // 같은 휴대폰으로 동시에 참여하면 Service의 중복 검사를 둘 다 통과하므로 unique 제약 위반으로 구분한다.
     private boolean isPhoneNumberViolation(DataIntegrityViolationException e) {
         return e.getCause() instanceof ConstraintViolationException violation
@@ -106,5 +96,15 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                 gatheringEntity,
                 participantJpaRepository.findAllByGatheringIdOrderById(gatheringId),
                 findDataKey(gatheringId));
+    }
+
+    private Gathering toDomain(
+            GatheringJpaEntity gatheringEntity,
+            List<ParticipantJpaEntity> participantEntities,
+            GatheringDataKey dataKey) {
+        return gatheringEntity.toDomain(
+                participantEntities.stream()
+                        .map(participantEntity -> participantEntity.toDomain(dataKey))
+                        .toList());
     }
 }
