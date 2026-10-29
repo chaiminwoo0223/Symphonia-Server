@@ -3,3 +3,7 @@ access-token:
 
 refresh-token:
   cookie-secure: true
+
+gathering:
+  crypto:
+    master-key: dGVzdC1vbmx5LWdhdGhlcmluZy1tYXN0ZXIta2V5ISE=
