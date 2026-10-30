@@ -1,5 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
+import static com.symphonia.gathering.helper.ConcurrencyHelper.await;
+import static com.symphonia.gathering.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -16,14 +18,8 @@ import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -130,7 +126,7 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
 
             @Test
             @DisplayName("한 요청만 저장되고 다른 요청은 BankAccountAlreadyRegisteredException이 발생한다")
-            void shouldSaveOnlyOne() throws Exception {
+            void shouldSaveOnlyOne() {
                 // given
                 CountDownLatch ready = new CountDownLatch(2);
 
@@ -155,7 +151,7 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
             // 두 요청이 모두 Service의 중복 검사를 통과한 뒤 함께 저장하도록 맞춘다.
             private void registerAfterBothReady(CountDownLatch ready) {
                 transactionTemplate.executeWithoutResult(
-                        status -> {
+                        _ -> {
                             ready.countDown();
                             await(ready);
                             participantBankAccountRepository.save(
@@ -192,35 +188,6 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).isFalse();
-        }
-    }
-
-    // 두 작업을 서로 다른 스레드에서 동시에 실행하고, 실패한 작업의 예외만 모아 돌려준다.
-    private List<Throwable> runConcurrently(Runnable first, Runnable second) throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        try {
-            List<Future<?>> futures = List.of(executor.submit(first), executor.submit(second));
-            List<Throwable> failures = new ArrayList<>();
-            for (Future<?> future : futures) {
-                try {
-                    future.get(10, TimeUnit.SECONDS);
-                } catch (ExecutionException e) {
-                    failures.add(e.getCause());
-                }
-            }
-            return failures;
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
-    // 두 요청이 같은 시점에 저장해야 경합을 확인할 수 있으므로, 제때 모이지 않으면 테스트를 실패시킨다.
-    private void await(CountDownLatch latch) {
-        try {
-            assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
         }
     }
 
