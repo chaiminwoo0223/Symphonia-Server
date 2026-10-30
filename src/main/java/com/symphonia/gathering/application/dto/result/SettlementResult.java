@@ -19,7 +19,7 @@ public record SettlementResult(
                 settlement.getTotalAmount(),
                 settlement.getPayerAmount(),
                 settlement.getRecordedAt(),
-                settlement.getNotifiedAt() != null,
+                settlement.isNotified(),
                 settlement.getShares().stream().map(SettlementShareResult::from).toList());
     }
 }
