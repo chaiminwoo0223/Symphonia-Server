@@ -138,6 +138,9 @@ Fixture가 "데이터"를 만든다면, Helper는 여러 테스트에서 반복�
 - 예: 인증이 필요한 통합 테스트의 토큰 발급/헤더 세팅(`AuthHelper`), 반복되는 MockMvc 요청 빌더(`MockMvcRequestHelper`), 공통 응답 검증(`ResponseAssertHelper`).
 - **`Helper` 접미사가 "만능 유틸리티 클래스"의 핑계가 되지 않게 한다.** 클린코드에서 `Util`/`Manager`처럼 책임이 불분명한 이름을 지양하는 것과 같은 이유로, 하나의 `*Helper`는 하나의 관심사만 다룬다. 인증 Helper와 요청 빌드 Helper를 하나로 합치지 않는다.
 - `*Fixture`와 마찬가지로 도메인별 `helper` 패키지(각 모듈의 `src/test`)에 둔다.
+- 빈을 주입받는 Helper는 `@Component`로 두고, 주입받을 빈이 없는 Helper는 private 생성자를 둔 `final` 클래스의 static 메서드로 둔다(예: `ConcurrencyHelper`).
+
+**(2026-10-31 결정, 이슈 #124)**: 두 Repository 테스트에 같은 동시 실행 메서드(`runConcurrently`, `await`)가 복사되어 있어 `gathering/helper/ConcurrencyHelper`로 옮겼다. 기존 Helper는 Repository를 주입받는 `@Component`라 `@SpringBootTest`에서만 쓴다. `ConcurrencyHelper`는 주입받을 빈이 없고 `@DataJpaTest` 기반 `RepositoryTest`에서 쓰므로, `@Component`로 두면 빈이 필요 없는 클래스를 쓰려고 테스트마다 `@Import`를 붙여야 한다. 그래서 static 메서드로 두었다. 동시 실행은 도메인과 무관하지만 지금 쓰는 곳이 gathering뿐이라 도메인별 배치 규칙을 따랐다.
 
 ## 부하테스트
 
