@@ -3,6 +3,7 @@ package com.symphonia.global.config;
 import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.ParticipantEndpoints;
+import com.symphonia.gathering.presentation.SettlementEndpoints;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.CorsProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
@@ -45,7 +46,12 @@ public class SecurityConfig {
         AuthEndpoints.REFRESH,
         PairingEndpoints.RECOMMEND,
         GatheringEndpoints.PREVIEW,
-        ParticipantEndpoints.JOIN
+        ParticipantEndpoints.JOIN,
+        ParticipantEndpoints.REGISTER_BANK_ACCOUNT,
+        SettlementEndpoints.FORM,
+        SettlementEndpoints.RECORD,
+        SettlementEndpoints.UPDATE,
+        SettlementEndpoints.CANCEL
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

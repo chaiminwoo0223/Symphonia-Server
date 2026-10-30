@@ -7,4 +7,6 @@ public interface GatheringRepository {
     Gathering save(Gathering gathering);
 
     Optional<Gathering> findById(Long gatheringId);
+
+    Optional<Gathering> findByParticipantId(Long participantId);
 }

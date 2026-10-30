@@ -2,7 +2,9 @@ package com.symphonia.gathering.domain.entity;
 
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -39,6 +41,13 @@ public class Gathering {
     public boolean hasJoined(PhoneNumber phoneNumber) {
         return participants.stream()
                 .anyMatch(participant -> participant.getPhoneNumber().equals(phoneNumber));
+    }
+
+    public boolean hasParticipants(Collection<Long> participantIds) {
+        return participants.stream()
+                .map(Participant::getId)
+                .collect(Collectors.toSet())
+                .containsAll(participantIds);
     }
 
     // 휴대폰은 모임 안에서 중복되지 않으므로, 저장 뒤 id가 채워진 참여자를 휴대폰으로 찾는다.

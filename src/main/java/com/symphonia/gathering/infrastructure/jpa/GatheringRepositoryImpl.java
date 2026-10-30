@@ -2,7 +2,6 @@ package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
-import com.symphonia.gathering.domain.exception.GatheringDataKeyNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
@@ -22,6 +21,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     private final ParticipantJpaRepository participantJpaRepository;
     private final GatheringDataKeyJpaRepository gatheringDataKeyJpaRepository;
     private final GatheringMasterKey gatheringMasterKey;
+    private final GatheringDataKeyLoader gatheringDataKeyLoader;
 
     @Override
     public Gathering save(Gathering gathering) {
@@ -29,7 +29,9 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                 gatheringJpaRepository.save(GatheringJpaEntity.from(gathering));
         Long gatheringId = savedGathering.getId();
         GatheringDataKey dataKey =
-                gathering.getId() == null ? createDataKey(gatheringId) : findDataKey(gatheringId);
+                gathering.getId() == null
+                        ? createDataKey(gatheringId)
+                        : gatheringDataKeyLoader.load(gatheringId);
         // 참여자는 참여할 때 더해지기만 하므로 새 참여자만 INSERT한다.
         // 기존 참여자까지 다시 저장하면 동시에 들어온 요청이 메모리에 있던 옛 값으로 덮어쓸 수 있다.
         List<ParticipantJpaEntity> participantEntities =
@@ -66,21 +68,19 @@ public class GatheringRepositoryImpl implements GatheringRepository {
         return gatheringJpaRepository.findById(gatheringId).map(this::toDomain);
     }
 
+    @Override
+    public Optional<Gathering> findByParticipantId(Long participantId) {
+        return participantJpaRepository
+                .findById(participantId)
+                .flatMap(participant -> findById(participant.getGatheringId()));
+    }
+
     private GatheringDataKey createDataKey(Long gatheringId) {
         GatheringDataKey dataKey = GatheringDataKey.generate();
         gatheringDataKeyJpaRepository.save(
                 GatheringDataKeyJpaEntity.of(gatheringId, gatheringMasterKey.wrap(dataKey)));
 
         return dataKey;
-    }
-
-    private GatheringDataKey findDataKey(Long gatheringId) {
-        GatheringDataKeyJpaEntity dataKeyEntity =
-                gatheringDataKeyJpaRepository
-                        .findById(gatheringId)
-                        .orElseThrow(GatheringDataKeyNotFoundException::new);
-
-        return gatheringMasterKey.unwrap(dataKeyEntity.toWrappedDataKey());
     }
 
     // 같은 휴대폰으로 동시에 참여하면 Service의 중복 검사를 둘 다 통과하므로 unique 제약 위반으로 구분한다.
@@ -95,7 +95,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
         return toDomain(
                 gatheringEntity,
                 participantJpaRepository.findAllByGatheringIdOrderById(gatheringId),
-                findDataKey(gatheringId));
+                gatheringDataKeyLoader.load(gatheringId));
     }
 
     private Gathering toDomain(
