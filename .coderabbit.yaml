@@ -76,6 +76,8 @@ reviews:
       enabled: false
     resolve_merge_conflict:
       enabled: false
+    fix_ci:
+      enabled: false
   # error 모드는 변경 요청 워크플로가 필요해 승인은 사람이 한다는 원칙과 맞지 않으므로 모두 warning으로 둔다.
   pre_merge_checks:
     # 저장소가 Javadoc을 쓰지 않아 커버리지 경고가 늘 실패로 나온다.
