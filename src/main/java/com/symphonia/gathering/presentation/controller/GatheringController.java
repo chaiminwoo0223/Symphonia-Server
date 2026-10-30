@@ -4,17 +4,13 @@ import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
-import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
-import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
-import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
-import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +22,6 @@ public class GatheringController implements GatheringApi {
     private final OpenGatheringUseCase openGatheringUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
     private final GetGatheringUseCase getGatheringUseCase;
-    private final JoinGatheringUseCase joinGatheringUseCase;
 
     @Override
     public ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> open(
@@ -57,15 +52,5 @@ public class GatheringController implements GatheringApi {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));
-    }
-
-    @Override
-    public ResponseEntity<StandardResponse<ParticipantResponse>> join(
-            String joinToken, JoinGatheringRequest request) {
-        ParticipantResult result = joinGatheringUseCase.join(request.toCommand(joinToken));
-        ParticipantResponse response = ParticipantResponse.from(result);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(StandardResponse.success(HttpStatus.CREATED, response));
     }
 }

@@ -2,10 +2,8 @@ package com.symphonia.gathering.presentation.api;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringHeaders;
-import com.symphonia.gathering.presentation.ParticipantEndpoints;
 import com.symphonia.gathering.presentation.SettlementEndpoints;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
-import com.symphonia.gathering.presentation.dto.request.RegisterBankAccountRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementResponse;
@@ -26,12 +24,6 @@ public interface SettlementApi {
     @Operation(summary = "기록 화면 조회", description = "정산 건 기록에 필요한 참여자, 인원 기본값, 기록한 정산 건을 조회합니다.")
     ResponseEntity<StandardResponse<SettlementFormResponse>> getForm(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
-
-    @PostMapping(ParticipantEndpoints.REGISTER_BANK_ACCOUNT)
-    @Operation(summary = "계좌 등록", description = "결제자의 계좌를 등록합니다. 한 번만 등록할 수 있습니다.")
-    ResponseEntity<StandardResponse<Void>> registerBankAccount(
-            @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken,
-            @Valid @RequestBody RegisterBankAccountRequest request);
 
     @PostMapping(SettlementEndpoints.RECORD)
     @Operation(summary = "정산 건 기록", description = "정산 건을 기록하고 분담액을 계산합니다.")
