@@ -20,14 +20,26 @@ import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Import({
     SettlementRepositoryImpl.class,
@@ -42,6 +54,8 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     @Autowired private SettlementShareJpaRepository settlementShareJpaRepository;
     @Autowired private GatheringRepository gatheringRepository;
     @Autowired private EntityManager entityManager;
+    @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private Long gatheringId;
     private Long kimId;
@@ -173,6 +187,69 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                         .isInstanceOf(SettlementConflictException.class);
             }
         }
+
+        // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
+        @Nested
+        @DisplayName("두 요청이 같은 정산 건을 동시에 수정하는 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenUpdatedConcurrently {
+
+            @AfterEach
+            void tearDown() {
+                deleteGatheringRows();
+            }
+
+            @Test
+            @DisplayName("한 요청만 저장되고 다른 요청은 SettlementConflictException이 발생한다")
+            void shouldSaveOnlyOneWhenUpdatedConcurrently() throws Exception {
+                // given
+                Long settlementId =
+                        transactionTemplate.execute(
+                                status ->
+                                        recordDinner(kimId, List.of(kimId, leeId, parkId)).getId());
+                CountDownLatch loaded = new CountDownLatch(2);
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () ->
+                                        updateAfterBothLoaded(
+                                                settlementId, List.of(kimId, leeId), loaded),
+                                () ->
+                                        updateAfterBothLoaded(
+                                                settlementId,
+                                                List.of(kimId, leeId, parkId),
+                                                loaded));
+
+                // then
+                assertThat(failures)
+                        .singleElement()
+                        .isInstanceOf(SettlementConflictException.class);
+                Settlement reloaded = settlementRepository.findById(settlementId).orElseThrow();
+                assertThat(reloaded.getVersion()).isEqualTo(1L);
+                assertThat(
+                                settlementShareJpaRepository.findAllBySettlementIdOrderById(
+                                        settlementId))
+                        .hasSameSizeAs(reloaded.getShares());
+            }
+
+            // 두 요청이 모두 같은 버전을 읽은 뒤에 저장하도록 맞춘다.
+            private void updateAfterBothLoaded(
+                    Long settlementId, List<Long> participantIds, CountDownLatch loaded) {
+                transactionTemplate.executeWithoutResult(
+                        status -> {
+                            Settlement settlement =
+                                    settlementRepository.findById(settlementId).orElseThrow();
+                            settlement.update(
+                                    SettlementFixture.SECOND_ROUND.createSplitMethod(
+                                            kimId, participantIds),
+                                    LocalDateTime.now());
+                            loaded.countDown();
+                            await(loaded);
+                            settlementRepository.save(settlement);
+                        });
+            }
+        }
     }
 
     @Nested
@@ -262,5 +339,55 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     private void clearPersistenceContext() {
         entityManager.flush();
         entityManager.clear();
+    }
+
+    // 두 작업을 서로 다른 스레드에서 동시에 실행하고, 실패한 작업의 예외만 모아 돌려준다.
+    private List<Throwable> runConcurrently(Runnable first, Runnable second) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            List<Future<?>> futures = List.of(executor.submit(first), executor.submit(second));
+            List<Throwable> failures = new ArrayList<>();
+            for (Future<?> future : futures) {
+                try {
+                    future.get(10, TimeUnit.SECONDS);
+                } catch (ExecutionException e) {
+                    failures.add(e.getCause());
+                }
+            }
+            return failures;
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private void await(CountDownLatch latch) {
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    // 테스트 트랜잭션 없이 커밋한 모임의 행을 외래 키 순서대로 지운다.
+    private void deleteGatheringRows() {
+        String participantIds = "SELECT id FROM participant WHERE gathering_id = ?";
+        jdbcTemplate.update(
+                "DELETE FROM settlement_share WHERE settlement_id IN (SELECT id FROM settlement WHERE gathering_id = ?)",
+                gatheringId);
+        jdbcTemplate.update("DELETE FROM settlement WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update(
+                "DELETE FROM participant_bank_account WHERE participant_id IN ("
+                        + participantIds
+                        + ")",
+                gatheringId);
+        jdbcTemplate.update(
+                "DELETE FROM participant_link_token WHERE participant_id IN ("
+                        + participantIds
+                        + ")",
+                gatheringId);
+        jdbcTemplate.update("DELETE FROM participant WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_join_token WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
     }
 }
