@@ -293,11 +293,7 @@ class GatheringControllerTest extends IntegrationTest {
         private JoinGatheringRequest joinRequest(
                 String name, boolean consentAgreed, String consentVersion) {
             return new JoinGatheringRequest(
-                    name,
-                    HYPHENATED_PHONE_NUMBER,
-                    ParticipantFixture.KIM.isNonDrinker(),
-                    consentAgreed,
-                    consentVersion);
+                    name, HYPHENATED_PHONE_NUMBER, consentAgreed, consentVersion);
         }
     }
 
