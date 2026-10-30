@@ -8,14 +8,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
-import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
-import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
@@ -28,9 +25,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
 class GatheringControllerTest extends IntegrationTest {
-
-    private static final String HYPHENATED_PHONE_NUMBER = "010-1234-5678";
-    private static final String MASKED_PHONE_NUMBER = "010-****-5678";
 
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private MemberHelper memberHelper;
@@ -185,126 +179,6 @@ class GatheringControllerTest extends IntegrationTest {
                     .andExpect(
                             jsonPath("$.data.consentVersion")
                                     .value(GatheringPolicy.CONSENT_VERSION));
-        }
-    }
-
-    @Nested
-    @DisplayName("POST /api/v1/participants는")
-    class Join {
-
-        @Nested
-        @DisplayName("참여할 수 있는 요청인 경우")
-        class WhenJoinable {
-
-            @Test
-            @DisplayName("인증 없이도 참여시키고 마스킹한 휴대폰과 개인 링크 토큰을 담아 201을 반환한다")
-            void shouldJoinWithoutAuthentication() throws Exception {
-                // given
-                String joinToken = saveGatheringWithJoinToken();
-                JoinGatheringRequest request =
-                        joinRequest(
-                                ParticipantFixture.KIM.getName(),
-                                true,
-                                GatheringPolicy.CONSENT_VERSION);
-
-                // when & then
-                mockMvc.perform(
-                                post("/api/v1/participants")
-                                        .header("X-Join-Token", joinToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.data.id").isNumber())
-                        .andExpect(jsonPath("$.data.name").value(ParticipantFixture.KIM.getName()))
-                        .andExpect(jsonPath("$.data.maskedPhoneNumber").value(MASKED_PHONE_NUMBER))
-                        .andExpect(jsonPath("$.data.linkToken").isNotEmpty());
-            }
-        }
-
-        @Nested
-        @DisplayName("개인정보 수집 및 이용에 동의하지 않은 경우")
-        class WhenConsentNotAgreed {
-
-            @Test
-            @DisplayName("CONSENT_REQUIRED 코드와 함께 400을 반환한다")
-            void shouldReturnBadRequest() throws Exception {
-                // given
-                String joinToken = saveGatheringWithJoinToken();
-                JoinGatheringRequest request =
-                        joinRequest(
-                                ParticipantFixture.KIM.getName(),
-                                false,
-                                GatheringPolicy.CONSENT_VERSION);
-
-                // when & then
-                mockMvc.perform(
-                                post("/api/v1/participants")
-                                        .header("X-Join-Token", joinToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(GatheringErrorCode.CONSENT_REQUIRED.getCode()));
-            }
-        }
-
-        @Nested
-        @DisplayName("이름이 공백인 경우")
-        class WhenNameBlank {
-
-            @Test
-            @DisplayName("name 필드 검증 실패와 함께 400을 반환한다")
-            void shouldReturnBadRequest() throws Exception {
-                // given
-                String joinToken = saveGatheringWithJoinToken();
-                JoinGatheringRequest request =
-                        joinRequest(" ", true, GatheringPolicy.CONSENT_VERSION);
-
-                // when & then
-                mockMvc.perform(
-                                post("/api/v1/participants")
-                                        .header("X-Join-Token", joinToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
-                        .andExpect(jsonPath("$.data.violations[0].field").value("name"));
-            }
-        }
-
-        @Nested
-        @DisplayName("동의 안내 버전이 공백인 경우")
-        class WhenConsentVersionBlank {
-
-            @Test
-            @DisplayName("consentVersion 필드 검증 실패와 함께 400을 반환한다")
-            void shouldReturnBadRequest() throws Exception {
-                // given
-                String joinToken = saveGatheringWithJoinToken();
-                JoinGatheringRequest request =
-                        joinRequest(ParticipantFixture.KIM.getName(), true, " ");
-
-                // when & then
-                mockMvc.perform(
-                                post("/api/v1/participants")
-                                        .header("X-Join-Token", joinToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
-                        .andExpect(jsonPath("$.data.violations[0].field").value("consentVersion"));
-            }
-        }
-
-        private JoinGatheringRequest joinRequest(
-                String name, boolean consentAgreed, String consentVersion) {
-            return new JoinGatheringRequest(
-                    name, HYPHENATED_PHONE_NUMBER, consentAgreed, consentVersion);
         }
     }
 

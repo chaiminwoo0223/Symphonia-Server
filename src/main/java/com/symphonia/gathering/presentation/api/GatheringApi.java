@@ -3,12 +3,9 @@ package com.symphonia.gathering.presentation.api;
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.GatheringHeaders;
-import com.symphonia.gathering.presentation.ParticipantEndpoints;
-import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
-import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,12 +34,4 @@ public interface GatheringApi {
     @Operation(summary = "참여 화면 조회", description = "모임 이름과 참여 가능 여부를 조회합니다.")
     ResponseEntity<StandardResponse<GatheringResponse>> preview(
             @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken);
-
-    @PostMapping(ParticipantEndpoints.JOIN)
-    @Operation(
-            summary = "모임 참여",
-            description = "모임에 참여하고 개인 링크 토큰을 발급합니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다.")
-    ResponseEntity<StandardResponse<ParticipantResponse>> join(
-            @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
-            @Valid @RequestBody JoinGatheringRequest request);
 }

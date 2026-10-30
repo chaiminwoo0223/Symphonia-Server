@@ -7,11 +7,9 @@ import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.usecase.CancelSettlementUseCase;
 import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
 import com.symphonia.gathering.application.usecase.RecordSettlementUseCase;
-import com.symphonia.gathering.application.usecase.RegisterBankAccountUseCase;
 import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.presentation.api.SettlementApi;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
-import com.symphonia.gathering.presentation.dto.request.RegisterBankAccountRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementResponse;
@@ -24,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SettlementController implements SettlementApi {
     private final GetSettlementFormUseCase getSettlementFormUseCase;
-    private final RegisterBankAccountUseCase registerBankAccountUseCase;
     private final RecordSettlementUseCase recordSettlementUseCase;
     private final UpdateSettlementUseCase updateSettlementUseCase;
     private final CancelSettlementUseCase cancelSettlementUseCase;
@@ -36,15 +33,6 @@ public class SettlementController implements SettlementApi {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));
-    }
-
-    @Override
-    public ResponseEntity<StandardResponse<Void>> registerBankAccount(
-            String linkToken, RegisterBankAccountRequest request) {
-        registerBankAccountUseCase.register(request.toCommand(linkToken));
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(StandardResponse.success(HttpStatus.CREATED));
     }
 
     @Override

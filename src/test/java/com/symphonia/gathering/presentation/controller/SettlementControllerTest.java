@@ -15,14 +15,12 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.FixedAmountRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
-import com.symphonia.gathering.presentation.dto.request.RegisterBankAccountRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
@@ -37,8 +35,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
 class SettlementControllerTest extends IntegrationTest {
-
-    private static final String HYPHENATED_ACCOUNT_NUMBER = "1234-5678-9012";
 
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
@@ -140,65 +136,6 @@ class SettlementControllerTest extends IntegrationTest {
                                 jsonPath("$.data.code")
                                         .value(CommonErrorCode.MISSING_REQUEST_HEADER.getCode()));
             }
-        }
-    }
-
-    @Nested
-    @DisplayName("POST /api/v1/participants/bank-account는")
-    class RegisterBankAccount {
-
-        @Nested
-        @DisplayName("등록할 수 있는 요청인 경우")
-        class WhenRegistrable {
-
-            @Test
-            @DisplayName("인증 없이도 계좌를 등록하고 201을 반환한다")
-            void shouldRegisterBankAccount() throws Exception {
-                // given
-                RegisterBankAccountRequest request =
-                        bankAccountRequest(ParticipantBankAccountFixture.KOOKMIN.getBankName());
-
-                // when & then
-                mockMvc.perform(
-                                post("/api/v1/participants/bank-account")
-                                        .header("X-Link-Token", payerLinkToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.ok").value(true));
-            }
-        }
-
-        @Nested
-        @DisplayName("은행 이름이 공백인 경우")
-        class WhenBankNameBlank {
-
-            @Test
-            @DisplayName("bankName 필드 검증 실패와 함께 400을 반환한다")
-            void shouldReturnBadRequest() throws Exception {
-                // given
-                RegisterBankAccountRequest request = bankAccountRequest(" ");
-
-                // when & then
-                mockMvc.perform(
-                                post("/api/v1/participants/bank-account")
-                                        .header("X-Link-Token", payerLinkToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
-                        .andExpect(jsonPath("$.data.violations[0].field").value("bankName"));
-            }
-        }
-
-        private RegisterBankAccountRequest bankAccountRequest(String bankName) {
-            return new RegisterBankAccountRequest(
-                    bankName,
-                    HYPHENATED_ACCOUNT_NUMBER,
-                    true,
-                    SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION);
         }
     }
 
