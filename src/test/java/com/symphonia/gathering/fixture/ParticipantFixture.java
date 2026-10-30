@@ -11,7 +11,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ParticipantFixture {
     KIM("김철수", "01012345678"),
-    LEE("이영희", "01098765432");
+    LEE("이영희", "01098765432"),
+    PARK("박민수", "01055556666");
 
     private static final LocalDateTime CONSENTED_AT = LocalDateTime.of(2026, 10, 27, 19, 0);
 

@@ -24,7 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 
-@Import({GatheringRepositoryImpl.class, GatheringMasterKey.class, GatheringCryptoConfig.class})
+@Import({
+    GatheringRepositoryImpl.class,
+    GatheringDataKeyLoader.class,
+    GatheringMasterKey.class,
+    GatheringCryptoConfig.class
+})
 class GatheringRepositoryImplTest extends RepositoryTest {
 
     @Autowired private GatheringRepository gatheringRepository;
@@ -229,6 +234,46 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         void shouldReturnEmptyWhenIdNotExists() {
             // when
             Optional<Gathering> result = gatheringRepository.findById(-1L);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findByParticipantId 메서드는")
+    class FindByParticipantId {
+
+        @Test
+        @DisplayName("존재하는 참여자 ID면 그 참여자가 속한 모임을 반환한다")
+        void shouldReturnGatheringWhenParticipantExists() {
+            // given
+            Gathering saved =
+                    gatheringRepository.save(
+                            GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                    List.of(
+                                            ParticipantFixture.KIM.create(),
+                                            ParticipantFixture.LEE.create())));
+            Long participantId = saved.getParticipants().getLast().getId();
+            clearPersistenceContext();
+
+            // when
+            Optional<Gathering> result = gatheringRepository.findByParticipantId(participantId);
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getId()).isEqualTo(saved.getId());
+            assertThat(result.get().getParticipants())
+                    .extracting(Participant::getName)
+                    .containsExactly(
+                            ParticipantFixture.KIM.getName(), ParticipantFixture.LEE.getName());
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 참여자 ID면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenParticipantNotExists() {
+            // when
+            Optional<Gathering> result = gatheringRepository.findByParticipantId(-1L);
 
             // then
             assertThat(result).isEmpty();

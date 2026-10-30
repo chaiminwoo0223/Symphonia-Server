@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Import;
 @Import({
     ParticipantLinkTokenRepositoryImpl.class,
     GatheringRepositoryImpl.class,
+    GatheringDataKeyLoader.class,
     GatheringMasterKey.class,
     GatheringCryptoConfig.class
 })
