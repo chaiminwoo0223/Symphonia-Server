@@ -46,6 +46,7 @@ public class Settlement {
     public void update(SplitMethod splitMethod, LocalDateTime now) {
         validateNotCancelled();
         validateNotNotified();
+
         totalAmount = splitMethod.totalAmount();
         shares = splitMethod.shares();
         recordedAt = now;

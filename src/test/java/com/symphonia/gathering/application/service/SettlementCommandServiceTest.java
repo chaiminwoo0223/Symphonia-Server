@@ -495,12 +495,12 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenSharesRounded {
 
             @Test
-            @DisplayName("몫을 100원 단위로 올리고 나머지는 결제자에게 귀속한다")
+            @DisplayName("몫을 100원 단위로 올리고 1원 단위 나머지까지 결제자에게 귀속한다")
             void shouldRoundEqualShareUpAndAttributeRemainderToPayer() {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
+                RecordSettlementCommand command = command(10_001L, PARTICIPANT_IDS, Map.of());
 
                 // when
                 SettlementResult result = settlementCommandService.record(command);
@@ -509,7 +509,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(result.shares())
                         .extracting(SettlementShareResult::amount)
                         .containsExactly(3_400L, 3_400L);
-                assertThat(result.payerAmount()).isEqualTo(3_200L);
+                assertThat(result.payerAmount()).isEqualTo(3_201L);
             }
 
             @Test
@@ -836,32 +836,9 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenCancellable {
 
             @Test
-            @DisplayName("취소 시각을 채워 저장한다")
+            @DisplayName("기록 기간을 확인하지 않고 취소 시각을 채워 저장한다")
             void shouldSaveCancelledSettlement() {
                 // given
-                Settlement settlement =
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenParticipant(PAYER_ID);
-                givenSettlement(settlement);
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                then(settlementRepository).should().save(settlement);
-                assertThat(settlement.isCancelled()).isTrue();
-            }
-        }
-
-        @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
-        class WhenRecordingPeriodPassed {
-
-            @Test
-            @DisplayName("기록 기간을 확인하지 않고 취소한다")
-            void shouldCancelSettlementWithoutCheckingRecordingPeriod() {
-                // given: 기록 기간과 관계없이 취소할 수 있어 모임을 조회하지 않는 상태
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);

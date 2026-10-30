@@ -201,7 +201,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
             @Test
             @DisplayName("한 요청만 저장되고 다른 요청은 SettlementConflictException이 발생한다")
-            void shouldSaveOnlyOneWhenUpdatedConcurrently() throws Exception {
+            void shouldSaveOnlyOne() throws Exception {
                 // given
                 Long settlementId =
                         transactionTemplate.execute(
@@ -360,11 +360,13 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
     }
 
+    // 두 요청이 같은 시점에 저장해야 경합을 확인할 수 있으므로, 제때 모이지 않으면 테스트를 실패시킨다.
     private void await(CountDownLatch latch) {
         try {
-            latch.await(5, TimeUnit.SECONDS);
+            assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
         }
     }
 
