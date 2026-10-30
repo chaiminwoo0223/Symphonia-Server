@@ -38,7 +38,7 @@ class PairingControllerTest extends IntegrationTest {
     @Autowired private AuthHelper authHelper;
 
     @Nested
-    @DisplayName("GET /api/v1/pairings/recommend는")
+    @DisplayName("GET /api/v1/pairings/recommendations는")
     class Recommend {
 
         @Test
@@ -49,7 +49,7 @@ class PairingControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            get("/api/v1/pairings/recommend")
+                            get("/api/v1/pairings/recommendations")
                                     .param("relationshipType", "FRIEND")
                                     .param("moodType", "CASUAL")
                                     .param("isAdultConfirmed", "true"))
@@ -65,7 +65,7 @@ class PairingControllerTest extends IntegrationTest {
         void shouldReturnBadRequestWhenParameterMissing() throws Exception {
             // when & then
             mockMvc.perform(
-                            get("/api/v1/pairings/recommend")
+                            get("/api/v1/pairings/recommendations")
                                     .param("relationshipType", "FRIEND")
                                     .param("isAdultConfirmed", "true"))
                     .andExpect(status().isBadRequest());
@@ -82,7 +82,7 @@ class PairingControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            get("/api/v1/pairings/recommend")
+                            get("/api/v1/pairings/recommendations")
                                     .param("relationshipType", "FRIEND")
                                     .param("moodType", "CASUAL")
                                     .param("isAdultConfirmed", "true")
@@ -107,7 +107,7 @@ class PairingControllerTest extends IntegrationTest {
 
             // when & then
             mockMvc.perform(
-                            get("/api/v1/pairings/recommend")
+                            get("/api/v1/pairings/recommendations")
                                     .param("relationshipType", "FRIEND")
                                     .param("moodType", "CASUAL")
                                     .param("isAdultConfirmed", "true")
@@ -121,7 +121,7 @@ class PairingControllerTest extends IntegrationTest {
         void shouldReturnBadRequestWhenAttendeeAllergyInvalid() throws Exception {
             // when & then
             mockMvc.perform(
-                            get("/api/v1/pairings/recommend")
+                            get("/api/v1/pairings/recommendations")
                                     .param("relationshipType", "FRIEND")
                                     .param("moodType", "CASUAL")
                                     .param("isAdultConfirmed", "true")
@@ -138,7 +138,7 @@ class PairingControllerTest extends IntegrationTest {
             void shouldReturnBadRequestWhenIsAdultConfirmedMissing() throws Exception {
                 // when & then
                 mockMvc.perform(
-                                get("/api/v1/pairings/recommend")
+                                get("/api/v1/pairings/recommendations")
                                         .param("relationshipType", "FRIEND")
                                         .param("moodType", "CASUAL"))
                         .andExpect(status().isBadRequest());
@@ -149,7 +149,7 @@ class PairingControllerTest extends IntegrationTest {
             void shouldReturnBadRequestWhenIsAdultConfirmedFalse() throws Exception {
                 // when & then
                 mockMvc.perform(
-                                get("/api/v1/pairings/recommend")
+                                get("/api/v1/pairings/recommendations")
                                         .param("relationshipType", "FRIEND")
                                         .param("moodType", "CASUAL")
                                         .param("isAdultConfirmed", "false"))

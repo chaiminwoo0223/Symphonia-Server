@@ -9,6 +9,7 @@ public enum CommonErrorCode implements ErrorCode {
     METHOD_ARGUMENT_NOT_VALID(HttpStatus.BAD_REQUEST, "요청 본문(JSON)의 값 유효성 검증에 실패했습니다."),
     METHOD_ARGUMENT_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "요청한 메서드 파라미터의 타입이 일치하지 않습니다."),
     MISSING_REQUEST_PARAMETER(HttpStatus.BAD_REQUEST, "필수 요청 파라미터가 누락되었습니다."),
+    MISSING_REQUEST_HEADER(HttpStatus.BAD_REQUEST, "필수 요청 헤더가 누락되었습니다."),
     CONSTRAINT_VIOLATION(HttpStatus.BAD_REQUEST, "요청 파라미터 또는 경로 변수 유효성 검증에 실패했습니다."),
     INVALID_JSON_FORMAT(
             HttpStatus.BAD_REQUEST, "요청 본문(JSON) 형식이 잘못되어 파싱할 수 없습니다. (필드 타입 불일치, 필수 필드 누락 등)"),

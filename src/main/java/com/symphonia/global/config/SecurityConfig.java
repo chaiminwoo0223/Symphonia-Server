@@ -2,6 +2,7 @@ package com.symphonia.global.config;
 
 import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
+import com.symphonia.gathering.presentation.ParticipantEndpoints;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.CorsProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
@@ -44,7 +45,7 @@ public class SecurityConfig {
         AuthEndpoints.REFRESH,
         PairingEndpoints.RECOMMEND,
         GatheringEndpoints.PREVIEW,
-        GatheringEndpoints.JOIN
+        ParticipantEndpoints.JOIN
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

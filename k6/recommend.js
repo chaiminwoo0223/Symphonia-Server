@@ -1,4 +1,4 @@
-// pairing 도메인 GET /api/v1/pairings/recommend의 로컬/dev 성능 기준선을 측정하는 K6 스크립트다.
+// pairing 도메인 GET /api/v1/pairings/recommendations의 로컬/dev 성능 기준선을 측정하는 K6 스크립트다.
 // 인증이 필요 없는 permitAll 엔드포인트라 별도 토큰 발급 없이 바로 호출한다.
 // 실행 방법은 k6/README.md를 참고한다.
 
@@ -99,7 +99,7 @@ function parseBody(response) {
 }
 
 export default function () {
-    const response = http.get(`${BASE_URL}/api/v1/pairings/recommend?${buildQueryString()}`);
+    const response = http.get(`${BASE_URL}/api/v1/pairings/recommendations?${buildQueryString()}`);
     const body = parseBody(response);
 
     const isSuccess = check(response, {
