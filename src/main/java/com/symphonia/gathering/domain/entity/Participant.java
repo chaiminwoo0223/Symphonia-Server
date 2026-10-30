@@ -16,7 +16,6 @@ public class Participant {
     private Long id;
     private String name;
     private PhoneNumber phoneNumber;
-    private boolean nonDrinker;
     private String consentVersion;
     private LocalDateTime consentedAt;
 
@@ -24,13 +23,11 @@ public class Participant {
     static Participant of(
             String name,
             PhoneNumber phoneNumber,
-            boolean nonDrinker,
             String consentVersion,
             LocalDateTime consentedAt) {
         return Participant.builder()
                 .name(name)
                 .phoneNumber(phoneNumber)
-                .nonDrinker(nonDrinker)
                 .consentVersion(consentVersion)
                 .consentedAt(consentedAt)
                 .build();

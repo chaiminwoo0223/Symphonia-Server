@@ -66,8 +66,7 @@ public class GatheringCommandService
         GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
         GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
 
-        gathering.join(
-                command.name(), phoneNumber, command.nonDrinker(), command.consentVersion(), now);
+        gathering.join(command.name(), phoneNumber, command.consentVersion(), now);
         Gathering savedGathering = gatheringRepository.save(gathering);
         Participant participant = savedGathering.getParticipant(phoneNumber);
         String linkToken = gatheringTokenProvider.generate();

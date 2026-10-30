@@ -10,14 +10,13 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum ParticipantFixture {
-    KIM("김철수", "01012345678", false),
-    LEE("이영희", "01098765432", true);
+    KIM("김철수", "01012345678"),
+    LEE("이영희", "01098765432");
 
     private static final LocalDateTime CONSENTED_AT = LocalDateTime.of(2026, 10, 27, 19, 0);
 
     private final String name;
     private final String phoneNumber;
-    private final boolean nonDrinker;
 
     public Participant create() {
         return createWithPhoneNumber(phoneNumber);
@@ -36,7 +35,6 @@ public enum ParticipantFixture {
                 .id(id)
                 .name(name)
                 .phoneNumber(new PhoneNumber(phoneNumber))
-                .nonDrinker(nonDrinker)
                 .consentVersion(GatheringPolicy.CONSENT_VERSION)
                 .consentedAt(CONSENTED_AT)
                 .build();

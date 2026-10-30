@@ -12,7 +12,7 @@ public enum GatheringPolicy {
     ;
 
     // 참여 화면이 안내하는 수집 항목, 목적, 보유 기간 문구의 버전이다. 문구를 바꾸면 이 값도 바꾼다.
-    public static final String CONSENT_VERSION = "2026-10-29";
+    public static final String CONSENT_VERSION = "2026-10-30";
 
     // 모임 생성 후 정산 건을 기록할 수 있는 기간이다. 이 기간이 지나 참여한 사람은 분담에 들어갈 수 없어 참여도 함께 막는다.
     private static final Duration RECORDING_PERIOD = Duration.ofHours(48);

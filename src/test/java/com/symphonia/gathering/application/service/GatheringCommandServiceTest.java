@@ -301,7 +301,6 @@ class GatheringCommandServiceTest extends UnitTest {
                                 JOIN_TOKEN,
                                 ParticipantFixture.KIM.getName(),
                                 "02-123-4567",
-                                ParticipantFixture.KIM.isNonDrinker(),
                                 true,
                                 GatheringPolicy.CONSENT_VERSION);
 
@@ -346,7 +345,6 @@ class GatheringCommandServiceTest extends UnitTest {
                 assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
                 assertThat(result.name()).isEqualTo(ParticipantFixture.KIM.getName());
                 assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
-                assertThat(result.nonDrinker()).isEqualTo(ParticipantFixture.KIM.isNonDrinker());
                 assertThat(result.linkToken()).isEqualTo(LINK_TOKEN);
             }
         }
@@ -360,7 +358,6 @@ class GatheringCommandServiceTest extends UnitTest {
                     JOIN_TOKEN,
                     ParticipantFixture.KIM.getName(),
                     HYPHENATED_PHONE_NUMBER,
-                    ParticipantFixture.KIM.isNonDrinker(),
                     consentAgreed,
                     consentVersion);
         }

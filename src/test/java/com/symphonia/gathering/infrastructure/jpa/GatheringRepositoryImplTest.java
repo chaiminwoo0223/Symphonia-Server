@@ -172,7 +172,6 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                 gathering.join(
                         ParticipantFixture.LEE.getName(),
                         new PhoneNumber(ParticipantFixture.LEE.getPhoneNumber()),
-                        ParticipantFixture.LEE.isNonDrinker(),
                         GatheringPolicy.CONSENT_VERSION,
                         gathering.getCreatedAt().plusHours(1));
             }

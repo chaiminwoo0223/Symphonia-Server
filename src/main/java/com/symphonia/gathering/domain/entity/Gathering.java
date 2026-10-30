@@ -31,13 +31,8 @@ public class Gathering {
 
     // 참여자 목록을 바깥에서 바꿀 수 없게, 참여할 때마다 기존 목록에 더한 새 불변 목록으로 바꾼다.
     public void join(
-            String name,
-            PhoneNumber phoneNumber,
-            boolean nonDrinker,
-            String consentVersion,
-            LocalDateTime now) {
-        Participant participant =
-                Participant.of(name, phoneNumber, nonDrinker, consentVersion, now);
+            String name, PhoneNumber phoneNumber, String consentVersion, LocalDateTime now) {
+        Participant participant = Participant.of(name, phoneNumber, consentVersion, now);
         participants = Stream.concat(participants.stream(), Stream.of(participant)).toList();
     }
 
