@@ -2,6 +2,8 @@ package com.symphonia.gathering.presentation.api;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
+import com.symphonia.gathering.presentation.GatheringHeaders;
+import com.symphonia.gathering.presentation.ParticipantEndpoints;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
@@ -16,30 +18,31 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
-@Tag(name = "Gathering API", description = "술자리 모임 생성과 참여 API")
+@Tag(name = "Gathering API", description = "모임 API")
 public interface GatheringApi {
     @PostMapping(GatheringEndpoints.OPEN)
-    @Operation(summary = "모임 열기", description = "인증된 멤버가 모임을 열고 참여 토큰을 발급받습니다.")
+    @Operation(summary = "모임 열기", description = "모임을 열고 참여 토큰을 발급합니다.")
     ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> open(
             @AuthenticationPrincipal String memberId,
             @Valid @RequestBody OpenGatheringRequest request);
 
     @PostMapping(GatheringEndpoints.REISSUE)
-    @Operation(
-            summary = "참여 토큰 재발급",
-            description = "모임을 만든 멤버가 참여 토큰을 다시 발급받습니다. 기존 참여 토큰은 무효가 됩니다.")
+    @Operation(summary = "참여 토큰 재발급", description = "참여 토큰을 재발급합니다. 기존 참여 토큰은 무효가 됩니다.")
     ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> reissue(
             @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
 
     @GetMapping(GatheringEndpoints.PREVIEW)
-    @Operation(summary = "참여 화면 조회", description = "참여 토큰으로 모임 이름, 참여 가능 여부, 동의 안내 버전을 조회합니다.")
-    ResponseEntity<StandardResponse<GatheringResponse>> preview(@PathVariable String joinToken);
+    @Operation(summary = "참여 화면 조회", description = "모임 이름과 참여 가능 여부를 조회합니다.")
+    ResponseEntity<StandardResponse<GatheringResponse>> preview(
+            @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken);
 
-    @PostMapping(GatheringEndpoints.JOIN)
+    @PostMapping(ParticipantEndpoints.JOIN)
     @Operation(
             summary = "모임 참여",
-            description = "참여 토큰으로 모임에 참여하고 개인 링크 토큰을 발급받습니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다.")
+            description = "모임에 참여하고 개인 링크 토큰을 발급합니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다.")
     ResponseEntity<StandardResponse<ParticipantResponse>> join(
-            @PathVariable String joinToken, @Valid @RequestBody JoinGatheringRequest request);
+            @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
+            @Valid @RequestBody JoinGatheringRequest request);
 }

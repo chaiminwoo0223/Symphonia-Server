@@ -115,7 +115,7 @@ public enum MemberErrorCode implements ErrorCode {
   - `MethodArgumentNotValidException` (Bean Validation, `@NotNull`/`@NotBlank` 등) → 400 `METHOD_ARGUMENT_NOT_VALID`
   - `HttpMessageNotReadableException` (JSON 파싱 실패) → 400 `INVALID_JSON_FORMAT`. 필수 필드 누락은 기본적으로 Bean Validation(`@NotNull` 등)으로 잡는 걸 권장한다. Request를 Java record로 만들고 생성자에서 값이 없어 Jackson이 예외를 던지는 경우도 Spring이 이 예외로 감싸서 전달하지만, 이 경로는 Bean Validation과 달리 필드별 `reason`을 주기 어렵다.
   - `NoResourceFoundException` (알 수 없는 URL) → 404 `NOT_FOUND`
-  - `MissingServletRequestParameterException`, `MethodArgumentTypeMismatchException`, `ConstraintViolationException` → 400
+  - `MissingServletRequestParameterException`, `MissingRequestHeaderException`, `MethodArgumentTypeMismatchException`, `ConstraintViolationException` → 400
   - `HttpRequestMethodNotSupportedException` → 405 `METHOD_NOT_ALLOWED`
   - 그 외 `ResponseEntityExceptionHandler`가 처리하는 나머지 예외는 `handleExceptionInternal`에서 500 `INTERNAL_SERVER_ERROR`로 공통 처리
 - **필드별 검증 에러는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 보고**한다. 여러 필드가 동시에 실패해도 각각 리포트된다.

@@ -1,6 +1,6 @@
 # 부하테스트 (K6)
 
-pairing 도메인의 `GET /api/v1/pairings/recommend`를 대상으로 한 K6 부하테스트 스크립트다. 도구 선정 근거와 1차 범위 결정은 `.claude/skills/testing/SKILL.md`의 "부하테스트" 절(이슈 #70)에 있다.
+pairing 도메인의 `GET /api/v1/pairings/recommendations`를 대상으로 한 K6 부하테스트 스크립트다. 도구 선정 근거와 1차 범위 결정은 `.claude/skills/testing/SKILL.md`의 "부하테스트" 절(이슈 #70)에 있다.
 
 현재는 로컬과 dev 프로파일 환경에서 스크립트를 실행하고 콘솔 요약으로 결과를 확인하는 범위까지만 다룬다. GCP 실행 위치와 Grafana Alloy 연동은 인프라 협의 후 별도 이슈에서 다룬다.
 

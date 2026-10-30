@@ -37,7 +37,7 @@ class GatheringControllerTest extends IntegrationTest {
     @Autowired private AuthHelper authHelper;
 
     @Nested
-    @DisplayName("POST /api/v1/gatherings/open은")
+    @DisplayName("POST /api/v1/gatherings는")
     class Open {
 
         @Nested
@@ -55,7 +55,7 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/open")
+                                post("/api/v1/gatherings")
                                         .header(HttpHeaders.AUTHORIZATION, token)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
@@ -78,7 +78,7 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/open")
+                                post("/api/v1/gatherings")
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isUnauthorized());
@@ -87,7 +87,7 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/gatherings/{gatheringId}/reissue는")
+    @DisplayName("POST /api/v1/gatherings/{gatheringId}/join-token은")
     class Reissue {
 
         @Nested
@@ -106,7 +106,9 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId())
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/join-token",
+                                                gathering.getId())
                                         .header(HttpHeaders.AUTHORIZATION, token))
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.gatheringId").value(gathering.getId()))
@@ -131,7 +133,9 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId())
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/join-token",
+                                                gathering.getId())
                                         .header(HttpHeaders.AUTHORIZATION, token))
                         .andExpect(status().isForbidden())
                         .andExpect(
@@ -153,14 +157,17 @@ class GatheringControllerTest extends IntegrationTest {
                         gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
 
                 // when & then
-                mockMvc.perform(post("/api/v1/gatherings/{gatheringId}/reissue", gathering.getId()))
+                mockMvc.perform(
+                                post(
+                                        "/api/v1/gatherings/{gatheringId}/join-token",
+                                        gathering.getId()))
                         .andExpect(status().isUnauthorized());
             }
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/gatherings/preview/{joinToken}은")
+    @DisplayName("GET /api/v1/gatherings/preview는")
     class Preview {
 
         @Test
@@ -170,7 +177,7 @@ class GatheringControllerTest extends IntegrationTest {
             String joinToken = saveGatheringWithJoinToken();
 
             // when & then
-            mockMvc.perform(get("/api/v1/gatherings/preview/{joinToken}", joinToken))
+            mockMvc.perform(get("/api/v1/gatherings/preview").header("X-Join-Token", joinToken))
                     .andExpect(status().isOk())
                     .andExpect(
                             jsonPath("$.data.name").value(GatheringFixture.FRIDAY_DINNER.getName()))
@@ -182,7 +189,7 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/gatherings/join/{joinToken}은")
+    @DisplayName("POST /api/v1/participants는")
     class Join {
 
         @Nested
@@ -202,7 +209,8 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isCreated())
@@ -230,7 +238,8 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isBadRequest())
@@ -254,7 +263,8 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isBadRequest())
@@ -279,7 +289,8 @@ class GatheringControllerTest extends IntegrationTest {
 
                 // when & then
                 mockMvc.perform(
-                                post("/api/v1/gatherings/join/{joinToken}", joinToken)
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isBadRequest())

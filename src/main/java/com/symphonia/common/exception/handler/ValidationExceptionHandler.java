@@ -20,6 +20,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -124,6 +125,15 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
         log.warn("[MethodArgumentTypeMismatchException] message={}", ex.getMessage());
 
         return buildErrorResponse(CommonErrorCode.METHOD_ARGUMENT_TYPE_MISMATCH);
+    }
+
+    // 필수 RequestHeader 누락 시 발생. 헤더 값은 토큰일 수 있으므로 이름만 남긴다.
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<Object> handleMissingRequestHeaderException(
+            MissingRequestHeaderException ex) {
+        log.warn("[MissingRequestHeaderException] headerName={}", ex.getHeaderName());
+
+        return buildErrorResponse(CommonErrorCode.MISSING_REQUEST_HEADER);
     }
 
     // RequestParam, PathVariable 등 제약 조건 위반 시 발생

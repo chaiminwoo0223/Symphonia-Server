@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "Pairing API", description = "술, 안주, 음악 페어링 추천 API")
+@Tag(name = "Pairing API", description = "페어링 API")
 public interface PairingApi {
     @GetMapping(PairingEndpoints.RECOMMEND)
     @Operation(
