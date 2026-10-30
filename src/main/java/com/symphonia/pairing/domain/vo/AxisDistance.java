@@ -2,7 +2,7 @@ package com.symphonia.pairing.domain.vo;
 
 import java.util.stream.IntStream;
 
-public final class AxisDistance {
+final class AxisDistance {
     private static final int MAX_AXIS_VALUE = 5;
 
     private AxisDistance() {}
