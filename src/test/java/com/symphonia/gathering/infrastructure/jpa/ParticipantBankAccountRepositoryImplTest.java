@@ -16,13 +16,25 @@ import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Import({
     ParticipantBankAccountRepositoryImpl.class,
@@ -37,6 +49,8 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
     @Autowired private ParticipantBankAccountJpaRepository participantBankAccountJpaRepository;
     @Autowired private GatheringRepository gatheringRepository;
     @Autowired private EntityManager entityManager;
+    @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private Long gatheringId;
     private Long participantId;
@@ -102,6 +116,54 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
                         .isInstanceOf(BankAccountAlreadyRegisteredException.class);
             }
         }
+
+        // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
+        @Nested
+        @DisplayName("같은 참여자의 계좌를 두 요청이 동시에 등록하는 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenRegisteredConcurrently {
+
+            @AfterEach
+            void tearDown() {
+                deleteGatheringRows();
+            }
+
+            @Test
+            @DisplayName("한 요청만 저장되고 다른 요청은 BankAccountAlreadyRegisteredException이 발생한다")
+            void shouldSaveOnlyOneWhenRegisteredConcurrently() throws Exception {
+                // given
+                CountDownLatch ready = new CountDownLatch(2);
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () -> registerAfterBothReady(ready),
+                                () -> registerAfterBothReady(ready));
+
+                // then
+                assertThat(failures)
+                        .singleElement()
+                        .isInstanceOf(BankAccountAlreadyRegisteredException.class);
+                assertThat(
+                                jdbcTemplate.queryForObject(
+                                        "SELECT COUNT(*) FROM participant_bank_account WHERE participant_id = ?",
+                                        Long.class,
+                                        participantId))
+                        .isEqualTo(1L);
+            }
+
+            // 두 요청이 모두 Service의 중복 검사를 통과한 뒤 함께 저장하도록 맞춘다.
+            private void registerAfterBothReady(CountDownLatch ready) {
+                transactionTemplate.executeWithoutResult(
+                        status -> {
+                            ready.countDown();
+                            await(ready);
+                            participantBankAccountRepository.save(
+                                    ParticipantBankAccountFixture.KOOKMIN.create(participantId),
+                                    gatheringId);
+                        });
+            }
+        }
     }
 
     @Nested
@@ -131,5 +193,42 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(result).isFalse();
         }
+    }
+
+    // 두 작업을 서로 다른 스레드에서 동시에 실행하고, 실패한 작업의 예외만 모아 돌려준다.
+    private List<Throwable> runConcurrently(Runnable first, Runnable second) throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            List<Future<?>> futures = List.of(executor.submit(first), executor.submit(second));
+            List<Throwable> failures = new ArrayList<>();
+            for (Future<?> future : futures) {
+                try {
+                    future.get(10, TimeUnit.SECONDS);
+                } catch (ExecutionException e) {
+                    failures.add(e.getCause());
+                }
+            }
+            return failures;
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private void await(CountDownLatch latch) {
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    // 테스트 트랜잭션 없이 커밋한 모임의 행을 외래 키 순서대로 지운다.
+    private void deleteGatheringRows() {
+        jdbcTemplate.update(
+                "DELETE FROM participant_bank_account WHERE participant_id IN (SELECT id FROM participant WHERE gathering_id = ?)",
+                gatheringId);
+        jdbcTemplate.update("DELETE FROM participant WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
     }
 }
