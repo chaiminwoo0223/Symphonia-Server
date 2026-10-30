@@ -10,8 +10,18 @@ reviews:
   # PR 본문은 사람이 쓴 그대로 두고, 요약은 walkthrough 코멘트에만 남긴다.
   high_level_summary: true
   high_level_summary_in_walkthrough: true
+  # PR 본문은 짧게 쓰므로 상세 설명은 summary가 맡는다. 같은 내용을 요약, 문단, 표로 반복하지 않게 한다.
+  high_level_summary_instructions: |
+    첫 줄에 이 PR이 무엇을 바꾸는지 한 문장으로 쓴다.
+    그 아래는 도메인(member, auth, catalog, pairing, gathering, common, global)별 소제목으로 묶고, 각 항목에 바뀐 클래스나 파일 이름을 적는다.
+    .claude/ 아래 하네스 변경은 도메인과 분리해 하네스 소제목에 적는다.
+    API 요청이나 응답 계약, Flyway 마이그레이션, application*.yaml 설정 변경이 있으면 마지막에 운영 영향 소제목으로 따로 적는다. 없으면 이 소제목을 쓰지 않는다.
+    새 기능, 버그 수정 같은 릴리스 노트 분류와 별도의 문단 요약은 쓰지 않는다.
   poem: false
   in_progress_fortune: false
+  # 라벨은 create-pr 스킬이 이슈 타입으로 하나만 붙이고, 리뷰어는 1인이라 제안이 필요 없다.
+  suggested_labels: false
+  suggested_reviewers: false
   auto_review:
     enabled: true
     drafts: false
@@ -42,7 +52,7 @@ reviews:
         성능 개선을 이유로 다른 도메인의 Repository, 엔티티, infrastructure를 직접 참조하거나 *Result에 엔티티를 담는 수정을 제안하지 않는다.
     - path: "src/main/resources/db/migration/**"
       instructions: |
-        Flyway 마이그레이션이다. 이미 머지된 버전 파일을 수정하는 변경이 있으면 지적한다.
+        Flyway 마이그레이션이다. 이미 머지된 버전 파일의 수정은 pre-merge 검사가 본다.
         데이터 손실, 긴 테이블 잠금, 기존 행과 맞지 않는 NOT NULL 또는 제약 추가 같은 운영 위험을 본다.
     - path: "src/main/resources/import/**"
       instructions: |
@@ -55,8 +65,55 @@ reviews:
     - path: ".github/workflows/**"
       instructions: |
         CI는 로컬 pre-push 게이트와 같은 check-all.sh를 실행해야 한다. 두 검증 기준을 갈라놓는 변경을 지적한다.
+  # CodeRabbit이 브랜치에 직접 커밋하면 커밋 메시지, 트레일러, 커밋 단위 훅을 거치지 않는다.
+  # 테스트는 testing 스킬 규칙을 아는 test-writer 에이전트가 작성한다.
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+    autofix:
+      enabled: false
+    resolve_merge_conflict:
+      enabled: false
+  # error 모드는 변경 요청 워크플로가 필요해 승인은 사람이 한다는 원칙과 맞지 않으므로 모두 warning으로 둔다.
+  pre_merge_checks:
+    # 저장소가 Javadoc을 쓰지 않아 커버리지 경고가 늘 실패로 나온다.
+    docstrings:
+      mode: "off"
+    title:
+      mode: warning
+      requirements: |
+        제목은 `[Type] 설명` 형식이다.
+        Type은 Feature, Bug, Refactor, Chore, Performance, Docs, Test 중 하나다.
+        제목에 `#123` 같은 이슈 번호를 넣지 않는다.
+    custom_checks:
+      - name: PR 템플릿
+        mode: warning
+        instructions: |
+          PR 본문에 `## ✅ PR 유형`, `## ✏️ 작업 내용`, `## 🔗 관련 이슈`, `## 💡 추가 사항` 제목이 이 순서로 모두 있으면 통과한다.
+          `## ✅ PR 유형` 아래 체크박스 중 하나 이상이 `- [x]`이어야 한다.
+          `## 🔗 관련 이슈` 아래에 `closes #숫자`가 하나 이상 있어야 한다.
+          하나라도 빠지면 실패한다.
+      - name: Flyway 불변성
+        mode: warning
+        instructions: |
+          이 PR이 base 브랜치에 이미 있는 `src/main/resources/db/migration/` 아래 파일을 수정, 이름 변경, 삭제하면 실패한다.
+          이 디렉터리에 새 파일을 추가하기만 하거나 이 디렉터리를 건드리지 않으면 통과한다.
+      - name: CodeRabbit 범위 동기화
+        mode: warning
+        instructions: |
+          이 PR이 `.coderabbit.yaml`의 `path: "**/*"` 지시문에서 CodeRabbit이 보는 범위나 지적하지 않는 범위를 바꾸면, 같은 PR에서 `.claude/skills/git-workflow/SKILL.md`의 CodeRabbit 리뷰 표도 바뀌어야 한다. 표가 바뀌지 않았으면 실패한다.
+          `.coderabbit.yaml`의 해당 지시문을 바꾸지 않았으면 통과한다.
+  tools:
+    # 스킬 문서가 차단 규칙을 설명하려고 적은 --force 같은 명령을 공격 패턴으로 오탐한다.
+    skillspector:
+      enabled: false
 
 knowledge_base:
+  # 답글로 남긴 반영 거절 이유가 learnings로 쌓인다. 이 저장소에만 적용한다.
+  learnings:
+    scope: local
   code_guidelines:
     enabled: true
     # CLAUDE.md는 기본 패턴에 포함된다. 가드레일의 근거가 되는 스킬만 추가로 읽는다.

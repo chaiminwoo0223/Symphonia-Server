@@ -62,6 +62,10 @@ PR 대상, 제목·본문 구성, 생성 절차는 `create-pr` 스킬 참고. PR
 - `main` Ruleset(PR 필수, 승인 1명, CI `check` 통과)은 코드 리뷰가 아니라 릴리스 승인과 CI 게이트 역할이다. 각각 통과한 `develop` PR들을 합친 결과를 CI가 한 번 더 검증하고, 승인자는 배포 시점을 확인한다.
 - CodeRabbit은 승인하거나 변경을 요청하지 않고 코멘트만 남긴다. 머지에 필요한 승인 1명은 여전히 사람이 한다.
 - Ruleset이 모든 리뷰 대화의 Resolve를 요구하므로 CodeRabbit 코멘트도 Resolve해야 머지할 수 있다. 반영하지 않는 코멘트는 이유를 답글로 남기고 Resolve한다.
+- 반영 거절 답글은 CodeRabbit learnings로 쌓여 이후 리뷰에 쓰인다. learnings는 `.coderabbit.yaml` 밖에 저장되는 상태라서 `scope: local`로 이 저장소에만 적용한다. 같은 이유의 답글이 두 번 이상 반복되면 그 내용을 `path_instructions`나 해당 스킬로 옮긴다(2026-10-30, 이슈 #148).
+- PR 본문은 짧게 쓰고 상세 설명은 CodeRabbit summary가 맡는다. summary는 도메인별로 묶고 API 계약, 마이그레이션, 설정 변경을 운영 영향으로 따로 적도록 `high_level_summary_instructions`에 정해 두었다.
+- pre-merge 검사로 PR 제목 형식, PR 템플릿과 `closes #N`, 머지된 Flyway 파일 수정, CodeRabbit 범위와 위 표의 동기화를 본다. `create-pr` 스킬의 규칙은 Claude 세션 안에서만 강제되므로 세션 밖에서 만든 PR의 안전망이다. 모두 `warning`으로 둔다. `error`가 머지를 막으려면 변경 요청 워크플로를 켜야 해서, 승인은 사람이 한다는 원칙과 맞지 않기 때문이다.
+- CodeRabbit이 브랜치에 직접 커밋하는 기능(docstring 생성, 단위 테스트 생성, 코멘트 자동 수정, 충돌 해결)은 끈다. 커밋 메시지, 트레일러, 커밋 단위 훅을 거치지 않기 때문이다. 테스트는 `test-writer` 에이전트가 쓴다.
 
 ## GitHub 이슈
 
