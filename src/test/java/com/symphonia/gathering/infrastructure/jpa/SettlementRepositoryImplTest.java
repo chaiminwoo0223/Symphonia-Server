@@ -1,5 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
+import static com.symphonia.gathering.helper.ConcurrencyHelper.await;
+import static com.symphonia.gathering.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -20,15 +22,9 @@ import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -201,12 +197,11 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
             @Test
             @DisplayName("한 요청만 저장되고 다른 요청은 SettlementConflictException이 발생한다")
-            void shouldSaveOnlyOne() throws Exception {
+            void shouldSaveOnlyOne() {
                 // given
                 Long settlementId =
                         transactionTemplate.execute(
-                                status ->
-                                        recordDinner(kimId, List.of(kimId, leeId, parkId)).getId());
+                                _ -> recordDinner(kimId, List.of(kimId, leeId, parkId)).getId());
                 CountDownLatch loaded = new CountDownLatch(2);
 
                 // when
@@ -237,7 +232,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             private void updateAfterBothLoaded(
                     Long settlementId, List<Long> participantIds, CountDownLatch loaded) {
                 transactionTemplate.executeWithoutResult(
-                        status -> {
+                        _ -> {
                             Settlement settlement =
                                     settlementRepository.findById(settlementId).orElseThrow();
                             settlement.update(
@@ -339,35 +334,6 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     private void clearPersistenceContext() {
         entityManager.flush();
         entityManager.clear();
-    }
-
-    // 두 작업을 서로 다른 스레드에서 동시에 실행하고, 실패한 작업의 예외만 모아 돌려준다.
-    private List<Throwable> runConcurrently(Runnable first, Runnable second) throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        try {
-            List<Future<?>> futures = List.of(executor.submit(first), executor.submit(second));
-            List<Throwable> failures = new ArrayList<>();
-            for (Future<?> future : futures) {
-                try {
-                    future.get(10, TimeUnit.SECONDS);
-                } catch (ExecutionException e) {
-                    failures.add(e.getCause());
-                }
-            }
-            return failures;
-        } finally {
-            executor.shutdownNow();
-        }
-    }
-
-    // 두 요청이 같은 시점에 저장해야 경합을 확인할 수 있으므로, 제때 모이지 않으면 테스트를 실패시킨다.
-    private void await(CountDownLatch latch) {
-        try {
-            assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(e);
-        }
     }
 
     // 테스트 트랜잭션 없이 커밋한 모임의 행을 외래 키 순서대로 지운다.
