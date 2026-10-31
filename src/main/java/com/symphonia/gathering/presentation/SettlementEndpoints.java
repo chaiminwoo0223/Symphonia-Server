@@ -12,4 +12,8 @@ public final class SettlementEndpoints {
 
     // 취소는 행을 지우지 않고 규칙이 있는 상태 전이라서 DELETE 대신 도메인 명령으로 드러낸다.
     public static final String CANCEL = UPDATE + "/cancel";
+
+    // 결제자가 정산 건의 분담 하나의 입금 상태를 정정한다. 확인 완료는 보냄 확인과 직접 받은 돈 처리를 함께 다룬다.
+    public static final String CONFIRM_SHARE = UPDATE + "/shares/{participantId}/confirm";
+    public static final String REVERT_SHARE = UPDATE + "/shares/{participantId}/unpaid";
 }

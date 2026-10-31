@@ -59,6 +59,14 @@ public class Gathering {
                 .orElseThrow();
     }
 
+    // 정산 건의 결제자처럼 이 모임에 속한 것이 확인된 참여자만 찾으므로, 찾지 못하면 서버 버그라서 500으로 둔다.
+    public Participant getParticipant(Long participantId) {
+        return participants.stream()
+                .filter(participant -> participant.getId().equals(participantId))
+                .findFirst()
+                .orElseThrow();
+    }
+
     public List<Participant> getParticipants() {
         return List.copyOf(participants);
     }

@@ -14,7 +14,7 @@ import com.symphonia.gathering.domain.entity.SettlementShare;
 import com.symphonia.gathering.domain.exception.SettlementConflictException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
-import com.symphonia.gathering.domain.vo.PaymentStatus;
+import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -117,10 +118,10 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 SettlementShare::getParticipantId,
                                 SettlementShare::getAmount,
                                 SettlementShare::isFixed,
-                                SettlementShare::getPaymentStatus)
+                                SettlementShare::getStatus)
                         .containsExactly(
-                                tuple(parkId, 3_333L, false, PaymentStatus.UNPAID),
-                                tuple(leeId, 3_333L, false, PaymentStatus.UNPAID));
+                                tuple(parkId, 3_333L, false, ShareStatus.UNPAID),
+                                tuple(leeId, 3_333L, false, ShareStatus.UNPAID));
             }
         }
 
@@ -159,6 +160,34 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
 
         @Nested
+        @DisplayName("이미 저장한 정산 건의 분담 상태만 바꾼 경우")
+        class WhenOnlyShareStatusChanged {
+
+            @Test
+            @DisplayName("정산 건 행이 그대로여도 버전을 올리고 바꾼 분담 상태를 저장한다")
+            void shouldIncrementVersion() {
+                // given
+                Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
+                clearPersistenceContext();
+                Settlement loaded = settlementRepository.findById(settlementId).orElseThrow();
+                loaded.markShareSent(leeId);
+
+                // when
+                Settlement saved = settlementRepository.save(loaded);
+
+                // then
+                clearPersistenceContext();
+                Settlement reloaded = settlementRepository.findById(settlementId).orElseThrow();
+                assertThat(saved.getVersion()).isEqualTo(loaded.getVersion() + 1);
+                assertThat(reloaded.getVersion()).isEqualTo(loaded.getVersion() + 1);
+                assertThat(reloaded.getShares())
+                        .extracting(SettlementShare::getParticipantId, SettlementShare::getStatus)
+                        .containsExactly(
+                                tuple(leeId, ShareStatus.SENT), tuple(parkId, ShareStatus.UNPAID));
+            }
+        }
+
+        @Nested
         @DisplayName("읽은 뒤 다른 요청이 먼저 바꾼 정산 건인 경우")
         class WhenVersionStale {
 
@@ -182,11 +211,29 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 assertThatThrownBy(() -> settlementRepository.save(stale))
                         .isInstanceOf(SettlementConflictException.class);
             }
+
+            @Test
+            @DisplayName("먼저 저장한 요청이 분담 상태만 바꿨어도 SettlementConflictException이 발생한다")
+            void shouldThrowSettlementConflictExceptionWhenOnlyShareStatusChangedFirst() {
+                // given: 두 요청이 같은 버전의 정산 건을 읽고 한 요청이 분담 상태만 바꿔 먼저 저장한 상태
+                Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
+                clearPersistenceContext();
+                Settlement first = settlementRepository.findById(settlementId).orElseThrow();
+                Settlement stale = settlementRepository.findById(settlementId).orElseThrow();
+                first.markShareSent(leeId);
+                settlementRepository.save(first);
+                clearPersistenceContext();
+                stale.cancel(LocalDateTime.now());
+
+                // when & then
+                assertThatThrownBy(() -> settlementRepository.save(stale))
+                        .isInstanceOf(SettlementConflictException.class);
+            }
         }
 
         // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
         @Nested
-        @DisplayName("두 요청이 같은 정산 건을 동시에 수정하는 경우")
+        @DisplayName("두 요청이 같은 정산 건을 동시에 바꿔 저장하는 경우")
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         class WhenUpdatedConcurrently {
 
@@ -208,12 +255,18 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 List<Throwable> failures =
                         runConcurrently(
                                 () ->
-                                        updateAfterBothLoaded(
-                                                settlementId, List.of(kimId, leeId), loaded),
-                                () ->
-                                        updateAfterBothLoaded(
+                                        saveAfterBothLoaded(
                                                 settlementId,
-                                                List.of(kimId, leeId, parkId),
+                                                settlement ->
+                                                        update(settlement, List.of(kimId, leeId)),
+                                                loaded),
+                                () ->
+                                        saveAfterBothLoaded(
+                                                settlementId,
+                                                settlement ->
+                                                        update(
+                                                                settlement,
+                                                                List.of(kimId, leeId, parkId)),
                                                 loaded));
 
                 // then
@@ -228,21 +281,58 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                         .hasSameSizeAs(reloaded.getShares());
             }
 
+            @Test
+            @DisplayName(
+                    "한 요청이 분담 상태만 바꾸고 다른 요청이 취소해도 한 요청만 저장되고 다른 요청은 SettlementConflictException이 발생한다")
+            void shouldSaveOnlyOneWhenShareStatusChangedAndCancelled() {
+                // given
+                Long settlementId =
+                        transactionTemplate.execute(
+                                _ -> recordDinner(kimId, List.of(kimId, leeId, parkId)).getId());
+                CountDownLatch loaded = new CountDownLatch(2);
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () ->
+                                        saveAfterBothLoaded(
+                                                settlementId,
+                                                settlement -> settlement.markShareSent(leeId),
+                                                loaded),
+                                () ->
+                                        saveAfterBothLoaded(
+                                                settlementId,
+                                                settlement ->
+                                                        settlement.cancel(LocalDateTime.now()),
+                                                loaded));
+
+                // then
+                assertThat(failures)
+                        .singleElement()
+                        .isInstanceOf(SettlementConflictException.class);
+                Settlement reloaded = settlementRepository.findById(settlementId).orElseThrow();
+                assertThat(reloaded.getVersion()).isEqualTo(1L);
+                assertThat(reloaded.isCancelled()).isNotEqualTo(reloaded.hasSentShares());
+            }
+
             // 두 요청이 모두 같은 버전을 읽은 뒤에 저장하도록 맞춘다.
-            private void updateAfterBothLoaded(
-                    Long settlementId, List<Long> participantIds, CountDownLatch loaded) {
+            private void saveAfterBothLoaded(
+                    Long settlementId, Consumer<Settlement> change, CountDownLatch loaded) {
                 transactionTemplate.executeWithoutResult(
                         _ -> {
                             Settlement settlement =
                                     settlementRepository.findById(settlementId).orElseThrow();
-                            settlement.update(
-                                    SettlementFixture.SECOND_ROUND.createSplitMethod(
-                                            kimId, participantIds),
-                                    LocalDateTime.now());
+                            change.accept(settlement);
                             loaded.countDown();
                             await(loaded);
                             settlementRepository.save(settlement);
                         });
+            }
+
+            private void update(Settlement settlement, List<Long> participantIds) {
+                settlement.update(
+                        SettlementFixture.SECOND_ROUND.createSplitMethod(kimId, participantIds),
+                        LocalDateTime.now());
             }
         }
     }
@@ -317,6 +407,151 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllByShareParticipantId 메서드는")
+    class FindAllByShareParticipantId {
+
+        @Test
+        @DisplayName("참여자의 분담이 있는 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담과 함께 반환한다")
+        void shouldReturnSettlementsWithSharesExcludingCancelled() {
+            // given
+            Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
+            Settlement second = recordDinner(parkId, List.of(parkId, leeId));
+            cancel(recordDinner(kimId, List.of(kimId, leeId)));
+            recordDinner(kimId, List.of(kimId, parkId));
+            recordDinner(leeId, List.of(leeId, kimId));
+            clearPersistenceContext();
+
+            // when
+            List<Settlement> result = settlementRepository.findAllByShareParticipantId(leeId);
+
+            // then
+            assertThat(result)
+                    .extracting(Settlement::getId)
+                    .containsExactly(first.getId(), second.getId());
+            assertThat(result.getFirst().getShares())
+                    .extracting(SettlementShare::getParticipantId)
+                    .containsExactly(leeId, parkId);
+            assertThat(result.getLast().getShares())
+                    .extracting(SettlementShare::getParticipantId)
+                    .containsExactly(leeId);
+        }
+
+        @Test
+        @DisplayName("참여자의 분담이 있는 정산 건이 없으면 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenSettlementsNotExist() {
+            // given
+            recordDinner(leeId, List.of(leeId, kimId));
+
+            // when
+            List<Settlement> result = settlementRepository.findAllByShareParticipantId(leeId);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllByShareParticipantIdAndPayerForUpdate 메서드는")
+    class FindAllByShareParticipantIdAndPayerForUpdate {
+
+        @Test
+        @DisplayName("그 결제자의 정산 건 중 참여자의 분담이 있고 취소하지 않은 것을 기록한 순서대로 분담과 함께 반환한다")
+        void shouldReturnSettlementsOfPayerWithSharesExcludingCancelled() {
+            // given
+            Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
+            recordDinner(parkId, List.of(parkId, leeId));
+            cancel(recordDinner(kimId, List.of(kimId, leeId)));
+            recordDinner(kimId, List.of(kimId, parkId));
+            Settlement second = recordDinner(kimId, List.of(kimId, leeId));
+            clearPersistenceContext();
+
+            // when
+            List<Settlement> result =
+                    settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(leeId, kimId);
+
+            // then
+            assertThat(result)
+                    .extracting(Settlement::getId)
+                    .containsExactly(first.getId(), second.getId());
+            assertThat(result.getFirst().getShares())
+                    .extracting(SettlementShare::getParticipantId)
+                    .containsExactly(leeId, parkId);
+            assertThat(result.getLast().getShares())
+                    .extracting(SettlementShare::getParticipantId)
+                    .containsExactly(leeId);
+        }
+
+        @Test
+        @DisplayName("그 결제자에게 낼 분담이 있는 정산 건이 없으면 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenSettlementsNotExist() {
+            // given
+            recordDinner(parkId, List.of(parkId, leeId));
+            recordDinner(kimId, List.of(kimId, parkId));
+
+            // when
+            List<Settlement> result =
+                    settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(leeId, kimId);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+
+        // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
+        @Nested
+        @DisplayName("두 참여자가 같은 정산 건에서 동시에 각자 분담을 보냄으로 바꾸는 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenSentConcurrently {
+
+            @AfterEach
+            void tearDown() {
+                deleteGatheringRows();
+            }
+
+            @Test
+            @DisplayName("늦은 요청이 잠금을 기다렸다가 최신 상태를 읽어 두 요청 모두 저장되고 두 분담 모두 보냄이 된다")
+            void shouldSaveBothSentShares() {
+                // given
+                Long settlementId =
+                        transactionTemplate.execute(
+                                _ -> recordDinner(kimId, List.of(kimId, leeId, parkId)).getId());
+                CountDownLatch ready = new CountDownLatch(2);
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () -> markSentAfterBothReady(leeId, ready),
+                                () -> markSentAfterBothReady(parkId, ready));
+
+                // then
+                assertThat(failures).isEmpty();
+                Settlement reloaded = settlementRepository.findById(settlementId).orElseThrow();
+                assertThat(reloaded.getVersion()).isEqualTo(2L);
+                assertThat(reloaded.getShares())
+                        .extracting(SettlementShare::getParticipantId, SettlementShare::getStatus)
+                        .containsExactly(
+                                tuple(leeId, ShareStatus.SENT), tuple(parkId, ShareStatus.SENT));
+            }
+
+            // 잠금 조회는 한 요청이 커밋할 때까지 다른 요청을 기다리게 하므로, 읽은 뒤가 아니라 트랜잭션 시작만 맞춘다.
+            private void markSentAfterBothReady(Long participantId, CountDownLatch ready) {
+                ready.countDown();
+                await(ready);
+                transactionTemplate.executeWithoutResult(
+                        _ ->
+                                settlementRepository
+                                        .findAllByShareParticipantIdAndPayerForUpdate(
+                                                participantId, kimId)
+                                        .forEach(
+                                                settlement -> {
+                                                    if (settlement.markShareSent(participantId)) {
+                                                        settlementRepository.save(settlement);
+                                                    }
+                                                }));
+            }
         }
     }
 

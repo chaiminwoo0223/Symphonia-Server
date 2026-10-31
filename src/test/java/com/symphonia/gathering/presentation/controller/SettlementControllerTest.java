@@ -36,6 +36,8 @@ import org.springframework.test.web.servlet.ResultActions;
 
 class SettlementControllerTest extends IntegrationTest {
 
+    private static final String MASKED_KIM_PHONE_NUMBER = "010-****-5678";
+
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
@@ -70,7 +72,7 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenLinkTokenValid {
 
             @Test
-            @DisplayName("인증 없이도 참여자, 인원 기본값, 결제자로 기록한 정산 건을 담아 200을 반환한다")
+            @DisplayName("인증 없이도 마스킹한 휴대폰을 담은 참여자, 인원 기본값, 결제자로 기록한 정산 건을 담아 200을 반환한다")
             void shouldReturnSettlementForm() throws Exception {
                 // given
                 settlementHelper.registerBankAccount(gathering, payer);
@@ -91,6 +93,9 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.participants[0].name")
                                         .value(ParticipantFixture.KIM.getName()))
+                        .andExpect(
+                                jsonPath("$.data.participants[0].maskedPhoneNumber")
+                                        .value(MASKED_KIM_PHONE_NUMBER))
                         .andExpect(jsonPath("$.data.participants[0].phoneNumber").doesNotExist())
                         .andExpect(
                                 jsonPath("$.data.defaultParticipantIds")
@@ -173,7 +178,7 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
                         .andExpect(jsonPath("$.data.shares[0].amount").value(1_050))
                         .andExpect(jsonPath("$.data.shares[0].fixed").value(true))
-                        .andExpect(jsonPath("$.data.shares[0].paymentStatus").value("UNPAID"))
+                        .andExpect(jsonPath("$.data.shares[0].status").value("UNPAID"))
                         .andExpect(jsonPath("$.data.shares[1].participantId").value(park.getId()))
                         .andExpect(jsonPath("$.data.shares[1].amount").value(4_475))
                         .andExpect(jsonPath("$.data.shares[1].fixed").value(false));
@@ -494,6 +499,180 @@ class SettlementControllerTest extends IntegrationTest {
                                                 GatheringErrorCode.SETTLEMENT_ALREADY_CANCELLED
                                                         .getCode()));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/settlements/{settlementId}/shares/{participantId}/confirm은")
+    class ConfirmShare {
+
+        @Nested
+        @DisplayName("결제자가 확인 완료로 바꿀 수 있는 분담인 경우")
+        class WhenConfirmable {
+
+            @Test
+            @DisplayName("분담을 확인 완료로 바꾸고 확인한 금액과 보냈다는 금액을 담아 200을 반환한다")
+            void shouldConfirmShare() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.markSent(
+                                settlementHelper.record(SettlementFixture.DINNER, gathering, payer),
+                                lee);
+
+                // when & then
+                performConfirm(settlement, park, payerLinkToken)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.id").value(settlement.getId()))
+                        .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
+                        .andExpect(jsonPath("$.data.shares[0].status").value("SENT"))
+                        .andExpect(jsonPath("$.data.shares[1].participantId").value(park.getId()))
+                        .andExpect(jsonPath("$.data.shares[1].status").value("CONFIRMED"))
+                        .andExpect(jsonPath("$.data.confirmedAmount").value(3_333))
+                        .andExpect(jsonPath("$.data.sentAmount").value(3_333));
+            }
+        }
+
+        @Nested
+        @DisplayName("결제자가 아닌 참여자의 요청인 경우")
+        class WhenParticipantIsNotPayer {
+
+            @Test
+            @DisplayName("NOT_SETTLEMENT_PAYER 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+                String leeLinkToken = gatheringHelper.issueLinkToken(lee);
+
+                // when & then
+                performConfirm(settlement, lee, leeLinkToken)
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_SETTLEMENT_PAYER.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 확인 완료인 분담인 경우")
+        class WhenShareConfirmed {
+
+            @Test
+            @DisplayName("INVALID_SHARE_STATUS_TRANSITION 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.confirm(
+                                settlementHelper.record(SettlementFixture.DINNER, gathering, payer),
+                                lee);
+
+                // when & then
+                performConfirm(settlement, lee, payerLinkToken)
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.INVALID_SHARE_STATUS_TRANSITION
+                                                        .getCode()));
+            }
+        }
+
+        private ResultActions performConfirm(
+                Settlement settlement, Participant participant, String linkToken) throws Exception {
+            return mockMvc.perform(
+                    post(
+                                    "/api/v1/settlements/{settlementId}/shares/{participantId}/confirm",
+                                    settlement.getId(),
+                                    participant.getId())
+                            .header("X-Link-Token", linkToken));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/settlements/{settlementId}/shares/{participantId}/unpaid는")
+    class RevertShare {
+
+        @Nested
+        @DisplayName("결제자가 미입금으로 되돌릴 수 있는 분담인 경우")
+        class WhenRevertible {
+
+            @Test
+            @DisplayName("분담을 미입금으로 되돌리고 확인한 금액과 보냈다는 금액을 담아 200을 반환한다")
+            void shouldRevertShare() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.confirm(
+                                settlementHelper.markSent(
+                                        settlementHelper.record(
+                                                SettlementFixture.DINNER, gathering, payer),
+                                        lee),
+                                park);
+
+                // when & then
+                performRevert(settlement, lee, payerLinkToken)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.id").value(settlement.getId()))
+                        .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
+                        .andExpect(jsonPath("$.data.shares[0].status").value("UNPAID"))
+                        .andExpect(jsonPath("$.data.shares[1].status").value("CONFIRMED"))
+                        .andExpect(jsonPath("$.data.confirmedAmount").value(3_333))
+                        .andExpect(jsonPath("$.data.sentAmount").value(0));
+            }
+        }
+
+        @Nested
+        @DisplayName("결제자가 아닌 참여자의 요청인 경우")
+        class WhenParticipantIsNotPayer {
+
+            @Test
+            @DisplayName("NOT_SETTLEMENT_PAYER 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.markSent(
+                                settlementHelper.record(SettlementFixture.DINNER, gathering, payer),
+                                lee);
+                String leeLinkToken = gatheringHelper.issueLinkToken(lee);
+
+                // when & then
+                performRevert(settlement, lee, leeLinkToken)
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_SETTLEMENT_PAYER.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 미입금인 분담인 경우")
+        class WhenShareUnpaid {
+
+            @Test
+            @DisplayName("INVALID_SHARE_STATUS_TRANSITION 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+
+                // when & then
+                performRevert(settlement, lee, payerLinkToken)
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.INVALID_SHARE_STATUS_TRANSITION
+                                                        .getCode()));
+            }
+        }
+
+        private ResultActions performRevert(
+                Settlement settlement, Participant participant, String linkToken) throws Exception {
+            return mockMvc.perform(
+                    post(
+                                    "/api/v1/settlements/{settlementId}/shares/{participantId}/unpaid",
+                                    settlement.getId(),
+                                    participant.getId())
+                            .header("X-Link-Token", linkToken));
         }
     }
 

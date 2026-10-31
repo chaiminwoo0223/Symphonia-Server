@@ -31,6 +31,7 @@ public enum GatheringErrorCode implements ErrorCode {
     GATHERING_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 모임을 찾을 수 없습니다."),
     PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 참여자를 찾을 수 없습니다."),
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정산 건을 찾을 수 없습니다."),
+    SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담을 찾을 수 없습니다."),
 
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
@@ -39,8 +40,10 @@ public enum GatheringErrorCode implements ErrorCode {
             HttpStatus.CONFLICT, "정산 메시지를 보낸 정산 건은 수정할 수 없습니다. 취소하고 다시 기록해 주세요."),
     SETTLEMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 취소한 정산 건입니다."),
     SETTLEMENT_CONFLICT(HttpStatus.CONFLICT, "다른 요청이 먼저 정산 건을 바꿨습니다. 다시 불러와 주세요."),
-    SETTLEMENT_PAYMENT_STARTED(
-            HttpStatus.CONFLICT, "입금한 참여자가 있는 정산 건은 취소할 수 없습니다. 입금 상태를 먼저 미입금으로 되돌려 주세요."),
+    SETTLEMENT_SHARES_SENT(
+            HttpStatus.CONFLICT, "돈을 보낸 참여자가 있는 정산 건은 수정하거나 취소할 수 없습니다. 입금 상태를 먼저 미입금으로 되돌려 주세요."),
+    INVALID_SHARE_STATUS_TRANSITION(
+            HttpStatus.CONFLICT, "지금 입금 상태에서는 요청한 상태로 바꿀 수 없습니다. 다시 불러와 주세요."),
 
     // 500
     INVALID_GATHERING_MASTER_KEY(
