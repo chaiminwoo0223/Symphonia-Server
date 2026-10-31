@@ -5,7 +5,7 @@ import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
-import com.symphonia.gathering.domain.exception.InvalidJoinTokenException;
+import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
@@ -23,7 +23,7 @@ public class GatheringQueryService implements GetGatheringUseCase {
         Long gatheringId =
                 gatheringJoinTokenRepository
                         .findGatheringIdByValue(joinToken)
-                        .orElseThrow(InvalidJoinTokenException::new);
+                        .orElseThrow(JoinTokenNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
                         .findById(gatheringId)

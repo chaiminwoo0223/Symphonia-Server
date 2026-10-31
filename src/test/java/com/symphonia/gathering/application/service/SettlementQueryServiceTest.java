@@ -16,7 +16,7 @@ import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Settlement;
-import com.symphonia.gathering.domain.exception.InvalidLinkTokenException;
+import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
@@ -69,14 +69,14 @@ class SettlementQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던진다")
-            void shouldThrowInvalidLinkTokenException() {
+            void shouldThrowLinkTokenNotFoundException() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.empty());
 
                 // when & then
                 assertThatThrownBy(() -> settlementQueryService.getForm(LINK_TOKEN))
-                        .isInstanceOf(InvalidLinkTokenException.class);
+                        .isInstanceOf(LinkTokenNotFoundException.class);
             }
         }
 
@@ -214,14 +214,14 @@ class SettlementQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던진다")
-            void shouldThrowInvalidLinkTokenException() {
+            void shouldThrowLinkTokenNotFoundException() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.empty());
 
                 // when & then
                 assertThatThrownBy(() -> settlementQueryService.getShares(LINK_TOKEN))
-                        .isInstanceOf(InvalidLinkTokenException.class);
+                        .isInstanceOf(LinkTokenNotFoundException.class);
             }
         }
 
