@@ -14,3 +14,12 @@ services:
     image: 'redis:8.8'
     ports:
       - '6379:6379'
+
+  rabbitmq:
+    image: 'rabbitmq:4.3-management'
+    environment:
+      - 'RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}'
+      - 'RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}'
+    ports:
+      - '5672:5672'
+      - '15672:15672'
