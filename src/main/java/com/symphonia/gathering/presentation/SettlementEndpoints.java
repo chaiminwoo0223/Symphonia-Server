@@ -1,9 +1,9 @@
 package com.symphonia.gathering.presentation;
 
 public final class SettlementEndpoints {
-    private SettlementEndpoints() {}
-
     private static final String BASE = "/api/v1/settlements";
+
+    private SettlementEndpoints() {}
 
     // 인증 없이 X-Link-Token 헤더의 개인 링크 토큰으로 요청한다. 정산 건을 기록한 참여자가 그 정산 건의 결제자다.
     public static final String FORM = BASE + "/form";

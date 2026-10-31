@@ -1357,6 +1357,26 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("확인 완료로 시작한 0원 분담인 경우")
+        class WhenShareAmountZero {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowInvalidShareStatusTransitionException() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(settlementWithZeroShare());
+                RevertShareCommand command =
+                        RevertShareCommand.of(LINK_TOKEN, SETTLEMENT_ID, PARK_ID);
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.revert(command))
+                        .isInstanceOf(InvalidShareStatusTransitionException.class);
+                thenSettlementNotSaved();
+            }
+        }
+
+        @Nested
         @DisplayName("미입금으로 되돌릴 수 있는 경우")
         class WhenRevertible {
 

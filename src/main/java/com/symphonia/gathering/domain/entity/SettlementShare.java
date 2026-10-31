@@ -33,7 +33,7 @@ public class SettlementShare {
     }
 
     // 참여자가 보냈다고 알렸거나 결제자가 받았다고 확인한 분담이다.
-    // 0원 분담은 상태와 관계없이 돈이 오가지 않으므로 보낸 분담으로 보지 않는다. 결제자가 되돌린 뒤 다시 보냄이 되어도 같다.
+    // 0원 분담은 확인 완료로 시작하고 되돌릴 수 없지만, 돈이 오가지 않으므로 상태와 관계없이 보낸 분담으로 보지 않는다.
     public boolean isSent() {
         return amount > 0 && !isUnpaid();
     }
@@ -60,8 +60,12 @@ public class SettlementShare {
 
     // 결제자가 "아직 안 들어왔어요"로 보냄을 되돌린다.
     // 받은 돈을 돌려주고 정산 건을 취소할 수 있도록 확인 완료도 미입금으로 되돌릴 수 있다.
+    // 0원 분담은 낼 돈이 없어 미입금이 될 이유가 없으므로 되돌리지 않는다.
     void revertToUnpaid() {
         validateStatusIsNot(ShareStatus.UNPAID);
+        if (amount == 0) {
+            throw new InvalidShareStatusTransitionException();
+        }
         status = ShareStatus.UNPAID;
     }
 
