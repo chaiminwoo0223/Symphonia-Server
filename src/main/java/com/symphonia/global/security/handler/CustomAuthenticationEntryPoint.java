@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
-    private static final String BEARER_CHALLENGE = "Bearer";
+    private static final String BEARER_CHALLENGE = "Bearer realm=\"symphonia\"";
 
     private final ErrorResponseWriter errorResponseWriter;
 
@@ -25,7 +25,8 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
             @NonNull HttpServletResponse response,
             @NonNull AuthenticationException authException)
             throws IOException {
-        // 401 응답은 클라이언트가 어떤 방식으로 인증해야 하는지 알려 줘야 한다(RFC 9110, RFC 6750).
+        // 401 응답은 클라이언트가 어떤 방식으로 인증해야 하는지 알려 줘야 한다(RFC 9110).
+        // RFC 6750은 Bearer 뒤에 인증 매개변수를 하나 이상 요구하므로 realm을 붙인다.
         response.setHeader(HttpHeaders.WWW_AUTHENTICATE, BEARER_CHALLENGE);
         errorResponseWriter.send(response, AuthErrorCode.UNAUTHENTICATED);
     }
