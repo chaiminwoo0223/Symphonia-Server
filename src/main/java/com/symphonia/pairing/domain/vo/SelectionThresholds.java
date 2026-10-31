@@ -1,6 +1,5 @@
 package com.symphonia.pairing.domain.vo;
 
-import com.symphonia.pairing.domain.exception.InvalidTopLimitException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -76,11 +75,9 @@ public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDr
     // 점수를 정렬하지 않고 상위 limit개만 내림차순으로 들고 있다가 limit번째 점수를 경계로 돌려준다.
     // 같은 점수도 하나씩 세므로 정렬 후 limit번째를 고를 때와 경계가 같다.
     // 빈 자리는 음의 무한대로 채워 두므로, 점수가 limit개 미만이면 경계는 음의 무한대가 되어 모두 남는다.
+    // limit은 Pairing의 추천 개수 상수라서 따로 검사하지 않는다.
     private record TopScores(double[] scores) {
         private static TopScores of(int limit) {
-            if (limit < 1) {
-                throw new InvalidTopLimitException();
-            }
             double[] scores = new double[limit];
             Arrays.fill(scores, Double.NEGATIVE_INFINITY);
 
