@@ -1,6 +1,6 @@
 package com.symphonia.gathering.infrastructure.crypto;
 
-import com.symphonia.gathering.domain.exception.InvalidGatheringMasterKeyException;
+import com.symphonia.gathering.domain.exception.GatheringMasterKeyLoadFailedException;
 import com.symphonia.gathering.infrastructure.crypto.config.properties.GatheringCryptoProperties;
 import java.util.Base64;
 import javax.crypto.SecretKey;
@@ -45,13 +45,13 @@ public class GatheringMasterKey {
         try {
             return Base64.getDecoder().decode(encodedMasterKey);
         } catch (IllegalArgumentException e) {
-            throw new InvalidGatheringMasterKeyException();
+            throw new GatheringMasterKeyLoadFailedException();
         }
     }
 
     private static void validateKeyLength(byte[] keyBytes) {
         if (keyBytes.length != KEY_LENGTH_BYTES) {
-            throw new InvalidGatheringMasterKeyException();
+            throw new GatheringMasterKeyLoadFailedException();
         }
     }
 }

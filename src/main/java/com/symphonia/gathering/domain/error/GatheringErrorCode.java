@@ -48,7 +48,7 @@ public enum GatheringErrorCode implements ErrorCode {
             HttpStatus.CONFLICT, "0원 분담금은 상태를 바꿀 수 없습니다. 금액이 잘못됐으면 정산 건을 수정해 주세요."),
 
     // 500
-    INVALID_GATHERING_MASTER_KEY(
+    GATHERING_MASTER_KEY_LOAD_FAILED(
             HttpStatus.INTERNAL_SERVER_ERROR, "모임 마스터 키는 base64로 인코딩한 256비트 값이어야 합니다."),
     GATHERING_DATA_KEY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "모임의 데이터 키를 찾을 수 없습니다."),
     GATHERING_ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "모임 개인정보의 암호화 처리에 실패했습니다."),
