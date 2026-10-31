@@ -40,7 +40,7 @@ public interface AuthApi {
     @Operation(
             summary = "로그아웃",
             description =
-                    "리프레시 토큰 쿠키로 이 기기의 세션을 끊고, 유효한 엑세스 토큰이 있으면 함께 무효화합니다."
+                    "리프레시 토큰 쿠키로 이 기기의 세션을 끊고, 유효한 액세스 토큰이 있으면 함께 무효화합니다."
                             + " 토큰이 없거나 만료돼도 204를 반환합니다.")
     ResponseEntity<StandardResponse<Void>> logout(
             @CookieValue(name = RefreshTokenCookieFactory.COOKIE_NAME, required = false)

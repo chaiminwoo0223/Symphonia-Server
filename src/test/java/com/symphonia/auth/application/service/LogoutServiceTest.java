@@ -42,11 +42,11 @@ class LogoutServiceTest extends UnitTest {
     class Logout {
 
         @Nested
-        @DisplayName("리프레시 토큰과 유효한 엑세스 토큰이 있는 경우")
+        @DisplayName("리프레시 토큰과 유효한 액세스 토큰이 있는 경우")
         class WhenTokensAreValid {
 
             @Test
-            @DisplayName("이 기기의 리프레시 토큰만 지우고 엑세스 토큰을 블랙리스트에 등록한다.")
+            @DisplayName("이 기기의 리프레시 토큰만 지우고 액세스 토큰을 블랙리스트에 등록한다.")
             void shouldConsumeRefreshTokenAndBlacklistAccessToken() {
                 // given
                 given(refreshTokenRepository.consume(REFRESH_TOKEN))
@@ -69,11 +69,11 @@ class LogoutServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("엑세스 토큰이 만료된 경우")
+        @DisplayName("액세스 토큰이 만료된 경우")
         class WhenAccessTokenExpired {
 
             @Test
-            @DisplayName("리프레시 토큰만 지우고 엑세스 토큰은 블랙리스트에 등록하지 않는다.")
+            @DisplayName("리프레시 토큰만 지우고 액세스 토큰은 블랙리스트에 등록하지 않는다.")
             void shouldConsumeRefreshTokenWithoutBlacklisting() {
                 // given
                 given(refreshTokenRepository.consume(REFRESH_TOKEN))

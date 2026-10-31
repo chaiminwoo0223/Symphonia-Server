@@ -31,8 +31,8 @@ class MemberDeletedEventListenerTest extends UnitTest {
     class Handle {
 
         @Test
-        @DisplayName("멤버 삭제 이벤트를 받으면 모든 기기의 리프레시 토큰을 지우고 요청한 엑세스 토큰을 로그아웃 처리한다.")
-        void shouldRevokeAllRefreshTokensAndLogoutWhenMemberDeletedEventReceived() {
+        @DisplayName("멤버 삭제 이벤트를 받으면 모든 기기의 리프레시 토큰을 지우고 요청한 액세스 토큰을 로그아웃 처리한다.")
+        void shouldForceRevokeAndLogoutWhenMemberDeletedEventReceived() {
             // given
             MemberDeletedEvent event = MemberDeletedEvent.of(MEMBER_ID, ACCESS_TOKEN, IP);
 

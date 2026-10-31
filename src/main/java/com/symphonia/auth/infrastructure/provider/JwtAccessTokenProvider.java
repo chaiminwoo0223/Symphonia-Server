@@ -18,6 +18,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class JwtAccessTokenProvider implements AccessTokenProvider {
+    private static final String ROLE_CLAIM = "role";
+
     private final AccessTokenProperties accessTokenProperties;
     private final SecretKey secretKey;
 
@@ -25,8 +27,6 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
         this.accessTokenProperties = accessTokenProperties;
         this.secretKey = Keys.hmacShaKeyFor(accessTokenProperties.secret().getBytes());
     }
-
-    private static final String ROLE_CLAIM = "role";
 
     @Override
     public String generate(String memberId, String role) {
