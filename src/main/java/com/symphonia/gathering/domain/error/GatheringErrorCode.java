@@ -19,7 +19,6 @@ public enum GatheringErrorCode implements ErrorCode {
     SETTLEMENT_RECORDING_CLOSED(HttpStatus.BAD_REQUEST, "정산 건을 기록할 수 있는 기간이 끝난 모임입니다."),
     INVALID_SETTLEMENT_AMOUNT(HttpStatus.BAD_REQUEST, "총액은 0보다 크고, 지정 금액은 0 이상이어야 합니다."),
     FIXED_AMOUNT_EXCEEDS_TOTAL(HttpStatus.BAD_REQUEST, "지정 금액의 합이 총액보다 클 수 없습니다."),
-    NOT_ENOUGH_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "결제자 말고 한 명 이상을 골라 주세요."),
     INVALID_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "정산 건 인원이나 지정 금액의 대상이 올바르지 않습니다."),
 
     // 403
