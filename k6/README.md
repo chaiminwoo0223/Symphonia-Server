@@ -52,3 +52,24 @@ k6 run --summary-export=k6/results/recommend-baseline.json k6/recommend.js
 | `http_req_failed` | `rate < 1%` | |
 | `http_req_duration` | `p(95) < 300ms`, `p(99) < 800ms` | 첫 로컬 실행 결과를 보고 재조정한다 |
 | `empty_recommendation_rate` | `rate < 5%` | 200 응답이면서 추천 결과가 비어 있는 비율(커스텀 지표) |
+
+## 모임 참여와 분담 조회 (`gathering.js`)
+
+`POST /api/v1/participants`와 `GET /api/v1/shares`를 같은 모임에 동시에 요청한다(이슈 #125). 두 API는 모임을 읽을 때 참여자 전원의 이름과 휴대폰을 복호화한다. 참여자가 늘어나는 동안 응답 시간이 기준을 넘으면 `architecture` 스킬 `gathering.md`의 참여자 전체 복호화 결정을 재검토한다.
+
+모임 열기에는 회원 JWT가 필요하다. 로그인은 소셜 인가 코드가 있어야 해서, setup에서 서버와 같은 `JWT_SECRET`으로 액세스 토큰을 직접 서명한다. 서버를 띄운 셸에서 `.env`를 불러왔다면 같은 셸에서 실행한다.
+
+```bash
+k6 run -e JWT_SECRET="$JWT_SECRET" k6/gathering.js
+```
+
+- setup은 모임을 열고 30명을 참여시킨다. 첫 참여자가 계좌를 등록하고 30명 전원의 정산 건을 기록한다.
+- `join` 시나리오는 VU 5개로 같은 모임에 50명을 더 참여시킨다. 끝나면 참여자는 80명이다.
+- `shares` 시나리오는 VU 20개로 1분 동안 결제자를 뺀 참여자의 링크 토큰으로 분담을 조회한다.
+- 실행할 때마다 새 모임을 연다. 모임은 생성 29일 뒤 파기 대상이 되므로(#128) 측정 데이터를 따로 지우지 않는다.
+
+| 지표 | 기준 | 비고 |
+|---|---|---|
+| `http_req_failed` | 시나리오별 `rate < 1%` | |
+| `http_req_duration{scenario:join}` | `p(95) < 500ms` | 참여는 암호화와 HMAC 계산이 더해진다 |
+| `http_req_duration{scenario:shares}` | `p(95) < 300ms`, `p(99) < 800ms` | `recommend.js`와 같은 기준이다 |
