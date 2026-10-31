@@ -126,7 +126,7 @@ DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설�
 
 ## gathering 정산 규칙
 
-`gathering` 도메인의 애그리거트 경계(`Gathering`, `Settlement`), 분담 방식, 입금 상태 전이, 발송 시각과 리마인드, 개인정보 암호화와 단계적 파기, 익명 페어링 피드백에 관한 결정은 [`gathering.md`](gathering.md)에 있다. `gathering` 도메인의 모델, 정산 흐름, 개인정보 처리를 바꿀 때 읽는다. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 쪽 규칙을 다룰 때도 읽는다. 큐를 쓰는 범위는 메시지 큐 절에 있다.
+`gathering` 도메인의 애그리거트 경계(`Gathering`, `Settlement`), 분담 방식, 분담금 상태 변경, 발송 시각과 리마인드, 개인정보 암호화와 단계적 파기, 익명 페어링 피드백에 관한 결정은 [`gathering.md`](gathering.md)에 있다. `gathering` 도메인의 모델, 정산 흐름, 개인정보 처리를 바꿀 때 읽는다. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 쪽 규칙을 다룰 때도 읽는다. 큐를 쓰는 범위는 메시지 큐 절에 있다.
 
 ## 메시지 큐 (RabbitMQ)
 
