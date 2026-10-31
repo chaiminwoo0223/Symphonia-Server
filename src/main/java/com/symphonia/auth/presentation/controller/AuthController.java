@@ -70,9 +70,12 @@ public class AuthController implements AuthApi {
 
     @Override
     public ResponseEntity<StandardResponse<Void>> logout(
-            Authentication authentication, HttpServletRequest httpRequest) {
-        String accessToken = (String) authentication.getCredentials();
-        LogoutCommand command = LogoutCommand.of(accessToken, httpRequest.getRemoteAddr());
+            String refreshToken, Authentication authentication, HttpServletRequest httpRequest) {
+        // 필터는 유효하고 블랙리스트에 없는 엑세스 토큰만 인증하므로, 만료된 토큰이면 authentication은 null이다.
+        String accessToken =
+                authentication == null ? null : (String) authentication.getCredentials();
+        LogoutCommand command =
+                LogoutCommand.of(refreshToken, accessToken, httpRequest.getRemoteAddr());
         logoutUseCase.logout(command);
         ResponseCookie cookie = refreshTokenCookieFactory.expire();
 

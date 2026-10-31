@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -36,7 +37,14 @@ public interface AuthApi {
             HttpServletRequest httpRequest);
 
     @PostMapping(AuthEndpoints.LOGOUT)
-    @Operation(summary = "로그아웃", description = "인증된 멤버를 로그아웃 처리합니다.")
+    @Operation(
+            summary = "로그아웃",
+            description =
+                    "리프레시 토큰 쿠키로 이 기기의 세션을 끊고, 유효한 엑세스 토큰이 있으면 함께 무효화합니다."
+                            + " 토큰이 없거나 만료돼도 204를 반환합니다.")
     ResponseEntity<StandardResponse<Void>> logout(
-            Authentication authentication, HttpServletRequest httpRequest);
+            @CookieValue(name = RefreshTokenCookieFactory.COOKIE_NAME, required = false)
+                    String refreshToken,
+            @Nullable Authentication authentication,
+            HttpServletRequest httpRequest);
 }

@@ -1,7 +1,8 @@
 package com.symphonia.auth.application.usecase;
 
 import com.symphonia.auth.application.dto.command.LogoutCommand;
+import com.symphonia.auth.application.dto.result.LogoutResult;
 
 public interface LogoutUseCase {
-    void logout(LogoutCommand command);
+    LogoutResult logout(LogoutCommand command);
 }

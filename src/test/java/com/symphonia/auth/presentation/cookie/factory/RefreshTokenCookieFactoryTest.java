@@ -39,7 +39,7 @@ class RefreshTokenCookieFactoryTest extends UnitTest {
             assertThat(cookie.isHttpOnly()).isTrue();
             assertThat(cookie.isSecure()).isTrue();
             assertThat(cookie.getSameSite()).isEqualTo("Strict");
-            assertThat(cookie.getPath()).isEqualTo("/api/v1/auth/refresh");
+            assertThat(cookie.getPath()).isEqualTo("/api/v1/auth");
             assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(EXPIRATION_TIME);
         }
     }

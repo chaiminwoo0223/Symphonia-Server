@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RefreshTokenCookieFactory {
     public static final String COOKIE_NAME = "refresh_token";
-    private static final String COOKIE_PATH = AuthEndpoints.REFRESH;
+    private static final String COOKIE_PATH = AuthEndpoints.BASE;
 
     private final RefreshTokenProperties refreshTokenProperties;
 

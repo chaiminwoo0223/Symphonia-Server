@@ -3,7 +3,7 @@ package com.symphonia.auth.presentation;
 public final class AuthEndpoints {
     private AuthEndpoints() {}
 
-    private static final String BASE = "/api/v1/auth";
+    public static final String BASE = "/api/v1/auth";
 
     public static final String SIGNUP = BASE + "/signup";
     public static final String LOGIN = BASE + "/login";

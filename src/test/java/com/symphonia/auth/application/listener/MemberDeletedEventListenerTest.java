@@ -4,6 +4,7 @@ import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.command.LogoutCommand;
+import com.symphonia.auth.application.usecase.ForceRevokeUseCase;
 import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.member.application.event.MemberDeletedEvent;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +22,8 @@ class MemberDeletedEventListenerTest extends UnitTest {
 
     @InjectMocks private MemberDeletedEventListener memberDeletedEventListener;
 
+    @Mock private ForceRevokeUseCase forceRevokeUseCase;
+
     @Mock private LogoutUseCase logoutUseCase;
 
     @Nested
@@ -28,8 +31,8 @@ class MemberDeletedEventListenerTest extends UnitTest {
     class Handle {
 
         @Test
-        @DisplayName("멤버 삭제 이벤트를 받으면 로그아웃 처리한다.")
-        void shouldLogoutWhenMemberDeletedEventReceived() {
+        @DisplayName("멤버 삭제 이벤트를 받으면 모든 기기의 리프레시 토큰을 지우고 요청한 엑세스 토큰을 로그아웃 처리한다.")
+        void shouldRevokeAllRefreshTokensAndLogoutWhenMemberDeletedEventReceived() {
             // given
             MemberDeletedEvent event = MemberDeletedEvent.of(MEMBER_ID, ACCESS_TOKEN, IP);
 
@@ -37,7 +40,8 @@ class MemberDeletedEventListenerTest extends UnitTest {
             memberDeletedEventListener.handle(event);
 
             // then
-            then(logoutUseCase).should().logout(LogoutCommand.of(ACCESS_TOKEN, IP));
+            then(forceRevokeUseCase).should().forceRevoke(String.valueOf(MEMBER_ID));
+            then(logoutUseCase).should().logout(LogoutCommand.of(null, ACCESS_TOKEN, IP));
         }
     }
 }
