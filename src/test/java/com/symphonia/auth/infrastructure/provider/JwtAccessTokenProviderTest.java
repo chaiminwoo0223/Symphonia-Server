@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
-import com.symphonia.auth.domain.exception.InvalidJwtTokenException;
+import com.symphonia.auth.domain.exception.UnauthenticatedException;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,12 +51,12 @@ class JwtAccessTokenProviderTest extends UnitTest {
     class GetMemberId {
 
         @Test
-        @DisplayName("파싱할 수 없는 토큰이면 InvalidJwtTokenException을 던진다.")
-        void shouldThrowInvalidJwtTokenExceptionWhenTokenIsMalformed() {
+        @DisplayName("파싱할 수 없는 토큰이면 UnauthenticatedException을 던진다.")
+        void shouldThrowUnauthenticatedExceptionWhenTokenIsMalformed() {
             // when & then
             assertThatThrownBy(() -> accessTokenProvider.getMemberId(MALFORMED_TOKEN))
-                    .isInstanceOf(InvalidJwtTokenException.class)
-                    .hasMessage(AuthErrorCode.INVALID_JWT_TOKEN.getMessage());
+                    .isInstanceOf(UnauthenticatedException.class)
+                    .hasMessage(AuthErrorCode.UNAUTHENTICATED.getMessage());
         }
     }
 

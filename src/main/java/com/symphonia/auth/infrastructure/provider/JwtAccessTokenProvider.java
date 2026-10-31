@@ -1,6 +1,6 @@
 package com.symphonia.auth.infrastructure.provider;
 
-import com.symphonia.auth.domain.exception.InvalidJwtTokenException;
+import com.symphonia.auth.domain.exception.UnauthenticatedException;
 import com.symphonia.auth.domain.provider.AccessTokenProvider;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import io.jsonwebtoken.Claims;
@@ -72,7 +72,7 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
         try {
             return decode(accessToken).getPayload();
         } catch (Exception e) {
-            throw new InvalidJwtTokenException();
+            throw new UnauthenticatedException();
         }
     }
 
