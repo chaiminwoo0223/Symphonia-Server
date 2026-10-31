@@ -71,7 +71,7 @@ public class AuthController implements AuthApi {
     @Override
     public ResponseEntity<StandardResponse<Void>> logout(
             String refreshToken, Authentication authentication, HttpServletRequest httpRequest) {
-        // 필터는 유효하고 블랙리스트에 없는 엑세스 토큰만 인증하므로, 만료된 토큰이면 authentication은 null이다.
+        // 필터는 유효하고 블랙리스트에 없는 액세스 토큰만 인증하므로, 만료된 토큰이면 authentication은 null이다.
         String accessToken =
                 authentication == null ? null : (String) authentication.getCredentials();
         LogoutCommand command =
