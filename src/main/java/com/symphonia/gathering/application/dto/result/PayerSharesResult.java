@@ -15,17 +15,17 @@ public record PayerSharesResult(
         String accountNumber,
         long unpaidAmount,
         boolean hasUnpaidShares,
-        List<ShareBasisResult> shares) {
+        List<ShareBreakdownResult> shares) {
     public static PayerSharesResult of(
             Participant payer,
             BankAccount bankAccount,
             List<Settlement> settlements,
             Long participantId) {
-        List<ShareBasisResult> shares =
+        List<ShareBreakdownResult> shares =
                 settlements.stream()
-                        .map(settlement -> ShareBasisResult.of(settlement, participantId))
+                        .map(settlement -> ShareBreakdownResult.of(settlement, participantId))
                         .toList();
-        List<ShareBasisResult> unpaidShares =
+        List<ShareBreakdownResult> unpaidShares =
                 shares.stream().filter(share -> share.status() == ShareStatus.UNPAID).toList();
 
         return new PayerSharesResult(
@@ -33,7 +33,7 @@ public record PayerSharesResult(
                 payer.getName(),
                 bankAccount.bankName(),
                 bankAccount.accountNumber(),
-                unpaidShares.stream().mapToLong(ShareBasisResult::amount).sum(),
+                unpaidShares.stream().mapToLong(ShareBreakdownResult::amount).sum(),
                 !unpaidShares.isEmpty(),
                 shares);
     }
