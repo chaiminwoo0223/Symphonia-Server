@@ -54,6 +54,7 @@ public class SettlementShare {
     public SettlementShare sent() {
         validateNotSent();
         validateNotConfirmed();
+
         return withStatus(ShareStatus.SENT);
     }
 
@@ -61,6 +62,7 @@ public class SettlementShare {
     public SettlementShare confirmed() {
         validateAmountNotZero();
         validateNotConfirmed();
+
         return withStatus(ShareStatus.CONFIRMED);
     }
 
@@ -69,6 +71,7 @@ public class SettlementShare {
     public SettlementShare unpaid() {
         validateAmountNotZero();
         validateNotUnpaid();
+
         return withStatus(ShareStatus.UNPAID);
     }
 
@@ -82,6 +85,15 @@ public class SettlementShare {
                 .build();
     }
 
+    private SettlementShare withStatus(ShareStatus status) {
+        return SettlementShare.builder()
+                .participantId(participantId)
+                .amount(amount)
+                .fixed(fixed)
+                .status(status)
+                .build();
+    }
+
     private void validateNotSent() {
         if (status == ShareStatus.SENT) {
             throw new ShareAlreadySentException();
@@ -92,15 +104,6 @@ public class SettlementShare {
         if (status == ShareStatus.CONFIRMED) {
             throw new ShareAlreadyConfirmedException();
         }
-    }
-
-    private SettlementShare withStatus(ShareStatus status) {
-        return SettlementShare.builder()
-                .participantId(participantId)
-                .amount(amount)
-                .fixed(fixed)
-                .status(status)
-                .build();
     }
 
     // 0원 분담은 확인 완료로 시작하고 낼 돈이 없으므로 결제자가 상태를 바꿀 수 없다.

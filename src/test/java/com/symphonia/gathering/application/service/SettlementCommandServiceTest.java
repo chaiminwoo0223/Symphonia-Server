@@ -22,7 +22,7 @@ import com.symphonia.gathering.application.dto.command.UpdateSettlementCommand;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
-import com.symphonia.gathering.application.dto.result.ShareBasisResult;
+import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -1045,9 +1045,9 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(result.hasUnpaidShares()).isFalse();
                 assertThat(result.shares())
                         .extracting(
-                                ShareBasisResult::settlementId,
-                                ShareBasisResult::amount,
-                                ShareBasisResult::status)
+                                ShareBreakdownResult::settlementId,
+                                ShareBreakdownResult::amount,
+                                ShareBreakdownResult::status)
                         .containsExactly(
                                 tuple(SETTLEMENT_ID, 3_333L, ShareStatus.SENT),
                                 tuple(THIRD_SETTLEMENT_ID, 10_000L, ShareStatus.SENT));
@@ -1089,7 +1089,8 @@ class SettlementCommandServiceTest extends UnitTest {
                 then(settlementRepository).should().save(captor.capture());
                 assertThat(captor.getValue().getId()).isEqualTo(THIRD_SETTLEMENT_ID);
                 assertThat(result.shares())
-                        .extracting(ShareBasisResult::settlementId, ShareBasisResult::status)
+                        .extracting(
+                                ShareBreakdownResult::settlementId, ShareBreakdownResult::status)
                         .containsExactly(
                                 tuple(SETTLEMENT_ID, ShareStatus.SENT),
                                 tuple(SECOND_SETTLEMENT_ID, ShareStatus.CONFIRMED),
@@ -1124,7 +1125,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(result.hasUnpaidShares()).isFalse();
                 assertThat(result.unpaidAmount()).isZero();
                 assertThat(result.shares())
-                        .extracting(ShareBasisResult::status)
+                        .extracting(ShareBreakdownResult::status)
                         .containsExactly(ShareStatus.SENT, ShareStatus.CONFIRMED);
             }
         }

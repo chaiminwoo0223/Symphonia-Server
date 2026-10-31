@@ -13,7 +13,7 @@ import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
 import com.symphonia.gathering.application.dto.result.SettlementParticipantResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
-import com.symphonia.gathering.application.dto.result.ShareBasisResult;
+import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.InvalidLinkTokenException;
@@ -291,10 +291,10 @@ class SettlementQueryServiceTest extends UnitTest {
                                         ParticipantBankAccountFixture.KOOKMIN.getBankName(),
                                         ParticipantBankAccountFixture.KOOKMIN.getAccountNumber()));
                 assertThat(result.getFirst().shares())
-                        .extracting(ShareBasisResult::settlementId)
+                        .extracting(ShareBreakdownResult::settlementId)
                         .containsExactly(SETTLEMENT_ID, THIRD_SETTLEMENT_ID);
                 assertThat(result.getLast().shares())
-                        .extracting(ShareBasisResult::settlementId)
+                        .extracting(ShareBreakdownResult::settlementId)
                         .containsExactly(SECOND_SETTLEMENT_ID);
             }
 
@@ -348,7 +348,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 PayerSharesResult::hasUnpaidShares)
                         .containsExactly(tuple(PARK_ID, 6_666L, true), tuple(PAYER_ID, 0L, false));
                 assertThat(result.getLast().shares())
-                        .extracting(ShareBasisResult::amount, ShareBasisResult::status)
+                        .extracting(ShareBreakdownResult::amount, ShareBreakdownResult::status)
                         .containsExactly(tuple(0L, ShareStatus.CONFIRMED));
             }
 
@@ -406,7 +406,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 assertThat(payerShares.unpaidAmount()).isEqualTo(3_333L);
                 assertThat(payerShares.hasUnpaidShares()).isTrue();
                 assertThat(payerShares.shares())
-                        .extracting(ShareBasisResult::amount, ShareBasisResult::status)
+                        .extracting(ShareBreakdownResult::amount, ShareBreakdownResult::status)
                         .containsExactly(
                                 tuple(3_333L, ShareStatus.UNPAID),
                                 tuple(5_000L, ShareStatus.SENT),
@@ -420,7 +420,7 @@ class SettlementQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("다른 참여자의 금액 없이 본인 분담과 총액, 인원, 지정 여부, 입금 상태를 계산 근거로 반환한다")
-            void shouldReturnOwnShareBasis() {
+            void shouldReturnOwnShareBreakdown() {
                 // given
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithFixedAmounts(
@@ -438,7 +438,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 assertThat(result.getFirst().shares())
                         .singleElement()
                         .isEqualTo(
-                                new ShareBasisResult(
+                                new ShareBreakdownResult(
                                         SETTLEMENT_ID,
                                         SettlementFixture.DINNER.getTotalAmount(),
                                         3,
