@@ -130,7 +130,7 @@ public class SettlementCommandService
     }
 
     // 그 결제자에게 낼 미입금 분담을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
-    // 취소나 수정과 겹치면 버전 충돌이 나고, 하나라도 충돌하면 모두 되돌린다.
+    // 취소나 수정과 겹치면 잠금 없이 읽은 늦은 쪽이 버전 충돌로 실패하고, 먼저 취소된 정산 건은 잠금 조회에서 빠진다.
     // 이미 모두 보냈으면 바꿀 분담이 없어 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
     @Override
     public PayerSharesResult markSent(MarkSharesSentCommand command) {
