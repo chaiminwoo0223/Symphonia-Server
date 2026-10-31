@@ -58,7 +58,7 @@ public class SettlementJpaEntity extends BaseTimeEntity {
                 .build();
     }
 
-    // 분담은 별도 테이블에서 읽어 받는다.
+    // 분담금은 별도 테이블에서 읽어 받는다.
     public Settlement toDomain(List<SettlementShare> shares) {
         return Settlement.builder()
                 .id(id)

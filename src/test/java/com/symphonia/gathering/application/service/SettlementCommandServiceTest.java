@@ -472,7 +472,7 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenRecordable {
 
             @Test
-            @DisplayName("결제자를 뺀 참여자의 분담을 미입금으로 계산해 저장하고 반환한다")
+            @DisplayName("결제자를 뺀 참여자의 분담금을 미입금으로 계산해 저장하고 반환한다")
             void shouldSaveSettlementWithCalculatedShares() {
                 // given
                 givenRecordableGathering();
@@ -502,7 +502,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("0원으로 지정한 분담은 받을 돈이 없어 확인 완료로 저장한다")
+            @DisplayName("0원으로 지정한 분담금은 받을 돈이 없어 확인 완료로 저장한다")
             void shouldSaveZeroFixedShareAsConfirmed() {
                 // given
                 givenRecordableGathering();
@@ -734,7 +734,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("보냄이거나 0원보다 큰 확인 완료인 분담이 있는 경우")
+        @DisplayName("보냄이거나 0원보다 큰 확인 완료인 분담금이 있는 경우")
         class WhenSharesSent {
 
             @Test
@@ -764,7 +764,7 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenUpdatable {
 
             @Test
-            @DisplayName("분담을 다시 계산하고 기록 시각을 바꿔 저장한다")
+            @DisplayName("분담금을 다시 계산하고 기록 시각을 바꿔 저장한다")
             void shouldSaveRecalculatedSharesWithNewRecordedAt() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -791,7 +791,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("확인 완료 분담이 0원뿐이면 돈이 오가지 않았으므로 분담을 다시 계산해 저장한다")
+            @DisplayName("확인 완료 분담금이 0원뿐이면 돈이 오가지 않았으므로 분담금을 다시 계산해 저장한다")
             void shouldSaveRecalculatedSharesWhenOnlyZeroShareConfirmed() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -871,7 +871,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("보냄이거나 0원보다 큰 확인 완료인 분담이 있는 경우")
+        @DisplayName("보냄이거나 0원보다 큰 확인 완료인 분담금이 있는 경우")
         class WhenSharesSent {
 
             @Test
@@ -894,7 +894,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("0원보다 큰 확인 완료 분담이 있으면 예외를 던지고 정산 건을 저장하지 않는다")
+            @DisplayName("0원보다 큰 확인 완료 분담금이 있으면 예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementSharesSentExceptionWhenPositiveShareConfirmed() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -937,7 +937,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("확인 완료 분담이 0원뿐이면 돈이 오가지 않았으므로 취소해 저장한다")
+            @DisplayName("확인 완료 분담금이 0원뿐이면 돈이 오가지 않았으므로 취소해 저장한다")
             void shouldSaveCancelledSettlementWhenOnlyZeroShareConfirmed() {
                 // given
                 Settlement settlement = settlementWithZeroShare();
@@ -982,7 +982,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("그 결제자에게 낼 분담이 없는 경우")
+        @DisplayName("그 결제자에게 낼 분담금이 없는 경우")
         class WhenSharesNotFound {
 
             @Test
@@ -1003,11 +1003,11 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("그 결제자에게 낼 분담이 모두 미입금인 경우")
+        @DisplayName("그 결제자에게 낼 분담금이 모두 미입금인 경우")
         class WhenSharesUnpaid {
 
             @Test
-            @DisplayName("요청한 참여자와 결제자로 정산 건을 잠가 읽고, 정산 건마다 분담을 보냄으로 바꿔 저장해 결제자 계좌와 함께 반환한다")
+            @DisplayName("요청한 참여자와 결제자로 정산 건을 잠가 읽고, 정산 건마다 분담금을 보냄으로 바꿔 저장해 결제자 계좌와 함께 반환한다")
             void shouldSaveSentShareForEachSettlementOfPayer() {
                 // given
                 givenParticipant(LEE_ID);
@@ -1054,7 +1054,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("이미 보냄이나 확인 완료인 분담이 있는 경우")
+        @DisplayName("이미 보냄이나 확인 완료인 분담금이 있는 경우")
         class WhenSharesAlreadySent {
 
             @Test
@@ -1097,7 +1097,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("미입금 분담이 없으면 아무것도 저장하지 않고 예외 없이 반환한다")
+            @DisplayName("미입금 분담금이 없으면 아무것도 저장하지 않고 예외 없이 반환한다")
             void shouldReturnWithoutSavingWhenUnpaidSharesNotExist() {
                 // given
                 givenParticipant(LEE_ID);
@@ -1176,7 +1176,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("이미 확인 완료인 분담인 경우")
+        @DisplayName("이미 확인 완료인 분담금인 경우")
         class WhenShareConfirmed {
 
             @Test
@@ -1201,11 +1201,11 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("확인 완료로 시작한 0원 분담인 경우")
+        @DisplayName("확인 완료로 시작한 0원 분담금인 경우")
         class WhenShareAmountZero {
 
             @Test
-            @DisplayName("이미 확인 완료가 아니라 0원 분담이라는 예외를 던지고 정산 건을 저장하지 않는다")
+            @DisplayName("이미 확인 완료가 아니라 0원 분담금이라는 예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowZeroShareStatusUnchangeableException() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -1220,7 +1220,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("정산 건에 분담이 없는 참여자인 경우")
+        @DisplayName("정산 건에 분담금이 없는 참여자인 경우")
         class WhenShareNotFound {
 
             @Test
@@ -1266,7 +1266,7 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenConfirmable {
 
             @Test
-            @DisplayName("보냄 분담을 확인 완료로 바꿔 저장하고 확인한 금액을 담아 반환한다")
+            @DisplayName("보냄 분담금을 확인 완료로 바꿔 저장하고 확인한 금액을 담아 반환한다")
             void shouldConfirmSentShare() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -1295,7 +1295,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("미입금 분담도 확인 완료로 바꾸고, 보냄 분담의 금액은 따로 담아 반환한다")
+            @DisplayName("미입금 분담금도 확인 완료로 바꾸고, 보냄 분담금의 금액은 따로 담아 반환한다")
             void shouldConfirmUnpaidShare() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -1358,7 +1358,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("이미 미입금인 분담인 경우")
+        @DisplayName("이미 미입금인 분담금인 경우")
         class WhenShareUnpaid {
 
             @Test
@@ -1379,7 +1379,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("확인 완료로 시작한 0원 분담인 경우")
+        @DisplayName("확인 완료로 시작한 0원 분담금인 경우")
         class WhenShareAmountZero {
 
             @Test
@@ -1403,7 +1403,7 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenRevertible {
 
             @Test
-            @DisplayName("보냄 분담을 미입금으로 되돌려 저장하고 반환한다")
+            @DisplayName("보냄 분담금을 미입금으로 되돌려 저장하고 반환한다")
             void shouldRevertSentShare() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -1428,7 +1428,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("확인 완료 분담도 미입금으로 되돌려 저장하고 반환한다")
+            @DisplayName("확인 완료 분담금도 미입금으로 되돌려 저장하고 반환한다")
             void shouldRevertConfirmedShare() {
                 // given
                 givenParticipant(PAYER_ID);
@@ -1492,7 +1492,7 @@ class SettlementCommandServiceTest extends UnitTest {
         then(settlementRepository).should(never()).save(any(Settlement.class));
     }
 
-    // 박의 분담을 0원으로 지정해 확인 완료로 시작하고, 이의 분담은 미입금인 정산 건이다.
+    // 박의 분담금을 0원으로 지정해 확인 완료로 시작하고, 이의 분담금은 미입금인 정산 건이다.
     private Settlement settlementWithZeroShare() {
         return SettlementFixture.DINNER.createWithFixedAmounts(
                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS, Map.of(PARK_ID, 0L));

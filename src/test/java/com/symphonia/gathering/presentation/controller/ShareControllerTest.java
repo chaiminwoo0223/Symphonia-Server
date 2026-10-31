@@ -67,7 +67,7 @@ class ShareControllerTest extends IntegrationTest {
         class WhenLinkTokenValid {
 
             @Test
-            @DisplayName("인증 없이도 결제자별로 묶은 분담을 결제자 계좌, 계산 근거와 함께 담아 200을 반환한다")
+            @DisplayName("인증 없이도 결제자별로 묶은 분담금을 결제자 계좌, 계산 근거와 함께 담아 200을 반환한다")
             void shouldReturnSharesGroupedByPayer() throws Exception {
                 // given
                 Settlement dinner =
@@ -132,11 +132,11 @@ class ShareControllerTest extends IntegrationTest {
     class MarkSent {
 
         @Nested
-        @DisplayName("그 결제자에게 낼 미입금 분담이 있는 경우")
+        @DisplayName("그 결제자에게 낼 미입금 분담금이 있는 경우")
         class WhenUnpaidSharesExist {
 
             @Test
-            @DisplayName("분담을 보냄으로 바꾸고 그 결제자의 묶음을 담아 200을 반환한다")
+            @DisplayName("분담금을 보냄으로 바꾸고 그 결제자의 묶음을 담아 200을 반환한다")
             void shouldMarkSharesSent() throws Exception {
                 // given
                 Settlement dinner =
@@ -177,7 +177,7 @@ class ShareControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("그 결제자에게 낼 분담이 없는 경우")
+        @DisplayName("그 결제자에게 낼 분담금이 없는 경우")
         class WhenSharesNotFound {
 
             @Test

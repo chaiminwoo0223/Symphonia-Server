@@ -1,4 +1,4 @@
-// gathering 도메인에서 모임 참여(POST /api/v1/participants)와 분담 조회(GET /api/v1/shares)를 동시에 요청하는 K6 스크립트다.
+// gathering 도메인에서 모임 참여(POST /api/v1/participants)와 분담금 조회(GET /api/v1/shares)를 동시에 요청하는 K6 스크립트다.
 // 두 API 모두 모임을 읽을 때 참여자 전원의 이름과 휴대폰을 복호화하므로, 참여자가 늘어나는 동안의 응답 시간을 측정한다(#125).
 // 모임 열기는 회원 JWT가 필요하다. 로그인은 소셜 인가 코드가 있어야 해서 setup에서 JWT_SECRET으로 액세스 토큰을 직접 서명한다.
 // 실행 방법은 k6/README.md를 참고한다.
@@ -146,7 +146,7 @@ export function setup() {
     return {
         joinToken,
         consentVersion,
-        // 결제자는 보낼 분담이 없으므로 결제자를 뺀 참여자의 링크 토큰으로 조회한다.
+        // 결제자는 보낼 분담금이 없으므로 결제자를 뺀 참여자의 링크 토큰으로 조회한다.
         linkTokens: participants.slice(1).map((participant) => participant.linkToken),
     };
 }
@@ -165,7 +165,7 @@ export function getShares(data) {
     const response = http.get(`${BASE_URL}/api/v1/shares`, { headers: { 'X-Link-Token': linkToken } });
 
     check(response, {
-        '분담 조회 상태 코드는 200이다': (res) => res.status === 200,
+        '분담금 조회 상태 코드는 200이다': (res) => res.status === 200,
         '결제자 묶음이 하나다': (res) => res.status === 200 && res.json().data.length === 1,
     });
 }

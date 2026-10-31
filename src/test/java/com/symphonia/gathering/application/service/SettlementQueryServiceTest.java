@@ -139,7 +139,7 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenPayerSettlementsExist {
 
             @Test
-            @DisplayName("계좌 등록 여부와 함께 그 정산 건을 분담과 함께 반환한다")
+            @DisplayName("계좌 등록 여부와 함께 그 정산 건을 분담금과 함께 반환한다")
             void shouldReturnPayerSettlements() {
                 // given
                 Settlement settlement =
@@ -226,7 +226,7 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("낼 분담이 없는 경우")
+        @DisplayName("낼 분담금이 없는 경우")
         class WhenSharesNotFound {
 
             @Test
@@ -250,7 +250,7 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("여러 결제자에게 낼 분담이 있는 경우")
+        @DisplayName("여러 결제자에게 낼 분담금이 있는 경우")
         class WhenSharesOfPayersExist {
 
             @Test
@@ -299,7 +299,7 @@ class SettlementQueryServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("미입금 분담이 남은 결제자를 먼저 기록한 결제자보다 앞에 둔다")
+            @DisplayName("미입금 분담금이 남은 결제자를 먼저 기록한 결제자보다 앞에 둔다")
             void shouldPutPayersWithUnpaidSharesFirst() {
                 // given
                 givenShares(
@@ -324,7 +324,7 @@ class SettlementQueryServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("0원으로 지정해 확인 완료로 시작한 분담만 있는 결제자는 낼 분담이 없어 뒤에 둔다")
+            @DisplayName("0원으로 지정해 확인 완료로 시작한 분담금만 있는 결제자는 낼 분담금이 없어 뒤에 둔다")
             void shouldPutPayerWithOnlyZeroShareLast() {
                 // given
                 givenShares(
@@ -375,11 +375,11 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("입금 상태가 섞인 분담이 있는 경우")
+        @DisplayName("입금 상태가 섞인 분담금이 있는 경우")
         class WhenSharesHaveMixedStatuses {
 
             @Test
-            @DisplayName("미입금 분담의 금액만 더해 미입금 금액으로 반환한다")
+            @DisplayName("미입금 분담금의 금액만 더해 미입금 금액으로 반환한다")
             void shouldSumOnlyUnpaidShares() {
                 // given
                 givenShares(
@@ -419,7 +419,7 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenAmountFixed {
 
             @Test
-            @DisplayName("다른 참여자의 금액 없이 본인 분담과 총액, 인원, 지정 여부, 입금 상태를 계산 근거로 반환한다")
+            @DisplayName("다른 참여자의 금액 없이 본인 분담금과 총액, 인원, 지정 여부, 입금 상태를 계산 근거로 반환한다")
             void shouldReturnOwnShareBreakdown() {
                 // given
                 Settlement settlement =

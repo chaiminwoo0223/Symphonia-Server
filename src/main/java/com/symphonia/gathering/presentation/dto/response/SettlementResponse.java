@@ -14,7 +14,7 @@ public record SettlementResponse(
         @Schema(description = "참여자가 보냈다고 알렸지만 결제자가 아직 확인하지 않은 금액 (원)") long sentAmount,
         @Schema(description = "마지막으로 기록하거나 수정한 시각") LocalDateTime recordedAt,
         @Schema(description = "정산 메시지 발송 여부 (보냈으면 수정 불가)") boolean notified,
-        @Schema(description = "결제자를 뺀 참여자의 분담") List<SettlementShareResponse> shares) {
+        @Schema(description = "결제자를 뺀 참여자의 분담금") List<SettlementShareResponse> shares) {
     public static SettlementResponse from(SettlementResult result) {
         return new SettlementResponse(
                 result.id(),

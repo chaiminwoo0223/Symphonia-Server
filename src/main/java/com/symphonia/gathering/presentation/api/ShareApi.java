@@ -15,15 +15,15 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@Tag(name = "Share API", description = "정산 분담 API")
+@Tag(name = "Share API", description = "분담금 API")
 public interface ShareApi {
     @GetMapping(ShareEndpoints.LIST)
-    @Operation(summary = "분담 조회", description = "보낼 분담을 결제자별로 묶어 계좌, 계산 근거와 함께 조회합니다.")
+    @Operation(summary = "분담금 조회", description = "보낼 분담금을 결제자별로 묶어 계좌, 계산 근거와 함께 조회합니다.")
     ResponseEntity<StandardResponse<List<PayerSharesResponse>>> getShares(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
 
     @PostMapping(ShareEndpoints.SENT)
-    @Operation(summary = "분담 보냄 처리", description = "결제자에게 낼 미입금 분담을 모두 보냄으로 바꿉니다.")
+    @Operation(summary = "분담금 보냄 처리", description = "결제자에게 낼 미입금 분담금을 모두 보냄으로 바꿉니다.")
     ResponseEntity<StandardResponse<PayerSharesResponse>> markSent(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken,
             @Valid @RequestBody MarkSharesSentRequest request);

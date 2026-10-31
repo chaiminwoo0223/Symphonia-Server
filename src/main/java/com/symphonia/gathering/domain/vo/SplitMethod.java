@@ -35,7 +35,7 @@ public record SplitMethod(
         return new SplitMethod(totalAmount, payerParticipantId, participantIds, fixedAmounts);
     }
 
-    // 결제자를 뺀 참여자의 분담을 인원 순서대로 돌려준다.
+    // 결제자를 뺀 참여자의 분담금을 인원 순서대로 돌려준다.
     // 금액을 지정하지 않은 참여자는 결제자와 함께 남은 금액을 똑같이 나눈다.
     public List<SettlementShare> shares() {
         long remainingAmount = totalAmount - fixedAmountSum(fixedAmounts);
