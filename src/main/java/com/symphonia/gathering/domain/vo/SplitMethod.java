@@ -25,6 +25,7 @@ public record SplitMethod(
         fixedAmounts = Map.copyOf(fixedAmounts);
         validateAmounts(totalAmount, fixedAmounts);
         validateParticipants(payerParticipantId, participantIds, fixedAmounts);
+        validateEnoughParticipants(participantIds);
         validateFixedAmountsWithinTotal(totalAmount, fixedAmounts);
     }
 
@@ -63,12 +64,11 @@ public record SplitMethod(
         }
     }
 
-    // 인원은 중복 없이 결제자를 포함한 두 명 이상이고, 금액은 결제자가 아닌 인원에게만 지정할 수 있다.
+    // 인원은 중복 없이 결제자를 포함하고, 금액은 결제자가 아닌 인원에게만 지정할 수 있다.
     private static void validateParticipants(
             Long payerParticipantId, List<Long> participantIds, Map<Long, Long> fixedAmounts) {
         Set<Long> uniqueParticipantIds = new HashSet<>(participantIds);
         boolean distinct = uniqueParticipantIds.size() == participantIds.size();
-        boolean enough = participantIds.size() >= MIN_PARTICIPANT_COUNT;
         boolean includesPayer = uniqueParticipantIds.contains(payerParticipantId);
         boolean fixedForOthersOnly =
                 uniqueParticipantIds.containsAll(fixedAmounts.keySet())
@@ -77,7 +77,11 @@ public record SplitMethod(
         if (!distinct || !includesPayer || !fixedForOthersOnly) {
             throw new InvalidSettlementParticipantsException();
         }
-        if (!enough) {
+    }
+
+    // 결제자 말고 한 명 이상이 있어야 나눌 수 있다.
+    private static void validateEnoughParticipants(List<Long> participantIds) {
+        if (participantIds.size() < MIN_PARTICIPANT_COUNT) {
             throw new NotEnoughSettlementParticipantsException();
         }
     }
