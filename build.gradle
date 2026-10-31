@@ -76,6 +76,8 @@ tasks.named('test') {
 tasks.withType(Test).configureEach {
 	jvmArgs '-XX:+EnableDynamicAgentLoading'
 	jvmArgs '-Xshare:off'
+	// main이 고정하는 서비스 시간대(TimeConfig)와 같게 둬서, CI처럼 UTC인 환경에서도 시각 규칙을 같은 기준으로 검증한다.
+	systemProperty 'user.timezone', 'Asia/Seoul'
 }
 
 // 음료 적재는 배포와 분리해 수동으로 실행한다. 원본은 scripts/import/fetch-bjcp.sh로 먼저 받는다.
