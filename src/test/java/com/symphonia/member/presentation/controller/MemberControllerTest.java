@@ -73,7 +73,10 @@ class MemberControllerTest extends IntegrationTest {
                 // when & then
                 mockMvc.perform(get("/api/v1/members/me"))
                         .andExpect(status().isUnauthorized())
-                        .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"));
+                        .andExpect(
+                                header().string(
+                                                HttpHeaders.WWW_AUTHENTICATE,
+                                                "Bearer realm=\"symphonia\""));
             }
         }
     }
