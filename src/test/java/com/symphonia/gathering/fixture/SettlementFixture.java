@@ -64,7 +64,7 @@ public enum SettlementFixture {
                 .build();
     }
 
-    // 첫 분담금만 입금 상태를 바꾸고 나머지 분담금은 미입금으로 둔다.
+    // 첫 분담금만 상태를 바꾸고 나머지 분담금은 미입금으로 둔다.
     public Settlement createWithFirstShareStatus(
             Long id,
             Long gatheringId,

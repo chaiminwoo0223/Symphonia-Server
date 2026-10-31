@@ -375,11 +375,11 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("입금 상태가 섞인 분담금이 있는 경우")
+        @DisplayName("상태가 섞인 분담금이 있는 경우")
         class WhenSharesHaveMixedStatuses {
 
             @Test
-            @DisplayName("미입금 분담금의 금액만 더해 미입금 금액으로 반환한다")
+            @DisplayName("미입금 분담금만 더해 미입금 금액으로 반환한다")
             void shouldSumOnlyUnpaidShares() {
                 // given
                 givenShares(
@@ -419,7 +419,7 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenAmountFixed {
 
             @Test
-            @DisplayName("다른 참여자의 금액 없이 본인 분담금과 총액, 인원, 지정 여부, 입금 상태를 계산 근거로 반환한다")
+            @DisplayName("다른 참여자의 금액 없이 본인 분담금과 총액, 인원, 지정 여부, 분담금 상태를 계산 근거로 반환한다")
             void shouldReturnOwnShareBreakdown() {
                 // given
                 Settlement settlement =

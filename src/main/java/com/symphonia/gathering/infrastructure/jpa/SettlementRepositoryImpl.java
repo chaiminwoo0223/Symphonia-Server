@@ -22,7 +22,7 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     private final EntityManager entityManager;
 
     // 저장할 때마다 기존 분담금을 지우고 도메인의 분담금을 다시 넣는다. 새 정산 건은 지울 분담금이 없어 0행을 지운다.
-    // 입금 상태 전이도 같은 방식으로 저장한다. 저장 경로를 하나로 두어 분담금 행만 고치는 경로가 따로 생기지 않게 한다.
+    // 분담금 상태 변경도 같은 방식으로 저장한다. 저장 경로를 하나로 두어 분담금 행만 고치는 경로가 따로 생기지 않게 한다.
     @Override
     public Settlement save(Settlement settlement) {
         SettlementJpaEntity savedSettlement = saveWithVersionCheck(settlement);

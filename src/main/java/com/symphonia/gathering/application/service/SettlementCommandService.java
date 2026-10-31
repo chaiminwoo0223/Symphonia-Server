@@ -35,7 +35,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 // 정산 건은 결제자가 개인 링크 토큰으로 기록하고 수정하고 취소한다. 요청한 참여자가 곧 결제자다.
-// 분담금의 입금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다.
+// 분담금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다.
 @CommandService
 @RequiredArgsConstructor
 public class SettlementCommandService
