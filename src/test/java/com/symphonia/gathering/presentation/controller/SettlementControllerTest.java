@@ -114,7 +114,7 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenLinkTokenNotFound {
 
             @Test
-            @DisplayName("PARTICIPANT_NOT_FOUND 코드와 함께 404를 반환한다")
+            @DisplayName("INVALID_LINK_TOKEN 코드와 함께 404를 반환한다")
             void shouldReturnNotFound() throws Exception {
                 // when & then
                 mockMvc.perform(
@@ -123,7 +123,7 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(status().isNotFound())
                         .andExpect(
                                 jsonPath("$.data.code")
-                                        .value(GatheringErrorCode.PARTICIPANT_NOT_FOUND.getCode()));
+                                        .value(GatheringErrorCode.INVALID_LINK_TOKEN.getCode()));
             }
         }
 

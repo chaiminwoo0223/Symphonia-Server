@@ -31,11 +31,12 @@ import com.symphonia.gathering.domain.exception.BankAccountConsentRequiredExcept
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
 import com.symphonia.gathering.domain.exception.InvalidBankAccountException;
+import com.symphonia.gathering.domain.exception.InvalidLinkTokenException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
+import com.symphonia.gathering.domain.exception.NotEnoughSettlementParticipantsException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
-import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyNotifiedException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
@@ -99,7 +100,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
-            void shouldThrowParticipantNotFoundException() {
+            void shouldThrowInvalidLinkTokenException() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.empty());
@@ -107,7 +108,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(ParticipantNotFoundException.class);
+                        .isInstanceOf(InvalidLinkTokenException.class);
                 thenBankAccountNotSaved();
             }
         }
@@ -399,14 +400,14 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("인원이 2명 미만이면 예외를 던진다")
-            void shouldThrowInvalidSettlementParticipantsExceptionWhenFewerThanTwo() {
+            void shouldThrowNotEnoughSettlementParticipantsExceptionWhenFewerThanTwo() {
                 // given
                 givenRecordableGathering();
                 RecordSettlementCommand command = command(10_000L, List.of(PAYER_ID), Map.of());
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
-                        .isInstanceOf(InvalidSettlementParticipantsException.class);
+                        .isInstanceOf(NotEnoughSettlementParticipantsException.class);
                 then(settlementRepository).shouldHaveNoInteractions();
             }
 
@@ -968,7 +969,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowParticipantNotFoundException() {
+            void shouldThrowInvalidLinkTokenException() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.empty());
@@ -976,7 +977,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.markSent(command))
-                        .isInstanceOf(ParticipantNotFoundException.class);
+                        .isInstanceOf(InvalidLinkTokenException.class);
                 thenSettlementNotSaved();
             }
         }
