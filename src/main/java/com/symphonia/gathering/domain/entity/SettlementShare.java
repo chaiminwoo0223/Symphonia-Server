@@ -1,6 +1,6 @@
 package com.symphonia.gathering.domain.entity;
 
-import com.symphonia.gathering.domain.exception.InvalidShareStatusTransitionException;
+import com.symphonia.gathering.domain.exception.ShareStatusChangeNotAllowedException;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -64,7 +64,7 @@ public class SettlementShare {
     void revertToUnpaid() {
         validateStatusIsNot(ShareStatus.UNPAID);
         if (amount == 0) {
-            throw new InvalidShareStatusTransitionException();
+            throw new ShareStatusChangeNotAllowedException();
         }
         status = ShareStatus.UNPAID;
     }
@@ -82,7 +82,7 @@ public class SettlementShare {
     private void validateStatusIsNot(ShareStatus... disallowedStatuses) {
         for (ShareStatus disallowedStatus : disallowedStatuses) {
             if (status == disallowedStatus) {
-                throw new InvalidShareStatusTransitionException();
+                throw new ShareStatusChangeNotAllowedException();
             }
         }
     }
