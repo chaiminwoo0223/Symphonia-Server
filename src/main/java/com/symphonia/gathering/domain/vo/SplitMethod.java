@@ -4,7 +4,6 @@ import com.symphonia.gathering.domain.entity.SettlementShare;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
-import com.symphonia.gathering.domain.exception.NotEnoughSettlementParticipantsException;
 import com.symphonia.gathering.domain.policy.ShareRoundingPolicy;
 import java.util.HashSet;
 import java.util.List;
@@ -25,7 +24,6 @@ public record SplitMethod(
         fixedAmounts = Map.copyOf(fixedAmounts);
         validateAmounts(totalAmount, fixedAmounts);
         validateParticipants(payerParticipantId, participantIds, fixedAmounts);
-        validateEnoughParticipants(participantIds);
         validateFixedAmountsWithinTotal(totalAmount, fixedAmounts);
     }
 
@@ -64,25 +62,20 @@ public record SplitMethod(
         }
     }
 
-    // 인원은 중복 없이 결제자를 포함하고, 금액은 결제자가 아닌 인원에게만 지정할 수 있다.
+    // 인원은 중복 없이 결제자를 포함한 두 명 이상이고, 금액은 결제자가 아닌 인원에게만 지정할 수 있다.
+    // 화면이 막는 규칙이라 어긴 요청은 클라이언트 버그이므로, 어떤 규칙을 어겼는지 나누지 않고 한 예외로 알린다.
     private static void validateParticipants(
             Long payerParticipantId, List<Long> participantIds, Map<Long, Long> fixedAmounts) {
         Set<Long> uniqueParticipantIds = new HashSet<>(participantIds);
         boolean distinct = uniqueParticipantIds.size() == participantIds.size();
+        boolean enough = participantIds.size() >= MIN_PARTICIPANT_COUNT;
         boolean includesPayer = uniqueParticipantIds.contains(payerParticipantId);
         boolean fixedForOthersOnly =
                 uniqueParticipantIds.containsAll(fixedAmounts.keySet())
                         && !fixedAmounts.containsKey(payerParticipantId);
 
-        if (!distinct || !includesPayer || !fixedForOthersOnly) {
+        if (!distinct || !enough || !includesPayer || !fixedForOthersOnly) {
             throw new InvalidSettlementParticipantsException();
-        }
-    }
-
-    // 결제자 말고 한 명 이상이 있어야 나눌 수 있다.
-    private static void validateEnoughParticipants(List<Long> participantIds) {
-        if (participantIds.size() < MIN_PARTICIPANT_COUNT) {
-            throw new NotEnoughSettlementParticipantsException();
         }
     }
 
