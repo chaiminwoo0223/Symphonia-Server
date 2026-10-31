@@ -106,6 +106,28 @@ public enum MemberErrorCode implements ErrorCode {
 }
 ```
 
+## 에러 코드 명명
+
+에러 코드 이름은 클라이언트가 받는 `code` 값이다. 상태 코드는 `getStatus()`가 나타내므로, 이름에는 4xx라면 클라이언트가 무엇을 고쳐야 하는지, 5xx라면 서버의 무엇이 실패했는지를 쓴다.
+
+| 상태 | 쓰는 어휘 | 예 |
+|---|---|---|
+| 400 | `INVALID_*`, `*_REQUIRED`, `*_MISSING`, `UNSUPPORTED_*`, `OUTDATED_*`, `*_CLOSED`, `*_EXCEEDS_*` | `INVALID_PHONE_NUMBER`, `CONSENT_REQUIRED` |
+| 401 | `UNAUTHENTICATED`(액세스 토큰이 없거나 검증에 실패함), `REFRESH_TOKEN_NOT_FOUND`(다시 로그인해야 함) | |
+| 403 | `NOT_{역할}`, `ACCESS_DENIED` | `NOT_GATHERING_HOST` |
+| 404 | `*_NOT_FOUND` | `GATHERING_NOT_FOUND` |
+| 409 | `*_ALREADY_*`, `*_CONFLICT`, `*_UNCHANGEABLE` | `SHARE_ALREADY_SENT` |
+| 500 | 실패한 작업은 `{작업}_FAILED`, 불변식 위반은 위반한 상태 | `GATHERING_ENCRYPTION_FAILED`, `UNDETERMINED_EVALUATION` |
+
+- `INVALID_`는 400에서만 쓴다. 클라이언트가 보낸 값이 형식이나 규칙을 어겼다는 뜻이다. 500에 쓰면 서버의 실패가 클라이언트 입력의 잘못처럼 읽힌다.
+- 404는 반드시 `*_NOT_FOUND`를 쓴다. `*_NOT_FOUND`는 찾는 대상이 없다는 사실을 나타내므로 다른 상태에도 쓸 수 있다. 상태는 그 대상을 누가 책임지는지로 정한다. 리프레시 토큰은 인증 수단이라 401(`REFRESH_TOKEN_NOT_FOUND`)이고, 서버가 저장한 데이터 키는 500(`GATHERING_DATA_KEY_NOT_FOUND`)이다.
+- 401은 클라이언트가 할 행동별로 코드를 하나씩 둔다. `UNAUTHENTICATED`를 받으면 재발급하고, `REFRESH_TOKEN_NOT_FOUND`를 받으면 다시 로그인한다. 액세스 토큰이 만료됐는지, 위조됐는지, 블랙리스트에 있는지는 응답에서 구분하지 않는다.
+- `CommonErrorCode`가 프레임워크 예외를 매핑한 코드는 그 예외 이름을 따른다(`METHOD_ARGUMENT_NOT_VALID`, `CONSTRAINT_VIOLATION`).
+- 상수로만 들어오는 값처럼 코드상 실행 중에 어길 수 없는 불변식은 검사하지 않는다. 어기면 JVM 예외가 catch-all로 가서 스택트레이스와 함께 `error`로 남는다. `BusinessException`으로 감싸면 `warn`으로 스택트레이스 없이 남아 버그가 덜 보인다.
+- 에러 코드 이름을 바꾸면 클라이언트 계약이 바뀐다. 그래서 PR 본문에 기존 이름과 새 이름을 함께 적는다.
+
+**(2026-11-01 결정, 이슈 #156)**: `INVALID_` 접두사를 400 전용으로 정했다. `INVALID_GATHERING_MASTER_KEY`(500)는 설정을 읽는 작업의 실패라 `GATHERING_MASTER_KEY_LOAD_FAILED`로 바꿨다. `INVALID_TOP_LIMIT`(500)는 상수로만 들어오는 값을 검사하던 분기라 검사와 함께 지웠고, 에러 코드가 남지 않은 `PairingErrorCode`도 지웠다. `INVALID_JWT_TOKEN`(401)은 `UNAUTHENTICATED`로 합쳤다. 필터는 같은 상황을 이미 `UNAUTHENTICATED`로 응답했고, 이 코드는 로그아웃 중 토큰이 만료되는 경합에서만 나왔다. 실패 이유를 응답에서 구분하면 공격자가 위조 토큰이 서명 검증을 통과했는지 알 수 있고, 클라이언트가 할 수 있는 행동도 늘지 않는다. 그래서 실패 이유는 `JwtAccessTokenProvider`가 예외 이름만 debug 로그로 남긴다. 던지는 곳이 없던 `TOKEN_IS_BLACKLISTED`는 지웠다. `INVALID_`를 400과 401에 함께 쓰는 안은 택하지 않았다. 다른 401 코드가 `INVALID_`를 쓰지 않아 지금 코드와 덜 맞기 때문이다. `*_NOT_FOUND`를 404 전용으로 묶는 안도 택하지 않았다. `REFRESH_TOKEN_NOT_FOUND`는 클라이언트가 재로그인을 결정하는 코드라, 이름을 바꾸면 계약이 깨지기 때문이다.
+
 ## GlobalExceptionHandler
 
 `GlobalExceptionHandler`(`@RestControllerAdvice`)는 애플리케이션 전체에 **하나만** 둔다.
