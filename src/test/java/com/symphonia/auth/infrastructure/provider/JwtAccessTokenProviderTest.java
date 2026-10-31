@@ -144,5 +144,20 @@ class JwtAccessTokenProviderTest extends UnitTest {
                 assertThat(result).isFalse();
             }
         }
+
+        @Nested
+        @DisplayName("빈 토큰인 경우")
+        class WhenTokenIsBlank {
+
+            @Test
+            @DisplayName("false를 반환한다.")
+            void shouldReturnFalse() {
+                // when
+                boolean result = accessTokenProvider.validate(" ");
+
+                // then
+                assertThat(result).isFalse();
+            }
+        }
     }
 }
