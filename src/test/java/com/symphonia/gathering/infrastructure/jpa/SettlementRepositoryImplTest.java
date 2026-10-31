@@ -119,8 +119,8 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 SettlementShare::isFixed,
                                 SettlementShare::getPaymentStatus)
                         .containsExactly(
-                                tuple(parkId, 3_400L, false, PaymentStatus.UNPAID),
-                                tuple(leeId, 3_400L, false, PaymentStatus.UNPAID));
+                                tuple(parkId, 3_333L, false, PaymentStatus.UNPAID),
+                                tuple(leeId, 3_333L, false, PaymentStatus.UNPAID));
             }
         }
 

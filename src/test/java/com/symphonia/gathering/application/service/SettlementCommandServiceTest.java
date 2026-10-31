@@ -465,7 +465,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
                 SettlementResult result = settlementCommandService.record(command);
@@ -475,7 +475,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 then(settlementRepository).should().save(captor.capture());
                 assertThat(captor.getValue().getGatheringId()).isEqualTo(GATHERING_ID);
                 assertThat(result.payerParticipantId()).isEqualTo(PAYER_ID);
-                assertThat(result.totalAmount()).isEqualTo(10_000L);
+                assertThat(result.totalAmount()).isEqualTo(9_000L);
                 assertThat(result.notified()).isFalse();
                 assertThat(result.shares())
                         .extracting(
@@ -484,19 +484,37 @@ class SettlementCommandServiceTest extends UnitTest {
                                 SettlementShareResult::fixed,
                                 SettlementShareResult::paymentStatus)
                         .containsExactly(
-                                tuple(LEE_ID, 3_400L, false, PaymentStatus.UNPAID),
-                                tuple(PARK_ID, 3_400L, false, PaymentStatus.UNPAID));
-                assertThat(result.payerAmount()).isEqualTo(3_200L);
+                                tuple(LEE_ID, 3_000L, false, PaymentStatus.UNPAID),
+                                tuple(PARK_ID, 3_000L, false, PaymentStatus.UNPAID));
+                assertThat(result.payerAmount()).isEqualTo(3_000L);
             }
         }
 
         @Nested
-        @DisplayName("분담액을 100원 단위로 맞추는 경우")
-        class WhenSharesRounded {
+        @DisplayName("남은 금액을 똑같이 나누는 경우")
+        class WhenSplittingRemainingAmount {
 
             @Test
-            @DisplayName("몫을 100원 단위로 올리고 1원 단위 나머지까지 결제자에게 귀속한다")
-            void shouldRoundEqualShareUpAndAttributeRemainderToPayer() {
+            @DisplayName("나누어떨어지면 결제자를 포함해 모두 같은 금액을 분담한다")
+            void shouldSplitEquallyWhenDivisible() {
+                // given
+                givenRecordableGathering();
+                givenSaveReturnsSettlement();
+                RecordSettlementCommand command = command(10_050L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.shares())
+                        .extracting(SettlementShareResult::amount)
+                        .containsExactly(3_350L, 3_350L);
+                assertThat(result.payerAmount()).isEqualTo(3_350L);
+            }
+
+            @Test
+            @DisplayName("나누어떨어지지 않으면 몫을 1원 단위로 내리고 끝전을 결제자에게 귀속한다")
+            void shouldRoundEqualShareDownAndAttributeRemainderToPayer() {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
@@ -508,48 +526,12 @@ class SettlementCommandServiceTest extends UnitTest {
                 // then
                 assertThat(result.shares())
                         .extracting(SettlementShareResult::amount)
-                        .containsExactly(3_400L, 3_400L);
-                assertThat(result.payerAmount()).isEqualTo(3_201L);
+                        .containsExactly(3_333L, 3_333L);
+                assertThat(result.payerAmount()).isEqualTo(3_335L);
             }
 
             @Test
-            @DisplayName("남은 금액이 100원 단위보다 작게 남아도 올린 몫의 합이 넘지 않으면 올린다")
-            void shouldRoundUpWhenRoundedUpSharesFitRemainingAmount() {
-                // given
-                givenRecordableGathering();
-                givenSaveReturnsSettlement();
-                RecordSettlementCommand command = command(250L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.shares())
-                        .extracting(SettlementShareResult::amount)
-                        .containsExactly(100L, 100L);
-                assertThat(result.payerAmount()).isEqualTo(50L);
-            }
-
-            @Test
-            @DisplayName("올린 몫의 합이 남은 금액을 넘으면 내린 몫으로 바꿔 결제자가 총액보다 많이 돌려받지 않게 한다")
-            void shouldRoundDownWhenRoundedUpSharesExceedRemainingAmount() {
-                // given
-                givenRecordableGathering();
-                givenSaveReturnsSettlement();
-                RecordSettlementCommand command = command(100L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.shares())
-                        .extracting(SettlementShareResult::amount)
-                        .containsExactly(0L, 0L);
-                assertThat(result.payerAmount()).isEqualTo(100L);
-            }
-
-            @Test
-            @DisplayName("지정 금액은 올리지 않고, 지정하지 않은 참여자가 결제자와 남은 금액을 나눈다")
+            @DisplayName("지정 금액은 그대로 두고, 지정하지 않은 참여자가 결제자와 남은 금액을 나눈다")
             void shouldKeepFixedAmountUnrounded() {
                 // given
                 givenRecordableGathering();
@@ -567,8 +549,8 @@ class SettlementCommandServiceTest extends UnitTest {
                                 SettlementShareResult::amount,
                                 SettlementShareResult::fixed)
                         .containsExactly(
-                                tuple(LEE_ID, 1_050L, true), tuple(PARK_ID, 4_500L, false));
-                assertThat(result.payerAmount()).isEqualTo(4_450L);
+                                tuple(LEE_ID, 1_050L, true), tuple(PARK_ID, 4_475L, false));
+                assertThat(result.payerAmount()).isEqualTo(4_475L);
             }
 
             @Test

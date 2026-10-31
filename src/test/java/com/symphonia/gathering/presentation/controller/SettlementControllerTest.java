@@ -100,7 +100,7 @@ class SettlementControllerTest extends IntegrationTest {
                                                         lee.getId().intValue(),
                                                         park.getId().intValue())))
                         .andExpect(jsonPath("$.data.settlements[0].id").value(settlement.getId()))
-                        .andExpect(jsonPath("$.data.settlements[0].payerAmount").value(3_200));
+                        .andExpect(jsonPath("$.data.settlements[0].payerAmount").value(3_334));
             }
         }
 
@@ -168,14 +168,14 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.id").isNumber())
                         .andExpect(jsonPath("$.data.payerParticipantId").value(payer.getId()))
                         .andExpect(jsonPath("$.data.totalAmount").value(10_000))
-                        .andExpect(jsonPath("$.data.payerAmount").value(4_450))
+                        .andExpect(jsonPath("$.data.payerAmount").value(4_475))
                         .andExpect(jsonPath("$.data.notified").value(false))
                         .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
                         .andExpect(jsonPath("$.data.shares[0].amount").value(1_050))
                         .andExpect(jsonPath("$.data.shares[0].fixed").value(true))
                         .andExpect(jsonPath("$.data.shares[0].paymentStatus").value("UNPAID"))
                         .andExpect(jsonPath("$.data.shares[1].participantId").value(park.getId()))
-                        .andExpect(jsonPath("$.data.shares[1].amount").value(4_500))
+                        .andExpect(jsonPath("$.data.shares[1].amount").value(4_475))
                         .andExpect(jsonPath("$.data.shares[1].fixed").value(false));
             }
         }

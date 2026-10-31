@@ -147,7 +147,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 SettlementResult settlementResult = result.settlements().getFirst();
                 assertThat(settlementResult.id()).isEqualTo(SETTLEMENT_ID);
                 assertThat(settlementResult.payerParticipantId()).isEqualTo(PAYER_ID);
-                assertThat(settlementResult.payerAmount()).isEqualTo(3_200L);
+                assertThat(settlementResult.payerAmount()).isEqualTo(3_334L);
                 assertThat(settlementResult.shares()).hasSize(2);
             }
         }
