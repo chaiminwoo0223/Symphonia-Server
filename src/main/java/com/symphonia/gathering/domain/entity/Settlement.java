@@ -127,6 +127,18 @@ public class Settlement {
         return List.copyOf(shares);
     }
 
+    // 분담금은 상태가 바뀐 새 분담금으로 돌아오므로, 같은 참여자의 분담금을 그 분담금으로 갈아 끼운다.
+    private void replaceShare(SettlementShare changedShare) {
+        shares =
+                shares.stream()
+                        .map(
+                                share ->
+                                        share.isOwnedBy(changedShare.getParticipantId())
+                                                ? changedShare
+                                                : share)
+                        .toList();
+    }
+
     private void validateNotCancelled() {
         if (isCancelled()) {
             throw new SettlementAlreadyCancelledException();
@@ -143,17 +155,5 @@ public class Settlement {
         if (hasSentShares()) {
             throw new SettlementSharesSentException();
         }
-    }
-
-    // 분담금은 상태가 바뀐 새 분담금으로 돌아오므로, 같은 참여자의 분담금을 그 분담금으로 갈아 끼운다.
-    private void replaceShare(SettlementShare changedShare) {
-        shares =
-                shares.stream()
-                        .map(
-                                share ->
-                                        share.isOwnedBy(changedShare.getParticipantId())
-                                                ? changedShare
-                                                : share)
-                        .toList();
     }
 }

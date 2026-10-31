@@ -73,13 +73,8 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
     public List<PayerSharesResult> getShares(String linkToken) {
         Long participantId = findParticipantId(linkToken);
         Gathering gathering = findGatheringByParticipantId(participantId);
-        List<Settlement> settlements =
-                settlementRepository.findAllByShareParticipantId(participantId);
-        if (settlements.isEmpty()) {
-            return List.of();
-        }
         Map<Long, List<Settlement>> settlementsByPayerId =
-                settlements.stream()
+                settlementRepository.findAllByShareParticipantId(participantId).stream()
                         .collect(
                                 Collectors.groupingBy(
                                         Settlement::getPayerParticipantId,
