@@ -72,5 +72,6 @@ k6 run -e JWT_SECRET="$JWT_SECRET" k6/gathering.js
 |---|---|---|
 | `http_req_failed` | 시나리오별 `rate < 1%` | |
 | `http_req_duration{scenario:join}` | `p(95) < 500ms` | 참여는 암호화와 HMAC 계산이 더해진다 |
+| `dropped_iterations{scenario:join}` | `count == 0` | VU가 모자라 참여 50건 중 빠진 요청이 있으면 측정을 실패로 본다 |
 | `http_req_duration{scenario:shares}` | `p(95) < 300ms`, `p(99) < 800ms` | `recommend.js`와 같은 기준이다 |
 | `checks{scenario:shares}` | `rate == 1` | 결제자 묶음이 하나가 아니면 측정을 실패로 본다 |

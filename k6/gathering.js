@@ -41,6 +41,7 @@ export const options = {
         'http_req_failed{scenario:join}': ['rate<0.01'],
         'http_req_failed{scenario:shares}': ['rate<0.01'],
         'http_req_duration{scenario:join}': ['p(95)<500'],
+        'dropped_iterations{scenario:join}': ['count==0'],
         'http_req_duration{scenario:shares}': ['p(95)<300', 'p(99)<800'],
         'checks{scenario:shares}': ['rate==1'],
     },
