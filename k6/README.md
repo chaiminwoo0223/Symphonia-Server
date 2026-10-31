@@ -64,7 +64,7 @@ k6 run -e JWT_SECRET="$JWT_SECRET" k6/gathering.js
 ```
 
 - setup은 모임을 열고 30명을 참여시킨다. 첫 참여자가 계좌를 등록하고 30명 전원의 정산 건을 기록한다.
-- `join` 시나리오는 VU 5개로 같은 모임에 50명을 더 참여시킨다. 끝나면 참여자는 80명이다.
+- `join` 시나리오는 1분 동안 고른 간격으로 같은 모임에 50명을 더 참여시킨다. 분담금 조회가 모두 참여자가 늘어나는 동안 일어나게 하기 위해서다. 끝나면 참여자는 80명이다.
 - `shares` 시나리오는 VU 20개로 1분 동안 결제자를 뺀 참여자의 링크 토큰으로 분담금을 조회한다.
 - 실행할 때마다 새 모임을 연다. 모임은 생성 29일 뒤 파기 대상이 되므로(#128) 측정 데이터를 따로 지우지 않는다.
 
@@ -73,3 +73,4 @@ k6 run -e JWT_SECRET="$JWT_SECRET" k6/gathering.js
 | `http_req_failed` | 시나리오별 `rate < 1%` | |
 | `http_req_duration{scenario:join}` | `p(95) < 500ms` | 참여는 암호화와 HMAC 계산이 더해진다 |
 | `http_req_duration{scenario:shares}` | `p(95) < 300ms`, `p(99) < 800ms` | `recommend.js`와 같은 기준이다 |
+| `checks{scenario:shares}` | `rate == 1` | 결제자 묶음이 하나가 아니면 측정을 실패로 본다 |
