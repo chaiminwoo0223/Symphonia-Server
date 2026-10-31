@@ -1,7 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.gathering.domain.entity.SettlementShare;
-import com.symphonia.gathering.domain.vo.PaymentStatus;
+import com.symphonia.gathering.domain.vo.ShareStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,7 +39,7 @@ public class SettlementShareJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PaymentStatus paymentStatus;
+    private ShareStatus status;
 
     public static SettlementShareJpaEntity from(SettlementShare share, Long settlementId) {
         return new SettlementShareJpaEntity(
@@ -48,7 +48,7 @@ public class SettlementShareJpaEntity {
                 share.getParticipantId(),
                 share.getAmount(),
                 share.isFixed(),
-                share.getPaymentStatus());
+                share.getStatus());
     }
 
     public SettlementShare toDomain() {
@@ -56,7 +56,7 @@ public class SettlementShareJpaEntity {
                 .participantId(participantId)
                 .amount(amount)
                 .fixed(fixed)
-                .paymentStatus(paymentStatus)
+                .status(status)
                 .build();
     }
 }

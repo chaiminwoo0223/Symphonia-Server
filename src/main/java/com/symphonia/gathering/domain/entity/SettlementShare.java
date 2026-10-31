@@ -1,6 +1,7 @@
 package com.symphonia.gathering.domain.entity;
 
-import com.symphonia.gathering.domain.vo.PaymentStatus;
+import com.symphonia.gathering.domain.exception.InvalidShareStatusTransitionException;
+import com.symphonia.gathering.domain.vo.ShareStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 // 결제자를 뺀 참여자 한 명의 분담이다. fixed는 결제자가 금액을 지정했는지를 나타내고, 계산 근거를 보여 줄 때 쓴다.
+// 입금 상태는 애그리거트 루트인 Settlement를 거쳐서만 바꾼다.
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -16,7 +18,7 @@ public class SettlementShare {
     private Long participantId;
     private long amount;
     private boolean fixed;
-    private PaymentStatus paymentStatus;
+    private ShareStatus status;
 
     public static SettlementShare equal(Long participantId, long amount) {
         return of(participantId, amount, false);
@@ -27,15 +29,57 @@ public class SettlementShare {
     }
 
     public boolean isUnpaid() {
-        return paymentStatus == PaymentStatus.UNPAID;
+        return status == ShareStatus.UNPAID;
     }
 
+    // 참여자가 보냈다고 알렸거나 결제자가 받았다고 확인한 분담이다.
+    // 0원 분담은 상태와 관계없이 돈이 오가지 않으므로 보낸 분담으로 보지 않는다. 결제자가 되돌린 뒤 다시 보냄이 되어도 같다.
+    public boolean isSent() {
+        return amount > 0 && !isUnpaid();
+    }
+
+    public boolean hasStatus(ShareStatus status) {
+        return this.status == status;
+    }
+
+    public boolean isOwnedBy(Long participantId) {
+        return this.participantId.equals(participantId);
+    }
+
+    // 참여자가 "보냈어요"를 누르면 미입금 분담만 보냄이 된다.
+    void markSent() {
+        validateStatusIsNot(ShareStatus.SENT, ShareStatus.CONFIRMED);
+        status = ShareStatus.SENT;
+    }
+
+    // 결제자가 보냄을 확인하거나 직접 받은 돈을 처리하므로, 미입금과 보냄 모두 확인 완료가 될 수 있다.
+    void confirm() {
+        validateStatusIsNot(ShareStatus.CONFIRMED);
+        status = ShareStatus.CONFIRMED;
+    }
+
+    // 결제자가 "아직 안 들어왔어요"로 보냄을 되돌린다.
+    // 받은 돈을 돌려주고 정산 건을 취소할 수 있도록 확인 완료도 미입금으로 되돌릴 수 있다.
+    void revertToUnpaid() {
+        validateStatusIsNot(ShareStatus.UNPAID);
+        status = ShareStatus.UNPAID;
+    }
+
+    // 생일인 사람처럼 낼 돈이 없는 0원 분담은 받을 것도 없으므로 확인 완료로 시작한다.
     private static SettlementShare of(Long participantId, long amount, boolean fixed) {
         return SettlementShare.builder()
                 .participantId(participantId)
                 .amount(amount)
                 .fixed(fixed)
-                .paymentStatus(PaymentStatus.UNPAID)
+                .status(amount == 0 ? ShareStatus.CONFIRMED : ShareStatus.UNPAID)
                 .build();
+    }
+
+    private void validateStatusIsNot(ShareStatus... disallowedStatuses) {
+        for (ShareStatus disallowedStatus : disallowedStatuses) {
+            if (status == disallowedStatus) {
+                throw new InvalidShareStatusTransitionException();
+            }
+        }
     }
 }

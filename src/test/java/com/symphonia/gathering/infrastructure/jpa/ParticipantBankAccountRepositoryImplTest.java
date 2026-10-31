@@ -4,13 +4,17 @@ import static com.symphonia.gathering.helper.ConcurrencyHelper.await;
 import static com.symphonia.gathering.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.Participant;
+import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.exception.BankAccountAlreadyRegisteredException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
+import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
@@ -50,15 +54,24 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
 
     private Long gatheringId;
     private Long participantId;
+    private Long leeId;
+    private Long parkId;
 
     @BeforeEach
     void setUp() {
         Gathering gathering =
                 gatheringRepository.save(
                         GatheringFixture.FRIDAY_DINNER.createWithParticipants(
-                                List.of(ParticipantFixture.KIM.create())));
+                                List.of(
+                                        ParticipantFixture.KIM.create(),
+                                        ParticipantFixture.LEE.create(),
+                                        ParticipantFixture.PARK.create())));
+        List<Long> participantIds =
+                gathering.getParticipants().stream().map(Participant::getId).toList();
         gatheringId = gathering.getId();
-        participantId = gathering.getParticipants().getFirst().getId();
+        participantId = participantIds.get(0);
+        leeId = participantIds.get(1);
+        parkId = participantIds.get(2);
     }
 
     @Nested
@@ -188,6 +201,45 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllByParticipantIds 메서드는")
+    class FindAllByParticipantIds {
+
+        @Test
+        @DisplayName("여러 참여자의 계좌를 복호화해 반환하고 계좌를 등록하지 않은 참여자는 뺀다")
+        void shouldReturnDecryptedBankAccountsOfRegisteredParticipants() {
+            // given
+            ParticipantBankAccountFixture fixture = ParticipantBankAccountFixture.KOOKMIN;
+            participantBankAccountRepository.save(fixture.create(participantId), gatheringId);
+            participantBankAccountRepository.save(fixture.create(leeId), gatheringId);
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            List<ParticipantBankAccount> result =
+                    participantBankAccountRepository.findAllByParticipantIds(
+                            List.of(participantId, leeId, parkId), gatheringId);
+
+            // then
+            BankAccount bankAccount =
+                    new BankAccount(fixture.getBankName(), fixture.getAccountNumber());
+            assertThat(result)
+                    .extracting(
+                            ParticipantBankAccount::getParticipantId,
+                            ParticipantBankAccount::getBankAccount,
+                            ParticipantBankAccount::getConsentVersion)
+                    .containsExactlyInAnyOrder(
+                            tuple(
+                                    participantId,
+                                    bankAccount,
+                                    SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION),
+                            tuple(
+                                    leeId,
+                                    bankAccount,
+                                    SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION));
         }
     }
 

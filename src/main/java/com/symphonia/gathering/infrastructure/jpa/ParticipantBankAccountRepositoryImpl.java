@@ -3,6 +3,9 @@ package com.symphonia.gathering.infrastructure.jpa;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
+import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
+import java.util.Collection;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -32,6 +35,16 @@ public class ParticipantBankAccountRepositoryImpl implements ParticipantBankAcco
     @Override
     public boolean existsByParticipantId(Long participantId) {
         return participantBankAccountJpaRepository.existsById(participantId);
+    }
+
+    @Override
+    public List<ParticipantBankAccount> findAllByParticipantIds(
+            Collection<Long> participantIds, Long gatheringId) {
+        GatheringDataKey dataKey = gatheringDataKeyLoader.load(gatheringId);
+
+        return participantBankAccountJpaRepository.findAllById(participantIds).stream()
+                .map(entity -> entity.toDomain(dataKey))
+                .toList();
     }
 
     private boolean isPrimaryKeyViolation(DataIntegrityViolationException e) {

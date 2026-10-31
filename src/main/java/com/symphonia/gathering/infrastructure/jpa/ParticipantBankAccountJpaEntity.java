@@ -1,6 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
+import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +43,18 @@ public class ParticipantBankAccountJpaEntity implements Persistable<Long> {
                 dataKey.encrypt(participantBankAccount.getBankAccount().accountNumber()),
                 participantBankAccount.getConsentVersion(),
                 participantBankAccount.getConsentedAt());
+    }
+
+    public ParticipantBankAccount toDomain(GatheringDataKey dataKey) {
+        return ParticipantBankAccount.builder()
+                .participantId(participantId)
+                .bankAccount(
+                        new BankAccount(
+                                dataKey.decrypt(encryptedBankName),
+                                dataKey.decrypt(encryptedAccountNumber)))
+                .consentVersion(consentVersion)
+                .consentedAt(consentedAt)
+                .build();
     }
 
     @Override

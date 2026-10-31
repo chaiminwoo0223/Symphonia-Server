@@ -3,6 +3,9 @@ package com.symphonia.gathering.infrastructure.jpa;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.SettlementConflictException;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.OptimisticLockException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,9 +19,10 @@ import org.springframework.stereotype.Repository;
 public class SettlementRepositoryImpl implements SettlementRepository {
     private final SettlementJpaRepository settlementJpaRepository;
     private final SettlementShareJpaRepository settlementShareJpaRepository;
+    private final EntityManager entityManager;
 
     // 저장할 때마다 기존 분담을 지우고 도메인의 분담을 다시 넣는다. 새 정산 건은 지울 분담이 없어 0행을 지운다.
-    // 분담 행만 바꾸는 저장 방식은 입금 상태 전이와 함께 #125에서 정한다.
+    // 입금 상태 전이도 같은 방식으로 저장한다. 저장 경로를 하나로 두어 분담 행만 고치는 경로가 따로 생기지 않게 한다.
     @Override
     public Settlement save(Settlement settlement) {
         SettlementJpaEntity savedSettlement = saveWithVersionCheck(settlement);
@@ -46,12 +50,54 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                 .map(this::toDomain);
     }
 
-    // 정산 건마다 분담을 따로 조회하지 않도록 분담을 한 번에 읽어 정산 건별로 나눈다.
     @Override
     public List<Settlement> findAllByPayerParticipantId(Long payerParticipantId) {
-        List<SettlementJpaEntity> settlementEntities =
+        return toDomains(
                 settlementJpaRepository.findAllByPayerParticipantIdAndCancelledAtIsNullOrderById(
-                        payerParticipantId);
+                        payerParticipantId));
+    }
+
+    @Override
+    public List<Settlement> findAllByShareParticipantId(Long participantId) {
+        return toDomains(settlementJpaRepository.findAllByShareParticipantId(participantId));
+    }
+
+    @Override
+    public List<Settlement> findAllByShareParticipantIdAndPayerForUpdate(
+            Long participantId, Long payerParticipantId) {
+        return toDomains(
+                settlementJpaRepository.findAllByShareParticipantIdAndPayerForUpdate(
+                        participantId, payerParticipantId));
+    }
+
+    // 다른 요청이 먼저 바꾼 정산 건이면 버전이 달라 저장이 실패한다.
+    // 커밋 시점에 실패하면 이 메서드가 예외를 바꿀 수 없으므로 바로 flush한다.
+    // 분담 행만 바뀌면 정산 건 행이 그대로라 Hibernate가 버전을 올리지 않으므로, 기존 정산 건은 저장할 때마다 버전을 올린다.
+    // OPTIMISTIC_FORCE_INCREMENT는 커밋할 때 버전을 올리므로, 바로 올리는 PESSIMISTIC_FORCE_INCREMENT를 쓴다.
+    private SettlementJpaEntity saveWithVersionCheck(Settlement settlement) {
+        try {
+            SettlementJpaEntity savedSettlement =
+                    settlementJpaRepository.saveAndFlush(SettlementJpaEntity.from(settlement));
+            if (settlement.getVersion() != null) {
+                entityManager.lock(savedSettlement, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
+            }
+            return savedSettlement;
+        } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {
+            throw new SettlementConflictException();
+        }
+    }
+
+    private Settlement toDomain(SettlementJpaEntity settlementEntity) {
+        return settlementEntity.toDomain(
+                settlementShareJpaRepository
+                        .findAllBySettlementIdOrderById(settlementEntity.getId())
+                        .stream()
+                        .map(SettlementShareJpaEntity::toDomain)
+                        .toList());
+    }
+
+    // 정산 건마다 분담을 따로 조회하지 않도록 분담을 한 번에 읽어 정산 건별로 나눈다.
+    private List<Settlement> toDomains(List<SettlementJpaEntity> settlementEntities) {
         Map<Long, List<SettlementShareJpaEntity>> sharesBySettlementId =
                 settlementShareJpaRepository
                         .findAllBySettlementIdInOrderById(
@@ -71,24 +117,5 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                                                 .map(SettlementShareJpaEntity::toDomain)
                                                 .toList()))
                 .toList();
-    }
-
-    // 다른 요청이 먼저 바꾼 정산 건이면 버전이 달라 저장이 실패한다.
-    // 커밋 시점에 실패하면 이 메서드가 예외를 바꿀 수 없으므로 바로 flush한다.
-    private SettlementJpaEntity saveWithVersionCheck(Settlement settlement) {
-        try {
-            return settlementJpaRepository.saveAndFlush(SettlementJpaEntity.from(settlement));
-        } catch (ObjectOptimisticLockingFailureException e) {
-            throw new SettlementConflictException();
-        }
-    }
-
-    private Settlement toDomain(SettlementJpaEntity settlementEntity) {
-        return settlementEntity.toDomain(
-                settlementShareJpaRepository
-                        .findAllBySettlementIdOrderById(settlementEntity.getId())
-                        .stream()
-                        .map(SettlementShareJpaEntity::toDomain)
-                        .toList());
     }
 }

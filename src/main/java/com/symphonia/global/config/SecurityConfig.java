@@ -4,6 +4,7 @@ import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.ParticipantEndpoints;
 import com.symphonia.gathering.presentation.SettlementEndpoints;
+import com.symphonia.gathering.presentation.ShareEndpoints;
 import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.global.config.properties.CorsProperties;
 import com.symphonia.global.config.properties.RefreshTokenProperties;
@@ -51,7 +52,11 @@ public class SecurityConfig {
         SettlementEndpoints.FORM,
         SettlementEndpoints.RECORD,
         SettlementEndpoints.UPDATE,
-        SettlementEndpoints.CANCEL
+        SettlementEndpoints.CANCEL,
+        SettlementEndpoints.CONFIRM_SHARE,
+        SettlementEndpoints.REVERT_SHARE,
+        ShareEndpoints.LIST,
+        ShareEndpoints.SENT
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

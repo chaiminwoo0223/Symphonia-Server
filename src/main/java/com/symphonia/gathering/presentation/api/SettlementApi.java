@@ -43,4 +43,18 @@ public interface SettlementApi {
     ResponseEntity<StandardResponse<Void>> cancel(
             @PathVariable Long settlementId,
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
+
+    @PostMapping(SettlementEndpoints.CONFIRM_SHARE)
+    @Operation(summary = "분담 확인 완료", description = "참여자가 보낸 돈이나 직접 받은 돈을 확인 완료로 처리합니다.")
+    ResponseEntity<StandardResponse<SettlementResponse>> confirmShare(
+            @PathVariable Long settlementId,
+            @PathVariable Long participantId,
+            @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
+
+    @PostMapping(SettlementEndpoints.REVERT_SHARE)
+    @Operation(summary = "분담 미입금 되돌리기", description = "아직 들어오지 않은 분담을 미입금으로 되돌립니다.")
+    ResponseEntity<StandardResponse<SettlementResponse>> revertShare(
+            @PathVariable Long settlementId,
+            @PathVariable Long participantId,
+            @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
 }

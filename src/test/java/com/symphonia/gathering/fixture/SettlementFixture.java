@@ -2,7 +2,7 @@ package com.symphonia.gathering.fixture;
 
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.entity.SettlementShare;
-import com.symphonia.gathering.domain.vo.PaymentStatus;
+import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.domain.vo.SplitMethod;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-// 금액을 지정한 참여자 없이 결제자를 포함한 인원이 똑같이 나누는 정산 건이다.
+// 금액을 지정한 참여자 없이 결제자를 포함한 인원이 똑같이 나누는 정산 건이다. 지정 금액은 createWithFixedAmounts로만 넣는다.
 @Getter
 @RequiredArgsConstructor
 public enum SettlementFixture {
@@ -50,13 +50,27 @@ public enum SettlementFixture {
                 .build();
     }
 
+    public Settlement createWithFixedAmounts(
+            Long id,
+            Long gatheringId,
+            Long payerParticipantId,
+            List<Long> participantIds,
+            Map<Long, Long> fixedAmounts) {
+        SplitMethod splitMethod =
+                SplitMethod.of(totalAmount, payerParticipantId, participantIds, fixedAmounts);
+
+        return builder(id, gatheringId, payerParticipantId, participantIds)
+                .shares(splitMethod.shares())
+                .build();
+    }
+
     // 첫 분담만 입금 상태를 바꾸고 나머지 분담은 미입금으로 둔다.
     public Settlement createWithFirstShareStatus(
             Long id,
             Long gatheringId,
             Long payerParticipantId,
             List<Long> participantIds,
-            PaymentStatus paymentStatus) {
+            ShareStatus status) {
         List<SettlementShare> shares =
                 createSplitMethod(payerParticipantId, participantIds).shares();
         SettlementShare firstShare = shares.getFirst();
@@ -65,7 +79,7 @@ public enum SettlementFixture {
                         .participantId(firstShare.getParticipantId())
                         .amount(firstShare.getAmount())
                         .fixed(firstShare.isFixed())
-                        .paymentStatus(paymentStatus)
+                        .status(status)
                         .build();
         List<SettlementShare> changedShares =
                 Stream.concat(Stream.of(changedFirstShare), shares.stream().skip(1)).toList();

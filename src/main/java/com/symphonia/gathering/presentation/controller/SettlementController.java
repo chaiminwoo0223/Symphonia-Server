@@ -2,11 +2,15 @@ package com.symphonia.gathering.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.command.CancelSettlementCommand;
+import com.symphonia.gathering.application.dto.command.ConfirmShareCommand;
+import com.symphonia.gathering.application.dto.command.RevertShareCommand;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.usecase.CancelSettlementUseCase;
+import com.symphonia.gathering.application.usecase.ConfirmShareUseCase;
 import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
 import com.symphonia.gathering.application.usecase.RecordSettlementUseCase;
+import com.symphonia.gathering.application.usecase.RevertShareUseCase;
 import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.presentation.api.SettlementApi;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
@@ -25,6 +29,8 @@ public class SettlementController implements SettlementApi {
     private final RecordSettlementUseCase recordSettlementUseCase;
     private final UpdateSettlementUseCase updateSettlementUseCase;
     private final CancelSettlementUseCase cancelSettlementUseCase;
+    private final ConfirmShareUseCase confirmShareUseCase;
+    private final RevertShareUseCase revertShareUseCase;
 
     @Override
     public ResponseEntity<StandardResponse<SettlementFormResponse>> getForm(String linkToken) {
@@ -61,5 +67,29 @@ public class SettlementController implements SettlementApi {
         cancelSettlementUseCase.cancel(CancelSettlementCommand.of(linkToken, settlementId));
 
         return ResponseEntity.status(HttpStatus.OK).body(StandardResponse.success(HttpStatus.OK));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<SettlementResponse>> confirmShare(
+            Long settlementId, Long participantId, String linkToken) {
+        SettlementResult result =
+                confirmShareUseCase.confirm(
+                        ConfirmShareCommand.of(linkToken, settlementId, participantId));
+        SettlementResponse response = SettlementResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<SettlementResponse>> revertShare(
+            Long settlementId, Long participantId, String linkToken) {
+        SettlementResult result =
+                revertShareUseCase.revert(
+                        RevertShareCommand.of(linkToken, settlementId, participantId));
+        SettlementResponse response = SettlementResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
     }
 }
