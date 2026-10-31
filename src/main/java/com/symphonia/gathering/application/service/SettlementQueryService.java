@@ -12,7 +12,7 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
-import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
+import com.symphonia.gathering.domain.exception.InvalidLinkTokenException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
@@ -109,7 +109,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
     private Long findParticipantId(String linkToken) {
         return participantLinkTokenRepository
                 .findParticipantIdByValue(linkToken)
-                .orElseThrow(ParticipantNotFoundException::new);
+                .orElseThrow(InvalidLinkTokenException::new);
     }
 
     private Gathering findGatheringByParticipantId(Long participantId) {

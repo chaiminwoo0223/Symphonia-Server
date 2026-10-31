@@ -20,6 +20,7 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
+import com.symphonia.gathering.domain.exception.InvalidJoinTokenException;
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
@@ -199,7 +200,7 @@ class GatheringCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 참여자와 개인 링크 토큰을 저장하지 않는다")
-            void shouldThrowGatheringNotFoundException() {
+            void shouldThrowInvalidJoinTokenException() {
                 // given
                 given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                         .willReturn(Optional.empty());
@@ -207,7 +208,7 @@ class GatheringCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> gatheringCommandService.join(command))
-                        .isInstanceOf(GatheringNotFoundException.class);
+                        .isInstanceOf(InvalidJoinTokenException.class);
                 thenNothingSaved();
             }
         }

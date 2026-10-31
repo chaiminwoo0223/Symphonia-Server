@@ -4,6 +4,7 @@ import com.symphonia.gathering.domain.entity.SettlementShare;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
+import com.symphonia.gathering.domain.exception.NotEnoughSettlementParticipantsException;
 import com.symphonia.gathering.domain.policy.ShareRoundingPolicy;
 import java.util.HashSet;
 import java.util.List;
@@ -73,8 +74,11 @@ public record SplitMethod(
                 uniqueParticipantIds.containsAll(fixedAmounts.keySet())
                         && !fixedAmounts.containsKey(payerParticipantId);
 
-        if (!distinct || !enough || !includesPayer || !fixedForOthersOnly) {
+        if (!distinct || !includesPayer || !fixedForOthersOnly) {
             throw new InvalidSettlementParticipantsException();
+        }
+        if (!enough) {
+            throw new NotEnoughSettlementParticipantsException();
         }
     }
 

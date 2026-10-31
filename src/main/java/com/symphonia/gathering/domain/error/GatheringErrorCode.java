@@ -11,7 +11,7 @@ public enum GatheringErrorCode implements ErrorCode {
     GATHERING_JOIN_CLOSED(HttpStatus.BAD_REQUEST, "참여 기간이 끝난 모임입니다."),
     CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "개인정보 수집 및 이용 동의가 필요합니다."),
     OUTDATED_CONSENT_VERSION(HttpStatus.BAD_REQUEST, "개인정보 수집 안내가 바뀌었습니다. 참여 화면을 다시 불러와 주세요."),
-    INVALID_BANK_ACCOUNT(HttpStatus.BAD_REQUEST, "은행 이름과 계좌번호 형식이 올바르지 않습니다."),
+    INVALID_BANK_ACCOUNT(HttpStatus.BAD_REQUEST, "계좌번호는 하이픈을 뺀 숫자 10~16자리로 입력해 주세요."),
     BANK_ACCOUNT_CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "계좌를 정산 건 참여자에게 보여 주는 데 동의가 필요합니다."),
     OUTDATED_BANK_ACCOUNT_CONSENT_VERSION(
             HttpStatus.BAD_REQUEST, "계좌 입력 안내가 바뀌었습니다. 기록 화면을 다시 불러와 주세요."),
@@ -19,9 +19,8 @@ public enum GatheringErrorCode implements ErrorCode {
     SETTLEMENT_RECORDING_CLOSED(HttpStatus.BAD_REQUEST, "정산 건을 기록할 수 있는 기간이 끝난 모임입니다."),
     INVALID_SETTLEMENT_AMOUNT(HttpStatus.BAD_REQUEST, "총액은 0보다 크고, 지정 금액은 0 이상이어야 합니다."),
     FIXED_AMOUNT_EXCEEDS_TOTAL(HttpStatus.BAD_REQUEST, "지정 금액의 합이 총액보다 클 수 없습니다."),
-    INVALID_SETTLEMENT_PARTICIPANTS(
-            HttpStatus.BAD_REQUEST,
-            "정산 건 인원은 결제자를 포함한 이 모임의 참여자 두 명 이상이어야 하고, 결제자의 금액은 지정할 수 없습니다."),
+    NOT_ENOUGH_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "결제자 말고 한 명 이상을 골라 주세요."),
+    INVALID_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "정산 건 인원이나 지정 금액의 대상이 올바르지 않습니다."),
 
     // 403
     NOT_GATHERING_HOST(HttpStatus.FORBIDDEN, "모임을 만든 회원만 요청할 수 있습니다."),
@@ -29,7 +28,8 @@ public enum GatheringErrorCode implements ErrorCode {
 
     // 404
     GATHERING_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 모임을 찾을 수 없습니다."),
-    PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 참여자를 찾을 수 없습니다."),
+    INVALID_JOIN_TOKEN(HttpStatus.NOT_FOUND, "유효하지 않은 참여 링크입니다. 모임을 만든 사람에게 새 QR을 받아 주세요."),
+    INVALID_LINK_TOKEN(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다. 받은 링크를 다시 확인해 주세요."),
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정산 건을 찾을 수 없습니다."),
     SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담을 찾을 수 없습니다."),
 
