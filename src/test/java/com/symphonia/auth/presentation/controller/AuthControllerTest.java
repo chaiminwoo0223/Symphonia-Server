@@ -12,11 +12,14 @@ import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.exception.SocialRequiredInfoMissingException;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
+import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.auth.helper.AuthHelper;
+import com.symphonia.auth.infrastructure.provider.JwtAccessTokenProvider;
 import com.symphonia.auth.presentation.cookie.factory.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
+import com.symphonia.global.config.properties.AccessTokenProperties;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.SocialProvider;
 import com.symphonia.member.domain.repository.MemberRepository;
@@ -39,7 +42,9 @@ class AuthControllerTest extends IntegrationTest {
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private MemberRepository memberRepository;
+    @Autowired private AccessTokenProperties accessTokenProperties;
 
     @MockitoBean(name = "kakao")
     private SocialClient kakaoSocialClient;
@@ -371,7 +376,7 @@ class AuthControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.accessToken").exists())
                         .andExpect(cookie().exists(COOKIE_NAME))
                         .andExpect(cookie().httpOnly(COOKIE_NAME, true))
-                        .andExpect(cookie().path(COOKIE_NAME, "/api/v1/auth/refresh"));
+                        .andExpect(cookie().path(COOKIE_NAME, "/api/v1/auth"));
             }
         }
 
@@ -432,35 +437,99 @@ class AuthControllerTest extends IntegrationTest {
     @DisplayName("POST /api/v1/auth/logout는")
     class Logout {
 
-        @Test
-        @DisplayName("액세스 토큰을 블랙리스트에 등록하고 리프레시 토큰 쿠키를 만료시킨다")
-        void shouldBlacklistAccessTokenAndExpireCookie() throws Exception {
-            // given
-            Member member = memberHelper.save(MemberFixture.KAKAO);
-            String accessToken =
-                    authHelper.generateAccessToken(
-                            String.valueOf(member.getId()), member.getRole().name());
+        @Nested
+        @DisplayName("리프레시 토큰 쿠키와 유효한 액세스 토큰이 있는 경우")
+        class WhenTokensAreValid {
 
-            // when & then
-            mockMvc.perform(
-                            post("/api/v1/auth/logout")
-                                    .header(
-                                            HttpHeaders.AUTHORIZATION,
-                                            authHelper.bearerHeader(accessToken)))
-                    .andExpect(status().isNoContent())
-                    .andExpect(cookie().maxAge(COOKIE_NAME, 0));
-            assertThat(blacklistAccessTokenRepository.isBlacklisted(accessToken)).isTrue();
+            @Test
+            @DisplayName("이 기기의 리프레시 토큰을 지우고 액세스 토큰을 블랙리스트에 등록한 뒤 쿠키를 만료시킨다")
+            void shouldRevokeTokensAndExpireCookie() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String refreshToken = authHelper.issueRefreshTokenFor(member);
+                String accessToken =
+                        authHelper.generateAccessToken(
+                                String.valueOf(member.getId()), member.getRole().name());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/logout")
+                                        .cookie(new Cookie(COOKIE_NAME, refreshToken))
+                                        .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                authHelper.bearerHeader(accessToken)))
+                        .andExpect(status().isNoContent())
+                        .andExpect(cookie().maxAge(COOKIE_NAME, 0))
+                        .andExpect(cookie().path(COOKIE_NAME, "/api/v1/auth"));
+                assertThat(refreshTokenRepository.findMemberIdByValue(refreshToken)).isEmpty();
+                assertThat(blacklistAccessTokenRepository.isBlacklisted(accessToken)).isTrue();
+            }
         }
 
         @Nested
-        @DisplayName("인증 토큰이 없는 경우")
-        class WhenUnauthenticated {
+        @DisplayName("같은 회원이 다른 기기에도 로그인한 경우")
+        class WhenOtherDeviceLoggedIn {
 
             @Test
-            @DisplayName("401을 반환한다")
-            void shouldReturnUnauthorized() throws Exception {
+            @DisplayName("다른 기기의 리프레시 토큰은 유지한다")
+            void shouldKeepOtherDeviceRefreshToken() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String deviceAToken = authHelper.issueRefreshTokenFor(member);
+                String deviceBToken = authHelper.issueRefreshTokenFor(member);
+
                 // when & then
-                mockMvc.perform(post("/api/v1/auth/logout")).andExpect(status().isUnauthorized());
+                mockMvc.perform(
+                                post("/api/v1/auth/logout")
+                                        .cookie(new Cookie(COOKIE_NAME, deviceAToken)))
+                        .andExpect(status().isNoContent());
+                assertThat(refreshTokenRepository.findMemberIdByValue(deviceAToken)).isEmpty();
+                assertThat(refreshTokenRepository.findMemberIdByValue(deviceBToken))
+                        .contains(String.valueOf(member.getId()));
+            }
+        }
+
+        @Nested
+        @DisplayName("액세스 토큰이 만료된 경우")
+        class WhenAccessTokenExpired {
+
+            @Test
+            @DisplayName("리프레시 토큰을 지우고 204를 반환한다")
+            void shouldRevokeRefreshTokenAndReturnNoContent() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String refreshToken = authHelper.issueRefreshTokenFor(member);
+                JwtAccessTokenProvider expiredTokenProvider =
+                        new JwtAccessTokenProvider(
+                                new AccessTokenProperties(accessTokenProperties.secret(), -1L));
+                String expiredAccessToken =
+                        expiredTokenProvider.generate(
+                                String.valueOf(member.getId()), member.getRole().name());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/logout")
+                                        .cookie(new Cookie(COOKIE_NAME, refreshToken))
+                                        .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                authHelper.bearerHeader(expiredAccessToken)))
+                        .andExpect(status().isNoContent())
+                        .andExpect(cookie().maxAge(COOKIE_NAME, 0));
+                assertThat(refreshTokenRepository.findMemberIdByValue(refreshToken)).isEmpty();
+            }
+        }
+
+        @Nested
+        @DisplayName("토큰이 모두 없는 경우")
+        class WhenTokensAreMissing {
+
+            @Test
+            @DisplayName("204를 반환하고 쿠키를 만료시킨다")
+            void shouldReturnNoContentAndExpireCookie() throws Exception {
+                // when & then
+                mockMvc.perform(post("/api/v1/auth/logout"))
+                        .andExpect(status().isNoContent())
+                        .andExpect(cookie().maxAge(COOKIE_NAME, 0));
             }
         }
     }

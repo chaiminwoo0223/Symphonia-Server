@@ -45,6 +45,7 @@ public class SecurityConfig {
         AuthEndpoints.SIGNUP,
         AuthEndpoints.LOGIN,
         AuthEndpoints.REFRESH,
+        AuthEndpoints.LOGOUT,
         PairingEndpoints.RECOMMEND,
         GatheringEndpoints.PREVIEW,
         ParticipantEndpoints.JOIN,
