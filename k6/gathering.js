@@ -21,12 +21,14 @@ const HOST_MEMBER_ID = '1';
 
 export const options = {
     scenarios: {
+        // 참여를 1분 동안 고르게 나눠, 분담금 조회가 모두 참여자가 늘어나는 동안 일어나게 한다.
         join: {
-            executor: 'shared-iterations',
+            executor: 'constant-arrival-rate',
             exec: 'join',
-            vus: 5,
-            iterations: JOIN_COUNT,
-            maxDuration: '1m',
+            rate: JOIN_COUNT,
+            timeUnit: '1m',
+            duration: '1m',
+            preAllocatedVUs: 5,
         },
         shares: {
             executor: 'constant-vus',
@@ -40,6 +42,7 @@ export const options = {
         'http_req_failed{scenario:shares}': ['rate<0.01'],
         'http_req_duration{scenario:join}': ['p(95)<500'],
         'http_req_duration{scenario:shares}': ['p(95)<300', 'p(99)<800'],
+        'checks{scenario:shares}': ['rate==1'],
     },
 };
 
