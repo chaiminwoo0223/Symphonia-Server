@@ -6,8 +6,8 @@ import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import java.util.List;
 
-// 참여자가 결제자 한 명에게 낼 분담을 정산 건별로 묶는다. "보냈어요"는 이 묶음 단위로 누른다.
-// unpaidAmount는 미입금 분담만 더한 금액이고, 계좌는 송금할 수 있도록 마스킹하지 않는다.
+// 참여자가 결제자 한 명에게 낼 분담금을 정산 건별로 묶는다. "보냈어요"는 이 묶음 단위로 누른다.
+// unpaidAmount는 미입금 분담금만 더한 금액이고, 계좌는 송금할 수 있도록 마스킹하지 않는다.
 public record PayerSharesResult(
         Long payerParticipantId,
         String payerName,

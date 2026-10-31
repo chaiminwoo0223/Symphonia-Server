@@ -10,8 +10,8 @@ public record PayerSharesResponse(
         @Schema(description = "결제자 은행 이름") String bankName,
         @Schema(description = "결제자 계좌번호") String accountNumber,
         @Schema(description = "아직 보내지 않은 분담액의 합 (원)") long unpaidAmount,
-        @Schema(description = "아직 보내지 않은 분담이 있는지 여부") boolean hasUnpaidShares,
-        @Schema(description = "정산 건별 본인 분담과 계산 근거") List<ShareBreakdownResponse> shares) {
+        @Schema(description = "아직 보내지 않은 분담금이 있는지 여부") boolean hasUnpaidShares,
+        @Schema(description = "정산 건별 본인 분담금과 계산 근거") List<ShareBreakdownResponse> shares) {
     public static PayerSharesResponse from(PayerSharesResult result) {
         return new PayerSharesResponse(
                 result.payerParticipantId(),

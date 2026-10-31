@@ -30,7 +30,7 @@ public enum GatheringErrorCode implements ErrorCode {
     JOIN_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 참여 링크입니다. 모임을 만든 사람에게 새 QR을 받아 주세요."),
     LINK_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다. 받은 링크를 다시 확인해 주세요."),
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정산 건을 찾을 수 없습니다."),
-    SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담을 찾을 수 없습니다."),
+    SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담금을 찾을 수 없습니다."),
 
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
@@ -41,11 +41,11 @@ public enum GatheringErrorCode implements ErrorCode {
     SETTLEMENT_CONFLICT(HttpStatus.CONFLICT, "다른 요청이 먼저 정산 건을 바꿨습니다. 다시 불러와 주세요."),
     SETTLEMENT_SHARES_SENT(
             HttpStatus.CONFLICT, "돈을 보낸 참여자가 있는 정산 건은 수정하거나 취소할 수 없습니다. 입금 상태를 먼저 미입금으로 되돌려 주세요."),
-    SHARE_ALREADY_SENT(HttpStatus.CONFLICT, "이미 보냈다고 알린 분담입니다."),
-    SHARE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확인 완료한 분담입니다."),
-    SHARE_ALREADY_UNPAID(HttpStatus.CONFLICT, "이미 미입금인 분담입니다."),
+    SHARE_ALREADY_SENT(HttpStatus.CONFLICT, "이미 보냈다고 알린 분담금입니다."),
+    SHARE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확인 완료한 분담금입니다."),
+    SHARE_ALREADY_UNPAID(HttpStatus.CONFLICT, "이미 미입금인 분담금입니다."),
     ZERO_SHARE_STATUS_UNCHANGEABLE(
-            HttpStatus.CONFLICT, "0원 분담은 입금 상태를 바꿀 수 없습니다. 금액이 잘못됐으면 정산 건을 수정해 주세요."),
+            HttpStatus.CONFLICT, "0원 분담금은 입금 상태를 바꿀 수 없습니다. 금액이 잘못됐으면 정산 건을 수정해 주세요."),
 
     // 500
     INVALID_GATHERING_MASTER_KEY(

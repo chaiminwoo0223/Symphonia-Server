@@ -153,7 +153,7 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenRecordable {
 
             @Test
-            @DisplayName("인증 없이도 정산 건을 기록하고 분담을 담아 201을 반환한다")
+            @DisplayName("인증 없이도 정산 건을 기록하고 분담금을 담아 201을 반환한다")
             void shouldRecordSettlement() throws Exception {
                 // given
                 settlementHelper.registerBankAccount(gathering, payer);
@@ -366,7 +366,7 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenUpdatable {
 
             @Test
-            @DisplayName("분담을 다시 계산한 정산 건을 담아 200을 반환한다")
+            @DisplayName("분담금을 다시 계산한 정산 건을 담아 200을 반환한다")
             void shouldUpdateSettlement() throws Exception {
                 // given
                 Settlement settlement =
@@ -507,11 +507,11 @@ class SettlementControllerTest extends IntegrationTest {
     class ConfirmShare {
 
         @Nested
-        @DisplayName("결제자가 확인 완료로 바꿀 수 있는 분담인 경우")
+        @DisplayName("결제자가 확인 완료로 바꿀 수 있는 분담금인 경우")
         class WhenConfirmable {
 
             @Test
-            @DisplayName("분담을 확인 완료로 바꾸고 확인한 금액과 보냈다는 금액을 담아 200을 반환한다")
+            @DisplayName("분담금을 확인 완료로 바꾸고 확인한 금액과 보냈다는 금액을 담아 200을 반환한다")
             void shouldConfirmShare() throws Exception {
                 // given
                 Settlement settlement =
@@ -554,7 +554,7 @@ class SettlementControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("이미 확인 완료인 분담인 경우")
+        @DisplayName("이미 확인 완료인 분담금인 경우")
         class WhenShareConfirmed {
 
             @Test
@@ -593,11 +593,11 @@ class SettlementControllerTest extends IntegrationTest {
     class RevertShare {
 
         @Nested
-        @DisplayName("결제자가 미입금으로 되돌릴 수 있는 분담인 경우")
+        @DisplayName("결제자가 미입금으로 되돌릴 수 있는 분담금인 경우")
         class WhenRevertible {
 
             @Test
-            @DisplayName("분담을 미입금으로 되돌리고 확인한 금액과 보냈다는 금액을 담아 200을 반환한다")
+            @DisplayName("분담금을 미입금으로 되돌리고 확인한 금액과 보냈다는 금액을 담아 200을 반환한다")
             void shouldRevertShare() throws Exception {
                 // given
                 Settlement settlement =
@@ -644,7 +644,7 @@ class SettlementControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("이미 미입금인 분담인 경우")
+        @DisplayName("이미 미입금인 분담금인 경우")
         class WhenShareUnpaid {
 
             @Test

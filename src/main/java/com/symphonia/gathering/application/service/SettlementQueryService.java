@@ -67,7 +67,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                         .toList());
     }
 
-    // 결제자별로 묶고 결제자 묶음은 처음 기록한 정산 건의 순서를 따른다. 보낼 분담이 남은 결제자를 앞에 둔다.
+    // 결제자별로 묶고 결제자 묶음은 처음 기록한 정산 건의 순서를 따른다. 보낼 분담금이 남은 결제자를 앞에 둔다.
     // 결제자 계좌는 결제자마다 따로 읽지 않도록 한 번에 읽는다.
     @Override
     public List<PayerSharesResult> getShares(String linkToken) {

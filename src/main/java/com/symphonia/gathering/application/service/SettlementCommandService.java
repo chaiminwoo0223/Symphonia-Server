@@ -35,7 +35,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 // 정산 건은 결제자가 개인 링크 토큰으로 기록하고 수정하고 취소한다. 요청한 참여자가 곧 결제자다.
-// 분담의 입금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다.
+// 분담금의 입금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다.
 @CommandService
 @RequiredArgsConstructor
 public class SettlementCommandService
@@ -128,9 +128,9 @@ public class SettlementCommandService
         settlementRepository.save(settlement);
     }
 
-    // 그 결제자에게 낼 미입금 분담을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
+    // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
     // 취소나 수정과 겹치면 잠금 없이 읽은 늦은 쪽이 버전 충돌로 실패하고, 먼저 취소된 정산 건은 잠금 조회에서 빠진다.
-    // 이미 보냄이나 확인 완료인 분담은 건너뛰어, 모두 보냈으면 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
+    // 이미 보냄이나 확인 완료인 분담금은 건너뛰어, 모두 보냈으면 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
     @Override
     public PayerSharesResult markSent(MarkSharesSentCommand command) {
         Long participantId = findParticipantId(command.linkToken());

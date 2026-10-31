@@ -101,7 +101,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
-            @DisplayName("분담을 인원 순서대로 저장해 같은 순서로 조회된다")
+            @DisplayName("분담금을 인원 순서대로 저장해 같은 순서로 조회된다")
             void shouldPersistSharesInParticipantOrder() {
                 // given
                 Settlement settlement =
@@ -130,7 +130,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         class WhenSettlementIsUpdated {
 
             @Test
-            @DisplayName("기존 분담을 지우고 수정한 분담으로 바꿔 저장한다")
+            @DisplayName("기존 분담금을 지우고 수정한 분담금으로 바꿔 저장한다")
             void shouldReplaceShares() {
                 // given
                 Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
@@ -160,11 +160,11 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
 
         @Nested
-        @DisplayName("이미 저장한 정산 건의 분담 상태만 바꾼 경우")
+        @DisplayName("이미 저장한 정산 건의 분담금 상태만 바꾼 경우")
         class WhenOnlyShareStatusChanged {
 
             @Test
-            @DisplayName("정산 건 행이 그대로여도 버전을 올리고 바꾼 분담 상태를 저장한다")
+            @DisplayName("정산 건 행이 그대로여도 버전을 올리고 바꾼 분담금 상태를 저장한다")
             void shouldIncrementVersion() {
                 // given
                 Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
@@ -213,9 +213,9 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
-            @DisplayName("먼저 저장한 요청이 분담 상태만 바꿨어도 SettlementConflictException이 발생한다")
+            @DisplayName("먼저 저장한 요청이 분담금 상태만 바꿨어도 SettlementConflictException이 발생한다")
             void shouldThrowSettlementConflictExceptionWhenOnlyShareStatusChangedFirst() {
-                // given: 두 요청이 같은 버전의 정산 건을 읽고 한 요청이 분담 상태만 바꿔 먼저 저장한 상태
+                // given: 두 요청이 같은 버전의 정산 건을 읽고 한 요청이 분담금 상태만 바꿔 먼저 저장한 상태
                 Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
                 clearPersistenceContext();
                 Settlement first = settlementRepository.findById(settlementId).orElseThrow();
@@ -283,7 +283,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
             @Test
             @DisplayName(
-                    "한 요청이 분담 상태만 바꾸고 다른 요청이 취소해도 한 요청만 저장되고 다른 요청은 SettlementConflictException이 발생한다")
+                    "한 요청이 분담금 상태만 바꾸고 다른 요청이 취소해도 한 요청만 저장되고 다른 요청은 SettlementConflictException이 발생한다")
             void shouldSaveOnlyOneWhenShareStatusChangedAndCancelled() {
                 // given
                 Long settlementId =
@@ -375,7 +375,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     class FindAllByPayerParticipantId {
 
         @Test
-        @DisplayName("결제자가 기록한 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담과 함께 반환한다")
+        @DisplayName("결제자가 기록한 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담금과 함께 반환한다")
         void shouldReturnSettlementsWithSharesExcludingCancelled() {
             // given
             Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
@@ -415,7 +415,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     class FindAllByShareParticipantId {
 
         @Test
-        @DisplayName("참여자의 분담이 있는 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담과 함께 반환한다")
+        @DisplayName("참여자의 분담금이 있는 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담금과 함께 반환한다")
         void shouldReturnSettlementsWithSharesExcludingCancelled() {
             // given
             Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
@@ -441,7 +441,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
-        @DisplayName("참여자의 분담이 있는 정산 건이 없으면 빈 목록을 반환한다")
+        @DisplayName("참여자의 분담금이 있는 정산 건이 없으면 빈 목록을 반환한다")
         void shouldReturnEmptyListWhenSettlementsNotExist() {
             // given
             recordDinner(leeId, List.of(leeId, kimId));
@@ -459,7 +459,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     class FindAllByShareParticipantIdAndPayerForUpdate {
 
         @Test
-        @DisplayName("그 결제자의 정산 건 중 참여자의 분담이 있고 취소하지 않은 것을 기록한 순서대로 분담과 함께 반환한다")
+        @DisplayName("그 결제자의 정산 건 중 참여자의 분담금이 있고 취소하지 않은 것을 기록한 순서대로 분담금과 함께 반환한다")
         void shouldReturnSettlementsOfPayerWithSharesExcludingCancelled() {
             // given
             Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
@@ -486,7 +486,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
-        @DisplayName("그 결제자에게 낼 분담이 있는 정산 건이 없으면 빈 목록을 반환한다")
+        @DisplayName("그 결제자에게 낼 분담금이 있는 정산 건이 없으면 빈 목록을 반환한다")
         void shouldReturnEmptyListWhenSettlementsNotExist() {
             // given
             recordDinner(parkId, List.of(parkId, leeId));
@@ -502,7 +502,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
         // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
         @Nested
-        @DisplayName("두 참여자가 같은 정산 건에서 동시에 각자 분담을 보냄으로 바꾸는 경우")
+        @DisplayName("두 참여자가 같은 정산 건에서 동시에 각자 분담금을 보냄으로 바꾸는 경우")
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         class WhenSentConcurrently {
 
@@ -512,7 +512,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
-            @DisplayName("늦은 요청이 잠금을 기다렸다가 최신 상태를 읽어 두 요청 모두 저장되고 두 분담 모두 보냄이 된다")
+            @DisplayName("늦은 요청이 잠금을 기다렸다가 최신 상태를 읽어 두 요청 모두 저장되고 두 분담금 모두 보냄이 된다")
             void shouldSaveBothSentShares() {
                 // given
                 Long settlementId =
