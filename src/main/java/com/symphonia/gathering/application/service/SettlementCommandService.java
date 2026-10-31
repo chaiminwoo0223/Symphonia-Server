@@ -23,7 +23,6 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
-import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
@@ -131,31 +130,28 @@ public class SettlementCommandService
 
     // 그 결제자에게 낼 미입금 분담을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
     // 취소나 수정과 겹치면 잠금 없이 읽은 늦은 쪽이 버전 충돌로 실패하고, 먼저 취소된 정산 건은 잠금 조회에서 빠진다.
-    // 이미 모두 보냈으면 바꿀 분담이 없어 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
+    // 이미 보냄이나 확인 완료인 분담은 건너뛰어, 모두 보냈으면 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
     @Override
     public PayerSharesResult markSent(MarkSharesSentCommand command) {
         Long participantId = findParticipantId(command.linkToken());
         List<Settlement> settlements =
                 settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(
                         participantId, command.payerParticipantId());
-        if (settlements.isEmpty()) {
-            throw new SettlementShareNotFoundException();
-        }
+        SettlementPolicy.validateSharesFound(!settlements.isEmpty());
         Gathering gathering = findGatheringByParticipantId(participantId);
 
-        List<Settlement> savedSettlements =
-                settlements.stream()
-                        .map(
-                                settlement ->
-                                        settlement.markShareSent(participantId)
-                                                ? settlementRepository.save(settlement)
-                                                : settlement)
-                        .toList();
+        settlements.stream()
+                .filter(settlement -> settlement.hasUnpaidShareOf(participantId))
+                .forEach(
+                        settlement -> {
+                            settlement.markShareSent(participantId);
+                            settlementRepository.save(settlement);
+                        });
 
         return PayerSharesResult.of(
                 gathering.getParticipant(command.payerParticipantId()),
                 findPayerBankAccount(command.payerParticipantId(), gathering.getId()),
-                savedSettlements,
+                settlements,
                 participantId);
     }
 

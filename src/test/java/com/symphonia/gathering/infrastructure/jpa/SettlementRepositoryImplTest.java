@@ -547,9 +547,8 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                                 participantId, kimId)
                                         .forEach(
                                                 settlement -> {
-                                                    if (settlement.markShareSent(participantId)) {
-                                                        settlementRepository.save(settlement);
-                                                    }
+                                                    settlement.markShareSent(participantId);
+                                                    settlementRepository.save(settlement);
                                                 }));
             }
         }

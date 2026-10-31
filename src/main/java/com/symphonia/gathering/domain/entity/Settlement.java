@@ -65,15 +65,9 @@ public class Settlement {
     }
 
     // 정산 메시지를 보내기 전에도 개인 링크로 분담을 볼 수 있으므로, 발송 여부와 관계없이 보냄으로 바꿀 수 있다.
-    // "보냈어요"를 다시 눌러도 실패하지 않도록 이미 보냄이나 확인 완료인 분담은 그대로 두고, 바꿨는지를 돌려준다.
-    public boolean markShareSent(Long participantId) {
+    public void markShareSent(Long participantId) {
         validateNotCancelled();
-        SettlementShare share = getShareOf(participantId);
-        if (!share.isUnpaid()) {
-            return false;
-        }
-        share.markSent();
-        return true;
+        getShareOf(participantId).markSent();
     }
 
     public void confirmShare(Long participantId) {
@@ -84,6 +78,10 @@ public class Settlement {
     public void revertShareToUnpaid(Long participantId) {
         validateNotCancelled();
         getShareOf(participantId).revertToUnpaid();
+    }
+
+    public boolean hasUnpaidShareOf(Long participantId) {
+        return getShareOf(participantId).isUnpaid();
     }
 
     public SettlementShare getShareOf(Long participantId) {

@@ -72,15 +72,14 @@ public class SettlementRepositoryImpl implements SettlementRepository {
 
     // 다른 요청이 먼저 바꾼 정산 건이면 버전이 달라 저장이 실패한다.
     // 커밋 시점에 실패하면 이 메서드가 예외를 바꿀 수 없으므로 바로 flush한다.
-    // 분담 행만 바뀌면 정산 건 행이 그대로라 Hibernate가 버전을 올리지 않으므로, 기존 정산 건은 저장할 때마다 버전을 올린다.
+    // 분담 행만 바뀌면 정산 건 행이 그대로라 Hibernate가 버전을 올리지 않으므로, 저장할 때마다 버전을 올린다.
+    // 새 정산 건도 같은 경로로 버전을 올린다. 저장 경로를 새 정산 건과 기존 정산 건으로 나누지 않기 위해서다.
     // OPTIMISTIC_FORCE_INCREMENT는 커밋할 때 버전을 올리므로, 바로 올리는 PESSIMISTIC_FORCE_INCREMENT를 쓴다.
     private SettlementJpaEntity saveWithVersionCheck(Settlement settlement) {
         try {
             SettlementJpaEntity savedSettlement =
                     settlementJpaRepository.saveAndFlush(SettlementJpaEntity.from(settlement));
-            if (settlement.getVersion() != null) {
-                entityManager.lock(savedSettlement, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
-            }
+            entityManager.lock(savedSettlement, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
             return savedSettlement;
         } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {
             throw new SettlementConflictException();
