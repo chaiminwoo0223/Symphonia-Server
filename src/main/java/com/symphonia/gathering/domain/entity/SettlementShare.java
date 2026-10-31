@@ -1,6 +1,9 @@
 package com.symphonia.gathering.domain.entity;
 
-import com.symphonia.gathering.domain.exception.ShareStatusChangeNotAllowedException;
+import com.symphonia.gathering.domain.exception.ShareAlreadyConfirmedException;
+import com.symphonia.gathering.domain.exception.ShareAlreadySentException;
+import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
+import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -48,24 +51,23 @@ public class SettlementShare {
 
     // 참여자가 "보냈어요"를 누르면 미입금 분담만 보냄이 된다.
     void markSent() {
-        validateStatusIsNot(ShareStatus.SENT, ShareStatus.CONFIRMED);
+        validateNotSent();
+        validateNotConfirmed();
         status = ShareStatus.SENT;
     }
 
     // 결제자가 보냄을 확인하거나 직접 받은 돈을 처리하므로, 미입금과 보냄 모두 확인 완료가 될 수 있다.
     void confirm() {
-        validateStatusIsNot(ShareStatus.CONFIRMED);
+        validateAmountNotZero();
+        validateNotConfirmed();
         status = ShareStatus.CONFIRMED;
     }
 
     // 결제자가 "아직 안 들어왔어요"로 보냄을 되돌린다.
     // 받은 돈을 돌려주고 정산 건을 취소할 수 있도록 확인 완료도 미입금으로 되돌릴 수 있다.
-    // 0원 분담은 낼 돈이 없어 미입금이 될 이유가 없으므로 되돌리지 않는다.
     void revertToUnpaid() {
-        validateStatusIsNot(ShareStatus.UNPAID);
-        if (amount == 0) {
-            throw new ShareStatusChangeNotAllowedException();
-        }
+        validateAmountNotZero();
+        validateNotUnpaid();
         status = ShareStatus.UNPAID;
     }
 
@@ -79,11 +81,29 @@ public class SettlementShare {
                 .build();
     }
 
-    private void validateStatusIsNot(ShareStatus... disallowedStatuses) {
-        for (ShareStatus disallowedStatus : disallowedStatuses) {
-            if (status == disallowedStatus) {
-                throw new ShareStatusChangeNotAllowedException();
-            }
+    private void validateNotSent() {
+        if (status == ShareStatus.SENT) {
+            throw new ShareAlreadySentException();
+        }
+    }
+
+    private void validateNotConfirmed() {
+        if (status == ShareStatus.CONFIRMED) {
+            throw new ShareAlreadyConfirmedException();
+        }
+    }
+
+    // 0원 분담은 확인 완료로 시작하고 낼 돈이 없으므로 결제자가 상태를 바꿀 수 없다.
+    // 금액이 잘못됐으면 상태가 아니라 정산 건을 수정해 금액을 고친다.
+    private void validateAmountNotZero() {
+        if (amount == 0) {
+            throw new ZeroShareStatusUnchangeableException();
+        }
+    }
+
+    private void validateNotUnpaid() {
+        if (status == ShareStatus.UNPAID) {
+            throw new ShareAlreadyUnpaidException();
         }
     }
 }

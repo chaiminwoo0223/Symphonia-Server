@@ -558,7 +558,7 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenShareConfirmed {
 
             @Test
-            @DisplayName("SHARE_STATUS_CHANGE_NOT_ALLOWED 코드와 함께 409를 반환한다")
+            @DisplayName("SHARE_ALREADY_CONFIRMED 코드와 함께 409를 반환한다")
             void shouldReturnConflict() throws Exception {
                 // given
                 Settlement settlement =
@@ -572,7 +572,7 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.code")
                                         .value(
-                                                GatheringErrorCode.SHARE_STATUS_CHANGE_NOT_ALLOWED
+                                                GatheringErrorCode.SHARE_ALREADY_CONFIRMED
                                                         .getCode()));
             }
         }
@@ -648,7 +648,7 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenShareUnpaid {
 
             @Test
-            @DisplayName("SHARE_STATUS_CHANGE_NOT_ALLOWED 코드와 함께 409를 반환한다")
+            @DisplayName("SHARE_ALREADY_UNPAID 코드와 함께 409를 반환한다")
             void shouldReturnConflict() throws Exception {
                 // given
                 Settlement settlement =
@@ -659,9 +659,7 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(status().isConflict())
                         .andExpect(
                                 jsonPath("$.data.code")
-                                        .value(
-                                                GatheringErrorCode.SHARE_STATUS_CHANGE_NOT_ALLOWED
-                                                        .getCode()));
+                                        .value(GatheringErrorCode.SHARE_ALREADY_UNPAID.getCode()));
             }
         }
 

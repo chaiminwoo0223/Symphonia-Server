@@ -42,7 +42,9 @@ import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
-import com.symphonia.gathering.domain.exception.ShareStatusChangeNotAllowedException;
+import com.symphonia.gathering.domain.exception.ShareAlreadyConfirmedException;
+import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
+import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
@@ -1178,7 +1180,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareStatusChangeNotAllowedException() {
+            void shouldThrowShareAlreadyConfirmedException() {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(
@@ -1192,7 +1194,26 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(ShareStatusChangeNotAllowedException.class);
+                        .isInstanceOf(ShareAlreadyConfirmedException.class);
+                thenSettlementNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("확인 완료로 시작한 0원 분담인 경우")
+        class WhenShareAmountZero {
+
+            @Test
+            @DisplayName("이미 확인 완료가 아니라 0원 분담이라는 예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowZeroShareStatusUnchangeableException() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(settlementWithZeroShare());
+                ConfirmShareCommand command = command(PARK_ID);
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.confirm(command))
+                        .isInstanceOf(ZeroShareStatusUnchangeableException.class);
                 thenSettlementNotSaved();
             }
         }
@@ -1341,7 +1362,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareStatusChangeNotAllowedException() {
+            void shouldThrowShareAlreadyUnpaidException() {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(
@@ -1351,7 +1372,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(ShareStatusChangeNotAllowedException.class);
+                        .isInstanceOf(ShareAlreadyUnpaidException.class);
                 thenSettlementNotSaved();
             }
         }
@@ -1362,7 +1383,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareStatusChangeNotAllowedException() {
+            void shouldThrowZeroShareStatusUnchangeableException() {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(settlementWithZeroShare());
@@ -1371,7 +1392,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(ShareStatusChangeNotAllowedException.class);
+                        .isInstanceOf(ZeroShareStatusUnchangeableException.class);
                 thenSettlementNotSaved();
             }
         }
