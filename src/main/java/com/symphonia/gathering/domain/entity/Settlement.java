@@ -67,17 +67,17 @@ public class Settlement {
     // 정산 메시지를 보내기 전에도 개인 링크로 분담을 볼 수 있으므로, 발송 여부와 관계없이 보냄으로 바꿀 수 있다.
     public void markShareSent(Long participantId) {
         validateNotCancelled();
-        getShareOf(participantId).markSent();
+        replaceShare(getShareOf(participantId).sent());
     }
 
     public void confirmShare(Long participantId) {
         validateNotCancelled();
-        getShareOf(participantId).confirm();
+        replaceShare(getShareOf(participantId).confirmed());
     }
 
     public void revertShareToUnpaid(Long participantId) {
         validateNotCancelled();
-        getShareOf(participantId).revertToUnpaid();
+        replaceShare(getShareOf(participantId).unpaid());
     }
 
     public boolean hasUnpaidShareOf(Long participantId) {
@@ -143,5 +143,17 @@ public class Settlement {
         if (hasSentShares()) {
             throw new SettlementSharesSentException();
         }
+    }
+
+    // 분담은 상태가 바뀐 새 분담으로 돌아오므로, 같은 참여자의 분담을 그 분담으로 갈아 끼운다.
+    private void replaceShare(SettlementShare changedShare) {
+        shares =
+                shares.stream()
+                        .map(
+                                share ->
+                                        share.isOwnedBy(changedShare.getParticipantId())
+                                                ? changedShare
+                                                : share)
+                        .toList();
     }
 }
