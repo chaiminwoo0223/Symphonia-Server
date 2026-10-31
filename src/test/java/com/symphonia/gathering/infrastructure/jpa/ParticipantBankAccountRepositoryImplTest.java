@@ -241,6 +241,21 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
                                     bankAccount,
                                     SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION));
         }
+
+        @Test
+        @DisplayName("읽은 계좌가 없으면 모임별 데이터 키를 찾지 않고 빈 목록을 반환한다")
+        void shouldReturnEmptyListWithoutLoadingDataKeyWhenBankAccountsNotFound() {
+            // given
+            Long gatheringIdWithoutDataKey = Long.MAX_VALUE;
+
+            // when
+            List<ParticipantBankAccount> result =
+                    participantBankAccountRepository.findAllByParticipantIds(
+                            List.of(parkId), gatheringIdWithoutDataKey);
+
+            // then
+            assertThat(result).isEmpty();
+        }
     }
 
     // 테스트 트랜잭션 없이 커밋한 모임의 행을 외래 키 순서대로 지운다.

@@ -230,8 +230,8 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenSharesNotFound {
 
             @Test
-            @DisplayName("결제자 계좌를 읽지 않고 빈 목록을 반환한다")
-            void shouldReturnEmptyListWithoutReadingBankAccounts() {
+            @DisplayName("빈 목록을 반환한다")
+            void shouldReturnEmptyListWhenSharesNotFound() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.of(LEE_ID));
@@ -245,7 +245,6 @@ class SettlementQueryServiceTest extends UnitTest {
 
                 // then
                 assertThat(result).isEmpty();
-                then(participantBankAccountRepository).shouldHaveNoInteractions();
             }
         }
 

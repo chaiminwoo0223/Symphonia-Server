@@ -37,14 +37,23 @@ public class ParticipantBankAccountRepositoryImpl implements ParticipantBankAcco
         return participantBankAccountJpaRepository.existsById(participantId);
     }
 
+    // 계좌를 먼저 읽고, 읽은 계좌가 있을 때만 모임별 데이터 키를 푼다.
     @Override
     public List<ParticipantBankAccount> findAllByParticipantIds(
             Collection<Long> participantIds, Long gatheringId) {
-        GatheringDataKey dataKey = gatheringDataKeyLoader.load(gatheringId);
+        List<ParticipantBankAccountJpaEntity> entities =
+                participantBankAccountJpaRepository.findAllById(participantIds);
 
-        return participantBankAccountJpaRepository.findAllById(participantIds).stream()
-                .map(entity -> entity.toDomain(dataKey))
-                .toList();
+        return entities.stream()
+                .findAny()
+                .map(_ -> gatheringDataKeyLoader.load(gatheringId))
+                .map(dataKey -> decrypt(entities, dataKey))
+                .orElseGet(List::of);
+    }
+
+    private List<ParticipantBankAccount> decrypt(
+            List<ParticipantBankAccountJpaEntity> entities, GatheringDataKey dataKey) {
+        return entities.stream().map(entity -> entity.toDomain(dataKey)).toList();
     }
 
     private boolean isPrimaryKeyViolation(DataIntegrityViolationException e) {
