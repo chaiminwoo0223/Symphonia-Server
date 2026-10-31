@@ -27,8 +27,8 @@ public enum GatheringErrorCode implements ErrorCode {
 
     // 404
     GATHERING_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 모임을 찾을 수 없습니다."),
-    INVALID_JOIN_TOKEN(HttpStatus.NOT_FOUND, "유효하지 않은 참여 링크입니다. 모임을 만든 사람에게 새 QR을 받아 주세요."),
-    INVALID_LINK_TOKEN(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다. 받은 링크를 다시 확인해 주세요."),
+    JOIN_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 참여 링크입니다. 모임을 만든 사람에게 새 QR을 받아 주세요."),
+    LINK_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다. 받은 링크를 다시 확인해 주세요."),
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정산 건을 찾을 수 없습니다."),
     SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담을 찾을 수 없습니다."),
 

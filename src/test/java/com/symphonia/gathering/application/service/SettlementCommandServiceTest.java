@@ -31,9 +31,9 @@ import com.symphonia.gathering.domain.exception.BankAccountConsentRequiredExcept
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
 import com.symphonia.gathering.domain.exception.InvalidBankAccountException;
-import com.symphonia.gathering.domain.exception.InvalidLinkTokenException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
+import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
@@ -99,7 +99,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
-            void shouldThrowInvalidLinkTokenException() {
+            void shouldThrowLinkTokenNotFoundException() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.empty());
@@ -107,7 +107,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(InvalidLinkTokenException.class);
+                        .isInstanceOf(LinkTokenNotFoundException.class);
                 thenBankAccountNotSaved();
             }
         }
@@ -968,7 +968,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowInvalidLinkTokenException() {
+            void shouldThrowLinkTokenNotFoundException() {
                 // given
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.empty());
@@ -976,7 +976,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.markSent(command))
-                        .isInstanceOf(InvalidLinkTokenException.class);
+                        .isInstanceOf(LinkTokenNotFoundException.class);
                 thenSettlementNotSaved();
             }
         }

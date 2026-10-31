@@ -6,7 +6,7 @@ import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
-import com.symphonia.gathering.domain.exception.InvalidJoinTokenException;
+import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
@@ -40,14 +40,14 @@ class GatheringQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던진다")
-            void shouldThrowInvalidJoinTokenException() {
+            void shouldThrowJoinTokenNotFoundException() {
                 // given
                 given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                         .willReturn(Optional.empty());
 
                 // when & then
                 assertThatThrownBy(() -> gatheringQueryService.getByJoinToken(JOIN_TOKEN))
-                        .isInstanceOf(InvalidJoinTokenException.class);
+                        .isInstanceOf(JoinTokenNotFoundException.class);
             }
         }
 

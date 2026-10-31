@@ -12,7 +12,7 @@ import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
-import com.symphonia.gathering.domain.exception.InvalidJoinTokenException;
+import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
@@ -56,7 +56,7 @@ public class GatheringCommandService
         Long gatheringId =
                 gatheringJoinTokenRepository
                         .findGatheringIdByValue(command.joinToken())
-                        .orElseThrow(InvalidJoinTokenException::new);
+                        .orElseThrow(JoinTokenNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
                         .findById(gatheringId)
