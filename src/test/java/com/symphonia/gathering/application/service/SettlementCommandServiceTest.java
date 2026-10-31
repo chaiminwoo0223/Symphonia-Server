@@ -33,7 +33,6 @@ import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException
 import com.symphonia.gathering.domain.exception.InvalidBankAccountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
-import com.symphonia.gathering.domain.exception.InvalidShareStatusTransitionException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
@@ -43,6 +42,7 @@ import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
+import com.symphonia.gathering.domain.exception.ShareStatusChangeNotAllowedException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
@@ -1178,7 +1178,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowInvalidShareStatusTransitionException() {
+            void shouldThrowShareStatusChangeNotAllowedException() {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(
@@ -1192,7 +1192,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(InvalidShareStatusTransitionException.class);
+                        .isInstanceOf(ShareStatusChangeNotAllowedException.class);
                 thenSettlementNotSaved();
             }
         }
@@ -1341,7 +1341,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowInvalidShareStatusTransitionException() {
+            void shouldThrowShareStatusChangeNotAllowedException() {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(
@@ -1351,7 +1351,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(InvalidShareStatusTransitionException.class);
+                        .isInstanceOf(ShareStatusChangeNotAllowedException.class);
                 thenSettlementNotSaved();
             }
         }
@@ -1362,7 +1362,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowInvalidShareStatusTransitionException() {
+            void shouldThrowShareStatusChangeNotAllowedException() {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(settlementWithZeroShare());
@@ -1371,7 +1371,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(InvalidShareStatusTransitionException.class);
+                        .isInstanceOf(ShareStatusChangeNotAllowedException.class);
                 thenSettlementNotSaved();
             }
         }
