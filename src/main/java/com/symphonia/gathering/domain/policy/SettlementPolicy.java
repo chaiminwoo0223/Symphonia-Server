@@ -7,6 +7,7 @@ import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsExc
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
+import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import java.time.LocalDateTime;
 
 // 정산 건과 모임, 계좌를 함께 봐야 하는 검증이다. Service가 Settlement의 상태를 바꾸기 전에 호출한다.
@@ -46,6 +47,12 @@ public enum SettlementPolicy {
         }
         if (!BANK_ACCOUNT_CONSENT_VERSION.equals(consentVersion)) {
             throw new OutdatedBankAccountConsentVersionException();
+        }
+    }
+
+    public static void validateSharesFound(boolean found) {
+        if (!found) {
+            throw new SettlementShareNotFoundException();
         }
     }
 
