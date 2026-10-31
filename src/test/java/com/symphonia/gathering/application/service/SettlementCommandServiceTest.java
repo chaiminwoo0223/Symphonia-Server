@@ -1295,7 +1295,7 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("미입금 분담금도 확인 완료로 바꾸고, 보냄 분담금의 금액은 따로 담아 반환한다")
+            @DisplayName("미입금 분담금도 확인 완료로 바꾸고, 보냄 분담금은 따로 더해 반환한다")
             void shouldConfirmUnpaidShare() {
                 // given
                 givenParticipant(PAYER_ID);

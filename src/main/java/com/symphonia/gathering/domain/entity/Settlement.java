@@ -16,7 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 // 카드 결제 1건의 정산이다. 정산 건끼리는 상계하지 않는다.
-// 수정, 취소, 분담금의 입금 상태 전이 규칙은 이 정산 건의 상태만으로 판단하므로 Settlement가 직접 검사한다.
+// 수정, 취소, 분담금 상태 변경 규칙은 이 정산 건의 상태만으로 판단하므로 Settlement가 직접 검사한다.
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
