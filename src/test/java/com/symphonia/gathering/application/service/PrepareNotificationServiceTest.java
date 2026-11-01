@@ -10,7 +10,7 @@ import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
-import com.symphonia.gathering.application.dto.result.PreparedNotificationResult.PayerAmountResult;
+import com.symphonia.gathering.application.provider.NotificationContentProviderImpl;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -21,13 +21,14 @@ import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.DeliveryStatus;
-import com.symphonia.gathering.domain.vo.NotificationType;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.NotificationDeliveryFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -454,10 +455,11 @@ class PrepareNotificationServiceTest extends UnitTest {
         prepareNotificationService =
                 new PrepareNotificationService(
                         notificationDeliveryRepository,
-                        gatheringRepository,
-                        settlementRepository,
-                        participantLinkTokenRepository,
-                        gatheringTokenProvider,
+                        new NotificationContentProviderImpl(
+                                settlementRepository,
+                                gatheringRepository,
+                                participantLinkTokenRepository,
+                                gatheringTokenProvider),
                         Clock.fixed(
                                 now.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));

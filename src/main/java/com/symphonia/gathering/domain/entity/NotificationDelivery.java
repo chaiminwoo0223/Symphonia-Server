@@ -2,15 +2,10 @@ package com.symphonia.gathering.domain.entity;
 
 import com.symphonia.gathering.domain.policy.NotificationPolicy;
 import com.symphonia.gathering.domain.vo.DeliveryStatus;
-import com.symphonia.gathering.domain.vo.NotificationType;
-import com.symphonia.gathering.domain.vo.PayerAmount;
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -52,45 +47,23 @@ public class NotificationDelivery {
     private LocalDateTime claimedAt;
     private LocalDateTime sentAt;
 
-    // 수신자마다 아직 내지 않은 분담금이 있는 정산 건을 묶어 한 메시지로 보낸다. 0원 분담금은 미입금이 아니라서 빠진다.
-    public static List<NotificationDelivery> forSettlement(
-            Long gatheringId, List<Settlement> settlements, LocalDateTime now) {
-        Map<Long, List<Long>> settlementIdsByParticipantId = new LinkedHashMap<>();
-        settlements.forEach(
-                settlement ->
-                        settlement.getShares().stream()
-                                .filter(SettlementShare::isUnpaid)
-                                .forEach(
-                                        share ->
-                                                settlementIdsByParticipantId
-                                                        .computeIfAbsent(
-                                                                share.getParticipantId(),
-                                                                _ -> new ArrayList<>())
-                                                        .add(settlement.getId())));
-
-        return settlementIdsByParticipantId.entrySet().stream()
-                .map(
-                        entry ->
-                                pending(
-                                        gatheringId,
-                                        entry.getKey(),
-                                        NotificationType.SETTLEMENT,
-                                        entry.getValue(),
-                                        now))
-                .toList();
+    // 수신자 한 명에게 정산 건 여러 개를 묶어 한 메시지로 보낸다. 담을 정산 건은 발송을 시작할 때 gathering이 고른다.
+    public static NotificationDelivery forSettlement(
+            Long gatheringId, Long participantId, List<Long> settlementIds, LocalDateTime now) {
+        return pending(gatheringId, participantId, NotificationType.SETTLEMENT, settlementIds, now);
     }
 
     // 취소 알림은 수정 시간 없이 바로 보내되, 보낼 수 없는 시간대면 그다음 10:00에 보낸다.
     public static List<NotificationDelivery> forCancellation(
-            Settlement settlement, List<Long> participantIds, LocalDateTime now) {
+            Long gatheringId, Long settlementId, List<Long> participantIds, LocalDateTime now) {
         return participantIds.stream()
                 .map(
                         participantId ->
                                 pending(
-                                        settlement.getGatheringId(),
+                                        gatheringId,
                                         participantId,
                                         NotificationType.CANCELLATION,
-                                        List.of(settlement.getId()),
+                                        List.of(settlementId),
                                         NotificationPolicy.sendableAt(now)))
                 .toList();
     }
@@ -144,22 +117,6 @@ public class NotificationDelivery {
                         () -> status = DeliveryStatus.FAILED);
     }
 
-    // 보낼 금액을 결제자별로 합한다. 메시지를 받은 참여자가 결제자마다 얼마를 보낼지 바로 알 수 있게 하기 위해서다.
-    // 정산 메시지는 아직 내지 않은 분담금만, 취소 알림은 취소된 정산 건의 분담금만 담는다. 담을 금액이 없으면 보내지 않는다.
-    // 결제자 이름은 붙이지 않는다. 담을 금액이 없을 때 참여자 정보를 복호화하는 모임 조회를 건너뛰기 위해서다.
-    public Map<Long, Long> amountsByPayerIdFrom(List<Settlement> settlements) {
-        return settlements.stream()
-                .filter(settlement -> settlementIds.contains(settlement.getId()))
-                .filter(this::isAnnounceable)
-                .collect(
-                        Collectors.groupingBy(
-                                Settlement::getPayerParticipantId,
-                                LinkedHashMap::new,
-                                Collectors.summingLong(
-                                        settlement ->
-                                                settlement.getShareOf(participantId).getAmount())));
-    }
-
     public List<Long> getSettlementIds() {
         return List.copyOf(settlementIds);
     }
@@ -172,18 +129,6 @@ public class NotificationDelivery {
     // 이 시각보다 먼저 맡은 발송 기록은 맡은 컨슈머가 죽은 것으로 본다. 아직 맡고 있는 발송 기록은 다시 발행하지 않는다.
     public static LocalDateTime claimExpiryThreshold(LocalDateTime now) {
         return now.minus(CLAIM_LEASE);
-    }
-
-    // 결제자별로 합한 금액에 결제자 이름을 붙인다.
-    public static List<PayerAmount> payerAmountsOf(
-            Gathering gathering, Map<Long, Long> amountsByPayerId) {
-        return amountsByPayerId.entrySet().stream()
-                .map(
-                        entry ->
-                                new PayerAmount(
-                                        gathering.getParticipant(entry.getKey()).getName(),
-                                        entry.getValue()))
-                .toList();
     }
 
     private static NotificationDelivery pending(
@@ -207,15 +152,5 @@ public class NotificationDelivery {
         availableAt = time;
         publishedAt = null;
         claimedAt = null;
-    }
-
-    private boolean isAnnounceable(Settlement settlement) {
-        return switch (type) {
-            case SETTLEMENT ->
-                    !settlement.isCancelled() && settlement.hasUnpaidShareOf(participantId);
-            case CANCELLATION ->
-                    settlement.isCancelled()
-                            && settlement.getShareOf(participantId).getAmount() > 0;
-        };
     }
 }

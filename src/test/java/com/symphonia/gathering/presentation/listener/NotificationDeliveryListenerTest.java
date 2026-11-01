@@ -12,14 +12,14 @@ import static org.mockito.Mockito.verify;
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
-import com.symphonia.gathering.application.dto.result.PreparedNotificationResult.PayerAmountResult;
 import com.symphonia.gathering.application.usecase.PrepareNotificationUseCase;
 import com.symphonia.gathering.application.usecase.SendNotificationUseCase;
 import com.symphonia.gathering.domain.publisher.NotificationDeliveryPublisher;
-import com.symphonia.gathering.domain.vo.NotificationType;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.infrastructure.messaging.config.properties.NotificationQueueProperties;
+import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;

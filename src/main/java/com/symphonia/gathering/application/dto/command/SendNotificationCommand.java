@@ -2,9 +2,10 @@ package com.symphonia.gathering.application.dto.command;
 
 import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
 import com.symphonia.gathering.domain.vo.NotificationMessage;
-import com.symphonia.gathering.domain.vo.NotificationType;
 import com.symphonia.gathering.domain.vo.PayerAmount;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
+import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
@@ -50,7 +51,7 @@ public record SendNotificationCommand(
     }
 
     public record PayerAmountCommand(String payerName, long amount) {
-        public static PayerAmountCommand from(PreparedNotificationResult.PayerAmountResult result) {
+        public static PayerAmountCommand from(PayerAmountResult result) {
             return new PayerAmountCommand(result.payerName(), result.amount());
         }
 

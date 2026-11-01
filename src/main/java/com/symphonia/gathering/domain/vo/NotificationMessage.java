@@ -1,5 +1,6 @@
 package com.symphonia.gathering.domain.vo;
 
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.NonNull;

@@ -92,6 +92,16 @@ public class Settlement {
         return getShareOf(participantId).isUnpaid();
     }
 
+    // 참여자의 분담금을 정산 메시지에 담을지 본다. 그사이 보냈거나 정산 건이 취소됐으면 담지 않는다.
+    public boolean hasOutstandingShareOf(Long participantId) {
+        return !isCancelled() && hasUnpaidShareOf(participantId);
+    }
+
+    // 참여자의 분담금을 취소 알림에 담을지 본다. 낼 돈이 없던 0원 분담금은 알릴 것이 없어 담지 않는다.
+    public boolean hasCancelledShareOf(Long participantId) {
+        return isCancelled() && getShareOf(participantId).getAmount() > 0;
+    }
+
     public SettlementShare getShareOf(Long participantId) {
         return shares.stream()
                 .filter(share -> share.isOwnedBy(participantId))

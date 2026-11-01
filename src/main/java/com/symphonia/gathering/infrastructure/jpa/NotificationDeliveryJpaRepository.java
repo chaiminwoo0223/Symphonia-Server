@@ -58,7 +58,7 @@ public interface NotificationDeliveryJpaRepository
             SELECT delivery FROM NotificationDeliveryJpaEntity delivery
             JOIN delivery.settlementIds settlementId
             WHERE settlementId = :settlementId
-              AND delivery.type = com.symphonia.gathering.domain.vo.NotificationType.SETTLEMENT
+              AND delivery.type = com.symphonia.notification.domain.vo.NotificationType.SETTLEMENT
             ORDER BY delivery.id
             """)
     List<NotificationDeliveryJpaEntity> findAllSettlementDeliveriesForUpdate(
