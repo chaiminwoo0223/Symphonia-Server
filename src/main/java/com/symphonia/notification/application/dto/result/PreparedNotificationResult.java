@@ -1,6 +1,5 @@
 package com.symphonia.notification.application.dto.result;
 
-import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.LocalDate;

@@ -13,7 +13,7 @@ import static org.mockito.Mockito.verify;
 import com.symphonia.IntegrationTest;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
-import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.application.dto.result.PayerAmountResult;
 import com.symphonia.notification.application.dto.result.PreparedNotificationResult;
 import com.symphonia.notification.application.usecase.PrepareNotificationUseCase;
 import com.symphonia.notification.application.usecase.SendNotificationUseCase;
