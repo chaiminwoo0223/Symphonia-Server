@@ -1,4 +1,4 @@
-package com.symphonia.gathering.infrastructure.jpa;
+package com.symphonia.notification.infrastructure.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,6 +12,9 @@ import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
+import com.symphonia.gathering.infrastructure.jpa.GatheringDataKeyLoader;
+import com.symphonia.gathering.infrastructure.jpa.GatheringRepositoryImpl;
+import com.symphonia.gathering.infrastructure.jpa.SettlementRepositoryImpl;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.notification.domain.vo.DeliveryStatus;

@@ -7,9 +7,10 @@ refresh-token:
 gathering:
   crypto:
     master-key: dGVzdC1vbmx5LWdhdGhlcmluZy1tYXN0ZXIta2V5ISE=
-  # 테스트는 시각을 고정해 UseCase를 직접 부르므로 폴러를 띄우지 않는다.
-  notification:
-    scheduling:
-      enabled: false
-    link:
-      base-url: https://test.symphonia.local/shares
+
+# 테스트는 시각을 고정해 UseCase를 직접 부르므로 폴러를 띄우지 않는다.
+notification:
+  scheduling:
+    enabled: false
+  link:
+    base-url: https://test.symphonia.local/shares

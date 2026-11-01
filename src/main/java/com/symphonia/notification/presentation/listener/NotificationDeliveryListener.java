@@ -1,4 +1,4 @@
-package com.symphonia.gathering.presentation.listener;
+package com.symphonia.notification.presentation.listener;
 
 import com.symphonia.notification.application.dto.command.SendNotificationCommand;
 import com.symphonia.notification.application.usecase.PrepareNotificationUseCase;
@@ -15,7 +15,7 @@ public class NotificationDeliveryListener {
     private final PrepareNotificationUseCase prepareNotificationUseCase;
     private final SendNotificationUseCase sendNotificationUseCase;
 
-    @RabbitListener(queues = "${gathering.notification.queue.delivery}")
+    @RabbitListener(queues = "${notification.queue.delivery}")
     public void receive(String notificationDeliveryId) {
         prepareNotificationUseCase
                 .prepare(Long.valueOf(notificationDeliveryId))

@@ -1,4 +1,4 @@
-package com.symphonia.gathering.infrastructure.jpa;
+package com.symphonia.notification.infrastructure.jpa;
 
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
