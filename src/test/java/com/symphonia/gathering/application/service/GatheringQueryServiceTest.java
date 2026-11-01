@@ -30,8 +30,8 @@ class GatheringQueryServiceTest extends UnitTest {
 
     // 참여 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
     // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
-    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
-    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
+    private static final LocalDateTime OPEN_PERIOD_OPENED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_PERIOD_OPENED_AT = NOW.minusHours(48);
 
     private GatheringQueryService gatheringQueryService;
 
@@ -78,7 +78,7 @@ class GatheringQueryServiceTest extends UnitTest {
             @DisplayName("참여 가능으로 표시하고 현재 동의 안내 버전을 반환한다")
             void shouldReturnJoinableResult() {
                 // given
-                givenGatheringCreatedAt(OPEN_CREATED_AT);
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
 
                 // when
                 GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
@@ -98,7 +98,7 @@ class GatheringQueryServiceTest extends UnitTest {
             @DisplayName("참여 불가로 표시한다")
             void shouldReturnNotJoinableResult() {
                 // given
-                givenGatheringCreatedAt(CLOSED_CREATED_AT);
+                givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
 
                 // when
                 GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
@@ -109,14 +109,14 @@ class GatheringQueryServiceTest extends UnitTest {
             }
         }
 
-        private void givenGatheringCreatedAt(LocalDateTime createdAt) {
+        private void givenGatheringOpenedAt(LocalDateTime openedAt) {
             given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                     .willReturn(Optional.of(GATHERING_ID));
             given(gatheringRepository.findById(GATHERING_ID))
                     .willReturn(
                             Optional.of(
-                                    GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
-                                            GATHERING_ID, createdAt)));
+                                    GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                            GATHERING_ID, openedAt)));
         }
     }
 }

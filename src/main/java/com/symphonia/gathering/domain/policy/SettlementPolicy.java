@@ -17,8 +17,8 @@ public enum SettlementPolicy {
     // 결제자가 계좌를 입력할 때 안내하는 문구의 버전이다. 문구를 바꾸면 이 값도 바꾼다.
     public static final String BANK_ACCOUNT_CONSENT_VERSION = "2026-10-30";
 
-    public static void validateRecordable(LocalDateTime gatheringCreatedAt, LocalDateTime now) {
-        if (!GatheringPolicy.isWithinRecordingPeriod(gatheringCreatedAt, now)) {
+    public static void validateRecordable(LocalDateTime gatheringOpenedAt, LocalDateTime now) {
+        if (!GatheringPolicy.isWithinRecordingPeriod(gatheringOpenedAt, now)) {
             throw new SettlementRecordingClosedException();
         }
     }

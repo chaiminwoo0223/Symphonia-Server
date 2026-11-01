@@ -42,7 +42,7 @@ import org.mockito.Mock;
 class PrepareNotificationServiceTest extends UnitTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 28, 15, 0);
-    private static final LocalDateTime GATHERING_CREATED_AT = LocalDateTime.of(2026, 10, 27, 18, 0);
+    private static final LocalDateTime GATHERING_OPENED_AT = LocalDateTime.of(2026, 10, 27, 18, 0);
     private static final Long DELIVERY_ID = 40L;
     private static final Long GATHERING_ID = 10L;
     private static final Long SETTLEMENT_ID = 30L;
@@ -301,7 +301,7 @@ class PrepareNotificationServiceTest extends UnitTest {
                 assertThat(prepared.recipientName()).isEqualTo(ParticipantFixture.PARK.getName());
                 assertThat(prepared.gatheringName())
                         .isEqualTo(GatheringFixture.FRIDAY_DINNER.getName());
-                assertThat(prepared.gatheringDate()).isEqualTo(GATHERING_CREATED_AT.toLocalDate());
+                assertThat(prepared.gatheringDate()).isEqualTo(GATHERING_OPENED_AT.toLocalDate());
                 assertThat(prepared.payerAmounts())
                         .extracting(PayerAmountResult::payerName, PayerAmountResult::amount)
                         .containsExactly(
@@ -441,9 +441,9 @@ class PrepareNotificationServiceTest extends UnitTest {
     }
 
     private Gathering gathering() {
-        return GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
+        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                 GATHERING_ID,
-                GATHERING_CREATED_AT,
+                GATHERING_OPENED_AT,
                 List.of(
                         ParticipantFixture.KIM.createWithId(PAYER_ID),
                         ParticipantFixture.LEE.createWithId(LEE_ID),

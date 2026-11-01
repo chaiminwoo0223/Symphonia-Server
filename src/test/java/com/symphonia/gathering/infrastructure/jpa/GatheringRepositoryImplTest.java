@@ -60,6 +60,21 @@ class GatheringRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
+            @DisplayName("모임을 연 시각을 저장한다")
+            void shouldPersistOpenedAt() {
+                // given
+                Gathering gathering = GatheringFixture.FRIDAY_DINNER.create();
+
+                // when
+                Gathering saved = gatheringRepository.save(gathering);
+
+                // then
+                clearPersistenceContext();
+                assertThat(gatheringRepository.findById(saved.getId()).orElseThrow().getOpenedAt())
+                        .isEqualTo(gathering.getOpenedAt());
+            }
+
+            @Test
             @DisplayName("참여자의 이름과 휴대폰을 평문 없이 암호화해 저장한다")
             void shouldEncryptParticipantNameAndPhoneNumber() {
                 // given
@@ -178,7 +193,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                         ParticipantFixture.LEE.getName(),
                         new PhoneNumber(ParticipantFixture.LEE.getPhoneNumber()),
                         GatheringPolicy.CONSENT_VERSION,
-                        gathering.getCreatedAt().plusHours(1));
+                        gathering.getOpenedAt().plusHours(1));
             }
         }
 

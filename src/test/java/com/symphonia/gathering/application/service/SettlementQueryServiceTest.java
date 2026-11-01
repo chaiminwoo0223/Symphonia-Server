@@ -60,8 +60,8 @@ class SettlementQueryServiceTest extends UnitTest {
 
     // 기록 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
     // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
-    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
-    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
+    private static final LocalDateTime OPEN_PERIOD_OPENED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_PERIOD_OPENED_AT = NOW.minusHours(48);
 
     private SettlementQueryService settlementQueryService;
 
@@ -114,7 +114,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("마스킹한 휴대폰을 담은 참여자 전원을 인원 기본값으로 하고 기록 가능, 계좌 미등록, 현재 계좌 동의 버전을 반환한다")
             void shouldReturnAllParticipantsAsDefault() {
                 // given
-                givenForm(OPEN_CREATED_AT, null, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -150,7 +150,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement latest =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, LEE_ID, List.of(PAYER_ID, LEE_ID));
-                givenForm(OPEN_CREATED_AT, latest, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, latest, false, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -174,7 +174,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 GATHERING_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID, PARK_ID));
-                givenForm(OPEN_CREATED_AT, settlement, true, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -198,7 +198,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("기록 불가로 표시한다")
             void shouldReturnNotRecordableForm() {
                 // given
-                givenForm(CLOSED_CREATED_AT, null, true, List.of());
+                givenForm(CLOSED_PERIOD_OPENED_AT, null, true, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -222,7 +222,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement notified =
                         SettlementFixture.DINNER.createNotified(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(OPEN_CREATED_AT, unnotified, true, List.of(notified, unnotified));
+                givenForm(OPEN_PERIOD_OPENED_AT, unnotified, true, List.of(notified, unnotified));
                 given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
                         .willReturn(
                                 Optional.of(
@@ -257,7 +257,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(OPEN_CREATED_AT, settlement, true, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
                 given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
                         .willReturn(Optional.empty());
 
@@ -275,14 +275,14 @@ class SettlementQueryServiceTest extends UnitTest {
 
         // 모임에 정산 건이 없는 경우는 latestSettlement에 null을 넘긴다.
         private void givenForm(
-                LocalDateTime createdAt,
+                LocalDateTime openedAt,
                 Settlement latestSettlement,
                 boolean bankAccountRegistered,
                 List<Settlement> payerSettlements) {
             given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                     .willReturn(Optional.of(PAYER_ID));
             given(gatheringRepository.findByParticipantId(PAYER_ID))
-                    .willReturn(Optional.of(gathering(createdAt)));
+                    .willReturn(Optional.of(gathering(openedAt)));
             given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
                     .willReturn(Optional.ofNullable(latestSettlement));
             given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
@@ -324,7 +324,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.of(LEE_ID));
                 given(gatheringRepository.findByParticipantId(LEE_ID))
-                        .willReturn(Optional.of(gathering(OPEN_CREATED_AT)));
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
                 given(settlementRepository.findAllByShareParticipantId(LEE_ID))
                         .willReturn(List.of());
 
@@ -540,7 +540,7 @@ class SettlementQueryServiceTest extends UnitTest {
             given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                     .willReturn(Optional.of(LEE_ID));
             given(gatheringRepository.findByParticipantId(LEE_ID))
-                    .willReturn(Optional.of(gathering(OPEN_CREATED_AT)));
+                    .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
             given(settlementRepository.findAllByShareParticipantId(LEE_ID))
                     .willReturn(List.of(settlements));
             given(participantBankAccountRepository.findAllByParticipantIds(any(), eq(GATHERING_ID)))
@@ -551,10 +551,10 @@ class SettlementQueryServiceTest extends UnitTest {
         }
     }
 
-    private Gathering gathering(LocalDateTime createdAt) {
-        return GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
+    private Gathering gathering(LocalDateTime openedAt) {
+        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                 GATHERING_ID,
-                createdAt,
+                openedAt,
                 List.of(
                         ParticipantFixture.KIM.createWithId(PAYER_ID),
                         ParticipantFixture.LEE.createWithId(LEE_ID),

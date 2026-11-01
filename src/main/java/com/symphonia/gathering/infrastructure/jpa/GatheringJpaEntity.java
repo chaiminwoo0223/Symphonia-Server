@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -31,12 +32,15 @@ public class GatheringJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false)
+    private LocalDateTime openedAt;
+
     public static GatheringJpaEntity from(Gathering gathering) {
         return GatheringJpaEntity.builder()
                 .id(gathering.getId())
                 .hostMemberId(gathering.getHostMemberId())
                 .name(gathering.getName())
-                .createdAt(gathering.getCreatedAt())
+                .openedAt(gathering.getOpenedAt())
                 .build();
     }
 
@@ -46,7 +50,7 @@ public class GatheringJpaEntity extends BaseTimeEntity {
                 .id(id)
                 .hostMemberId(hostMemberId)
                 .name(name)
-                .createdAt(createdAt)
+                .openedAt(openedAt)
                 .participants(participants)
                 .build();
     }
