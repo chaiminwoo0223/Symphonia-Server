@@ -15,10 +15,12 @@ import com.symphonia.gathering.application.dto.result.SettlementParticipantResul
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -51,6 +53,7 @@ class SettlementQueryServiceTest extends UnitTest {
     private static final Long PARK_ID = 22L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
+    private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
 
     @InjectMocks private SettlementQueryService settlementQueryService;
 
@@ -58,6 +61,7 @@ class SettlementQueryServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
+    @Mock private NotificationScheduleRepository notificationScheduleRepository;
 
     @Nested
     @DisplayName("getForm 메서드는")
@@ -88,7 +92,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("마스킹한 휴대폰을 담은 참여자 전원을 인원 기본값으로 하고 기록 가능, 계좌 미등록, 현재 계좌 동의 버전을 반환한다")
             void shouldReturnAllParticipantsAsDefault() {
                 // given
-                givenForm(LocalDateTime.now().minusHours(1), Optional.empty(), false, List.of());
+                givenForm(LocalDateTime.now().minusHours(1), null, false, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -124,7 +128,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement latest =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, LEE_ID, List.of(PAYER_ID, LEE_ID));
-                givenForm(LocalDateTime.now().minusHours(1), Optional.of(latest), false, List.of());
+                givenForm(LocalDateTime.now().minusHours(1), latest, false, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -148,11 +152,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 GATHERING_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID, PARK_ID));
-                givenForm(
-                        LocalDateTime.now().minusHours(1),
-                        Optional.of(settlement),
-                        true,
-                        List.of(settlement));
+                givenForm(LocalDateTime.now().minusHours(1), settlement, true, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -176,7 +176,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("기록 불가로 표시한다")
             void shouldReturnNotRecordableForm() {
                 // given
-                givenForm(LocalDateTime.now().minusHours(49), Optional.empty(), true, List.of());
+                givenForm(LocalDateTime.now().minusHours(49), null, true, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -186,9 +186,79 @@ class SettlementQueryServiceTest extends UnitTest {
             }
         }
 
+        @Nested
+        @DisplayName("모임에 발송 예약이 있는 경우")
+        class WhenScheduleExists {
+
+            @Test
+            @DisplayName("정산 메시지를 보내기 전인 정산 건에는 발송 예정 시각을 담고, 보낸 정산 건에는 비워 반환한다")
+            void shouldReturnNotificationScheduledAtOnlyForUnnotifiedSettlements() {
+                // given
+                Settlement unnotified =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                Settlement notified =
+                        SettlementFixture.DINNER.createNotified(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                givenForm(
+                        LocalDateTime.now().minusHours(1),
+                        unnotified,
+                        true,
+                        List.of(notified, unnotified));
+                given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(
+                                Optional.of(
+                                        NotificationSchedule.builder()
+                                                .gatheringId(GATHERING_ID)
+                                                .scheduledAt(SCHEDULED_AT)
+                                                .build()));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.settlements())
+                        .extracting(
+                                SettlementResult::id,
+                                SettlementResult::notified,
+                                SettlementResult::notificationScheduledAt)
+                        .containsExactly(
+                                tuple(SETTLEMENT_ID, true, null),
+                                tuple(SECOND_SETTLEMENT_ID, false, SCHEDULED_AT));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임에 발송 예약이 없는 경우")
+        class WhenScheduleNotFound {
+
+            @Test
+            @DisplayName("정산 메시지를 보내기 전인 정산 건도 발송 예정 시각을 비워 반환한다")
+            void shouldReturnNullNotificationScheduledAt() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                givenForm(LocalDateTime.now().minusHours(1), settlement, true, List.of(settlement));
+                given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.settlements())
+                        .extracting(
+                                SettlementResult::notified,
+                                SettlementResult::notificationScheduledAt)
+                        .containsExactly(tuple(false, null));
+            }
+        }
+
+        // 모임에 정산 건이 없는 경우는 latestSettlement에 null을 넘긴다.
         private void givenForm(
                 LocalDateTime createdAt,
-                Optional<Settlement> latestSettlement,
+                Settlement latestSettlement,
                 boolean bankAccountRegistered,
                 List<Settlement> payerSettlements) {
             given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
@@ -196,7 +266,7 @@ class SettlementQueryServiceTest extends UnitTest {
             given(gatheringRepository.findByParticipantId(PAYER_ID))
                     .willReturn(Optional.of(gathering(createdAt)));
             given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
-                    .willReturn(latestSettlement);
+                    .willReturn(Optional.ofNullable(latestSettlement));
             given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                     .willReturn(bankAccountRegistered);
             given(settlementRepository.findAllByPayerParticipantId(PAYER_ID))

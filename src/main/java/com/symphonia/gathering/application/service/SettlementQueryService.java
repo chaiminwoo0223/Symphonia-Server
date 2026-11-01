@@ -8,6 +8,7 @@ import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
 import com.symphonia.gathering.application.usecase.GetSharesUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -16,6 +17,7 @@ import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -36,6 +38,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
     private final GatheringRepository gatheringRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
+    private final NotificationScheduleRepository notificationScheduleRepository;
 
     @Override
     public SettlementFormResult getForm(String linkToken) {
@@ -54,6 +57,12 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                                                 .map(Participant::getId)
                                                 .toList());
 
+        LocalDateTime scheduledAt =
+                notificationScheduleRepository
+                        .findByGatheringId(gathering.getId())
+                        .map(NotificationSchedule::getScheduledAt)
+                        .orElse(null);
+
         return SettlementFormResult.of(
                 recordable,
                 participantBankAccountRepository.existsByParticipantId(participantId),
@@ -63,7 +72,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                         .toList(),
                 defaultParticipantIds,
                 settlementRepository.findAllByPayerParticipantId(participantId).stream()
-                        .map(SettlementResult::from)
+                        .map(settlement -> SettlementResult.of(settlement, scheduledAt))
                         .toList());
     }
 
