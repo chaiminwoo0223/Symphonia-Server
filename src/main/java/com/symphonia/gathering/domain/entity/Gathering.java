@@ -20,7 +20,7 @@ public class Gathering {
     private Long id;
     private Long hostMemberId;
     private String name;
-    // 48시간 기록 기간이 시작되는 시각이다. 감사용 created_at과 달리 Clock의 시각으로 정한다.
+    // 48시간 기록 기간이 시작되는 시각이다. 감사용 생성 시각과 달리 Clock의 시각으로 정한다.
     private LocalDateTime openedAt;
     private List<Participant> participants;
 
