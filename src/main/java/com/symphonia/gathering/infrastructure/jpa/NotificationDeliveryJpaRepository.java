@@ -1,0 +1,66 @@
+package com.symphonia.gathering.infrastructure.jpa;
+
+import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface NotificationDeliveryJpaRepository
+        extends JpaRepository<NotificationDeliveryJpaEntity, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT delivery FROM NotificationDeliveryJpaEntity delivery
+            WHERE delivery.id = :id
+            """)
+    Optional<NotificationDeliveryJpaEntity> findByIdForUpdate(@Param("id") Long id);
+
+    // 오래 기다린 발송 기록부터 발행한다.
+    @Query(
+            value =
+                    """
+                    SELECT id FROM notification_delivery
+                    WHERE status = 'PENDING'
+                      AND available_at <= :now
+                      AND (published_at IS NULL OR published_at < :publishedBefore)
+                      AND (claimed_at IS NULL OR claimed_at < :claimedBefore)
+                    ORDER BY available_at
+                    LIMIT :limit
+                    FOR UPDATE SKIP LOCKED
+                    """,
+            nativeQuery = true)
+    List<Long> findPublishableIdsForUpdate(
+            @Param("now") LocalDateTime now,
+            @Param("publishedBefore") LocalDateTime publishedBefore,
+            @Param("claimedBefore") LocalDateTime claimedBefore,
+            @Param("limit") int limit);
+
+    @Modifying
+    @Query(
+            """
+            UPDATE NotificationDeliveryJpaEntity delivery
+            SET delivery.publishedAt = :publishedAt
+            WHERE delivery.id IN :ids
+            """)
+    void markPublished(
+            @Param("ids") Collection<Long> ids, @Param("publishedAt") LocalDateTime publishedAt);
+
+    // 상태로 거르지 않고 모두 잠근다. 조건에 맞지 않던 행은 잠그지 않아, 컨슈머가 맡는 중인 행을 기다리지 않기 때문이다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT delivery FROM NotificationDeliveryJpaEntity delivery
+            JOIN delivery.settlementIds settlementId
+            WHERE settlementId = :settlementId
+              AND delivery.type = com.symphonia.gathering.domain.vo.NotificationType.SETTLEMENT
+            ORDER BY delivery.id
+            """)
+    List<NotificationDeliveryJpaEntity> findAllSettlementDeliveriesForUpdate(
+            @Param("settlementId") Long settlementId);
+}

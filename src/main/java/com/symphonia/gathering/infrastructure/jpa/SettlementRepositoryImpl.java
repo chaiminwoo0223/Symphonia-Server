@@ -6,6 +6,7 @@ import com.symphonia.gathering.domain.repository.SettlementRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.OptimisticLockException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +42,17 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     @Override
     public Optional<Settlement> findById(Long settlementId) {
         return settlementJpaRepository.findById(settlementId).map(this::toDomain);
+    }
+
+    @Override
+    public List<Settlement> findAllByIds(Collection<Long> settlementIds) {
+        return toDomains(settlementJpaRepository.findAllByIdInOrderById(settlementIds));
+    }
+
+    @Override
+    public List<Settlement> findAllUnnotifiedByGatheringIdForUpdate(Long gatheringId) {
+        return toDomains(
+                settlementJpaRepository.findAllUnnotifiedByGatheringIdForUpdate(gatheringId));
     }
 
     @Override

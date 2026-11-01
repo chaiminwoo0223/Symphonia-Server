@@ -52,6 +52,7 @@ public enum GatheringErrorCode implements ErrorCode {
             HttpStatus.INTERNAL_SERVER_ERROR, "모임 마스터 키는 base64로 인코딩한 256비트 값이어야 합니다."),
     GATHERING_DATA_KEY_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "모임의 데이터 키를 찾을 수 없습니다."),
     GATHERING_ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "모임 개인정보의 암호화 처리에 실패했습니다."),
+    NOTIFICATION_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "알림 메시지를 보내지 못했습니다."),
     ;
 
     private final HttpStatus status;
