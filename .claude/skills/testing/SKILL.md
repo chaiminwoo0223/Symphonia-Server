@@ -109,6 +109,10 @@ class LoginServiceTest extends UnitTest {
 - `@BeforeEach` 공유 스텁은 **모든 테스트가 소비하는 가장 좁은 `@Nested` 스코프**에 배치한다. 상위 스코프에 두면 일부 테스트에서 미사용 스텁으로 strict-stubbing 검증에 걸린다.
 - **(2026-09-20 결정, 이슈 #47)**: 동일한 `given(...).willReturn(...)` 스텁 조합이 같은 테스트 클래스 안에서 2개 이상의 테스트 메서드에 그대로 반복되면, `private void given<대상>()` 메서드로 추출해 각 테스트에서 호출한다(예: `givenStandardCatalog()`). `*Fixture`(데이터 생성)나 `*Helper`(여러 파일에서 재사용하는 행동)와는 다른 층위이므로 파일을 분리하지 않고 같은 클래스의 private 메서드로 둔다. 스텁이 테스트마다 미묘하게 달라 추출이 오히려 읽기 어려워지면 억지로 묶지 않는다.
 
+## 시각 고정
+
+**(2026-11-01 결정, 이슈 #158)**: `Clock` 빈을 주입받는 서비스의 테스트는 실제 시계를 쓰지 않는다. `@BeforeEach`에서 `Clock.fixed(NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE)`로 SUT를 조립한다. 다른 시각이 필요한 테스트만 `givenNow(now)`로 그 시각에 고정한 SUT를 다시 만든다(예: `PrepareNotificationServiceTest`). 48시간 기록 기간처럼 시각으로 갈리는 규칙은 닫히기 1초 전과 닫히는 순간을 값으로 써서 검증한다. 실제 시계 기준으로 1시간 전, 49시간 전처럼 여유를 둔 값은 경계 판정을 `isBefore`에서 `!isAfter`로 바꿔도 통과하기 때문이다. #158에서 정책을 그렇게 바꿔 보니 경계값으로 바꾼 테스트 7개가 모두 실패했다.
+
 ## Fixture 패턴
 
 값이 불안정하면(예: 랜덤 UUID) 테스트 어설션이 흔들리므로, 생성 로직을 도메인별 `*Fixture`로 통일한다.
