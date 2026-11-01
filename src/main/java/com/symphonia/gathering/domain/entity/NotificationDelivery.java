@@ -29,7 +29,8 @@ public class NotificationDelivery {
     private static final Duration REPUBLISH_AFTER = Duration.ofMinutes(5);
     // 컨슈머가 발송을 시작하고 이 시간 안에 끝내지 못하면 죽은 것으로 보고, 다른 컨슈머가 다시 맡을 수 있게 한다.
     private static final Duration CLAIM_LEASE = Duration.ofMinutes(5);
-    // 외부 발송 실패 뒤 다시 보내기까지 기다리는 시간이다. 이 횟수를 다 쓰고 한 번 더 실패하면 FAILED로 끝낸다.
+    // 발송에 실패한 뒤 다시 보내기까지 기다리는 시간이다. 외부 발송 실패와, 발행했는데 보내지 못한 경우를 같은 횟수로 센다.
+    // 이 횟수를 다 쓰고 한 번 더 실패하면 FAILED로 끝낸다.
     private static final List<Duration> RETRY_BACKOFFS =
             List.of(
                     Duration.ofMinutes(1),
@@ -114,6 +115,12 @@ public class NotificationDelivery {
     // 보냈거나 컨슈머가 맡아 이미 내용을 만든 발송 기록이다. 그 뒤에 취소된 정산 건은 메시지에서 빠지지 않으므로 취소 알림을 보낸다.
     public boolean hasReachedRecipient() {
         return status == DeliveryStatus.SENT || (isPending() && claimedAt != null);
+    }
+
+    // 발행했는데 보내지 못한 채 다시 찾은 발송 기록은 컨슈머가 예상하지 못한 예외로 실패했거나 메시지를 잃은 것이다.
+    // 미루거나 외부 발송 실패로 재시도를 기다릴 때는 발행 시각을 비우므로, 이 경우와 섞이지 않는다.
+    public boolean isPublished() {
+        return publishedAt != null;
     }
 
     public boolean isPending() {

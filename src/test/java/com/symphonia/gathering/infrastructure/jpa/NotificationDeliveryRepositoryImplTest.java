@@ -220,12 +220,12 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findPublishableIdsForUpdate 메서드는")
-    class FindPublishableIdsForUpdate {
+    @DisplayName("findPublishableForUpdate 메서드는")
+    class FindPublishableForUpdate {
 
         @Test
         @DisplayName("보낼 시각이 된 PENDING 발송 기록 중 발행하지 않았거나 발행한 지 오래된 것만 보낼 시각 순서대로 반환한다")
-        void shouldReturnPublishableIdsOrderedByAvailableAt() {
+        void shouldReturnPublishableDeliveriesOrderedByAvailableAt() {
             // given
             Long latest = savePending(NOW, null);
             Long earliest = savePending(NOW.minusHours(1), null);
@@ -239,8 +239,11 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
 
             // when
             List<Long> result =
-                    notificationDeliveryRepository.findPublishableIdsForUpdate(
-                            NOW, PUBLISHED_BEFORE, CLAIMED_BEFORE, 10);
+                    notificationDeliveryRepository
+                            .findPublishableForUpdate(NOW, PUBLISHED_BEFORE, CLAIMED_BEFORE, 10)
+                            .stream()
+                            .map(NotificationDelivery::getId)
+                            .toList();
 
             // then
             assertThat(result).containsExactly(earliest, republished, latest);
@@ -265,8 +268,11 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
 
             // when
             List<Long> result =
-                    notificationDeliveryRepository.findPublishableIdsForUpdate(
-                            NOW, PUBLISHED_BEFORE, CLAIMED_BEFORE, 10);
+                    notificationDeliveryRepository
+                            .findPublishableForUpdate(NOW, PUBLISHED_BEFORE, CLAIMED_BEFORE, 10)
+                            .stream()
+                            .map(NotificationDelivery::getId)
+                            .toList();
 
             // then
             assertThat(result).containsExactly(expired);
@@ -274,7 +280,7 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
 
         @Test
         @DisplayName("한 번에 찾을 개수를 넘으면 보낼 시각이 이른 발송 기록부터 그 개수만큼 반환한다")
-        void shouldReturnIdsUpToLimit() {
+        void shouldReturnDeliveriesUpToLimit() {
             // given
             Long second = savePending(NOW.minusMinutes(30), null);
             Long first = savePending(NOW.minusHours(1), null);
@@ -283,8 +289,11 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
 
             // when
             List<Long> result =
-                    notificationDeliveryRepository.findPublishableIdsForUpdate(
-                            NOW, PUBLISHED_BEFORE, CLAIMED_BEFORE, 2);
+                    notificationDeliveryRepository
+                            .findPublishableForUpdate(NOW, PUBLISHED_BEFORE, CLAIMED_BEFORE, 2)
+                            .stream()
+                            .map(NotificationDelivery::getId)
+                            .toList();
 
             // then
             assertThat(result).containsExactly(first, second);
