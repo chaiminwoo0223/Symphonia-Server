@@ -2,10 +2,8 @@ package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
@@ -74,7 +72,7 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
 
                 // then
                 then(notificationDeliveryRepository).should().markPublished(UNPUBLISHED_IDS, NOW);
-                then(notificationDeliveryRepository).should(never()).saveAll(anyList());
+                then(notificationDeliveryRepository).should().saveAll(List.of());
             }
         }
 

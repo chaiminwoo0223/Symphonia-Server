@@ -54,9 +54,6 @@ public class PublishNotificationDeliveriesService implements PublishNotification
     // 컨슈머의 트랜잭션은 예외로 롤백되므로 시도 횟수를 이 트랜잭션에서 남겨야, 계속 실패하는 발송 기록도 FAILED로 끝난다.
     private void retryStalledLater(
             List<NotificationDelivery> stalledDeliveries, LocalDateTime now) {
-        if (stalledDeliveries.isEmpty()) {
-            return;
-        }
         stalledDeliveries.forEach(notificationDelivery -> notificationDelivery.retryLater(now));
         notificationDeliveryRepository.saveAll(stalledDeliveries);
     }
