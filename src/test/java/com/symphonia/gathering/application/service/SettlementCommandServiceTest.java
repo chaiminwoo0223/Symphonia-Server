@@ -648,8 +648,8 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenScheduling {
 
             @Test
-            @DisplayName("정산 건을 저장하기 전에 모임의 발송 예약을 잠그고, 기록 시각에 수정 시간 30분을 더한 시각으로 예약을 저장해 반환한다")
-            void shouldLockScheduleBeforeSavingSettlementAndSaveScheduledAt() {
+            @DisplayName("정산 건을 저장하기 전에 모임의 발송 예약을 잠그고, 기록 시각에 수정 시간 30분을 더한 시각으로 예약을 먼저 저장해 반환한다")
+            void shouldLockAndSaveScheduleBeforeSavingSettlement() {
                 // given
                 givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 20, 0));
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
@@ -662,8 +662,8 @@ class SettlementCommandServiceTest extends UnitTest {
                         ArgumentCaptor.forClass(NotificationSchedule.class);
                 InOrder inOrder = inOrder(notificationScheduleRepository, settlementRepository);
                 inOrder.verify(notificationScheduleRepository).findOrCreateForUpdate(GATHERING_ID);
+                inOrder.verify(notificationScheduleRepository).save(captor.capture());
                 inOrder.verify(settlementRepository).save(any(Settlement.class));
-                then(notificationScheduleRepository).should().save(captor.capture());
                 assertThat(captor.getValue().getScheduledAt())
                         .isEqualTo(LocalDateTime.of(2026, 10, 28, 20, 30));
                 assertThat(result.notificationScheduledAt())

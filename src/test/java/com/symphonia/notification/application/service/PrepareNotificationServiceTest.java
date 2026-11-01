@@ -22,7 +22,7 @@ import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
-import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.application.dto.result.PayerAmountResult;
 import com.symphonia.notification.application.dto.result.PreparedNotificationResult;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;

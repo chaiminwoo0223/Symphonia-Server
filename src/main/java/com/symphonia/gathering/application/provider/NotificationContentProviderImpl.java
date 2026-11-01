@@ -11,7 +11,7 @@ import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.notification.application.dto.command.ComposeNotificationCommand;
 import com.symphonia.notification.application.dto.result.NotificationContentResult;
-import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.application.dto.result.PayerAmountResult;
 import com.symphonia.notification.application.provider.NotificationContentProvider;
 import com.symphonia.notification.domain.vo.NotificationType;
 import java.util.LinkedHashMap;
@@ -34,28 +34,30 @@ public class NotificationContentProviderImpl implements NotificationContentProvi
     // 금액을 먼저 계산해, 담을 금액이 없을 때는 참여자 정보를 복호화하는 모임 조회와 토큰 발급을 하지 않는다.
     @Override
     public Optional<NotificationContentResult> compose(ComposeNotificationCommand command) {
-        Map<Long, Long> amountsByPayerId =
-                amountsByPayerId(
-                        settlementRepository.findAllByIds(command.settlementIds()), command);
-        if (amountsByPayerId.isEmpty()) {
-            return Optional.empty();
-        }
+        return Optional.of(
+                        amountsByPayerId(
+                                settlementRepository.findAllByIds(command.settlementIds()),
+                                command))
+                .filter(amountsByPayerId -> !amountsByPayerId.isEmpty())
+                .map(amountsByPayerId -> toContent(command, amountsByPayerId));
+    }
 
-        // 부른 쪽이 발송 기록을 잠갔으므로 FK 때문에 모임을 지울 수 없어, 모임은 항상 있다.
+    // 부른 쪽이 발송 기록을 잠갔으므로 FK 때문에 모임을 지울 수 없어, 모임은 항상 있다.
+    private NotificationContentResult toContent(
+            ComposeNotificationCommand command, Map<Long, Long> amountsByPayerId) {
         Gathering gathering =
                 gatheringRepository
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         Participant recipient = gathering.getParticipant(command.participantId());
 
-        return Optional.of(
-                NotificationContentResult.of(
-                        recipient.getPhoneNumber().value(),
-                        recipient.getName(),
-                        gathering.getName(),
-                        gathering.getOpenedAt().toLocalDate(),
-                        payerAmountsOf(gathering, amountsByPayerId),
-                        issueLinkToken(command.participantId())));
+        return NotificationContentResult.of(
+                recipient.getPhoneNumber().value(),
+                recipient.getName(),
+                gathering.getName(),
+                gathering.getOpenedAt().toLocalDate(),
+                payerAmountsOf(gathering, amountsByPayerId),
+                issueLinkToken(command.participantId()));
     }
 
     // 보낼 금액을 결제자별로 합한다. 메시지를 받은 참여자가 결제자마다 얼마를 보낼지 바로 알 수 있게 하기 위해서다.
