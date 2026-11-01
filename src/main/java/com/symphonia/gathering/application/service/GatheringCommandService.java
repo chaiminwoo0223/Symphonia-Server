@@ -19,6 +19,7 @@ import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +31,7 @@ public class GatheringCommandService
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
+    private final Clock clock;
 
     @Override
     public GatheringJoinTokenResult open(OpenGatheringCommand command) {
@@ -46,7 +48,7 @@ public class GatheringCommandService
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
-        GatheringPolicy.validateJoinable(gathering.getCreatedAt(), LocalDateTime.now());
+        GatheringPolicy.validateJoinable(gathering.getCreatedAt(), LocalDateTime.now(clock));
 
         return issueJoinToken(gathering.getId());
     }
@@ -62,7 +64,7 @@ public class GatheringCommandService
                         .findById(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
         PhoneNumber phoneNumber = PhoneNumber.from(command.phoneNumber());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         GatheringPolicy.validateJoinable(gathering.getCreatedAt(), now);
         GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
         GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
