@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 public enum GatheringFixture {
     FRIDAY_DINNER(1L, "금요일 회식");
 
-    private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 10, 27, 18, 0);
+    private static final LocalDateTime OPENED_AT = LocalDateTime.of(2026, 10, 27, 18, 0);
 
     private final Long hostMemberId;
     private final String name;
@@ -25,27 +25,26 @@ public enum GatheringFixture {
         return Gathering.builder()
                 .hostMemberId(hostMemberId)
                 .name(name)
-                .createdAt(CREATED_AT)
+                .openedAt(OPENED_AT)
                 .participants(participants)
                 .build();
     }
 
-    // 생성 시각은 저장할 때 채워지므로, 실제 생성 흐름처럼 생성 시각 없이 만든다.
-    public Gathering createWithHostMemberId(Long hostMemberId) {
-        return Gathering.open(hostMemberId, name);
+    public Gathering createWithHostMemberIdAndOpenedAt(Long hostMemberId, LocalDateTime openedAt) {
+        return Gathering.open(hostMemberId, name, openedAt);
     }
 
-    public Gathering createWithIdAndCreatedAt(Long id, LocalDateTime createdAt) {
-        return createWithIdAndCreatedAt(id, createdAt, List.of());
+    public Gathering createWithIdAndOpenedAt(Long id, LocalDateTime openedAt) {
+        return createWithIdAndOpenedAt(id, openedAt, List.of());
     }
 
-    public Gathering createWithIdAndCreatedAt(
-            Long id, LocalDateTime createdAt, List<Participant> participants) {
+    public Gathering createWithIdAndOpenedAt(
+            Long id, LocalDateTime openedAt, List<Participant> participants) {
         return Gathering.builder()
                 .id(id)
                 .hostMemberId(hostMemberId)
                 .name(name)
-                .createdAt(createdAt)
+                .openedAt(openedAt)
                 .participants(participants)
                 .build();
     }

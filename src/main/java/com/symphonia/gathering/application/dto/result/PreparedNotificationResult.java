@@ -32,7 +32,7 @@ public record PreparedNotificationResult(
                 recipient.getPhoneNumber().value(),
                 recipient.getName(),
                 gathering.getName(),
-                gathering.getCreatedAt().toLocalDate(),
+                gathering.getOpenedAt().toLocalDate(),
                 payerAmounts.stream().map(PayerAmountResult::from).toList(),
                 linkToken);
     }

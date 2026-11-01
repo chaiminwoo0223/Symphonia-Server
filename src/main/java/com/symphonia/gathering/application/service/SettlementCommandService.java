@@ -65,7 +65,7 @@ public class SettlementCommandService
         Long participantId = findParticipantId(command.linkToken());
         Gathering gathering = findGatheringByParticipantId(participantId);
         LocalDateTime now = LocalDateTime.now(clock);
-        SettlementPolicy.validateRecordable(gathering.getCreatedAt(), now);
+        SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
         BankAccount bankAccount = BankAccount.of(command.bankName(), command.accountNumber());
         SettlementPolicy.validateBankAccountConsent(
                 command.consentAgreed(), command.consentVersion());
@@ -83,7 +83,7 @@ public class SettlementCommandService
         Long participantId = findParticipantId(command.linkToken());
         Gathering gathering = findGatheringByParticipantId(participantId);
         LocalDateTime now = LocalDateTime.now(clock);
-        SettlementPolicy.validateRecordable(gathering.getCreatedAt(), now);
+        SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
         SettlementPolicy.validateBankAccountRegistered(
@@ -117,7 +117,7 @@ public class SettlementCommandService
                         .findById(settlement.getGatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         LocalDateTime now = LocalDateTime.now(clock);
-        SettlementPolicy.validateRecordable(gathering.getCreatedAt(), now);
+        SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
         SplitMethod splitMethod =

@@ -32,7 +32,7 @@ public class GatheringQueryService implements GetGatheringUseCase {
                         .orElseThrow(GatheringNotFoundException::new);
         boolean joinable =
                 GatheringPolicy.isWithinRecordingPeriod(
-                        gathering.getCreatedAt(), LocalDateTime.now(clock));
+                        gathering.getOpenedAt(), LocalDateTime.now(clock));
 
         return GatheringResult.of(gathering.getName(), joinable, GatheringPolicy.CONSENT_VERSION);
     }

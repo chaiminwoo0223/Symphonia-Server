@@ -97,8 +97,8 @@ class SettlementCommandServiceTest extends UnitTest {
 
     // 기록 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
     // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
-    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
-    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
+    private static final LocalDateTime OPEN_PERIOD_OPENED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_PERIOD_OPENED_AT = NOW.minusHours(48);
 
     private SettlementCommandService settlementCommandService;
 
@@ -146,7 +146,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowSettlementRecordingClosedException() {
                 // given
-                givenGatheringOfPayer(CLOSED_CREATED_AT);
+                givenGatheringOfPayer(CLOSED_PERIOD_OPENED_AT);
                 RegisterBankAccountCommand command = command(true);
 
                 // when & then
@@ -164,7 +164,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowBankAccountConsentRequiredException() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 RegisterBankAccountCommand command = command(false);
 
                 // when & then
@@ -182,7 +182,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowOutdatedBankAccountConsentVersionException() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 RegisterBankAccountCommand command =
                         new RegisterBankAccountCommand(
                                 LINK_TOKEN,
@@ -206,7 +206,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 다시 저장하지 않는다")
             void shouldThrowBankAccountAlreadyRegisteredException() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                         .willReturn(true);
                 RegisterBankAccountCommand command = command(true);
@@ -226,7 +226,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowInvalidBankAccountException() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 RegisterBankAccountCommand command =
                         new RegisterBankAccountCommand(
                                 LINK_TOKEN,
@@ -250,7 +250,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("하이픈을 지운 계좌와 동의 버전을 참여자가 속한 모임 id와 함께 저장한다")
             void shouldSaveNormalizedBankAccountWithGatheringId() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                         .willReturn(false);
                 RegisterBankAccountCommand command = command(true);
@@ -302,7 +302,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementRecordingClosedException() {
                 // given
-                givenGatheringOfPayer(CLOSED_CREATED_AT);
+                givenGatheringOfPayer(CLOSED_PERIOD_OPENED_AT);
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
                 // when & then
@@ -320,7 +320,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowInvalidSettlementParticipantsException() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 RecordSettlementCommand command =
                         command(10_000L, List.of(PAYER_ID, OUTSIDER_ID), Map.of());
 
@@ -339,7 +339,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowBankAccountRequiredException() {
                 // given
-                givenGatheringOfPayer(OPEN_CREATED_AT);
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
                 given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                         .willReturn(false);
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
@@ -751,7 +751,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private void givenRecordableGathering() {
-            givenGatheringOfPayer(OPEN_CREATED_AT);
+            givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
             given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                     .willReturn(true);
         }
@@ -823,7 +823,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(CLOSED_CREATED_AT);
+                givenGathering(CLOSED_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -845,7 +845,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createNotified(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_CREATED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -867,7 +867,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createCancelled(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_CREATED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -893,7 +893,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
-                givenGathering(OPEN_CREATED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -915,7 +915,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_CREATED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
                 givenScheduleLocked();
                 UpdateSettlementCommand command = command();
@@ -940,7 +940,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(settlementWithZeroShare());
-                givenGathering(OPEN_CREATED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
                 givenScheduleLocked();
                 UpdateSettlementCommand command = command();
@@ -993,9 +993,9 @@ class SettlementCommandServiceTest extends UnitTest {
                     LINK_TOKEN, SETTLEMENT_ID, 20_000L, List.of(PAYER_ID, LEE_ID), Map.of());
         }
 
-        private void givenGathering(LocalDateTime createdAt) {
+        private void givenGathering(LocalDateTime openedAt) {
             given(gatheringRepository.findById(GATHERING_ID))
-                    .willReturn(Optional.of(gathering(createdAt)));
+                    .willReturn(Optional.of(gathering(openedAt)));
         }
     }
 
@@ -1466,7 +1466,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
         private void givenGatheringWithPayerBankAccount() {
             given(gatheringRepository.findByParticipantId(LEE_ID))
-                    .willReturn(Optional.of(gathering(OPEN_CREATED_AT)));
+                    .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
             given(
                             participantBankAccountRepository.findAllByParticipantIds(
                                     List.of(PAYER_ID), GATHERING_ID))
@@ -1870,10 +1870,10 @@ class SettlementCommandServiceTest extends UnitTest {
         }
     }
 
-    private Gathering gathering(LocalDateTime createdAt) {
-        return GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
+    private Gathering gathering(LocalDateTime openedAt) {
+        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                 GATHERING_ID,
-                createdAt,
+                openedAt,
                 List.of(
                         ParticipantFixture.KIM.createWithId(PAYER_ID),
                         ParticipantFixture.LEE.createWithId(LEE_ID),
@@ -1885,10 +1885,10 @@ class SettlementCommandServiceTest extends UnitTest {
                 .willReturn(Optional.of(participantId));
     }
 
-    private void givenGatheringOfPayer(LocalDateTime createdAt) {
+    private void givenGatheringOfPayer(LocalDateTime openedAt) {
         givenParticipant(PAYER_ID);
         given(gatheringRepository.findByParticipantId(PAYER_ID))
-                .willReturn(Optional.of(gathering(createdAt)));
+                .willReturn(Optional.of(gathering(openedAt)));
     }
 
     private void givenSettlement(Settlement settlement) {

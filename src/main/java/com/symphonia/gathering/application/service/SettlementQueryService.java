@@ -48,7 +48,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
         Gathering gathering = findGatheringByParticipantId(participantId);
         boolean recordable =
                 GatheringPolicy.isWithinRecordingPeriod(
-                        gathering.getCreatedAt(), LocalDateTime.now(clock));
+                        gathering.getOpenedAt(), LocalDateTime.now(clock));
         List<Long> defaultParticipantIds =
                 settlementRepository
                         .findLatestByGatheringId(gathering.getId())

@@ -24,7 +24,9 @@ public class GatheringHelper {
     private final GatheringTokenProvider gatheringTokenProvider;
 
     public Gathering save(GatheringFixture gatheringFixture, Long hostMemberId) {
-        return gatheringRepository.save(gatheringFixture.createWithHostMemberId(hostMemberId));
+        return gatheringRepository.save(
+                gatheringFixture.createWithHostMemberIdAndOpenedAt(
+                        hostMemberId, LocalDateTime.now()));
     }
 
     // 저장소에는 해시만 남으므로, 요청에 쓸 원본 참여 토큰을 돌려준다.
