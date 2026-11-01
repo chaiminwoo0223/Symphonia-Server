@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.SendNotificationCommand;
+import com.symphonia.gathering.application.dto.command.SendNotificationCommand.PayerAmountCommand;
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.exception.NotificationSendFailedException;
 import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
@@ -16,7 +17,6 @@ import com.symphonia.gathering.domain.sender.NotificationSender;
 import com.symphonia.gathering.domain.vo.DeliveryStatus;
 import com.symphonia.gathering.domain.vo.NotificationMessage;
 import com.symphonia.gathering.domain.vo.NotificationType;
-import com.symphonia.gathering.domain.vo.PayerAmount;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.NotificationDeliveryFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
@@ -253,7 +253,7 @@ class SendNotificationServiceTest extends UnitTest {
                 ParticipantFixture.LEE.getName(),
                 GatheringFixture.FRIDAY_DINNER.getName(),
                 LocalDate.of(2026, 10, 27),
-                List.of(new PayerAmount(ParticipantFixture.KIM.getName(), 3_333L)),
+                List.of(new PayerAmountCommand(ParticipantFixture.KIM.getName(), 3_333L)),
                 "link-token");
     }
 }

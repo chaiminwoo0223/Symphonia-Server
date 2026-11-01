@@ -22,6 +22,7 @@ import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepositor
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -39,6 +40,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
     private final NotificationScheduleRepository notificationScheduleRepository;
+    private final Clock clock;
 
     @Override
     public SettlementFormResult getForm(String linkToken) {
@@ -46,7 +48,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
         Gathering gathering = findGatheringByParticipantId(participantId);
         boolean recordable =
                 GatheringPolicy.isWithinRecordingPeriod(
-                        gathering.getCreatedAt(), LocalDateTime.now());
+                        gathering.getCreatedAt(), LocalDateTime.now(clock));
         List<Long> defaultParticipantIds =
                 settlementRepository
                         .findLatestByGatheringId(gathering.getId())

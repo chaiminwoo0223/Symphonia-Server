@@ -95,16 +95,6 @@ public class NotificationDelivery {
                 .toList();
     }
 
-    // 이 시각보다 먼저 발행하고 아직 보내지 못한 발송 기록을 다시 발행한다.
-    public static LocalDateTime republishThreshold(LocalDateTime now) {
-        return now.minus(REPUBLISH_AFTER);
-    }
-
-    // 이 시각보다 먼저 맡은 발송 기록은 맡은 컨슈머가 죽은 것으로 본다. 아직 맡고 있는 발송 기록은 다시 발행하지 않는다.
-    public static LocalDateTime claimExpiryThreshold(LocalDateTime now) {
-        return now.minus(CLAIM_LEASE);
-    }
-
     // 같은 메시지가 두 번 발행됐거나 다른 컨슈머가 보내는 중이면 맡지 않는다.
     public boolean isClaimable(LocalDateTime now) {
         return isPending()
@@ -170,6 +160,20 @@ public class NotificationDelivery {
                                                 settlement.getShareOf(participantId).getAmount())));
     }
 
+    public List<Long> getSettlementIds() {
+        return List.copyOf(settlementIds);
+    }
+
+    // 이 시각보다 먼저 발행하고 아직 보내지 못한 발송 기록을 다시 발행한다.
+    public static LocalDateTime republishThreshold(LocalDateTime now) {
+        return now.minus(REPUBLISH_AFTER);
+    }
+
+    // 이 시각보다 먼저 맡은 발송 기록은 맡은 컨슈머가 죽은 것으로 본다. 아직 맡고 있는 발송 기록은 다시 발행하지 않는다.
+    public static LocalDateTime claimExpiryThreshold(LocalDateTime now) {
+        return now.minus(CLAIM_LEASE);
+    }
+
     // 결제자별로 합한 금액에 결제자 이름을 붙인다.
     public static List<PayerAmount> payerAmountsOf(
             Gathering gathering, Map<Long, Long> amountsByPayerId) {
@@ -180,10 +184,6 @@ public class NotificationDelivery {
                                         gathering.getParticipant(entry.getKey()).getName(),
                                         entry.getValue()))
                 .toList();
-    }
-
-    public List<Long> getSettlementIds() {
-        return List.copyOf(settlementIds);
     }
 
     private static NotificationDelivery pending(
