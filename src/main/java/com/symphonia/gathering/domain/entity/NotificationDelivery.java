@@ -25,7 +25,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class NotificationDelivery {
-    // 발행했는데 이 시간이 지나도록 발송을 마치지 못했으면 메시지를 잃은 것으로 보고 다시 발행한다.
+    // 발행했는데 이 시간이 지나도록 발송을 마치지 못했으면 실패 한 번으로 세고, 재시도 간격을 기다린 뒤 다시 발행한다.
     private static final Duration REPUBLISH_AFTER = Duration.ofMinutes(5);
     // 컨슈머가 발송을 시작하고 이 시간 안에 끝내지 못하면 죽은 것으로 보고, 다른 컨슈머가 다시 맡을 수 있게 한다.
     private static final Duration CLAIM_LEASE = Duration.ofMinutes(5);
@@ -107,7 +107,7 @@ public class NotificationDelivery {
         return status == DeliveryStatus.SENT || (isPending() && claimedAt != null);
     }
 
-    // 발행했는데 보내지 못한 채 다시 찾은 발송 기록은 컨슈머가 예상하지 못한 예외로 실패했거나 메시지를 잃은 것이다.
+    // 발행했는데 보내지 못한 채 다시 찾은 발송 기록은 컨슈머가 예상하지 못한 예외로 실패했거나, 메시지를 잃었거나, 큐가 밀려 아직 받지 못한 것이다.
     // 미루거나 외부 발송 실패로 재시도를 기다릴 때는 발행 시각을 비우므로, 이 경우와 섞이지 않는다.
     public boolean isPublished() {
         return publishedAt != null;
@@ -164,7 +164,7 @@ public class NotificationDelivery {
         return List.copyOf(settlementIds);
     }
 
-    // 이 시각보다 먼저 발행하고 아직 보내지 못한 발송 기록을 다시 발행한다.
+    // 이 시각보다 먼저 발행하고 아직 보내지 못한 발송 기록은 실패 한 번으로 세고, 재시도 간격을 기다린 뒤 다시 발행한다.
     public static LocalDateTime republishThreshold(LocalDateTime now) {
         return now.minus(REPUBLISH_AFTER);
     }
