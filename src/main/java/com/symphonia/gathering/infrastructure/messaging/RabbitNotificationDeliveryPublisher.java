@@ -14,8 +14,8 @@ import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
-// 메시지를 모두 발행한 뒤 브로커의 확인(publisher confirm)을 한꺼번에 기다린다. 한 건씩 확인을 기다리면 발송 기록을 잠근 채 브로커 왕복을 건수만큼 기다리기
-// 때문이다.
+// 메시지를 모두 발행한 뒤 브로커의 확인(publisher confirm)을 한꺼번에 기다린다.
+// 한 건씩 확인을 기다리면 발송 기록을 잠근 채 브로커 왕복을 건수만큼 기다리기 때문이다.
 // 큐로 라우팅되지 않아 돌아온 메시지도 브로커는 받았다고 확인하므로, 돌아온 메시지인지 따로 확인해 발행하지 않은 것으로 본다.
 // 메시지는 기본값대로 persistent로 발행해 브로커가 재시작돼도 남는다.
 @Slf4j

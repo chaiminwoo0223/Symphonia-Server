@@ -29,16 +29,17 @@ import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 @DisplayName("SettlementQueryService 단위 테스트")
@@ -55,13 +56,26 @@ class SettlementQueryServiceTest extends UnitTest {
     private static final String LINK_TOKEN = "link-token";
     private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
 
-    @InjectMocks private SettlementQueryService settlementQueryService;
+    private SettlementQueryService settlementQueryService;
 
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringRepository gatheringRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
+
+    // 기록 기간은 현재 시각 기준으로 준비하므로 실제 시계로 돌린다.
+    @BeforeEach
+    void setUp() {
+        settlementQueryService =
+                new SettlementQueryService(
+                        participantLinkTokenRepository,
+                        gatheringRepository,
+                        participantBankAccountRepository,
+                        settlementRepository,
+                        notificationScheduleRepository,
+                        Clock.systemDefaultZone());
+    }
 
     @Nested
     @DisplayName("getForm 메서드는")

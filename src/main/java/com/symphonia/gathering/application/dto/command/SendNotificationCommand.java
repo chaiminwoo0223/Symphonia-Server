@@ -16,7 +16,7 @@ public record SendNotificationCommand(
         String recipientName,
         String gatheringName,
         LocalDate gatheringDate,
-        List<PayerAmount> payerAmounts,
+        List<PayerAmountCommand> payerAmounts,
         String linkToken) {
     public static SendNotificationCommand from(PreparedNotificationResult result) {
         return new SendNotificationCommand(
@@ -26,12 +26,7 @@ public record SendNotificationCommand(
                 result.recipientName(),
                 result.gatheringName(),
                 result.gatheringDate(),
-                result.payerAmounts().stream()
-                        .map(
-                                payerAmount ->
-                                        new PayerAmount(
-                                                payerAmount.payerName(), payerAmount.amount()))
-                        .toList(),
+                result.payerAmounts().stream().map(PayerAmountCommand::from).toList(),
                 result.linkToken());
     }
 
@@ -43,7 +38,7 @@ public record SendNotificationCommand(
                 recipientName,
                 gatheringName,
                 gatheringDate,
-                payerAmounts,
+                payerAmounts.stream().map(PayerAmountCommand::toPayerAmount).toList(),
                 linkToken);
     }
 
@@ -52,5 +47,15 @@ public record SendNotificationCommand(
     public @NonNull String toString() {
         return "SendNotificationCommand[notificationDeliveryId=%d, type=%s]"
                 .formatted(notificationDeliveryId, type);
+    }
+
+    public record PayerAmountCommand(String payerName, long amount) {
+        public static PayerAmountCommand from(PreparedNotificationResult.PayerAmountResult result) {
+            return new PayerAmountCommand(result.payerName(), result.amount());
+        }
+
+        public PayerAmount toPayerAmount() {
+            return new PayerAmount(payerName, amount);
+        }
     }
 }

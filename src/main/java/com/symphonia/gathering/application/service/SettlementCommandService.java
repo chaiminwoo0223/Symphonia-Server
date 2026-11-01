@@ -236,13 +236,6 @@ public class SettlementCommandService
                 .toList();
     }
 
-    private LocalDateTime findScheduledAt(Long gatheringId) {
-        return notificationScheduleRepository
-                .findByGatheringId(gatheringId)
-                .map(NotificationSchedule::getScheduledAt)
-                .orElse(null);
-    }
-
     // 결제자는 계좌를 등록해야 정산 건을 기록할 수 있고 계좌는 모임을 파기할 때만 지우므로, 없으면 서버 버그라서 500으로 둔다.
     private BankAccount findPayerBankAccount(Long payerParticipantId, Long gatheringId) {
         return participantBankAccountRepository
@@ -251,5 +244,12 @@ public class SettlementCommandService
                 .findFirst()
                 .orElseThrow()
                 .getBankAccount();
+    }
+
+    private LocalDateTime findScheduledAt(Long gatheringId) {
+        return notificationScheduleRepository
+                .findByGatheringId(gatheringId)
+                .map(NotificationSchedule::getScheduledAt)
+                .orElse(null);
     }
 }
