@@ -32,7 +32,7 @@ public class GatheringJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime openedAt;
 
     public static GatheringJpaEntity from(Gathering gathering) {

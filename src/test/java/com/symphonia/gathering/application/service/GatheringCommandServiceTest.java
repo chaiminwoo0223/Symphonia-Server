@@ -92,9 +92,7 @@ class GatheringCommandServiceTest extends UnitTest {
         void shouldSaveJoinTokenWithSavedGatheringId() {
             // given
             GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
-            given(gatheringRepository.save(any(Gathering.class)))
-                    .willReturn(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW));
-            given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
+            givenSavedGathering(fixture);
             OpenGatheringCommand command =
                     new OpenGatheringCommand(fixture.getHostMemberId(), fixture.getName());
 
@@ -116,9 +114,7 @@ class GatheringCommandServiceTest extends UnitTest {
         void shouldSaveGatheringOpenedAtCurrentTime() {
             // given
             GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
-            given(gatheringRepository.save(any(Gathering.class)))
-                    .willReturn(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW));
-            given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
+            givenSavedGathering(fixture);
             OpenGatheringCommand command =
                     new OpenGatheringCommand(fixture.getHostMemberId(), fixture.getName());
 
@@ -129,6 +125,12 @@ class GatheringCommandServiceTest extends UnitTest {
             ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
             then(gatheringRepository).should().save(captor.capture());
             assertThat(captor.getValue().getOpenedAt()).isEqualTo(NOW);
+        }
+
+        private void givenSavedGathering(GatheringFixture fixture) {
+            given(gatheringRepository.save(any(Gathering.class)))
+                    .willReturn(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW));
+            given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
         }
     }
 
