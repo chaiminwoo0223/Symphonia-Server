@@ -11,12 +11,14 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.global.config.TimeConfig;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 @DisplayName("GatheringQueryService 단위 테스트")
@@ -24,11 +26,28 @@ class GatheringQueryServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
     private static final String JOIN_TOKEN = "join-token";
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
 
-    @InjectMocks private GatheringQueryService gatheringQueryService;
+    // 참여 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
+    // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
+    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
+
+    private GatheringQueryService gatheringQueryService;
 
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
+
+    @BeforeEach
+    void setUp() {
+        gatheringQueryService =
+                new GatheringQueryService(
+                        gatheringRepository,
+                        gatheringJoinTokenRepository,
+                        Clock.fixed(
+                                NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
+                                TimeConfig.SERVICE_ZONE));
+    }
 
     @Nested
     @DisplayName("getByJoinToken 메서드는")
@@ -52,14 +71,14 @@ class GatheringQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지나지 않은 경우")
+        @DisplayName("모임을 만든 지 48시간이 되기 직전인 경우")
         class WhenWithinRecordingPeriod {
 
             @Test
             @DisplayName("참여 가능으로 표시하고 현재 동의 안내 버전을 반환한다")
             void shouldReturnJoinableResult() {
                 // given
-                givenGatheringCreatedAt(LocalDateTime.now().minusHours(1));
+                givenGatheringCreatedAt(OPEN_CREATED_AT);
 
                 // when
                 GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
@@ -72,14 +91,14 @@ class GatheringQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
             @DisplayName("참여 불가로 표시한다")
             void shouldReturnNotJoinableResult() {
                 // given
-                givenGatheringCreatedAt(LocalDateTime.now().minusHours(49));
+                givenGatheringCreatedAt(CLOSED_CREATED_AT);
 
                 // when
                 GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
