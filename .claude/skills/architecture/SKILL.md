@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), 메시지 큐(RabbitMQ) 사용 범위.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), notification 발송 규칙(notification.md), 메시지 큐(RabbitMQ) 사용 범위.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -34,6 +34,7 @@ com.symphonia
 │   ├── presentation/      # Controller, *Api
 │   └── infrastructure/    # PairingFeedbackRepository 구현체, JPA 엔티티
 ├── gathering/             # 술자리 정산 (이슈 #122, 구현은 #123~#131)
+├── notification/          # 정산 메시지 발송 예약, 발송 기록, 큐 발행, 발송 구현체 (이슈 #159에서 gathering에서 분리)
 ├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
 └── global/                # 기술 부트스트랩: Security/JPA/Redis/Swagger 설정 (config), 인증 필터·핸들러 (security)
 ```
@@ -128,11 +129,15 @@ DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설�
 
 ## gathering 정산 규칙
 
-`gathering` 도메인의 애그리거트 경계(`Gathering`, `Settlement`), 분담 방식, 분담금 상태 변경, 발송 시각과 리마인드, 개인정보 암호화와 단계적 파기, 익명 페어링 피드백에 관한 결정은 [`gathering.md`](gathering.md)에 있다. `gathering` 도메인의 모델, 정산 흐름, 개인정보 처리를 바꿀 때 읽는다. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 쪽 규칙을 다룰 때도 읽는다. 큐를 쓰는 범위는 메시지 큐 절에 있다.
+`gathering` 도메인의 애그리거트 경계(`Gathering`, `Settlement`), 분담 방식, 분담금 상태 변경, 리마인드, 개인정보 암호화와 단계적 파기, 익명 페어링 피드백에 관한 결정은 [`gathering.md`](gathering.md)에 있다. `gathering` 도메인의 모델, 정산 흐름, 개인정보 처리를 바꿀 때 읽는다. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 쪽 규칙을 다룰 때도 읽는다. 큐를 쓰는 범위는 메시지 큐 절에 있다. 정산 메시지의 발송 예약, 발송 기록, 발송 시간대 결정은 `notification.md`로 옮겼다(#159에서 변경).
+
+## notification 발송 규칙
+
+`notification` 도메인의 발송 예약, 발송 기록, 최소 한 번 발송과 재시도, 발송 시간대, 개인 링크, 발송 구현체에 관한 결정은 [`notification.md`](notification.md)에 있다(#159). 알림 발송 흐름, 큐 발행과 컨슈머, 폴러를 바꿀 때 읽는다. 정산 건을 기록, 수정, 취소할 때 발송 예약과 취소 알림이 어떻게 바뀌는지는 `gathering`이 부르는 쪽이라 함께 읽는다. 두 도메인의 의존 방향과 provider 인터페이스는 크로스 도메인 참조 절의 #159 결정에 있다.
 
 ## 메시지 큐 (RabbitMQ)
 
-**(2026-10-25 결정, 이슈 #122)**: 메시지 큐는 RabbitMQ를 쓴다. 쓰기로 한 곳은 정산 메시지와 리마인드 지연 발송(#126, #127)뿐이고, 발송은 `notification`이 맡는다(#159에서 변경). 도입은 #126에서 한다. 도입 근거는 세 가지다. 첫째, 발송 시각이 모임과 참여자마다 달라 예약이 시각별로 흩어진다. 둘째, 서버가 재시작돼도 예약이 유실되면 안 된다. 셋째, 외부 발송 장애가 API 서버로 번지지 않아야 하고 재시도와 DLQ가 필요하다. 발송 예정 시각은 DB의 예약이 갖고, 큐는 수신자별 발송과 재시도, DLQ, 외부 장애 격리를 맡는다(#126에서 변경). 지연까지 큐에 맡기는 안은 택하지 않았다. 메시지별 TTL은 앞 메시지가 뒤 메시지를 막는 head-of-line 문제가 있고, 지연 플러그인은 기본 이미지에 없으며 지연 메시지를 한 노드에만 저장한다. 또 커밋 뒤 발행 실패에 대비하려면 어차피 예약을 DB에 두고 주기적으로 다시 발행해야 해서, 큐가 지연을 맡아도 DB 조회가 없어지지 않는다. Redis를 함께 두는 안도 택하지 않았다. Redis는 정산 건과 같은 트랜잭션으로 묶을 수 없어 유실 틈이 그대로 남고, PostgreSQL이 내려가면 정산 건도 커밋되지 않으며, 발송에 필요한 휴대폰과 데이터 키도 PostgreSQL에 있기 때문이다. 상세 결정은 `gathering.md`에 있다. Redis를 지연 큐로 쓰는 안도 택하지 않았다. 지금 Redis는 토큰 저장소라서, 지연 큐로 쓰려면 영속성 설정, 재시도, DLQ를 모두 직접 구현해야 한다. 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다. 큐에 개인정보가 남지 않게 하고, 그사이 입금되거나 파기된 건을 보내지 않기 위해서다. 리마인드 횟수 제한 같은 도메인 규칙은 큐 설정이 아니라 애그리거트가 판단한다. 큐를 쓸 근거가 없는 곳에는 쓰지 않는다. 개인정보 파기(#128)는 주기적 스윕으로 처리한다. 지연 메시지가 유실되면 데이터가 영구히 남고, 파기는 한 시간 늦어도 문제가 없기 때문이다. 페어링 피드백 집계(#130)도 큐를 쓰지 않는다. 근거는 `pairing.md`에 있다. 다른 곳에 큐를 새로 쓰려면 위 세 근거 중 하나에 해당하는지 먼저 따진다.
+**(2026-10-25 결정, 이슈 #122)**: 메시지 큐는 RabbitMQ를 쓴다. 쓰기로 한 곳은 정산 메시지와 리마인드 지연 발송(#126, #127)뿐이고, 발송은 `notification`이 맡는다(#159에서 변경). 도입은 #126에서 한다. 도입 근거는 세 가지다. 첫째, 발송 시각이 모임과 참여자마다 달라 예약이 시각별로 흩어진다. 둘째, 서버가 재시작돼도 예약이 유실되면 안 된다. 셋째, 외부 발송 장애가 API 서버로 번지지 않아야 하고 재시도와 DLQ가 필요하다. 발송 예정 시각은 DB의 예약이 갖고, 큐는 수신자별 발송과 재시도, DLQ, 외부 장애 격리를 맡는다(#126에서 변경). 지연까지 큐에 맡기는 안은 택하지 않았다. 메시지별 TTL은 앞 메시지가 뒤 메시지를 막는 head-of-line 문제가 있고, 지연 플러그인은 기본 이미지에 없으며 지연 메시지를 한 노드에만 저장한다. 또 커밋 뒤 발행 실패에 대비하려면 어차피 예약을 DB에 두고 주기적으로 다시 발행해야 해서, 큐가 지연을 맡아도 DB 조회가 없어지지 않는다. Redis를 함께 두는 안도 택하지 않았다. Redis는 정산 건과 같은 트랜잭션으로 묶을 수 없어 유실 틈이 그대로 남고, PostgreSQL이 내려가면 정산 건도 커밋되지 않으며, 발송에 필요한 휴대폰과 데이터 키도 PostgreSQL에 있기 때문이다. 상세 결정은 `notification.md`에 있다(#159에서 변경). Redis를 지연 큐로 쓰는 안도 택하지 않았다. 지금 Redis는 토큰 저장소라서, 지연 큐로 쓰려면 영속성 설정, 재시도, DLQ를 모두 직접 구현해야 한다. 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다. 큐에 개인정보가 남지 않게 하고, 그사이 입금되거나 파기된 건을 보내지 않기 위해서다. 리마인드 횟수 제한 같은 도메인 규칙은 큐 설정이 아니라 애그리거트가 판단한다. 큐를 쓸 근거가 없는 곳에는 쓰지 않는다. 개인정보 파기(#128)는 주기적 스윕으로 처리한다. 지연 메시지가 유실되면 데이터가 영구히 남고, 파기는 한 시간 늦어도 문제가 없기 때문이다. 페어링 피드백 집계(#130)도 큐를 쓰지 않는다. 근거는 `pairing.md`에 있다. 다른 곳에 큐를 새로 쓰려면 위 세 근거 중 하나에 해당하는지 먼저 따진다.
 
 ## DDD 핵심 원칙
 
