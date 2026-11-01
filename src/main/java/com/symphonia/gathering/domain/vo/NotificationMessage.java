@@ -5,7 +5,7 @@ import java.util.List;
 import org.jspecify.annotations.NonNull;
 
 // 수신자 한 명에게 보내는 메시지의 내용이다. 문구와 링크 주소는 발송 수단마다 달라 NotificationSender 구현체가 정한다.
-// 늦게 받아도 어느 술자리의 메시지인지 알 수 있게, 보낸 시점에 기대는 표현 대신 모임 이름과 술자리 날짜를 담는다.
+// 늦게 받아도 어느 술자리의 메시지인지 알 수 있게, 보낸 시점에 기대는 표현 대신 모임 이름과 모임을 만든 날짜를 담는다.
 public record NotificationMessage(
         Long deliveryId,
         NotificationType type,
