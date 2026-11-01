@@ -9,6 +9,7 @@ import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class GatheringQueryService implements GetGatheringUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
+    private final Clock clock;
 
     @Override
     public GatheringResult getByJoinToken(String joinToken) {
@@ -30,7 +32,7 @@ public class GatheringQueryService implements GetGatheringUseCase {
                         .orElseThrow(GatheringNotFoundException::new);
         boolean joinable =
                 GatheringPolicy.isWithinRecordingPeriod(
-                        gathering.getCreatedAt(), LocalDateTime.now());
+                        gathering.getCreatedAt(), LocalDateTime.now(clock));
 
         return GatheringResult.of(gathering.getName(), joinable, GatheringPolicy.CONSENT_VERSION);
     }
