@@ -21,12 +21,8 @@ public enum NotificationPolicy {
     // 09:50에 기록해도 10:20에 보내므로, 10:00 직전에 기록한 정산 건도 수정 시간을 다 받는다.
     public static LocalDateTime scheduledAt(LocalDateTime recordedAt) {
         LocalDateTime earliest = recordedAt.plus(EDIT_WINDOW);
-        LocalTime time = earliest.toLocalTime();
-        if (!time.isBefore(SENDING_START) && !time.isAfter(SCHEDULING_END)) {
-            return earliest;
-        }
 
-        return nextSendingStart(earliest);
+        return isSchedulable(earliest) ? earliest : nextSendingStart(earliest);
     }
 
     public static boolean isSendable(LocalDateTime now) {
@@ -42,10 +38,14 @@ public enum NotificationPolicy {
 
     // 10:00 전이면 그날 10:00, 아니면 다음 날 10:00이다.
     public static LocalDateTime nextSendingStart(LocalDateTime time) {
-        if (time.toLocalTime().isBefore(SENDING_START)) {
-            return time.toLocalDate().atTime(SENDING_START);
-        }
+        LocalDateTime todaySendingStart = time.toLocalDate().atTime(SENDING_START);
 
-        return time.toLocalDate().plusDays(1).atTime(SENDING_START);
+        return time.isBefore(todaySendingStart) ? todaySendingStart : todaySendingStart.plusDays(1);
+    }
+
+    private static boolean isSchedulable(LocalDateTime time) {
+        LocalTime localTime = time.toLocalTime();
+
+        return !localTime.isBefore(SENDING_START) && !localTime.isAfter(SCHEDULING_END);
     }
 }
