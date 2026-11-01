@@ -192,7 +192,7 @@ class SettlementQueryServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodPassed {
+        class WhenRecordingPeriodClosed {
 
             @Test
             @DisplayName("기록 불가로 표시한다")

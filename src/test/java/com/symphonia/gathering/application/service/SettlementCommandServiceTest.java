@@ -140,7 +140,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodPassed {
+        class WhenRecordingPeriodClosed {
 
             @Test
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
@@ -296,7 +296,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodPassed {
+        class WhenRecordingPeriodClosed {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
@@ -813,7 +813,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodPassed {
+        class WhenRecordingPeriodClosed {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
