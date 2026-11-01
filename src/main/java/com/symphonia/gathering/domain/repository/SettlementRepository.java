@@ -1,6 +1,7 @@
 package com.symphonia.gathering.domain.repository;
 
 import com.symphonia.gathering.domain.entity.Settlement;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,6 +9,9 @@ public interface SettlementRepository {
     Settlement save(Settlement settlement);
 
     Optional<Settlement> findById(Long settlementId);
+
+    // 발송 기록이 담은 정산 건을 한 번에 읽는다. 보내기 직전에 분담금 상태를 다시 확인하는 데 쓴다.
+    List<Settlement> findAllByIds(Collection<Long> settlementIds);
 
     // 취소한 정산 건은 빼고 가장 나중에 만든 정산 건을 찾는다. 다음 정산 건의 인원 기본값으로 쓴다.
     Optional<Settlement> findLatestByGatheringId(Long gatheringId);
@@ -22,4 +26,8 @@ public interface SettlementRepository {
     // 여러 참여자가 같은 정산 건에서 동시에 누르면 늦은 요청이 기다렸다가 최신 상태를 읽어, 버전 충돌로 실패하지 않는다.
     List<Settlement> findAllByShareParticipantIdAndPayerForUpdate(
             Long participantId, Long payerParticipantId);
+
+    // 아직 정산 메시지를 보내지 않은, 취소하지 않은 모임의 정산 건을 id 순으로 잠그고 찾는다. 발송을 시작하는 데 쓴다.
+    // 잠그는 동안 "보냈어요"나 취소가 들어오면 기다렸다가 발송 뒤의 상태를 읽는다.
+    List<Settlement> findAllUnnotifiedByGatheringIdForUpdate(Long gatheringId);
 }

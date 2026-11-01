@@ -25,6 +25,7 @@ import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
 import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -49,13 +50,17 @@ import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
+import com.symphonia.gathering.domain.vo.DeliveryStatus;
+import com.symphonia.gathering.domain.vo.NotificationType;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.NotificationDeliveryFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -96,6 +101,7 @@ class SettlementCommandServiceTest extends UnitTest {
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
+    @Mock private NotificationDeliveryRepository notificationDeliveryRepository;
 
     // 기록 기간처럼 현재 시각 기준으로 준비하는 테스트는 실제 시계로 돌린다. 발송 시각을 정확히 따지는 테스트만 givenNow로 시각을 고정한다.
     @BeforeEach
@@ -1112,6 +1118,157 @@ class SettlementCommandServiceTest extends UnitTest {
                 then(settlementRepository).should().save(settlement);
                 assertThat(settlement.isCancelled()).isTrue();
             }
+
+            @Test
+            @DisplayName("정산 메시지를 보내기 전이면 취소 알림을 저장하지 않는다")
+            void shouldNotSaveCancellationNoticesWhenSettlementNotNotified() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                then(notificationDeliveryRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("정산 메시지를 보낸 정산 건인 경우")
+        class WhenSettlementNotified {
+
+            // 정산 메시지가 닿지 않은 수신자다. 맡지 않은 PENDING, SKIPPED, FAILED 발송 기록의 수신자로 쓴다.
+            private static final Long CHOI_ID = 23L;
+            private static final Long JUNG_ID = 24L;
+            private static final Long KANG_ID = 25L;
+
+            @Test
+            @DisplayName(
+                    "보낸 정산 메시지와 컨슈머가 맡은 정산 메시지의 수신자에게만 취소 알림을 저장하고, 맡지 않았거나 건너뛰었거나 실패한 정산 메시지의 수신자는 뺀다")
+            void shouldSaveCancellationNoticesOnlyForReachedRecipients() {
+                // given
+                givenNotifiedSettlementCancelledAt(LocalDateTime.of(2026, 10, 28, 10, 0));
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                then(notificationDeliveryRepository).should().saveAll(captor.capture());
+                assertThat(captor.getValue())
+                        .extracting(NotificationDelivery::getParticipantId)
+                        .containsExactly(LEE_ID, PARK_ID);
+            }
+
+            @Test
+            @DisplayName("보낼 수 있는 시간대면 정산 메시지를 받은 참여자마다 바로 보낼 취소 알림을 저장한다")
+            void shouldSaveCancellationNoticesAvailableNowWhenSendable() {
+                // given
+                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
+                givenNotifiedSettlementCancelledAt(now);
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                thenCancellationNoticesSavedAvailableAt(now);
+            }
+
+            @Test
+            @DisplayName("22:00 이후면 다음 날 10:00에 보낼 취소 알림을 저장한다")
+            void shouldSaveCancellationNoticesAvailableNextDayWhenCancelledAtNight() {
+                // given
+                givenNotifiedSettlementCancelledAt(LocalDateTime.of(2026, 10, 28, 22, 0));
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                thenCancellationNoticesSavedAvailableAt(LocalDateTime.of(2026, 10, 29, 10, 0));
+            }
+
+            @Test
+            @DisplayName("10:00 전이면 같은 날 10:00에 보낼 취소 알림을 저장한다")
+            void shouldSaveCancellationNoticesAvailableSameDayWhenCancelledBeforeSendingStart() {
+                // given
+                givenNotifiedSettlementCancelledAt(LocalDateTime.of(2026, 10, 28, 9, 59));
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                thenCancellationNoticesSavedAvailableAt(LocalDateTime.of(2026, 10, 28, 10, 0));
+            }
+
+            // 이는 정산 메시지를 받았고, 박은 컨슈머가 맡아 내용을 만들었다. 나머지 수신자에게는 정산 메시지가 닿지 않았다.
+            private void givenNotifiedSettlementCancelledAt(LocalDateTime now) {
+                givenNow(now);
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createNotified(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID, PARK_ID, CHOI_ID, JUNG_ID, KANG_ID)));
+                given(
+                                notificationDeliveryRepository.findAllSettlementDeliveriesForUpdate(
+                                        SETTLEMENT_ID))
+                        .willReturn(
+                                List.of(
+                                        settlementNotice(1L, LEE_ID)
+                                                .status(DeliveryStatus.SENT)
+                                                .claimedAt(now.minusHours(1))
+                                                .sentAt(now.minusHours(1))
+                                                .build(),
+                                        settlementNotice(2L, CHOI_ID).build(),
+                                        settlementNotice(3L, PARK_ID)
+                                                .claimedAt(now.minusMinutes(1))
+                                                .build(),
+                                        settlementNotice(4L, JUNG_ID)
+                                                .status(DeliveryStatus.SKIPPED)
+                                                .build(),
+                                        settlementNotice(5L, KANG_ID)
+                                                .status(DeliveryStatus.FAILED)
+                                                .attempts(5)
+                                                .build()));
+            }
+
+            private NotificationDelivery.NotificationDeliveryBuilder settlementNotice(
+                    Long deliveryId, Long participantId) {
+                return NotificationDeliveryFixture.SETTLEMENT_NOTICE.builder(
+                        deliveryId, GATHERING_ID, participantId, List.of(SETTLEMENT_ID));
+            }
+
+            private void thenCancellationNoticesSavedAvailableAt(LocalDateTime availableAt) {
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                then(notificationDeliveryRepository).should().saveAll(captor.capture());
+                assertThat(captor.getValue())
+                        .extracting(
+                                NotificationDelivery::getGatheringId,
+                                NotificationDelivery::getParticipantId,
+                                NotificationDelivery::getType,
+                                NotificationDelivery::getSettlementIds,
+                                NotificationDelivery::getStatus,
+                                NotificationDelivery::getAvailableAt)
+                        .containsExactly(
+                                tuple(
+                                        GATHERING_ID,
+                                        LEE_ID,
+                                        NotificationType.CANCELLATION,
+                                        List.of(SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        availableAt),
+                                tuple(
+                                        GATHERING_ID,
+                                        PARK_ID,
+                                        NotificationType.CANCELLATION,
+                                        List.of(SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        availableAt));
+            }
         }
 
         private CancelSettlementCommand command() {
@@ -1770,6 +1927,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 participantBankAccountRepository,
                 settlementRepository,
                 notificationScheduleRepository,
+                notificationDeliveryRepository,
                 clock);
     }
 

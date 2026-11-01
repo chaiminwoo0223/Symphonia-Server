@@ -18,6 +18,7 @@ import com.symphonia.gathering.application.usecase.RegisterBankAccountUseCase;
 import com.symphonia.gathering.application.usecase.RevertShareUseCase;
 import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -26,6 +27,7 @@ import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
@@ -55,6 +57,7 @@ public class SettlementCommandService
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
     private final NotificationScheduleRepository notificationScheduleRepository;
+    private final NotificationDeliveryRepository notificationDeliveryRepository;
     private final Clock clock;
 
     @Override
@@ -145,6 +148,12 @@ public class SettlementCommandService
         LocalDateTime now = LocalDateTime.now(clock);
         settlement.cancel(now);
         settlementRepository.save(settlement);
+
+        if (settlement.isNotified()) {
+            notificationDeliveryRepository.saveAll(
+                    NotificationDelivery.forCancellation(
+                            settlement, findReachedRecipientIds(settlement.getId()), now));
+        }
     }
 
     // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
@@ -218,6 +227,14 @@ public class SettlementCommandService
                 .orElseThrow(SettlementNotFoundException::new);
     }
 
+    private List<Long> findReachedRecipientIds(Long settlementId) {
+        return notificationDeliveryRepository
+                .findAllSettlementDeliveriesForUpdate(settlementId)
+                .stream()
+                .filter(NotificationDelivery::hasReachedRecipient)
+                .map(NotificationDelivery::getParticipantId)
+                .toList();
+    }
 
     private LocalDateTime findScheduledAt(Long gatheringId) {
         return notificationScheduleRepository
