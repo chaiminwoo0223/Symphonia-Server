@@ -38,32 +38,43 @@ public class PrepareNotificationService implements PrepareNotificationUseCase {
     // 미루든 건너뛰든 맡든 발송 기록의 상태가 바뀌므로 저장은 여기서 한 번만 한다.
     private Optional<PreparedNotificationResult> prepareClaimable(
             NotificationDelivery notificationDelivery, LocalDateTime now) {
-        Optional<PreparedNotificationResult> prepared = compose(notificationDelivery, now);
+        Optional<PreparedNotificationResult> prepared = tryClaim(notificationDelivery, now);
         notificationDeliveryRepository.save(notificationDelivery);
         return prepared;
     }
 
     // 보낼 수 없는 시간대면 미루고, 그사이 보냈거나 취소돼 담을 금액이 없으면 건너뛴다.
-    private Optional<PreparedNotificationResult> compose(
+    private Optional<PreparedNotificationResult> tryClaim(
             NotificationDelivery notificationDelivery, LocalDateTime now) {
         if (!NotificationPolicy.isSendable(now)) {
             notificationDelivery.defer(now);
             return Optional.empty();
         }
 
-        Optional<NotificationContentResult> content =
-                notificationContentProvider.compose(
-                        ComposeNotificationCommand.of(
-                                notificationDelivery.getGatheringId(),
-                                notificationDelivery.getParticipantId(),
-                                notificationDelivery.getType(),
-                                notificationDelivery.getSettlementIds()));
-        if (content.isEmpty()) {
-            notificationDelivery.skip();
-            return Optional.empty();
-        }
+        return notificationContentProvider
+                .compose(commandOf(notificationDelivery))
+                .map(content -> claim(notificationDelivery, content, now))
+                .or(() -> skip(notificationDelivery));
+    }
 
+    private ComposeNotificationCommand commandOf(NotificationDelivery notificationDelivery) {
+        return ComposeNotificationCommand.of(
+                notificationDelivery.getGatheringId(),
+                notificationDelivery.getParticipantId(),
+                notificationDelivery.getType(),
+                notificationDelivery.getSettlementIds());
+    }
+
+    private PreparedNotificationResult claim(
+            NotificationDelivery notificationDelivery,
+            NotificationContentResult content,
+            LocalDateTime now) {
         notificationDelivery.claim(now);
-        return Optional.of(PreparedNotificationResult.of(notificationDelivery, content.get()));
+        return PreparedNotificationResult.of(notificationDelivery, content);
+    }
+
+    private Optional<PreparedNotificationResult> skip(NotificationDelivery notificationDelivery) {
+        notificationDelivery.skip();
+        return Optional.empty();
     }
 }
