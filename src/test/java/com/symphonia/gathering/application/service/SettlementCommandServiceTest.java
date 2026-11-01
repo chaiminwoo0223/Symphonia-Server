@@ -54,17 +54,19 @@ import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.NotificationDeliveryFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.notification.application.service.NotificationCommandService;
+import com.symphonia.notification.application.service.NotificationQueryService;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import com.symphonia.notification.domain.vo.DeliveryStatus;
 import com.symphonia.notification.domain.vo.NotificationType;
+import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -661,7 +663,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 InOrder inOrder = inOrder(notificationScheduleRepository, settlementRepository);
                 inOrder.verify(notificationScheduleRepository).findOrCreateForUpdate(GATHERING_ID);
                 inOrder.verify(settlementRepository).save(any(Settlement.class));
-                inOrder.verify(notificationScheduleRepository).save(captor.capture());
+                then(notificationScheduleRepository).should().save(captor.capture());
                 assertThat(captor.getValue().getScheduledAt())
                         .isEqualTo(LocalDateTime.of(2026, 10, 28, 20, 30));
                 assertThat(result.notificationScheduledAt())
@@ -846,6 +848,7 @@ class SettlementCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createNotified(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -868,6 +871,7 @@ class SettlementCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createCancelled(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -894,6 +898,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -1926,13 +1931,17 @@ class SettlementCommandServiceTest extends UnitTest {
     }
 
     private SettlementCommandService settlementCommandService(Clock clock) {
+        NotificationCommandService notificationCommandService =
+                new NotificationCommandService(
+                        notificationScheduleRepository, notificationDeliveryRepository, clock);
         return new SettlementCommandService(
                 participantLinkTokenRepository,
                 gatheringRepository,
                 participantBankAccountRepository,
                 settlementRepository,
-                notificationScheduleRepository,
-                notificationDeliveryRepository,
+                notificationCommandService,
+                notificationCommandService,
+                new NotificationQueryService(notificationScheduleRepository, clock),
                 clock);
     }
 

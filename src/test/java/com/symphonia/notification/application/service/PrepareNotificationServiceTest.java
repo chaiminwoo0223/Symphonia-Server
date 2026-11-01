@@ -1,4 +1,4 @@
-package com.symphonia.gathering.application.service;
+package com.symphonia.notification.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,7 +9,6 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
-import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
 import com.symphonia.gathering.application.provider.NotificationContentProviderImpl;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -20,15 +19,16 @@ import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.NotificationDeliveryFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
 import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.application.dto.result.PreparedNotificationResult;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.notification.domain.vo.DeliveryStatus;
 import com.symphonia.notification.domain.vo.NotificationType;
+import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;

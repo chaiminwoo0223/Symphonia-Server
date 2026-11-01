@@ -20,8 +20,7 @@ import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepositor
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
-import com.symphonia.notification.domain.entity.NotificationSchedule;
-import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
+import com.symphonia.notification.application.usecase.GetNotificationScheduleUseCase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -39,7 +38,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
     private final GatheringRepository gatheringRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
-    private final NotificationScheduleRepository notificationScheduleRepository;
+    private final GetNotificationScheduleUseCase getNotificationScheduleUseCase;
     private final Clock clock;
 
     @Override
@@ -60,10 +59,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                                                 .toList());
 
         LocalDateTime scheduledAt =
-                notificationScheduleRepository
-                        .findByGatheringId(gathering.getId())
-                        .map(NotificationSchedule::getScheduledAt)
-                        .orElse(null);
+                getNotificationScheduleUseCase.getSchedule(gathering.getId()).scheduledAt();
 
         return SettlementFormResult.of(
                 recordable,

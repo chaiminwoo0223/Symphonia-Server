@@ -1,9 +1,9 @@
-package com.symphonia.gathering.application.service;
+package com.symphonia.notification.application.service;
 
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.gathering.application.usecase.DispatchSettlementNotificationUseCase;
 import com.symphonia.notification.application.dto.command.NotifySettlementsCommand;
 import com.symphonia.notification.application.provider.NotificationTargetProvider;
+import com.symphonia.notification.application.usecase.DispatchSettlementNotificationUseCase;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import com.symphonia.notification.domain.policy.NotificationPolicy;

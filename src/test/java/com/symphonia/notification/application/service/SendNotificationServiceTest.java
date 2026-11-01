@@ -1,4 +1,4 @@
-package com.symphonia.gathering.application.service;
+package com.symphonia.notification.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -8,12 +8,11 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
-import com.symphonia.gathering.application.dto.command.SendNotificationCommand;
-import com.symphonia.gathering.application.dto.command.SendNotificationCommand.PayerAmountCommand;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.NotificationDeliveryFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.notification.application.dto.command.SendNotificationCommand;
+import com.symphonia.notification.application.dto.command.SendNotificationCommand.PayerAmountCommand;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.exception.NotificationSendFailedException;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
@@ -21,6 +20,7 @@ import com.symphonia.notification.domain.sender.NotificationSender;
 import com.symphonia.notification.domain.vo.DeliveryStatus;
 import com.symphonia.notification.domain.vo.NotificationMessage;
 import com.symphonia.notification.domain.vo.NotificationType;
+import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;

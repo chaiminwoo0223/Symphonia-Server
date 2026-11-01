@@ -30,17 +30,21 @@ import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.domain.vo.SplitMethod;
-import com.symphonia.notification.domain.entity.NotificationDelivery;
-import com.symphonia.notification.domain.entity.NotificationSchedule;
-import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
-import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
+import com.symphonia.notification.application.dto.command.AnnounceCancellationCommand;
+import com.symphonia.notification.application.dto.command.RescheduleNotificationCommand;
+import com.symphonia.notification.application.dto.result.NotificationScheduleResult;
+import com.symphonia.notification.application.usecase.AnnounceCancellationUseCase;
+import com.symphonia.notification.application.usecase.GetNotificationScheduleUseCase;
+import com.symphonia.notification.application.usecase.RescheduleNotificationUseCase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 // 정산 건은 결제자가 개인 링크 토큰으로 기록하고 수정하고 취소한다. 요청한 참여자가 곧 결제자다.
-// 기록과 수정은 모임의 발송 예약을 먼저 잠근다. 발송도 예약을 잠근 뒤 정산 건을 잠그므로, 같은 순서로 잠가 교착 상태가 생기지 않는다.
+// 기록과 수정은 정산 건을 바꾸기 전에 notification의 발송 예약을 먼저 잠근다. 발송도 예약을 잠근 뒤 정산 건을 잠그므로, 같은 순서로 잠가 교착 상태가 생기지
+// 않는다.
+// notification의 UseCase 셋은 모두 정산 건 변경이 발송 예약에 미치는 영향이라 한 관심사로 보고, 같은 트랜잭션 보장을 지키려고 나누지 않는다(#159).
 // 분담금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다.
 @CommandService
 @RequiredArgsConstructor
@@ -56,8 +60,9 @@ public class SettlementCommandService
     private final GatheringRepository gatheringRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
-    private final NotificationScheduleRepository notificationScheduleRepository;
-    private final NotificationDeliveryRepository notificationDeliveryRepository;
+    private final RescheduleNotificationUseCase rescheduleNotificationUseCase;
+    private final AnnounceCancellationUseCase announceCancellationUseCase;
+    private final GetNotificationScheduleUseCase getNotificationScheduleUseCase;
     private final Clock clock;
 
     @Override
@@ -95,16 +100,14 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
-        NotificationSchedule notificationSchedule =
-                notificationScheduleRepository.findOrCreateForUpdate(gathering.getId());
+        NotificationScheduleResult schedule =
+                rescheduleNotificationUseCase.reschedule(
+                        RescheduleNotificationCommand.of(gathering.getId(), now));
 
         Settlement settlement = Settlement.record(gathering.getId(), splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
-        notificationSchedule.reschedule(savedSettlement.getRecordedAt());
-        NotificationSchedule savedSchedule =
-                notificationScheduleRepository.save(notificationSchedule);
 
-        return SettlementResult.of(savedSettlement, savedSchedule.getScheduledAt());
+        return SettlementResult.of(savedSettlement, schedule.scheduledAt());
     }
 
     @Override
@@ -127,16 +130,14 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
-        NotificationSchedule notificationSchedule =
-                notificationScheduleRepository.findOrCreateForUpdate(gathering.getId());
+        NotificationScheduleResult schedule =
+                rescheduleNotificationUseCase.reschedule(
+                        RescheduleNotificationCommand.of(gathering.getId(), now));
 
         settlement.update(splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
-        notificationSchedule.reschedule(savedSettlement.getRecordedAt());
-        NotificationSchedule savedSchedule =
-                notificationScheduleRepository.save(notificationSchedule);
 
-        return SettlementResult.of(savedSettlement, savedSchedule.getScheduledAt());
+        return SettlementResult.of(savedSettlement, schedule.scheduledAt());
     }
 
     @Override
@@ -150,12 +151,9 @@ public class SettlementCommandService
         settlementRepository.save(settlement);
 
         if (settlement.isNotified()) {
-            notificationDeliveryRepository.saveAll(
-                    NotificationDelivery.forCancellation(
-                            settlement.getGatheringId(),
-                            settlement.getId(),
-                            findReachedRecipientIds(settlement.getId()),
-                            now));
+            announceCancellationUseCase.announceCancellation(
+                    AnnounceCancellationCommand.of(
+                            settlement.getGatheringId(), settlement.getId()));
         }
     }
 
@@ -230,15 +228,6 @@ public class SettlementCommandService
                 .orElseThrow(SettlementNotFoundException::new);
     }
 
-    private List<Long> findReachedRecipientIds(Long settlementId) {
-        return notificationDeliveryRepository
-                .findAllSettlementDeliveriesForUpdate(settlementId)
-                .stream()
-                .filter(NotificationDelivery::hasReachedRecipient)
-                .map(NotificationDelivery::getParticipantId)
-                .toList();
-    }
-
     // 결제자는 계좌를 등록해야 정산 건을 기록할 수 있고 계좌는 모임을 파기할 때만 지우므로, 없으면 서버 버그라서 500으로 둔다.
     private BankAccount findPayerBankAccount(Long payerParticipantId, Long gatheringId) {
         return participantBankAccountRepository
@@ -250,9 +239,6 @@ public class SettlementCommandService
     }
 
     private LocalDateTime findScheduledAt(Long gatheringId) {
-        return notificationScheduleRepository
-                .findByGatheringId(gatheringId)
-                .map(NotificationSchedule::getScheduledAt)
-                .orElse(null);
+        return getNotificationScheduleUseCase.getSchedule(gatheringId).scheduledAt();
     }
 }

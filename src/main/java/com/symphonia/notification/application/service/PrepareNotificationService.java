@@ -1,11 +1,11 @@
-package com.symphonia.gathering.application.service;
+package com.symphonia.notification.application.service;
 
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
-import com.symphonia.gathering.application.usecase.PrepareNotificationUseCase;
 import com.symphonia.notification.application.dto.command.ComposeNotificationCommand;
 import com.symphonia.notification.application.dto.result.NotificationContentResult;
+import com.symphonia.notification.application.dto.result.PreparedNotificationResult;
 import com.symphonia.notification.application.provider.NotificationContentProvider;
+import com.symphonia.notification.application.usecase.PrepareNotificationUseCase;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.policy.NotificationPolicy;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;

@@ -1,8 +1,8 @@
 package com.symphonia.gathering.presentation.listener;
 
-import com.symphonia.gathering.application.dto.command.SendNotificationCommand;
-import com.symphonia.gathering.application.usecase.PrepareNotificationUseCase;
-import com.symphonia.gathering.application.usecase.SendNotificationUseCase;
+import com.symphonia.notification.application.dto.command.SendNotificationCommand;
+import com.symphonia.notification.application.usecase.PrepareNotificationUseCase;
+import com.symphonia.notification.application.usecase.SendNotificationUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
