@@ -93,6 +93,12 @@ class SettlementCommandServiceTest extends UnitTest {
     private static final String LINK_TOKEN = "link-token";
     private static final String HYPHENATED_ACCOUNT_NUMBER = "1234-5678-9012";
     private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
+
+    // 기록 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
+    // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
+    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
 
     private SettlementCommandService settlementCommandService;
 
@@ -103,10 +109,10 @@ class SettlementCommandServiceTest extends UnitTest {
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
     @Mock private NotificationDeliveryRepository notificationDeliveryRepository;
 
-    // 기록 기간처럼 현재 시각 기준으로 준비하는 테스트는 실제 시계로 돌린다. 발송 시각을 정확히 따지는 테스트만 givenNow로 시각을 고정한다.
+    // 시각은 NOW로 고정한다. 발송 시각을 따지는 테스트만 givenNow로 다른 시각을 고정한다.
     @BeforeEach
     void setUp() {
-        settlementCommandService = settlementCommandService(Clock.systemDefaultZone());
+        givenNow(NOW);
     }
 
     @Nested
@@ -133,14 +139,14 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowSettlementRecordingClosedException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(49));
+                givenGatheringOfPayer(CLOSED_CREATED_AT);
                 RegisterBankAccountCommand command = command(true);
 
                 // when & then
@@ -158,7 +164,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowBankAccountConsentRequiredException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 RegisterBankAccountCommand command = command(false);
 
                 // when & then
@@ -176,7 +182,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowOutdatedBankAccountConsentVersionException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 RegisterBankAccountCommand command =
                         new RegisterBankAccountCommand(
                                 LINK_TOKEN,
@@ -200,7 +206,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 다시 저장하지 않는다")
             void shouldThrowBankAccountAlreadyRegisteredException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                         .willReturn(true);
                 RegisterBankAccountCommand command = command(true);
@@ -220,7 +226,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
             void shouldThrowInvalidBankAccountException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 RegisterBankAccountCommand command =
                         new RegisterBankAccountCommand(
                                 LINK_TOKEN,
@@ -244,7 +250,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("하이픈을 지운 계좌와 동의 버전을 참여자가 속한 모임 id와 함께 저장한다")
             void shouldSaveNormalizedBankAccountWithGatheringId() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                         .willReturn(false);
                 RegisterBankAccountCommand command = command(true);
@@ -289,14 +295,14 @@ class SettlementCommandServiceTest extends UnitTest {
     class Record {
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementRecordingClosedException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(49));
+                givenGatheringOfPayer(CLOSED_CREATED_AT);
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
                 // when & then
@@ -314,7 +320,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowInvalidSettlementParticipantsException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 RecordSettlementCommand command =
                         command(10_000L, List.of(PAYER_ID, OUTSIDER_ID), Map.of());
 
@@ -333,7 +339,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowBankAccountRequiredException() {
                 // given
-                givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+                givenGatheringOfPayer(OPEN_CREATED_AT);
                 given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                         .willReturn(false);
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
@@ -745,7 +751,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private void givenRecordableGathering() {
-            givenGatheringOfPayer(LocalDateTime.now().minusHours(1));
+            givenGatheringOfPayer(OPEN_CREATED_AT);
             given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                     .willReturn(true);
         }
@@ -806,7 +812,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
@@ -817,7 +823,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(LocalDateTime.now().minusHours(49));
+                givenGathering(CLOSED_CREATED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -839,7 +845,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createNotified(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -861,7 +867,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createCancelled(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -887,7 +893,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -909,7 +915,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 givenSaveReturnsSettlement();
                 givenScheduleLocked();
                 UpdateSettlementCommand command = command();
@@ -934,7 +940,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenParticipant(PAYER_ID);
                 givenSettlement(settlementWithZeroShare());
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 givenSaveReturnsSettlement();
                 givenScheduleLocked();
                 UpdateSettlementCommand command = command();
@@ -1460,7 +1466,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
         private void givenGatheringWithPayerBankAccount() {
             given(gatheringRepository.findByParticipantId(LEE_ID))
-                    .willReturn(Optional.of(gathering(LocalDateTime.now().minusHours(1))));
+                    .willReturn(Optional.of(gathering(OPEN_CREATED_AT)));
             given(
                             participantBankAccountRepository.findAllByParticipantIds(
                                     List.of(PAYER_ID), GATHERING_ID))
@@ -1911,7 +1917,6 @@ class SettlementCommandServiceTest extends UnitTest {
                                         .build()));
     }
 
-    // 발송 시각을 정확히 따지는 테스트만 시각을 고정한 서비스로 바꾼다.
     private void givenNow(LocalDateTime now) {
         settlementCommandService =
                 settlementCommandService(

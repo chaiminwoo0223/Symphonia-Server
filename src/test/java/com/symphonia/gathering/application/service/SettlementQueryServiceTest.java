@@ -29,6 +29,7 @@ import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
+import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -55,6 +56,12 @@ class SettlementQueryServiceTest extends UnitTest {
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
     private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
+
+    // 기록 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
+    // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
+    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
 
     private SettlementQueryService settlementQueryService;
 
@@ -64,7 +71,6 @@ class SettlementQueryServiceTest extends UnitTest {
     @Mock private SettlementRepository settlementRepository;
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
 
-    // 기록 기간은 현재 시각 기준으로 준비하므로 실제 시계로 돌린다.
     @BeforeEach
     void setUp() {
         settlementQueryService =
@@ -74,7 +80,9 @@ class SettlementQueryServiceTest extends UnitTest {
                         participantBankAccountRepository,
                         settlementRepository,
                         notificationScheduleRepository,
-                        Clock.systemDefaultZone());
+                        Clock.fixed(
+                                NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
+                                TimeConfig.SERVICE_ZONE));
     }
 
     @Nested
@@ -106,7 +114,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("마스킹한 휴대폰을 담은 참여자 전원을 인원 기본값으로 하고 기록 가능, 계좌 미등록, 현재 계좌 동의 버전을 반환한다")
             void shouldReturnAllParticipantsAsDefault() {
                 // given
-                givenForm(LocalDateTime.now().minusHours(1), null, false, List.of());
+                givenForm(OPEN_CREATED_AT, null, false, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -142,7 +150,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement latest =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, LEE_ID, List.of(PAYER_ID, LEE_ID));
-                givenForm(LocalDateTime.now().minusHours(1), latest, false, List.of());
+                givenForm(OPEN_CREATED_AT, latest, false, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -166,7 +174,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 GATHERING_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID, PARK_ID));
-                givenForm(LocalDateTime.now().minusHours(1), settlement, true, List.of(settlement));
+                givenForm(OPEN_CREATED_AT, settlement, true, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -183,14 +191,14 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
             @DisplayName("기록 불가로 표시한다")
             void shouldReturnNotRecordableForm() {
                 // given
-                givenForm(LocalDateTime.now().minusHours(49), null, true, List.of());
+                givenForm(CLOSED_CREATED_AT, null, true, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -214,11 +222,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement notified =
                         SettlementFixture.DINNER.createNotified(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(
-                        LocalDateTime.now().minusHours(1),
-                        unnotified,
-                        true,
-                        List.of(notified, unnotified));
+                givenForm(OPEN_CREATED_AT, unnotified, true, List.of(notified, unnotified));
                 given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
                         .willReturn(
                                 Optional.of(
@@ -253,7 +257,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(LocalDateTime.now().minusHours(1), settlement, true, List.of(settlement));
+                givenForm(OPEN_CREATED_AT, settlement, true, List.of(settlement));
                 given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
                         .willReturn(Optional.empty());
 
@@ -320,7 +324,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                         .willReturn(Optional.of(LEE_ID));
                 given(gatheringRepository.findByParticipantId(LEE_ID))
-                        .willReturn(Optional.of(gathering(LocalDateTime.now().minusHours(1))));
+                        .willReturn(Optional.of(gathering(OPEN_CREATED_AT)));
                 given(settlementRepository.findAllByShareParticipantId(LEE_ID))
                         .willReturn(List.of());
 
@@ -536,7 +540,7 @@ class SettlementQueryServiceTest extends UnitTest {
             given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                     .willReturn(Optional.of(LEE_ID));
             given(gatheringRepository.findByParticipantId(LEE_ID))
-                    .willReturn(Optional.of(gathering(LocalDateTime.now().minusHours(1))));
+                    .willReturn(Optional.of(gathering(OPEN_CREATED_AT)));
             given(settlementRepository.findAllByShareParticipantId(LEE_ID))
                     .willReturn(List.of(settlements));
             given(participantBankAccountRepository.findAllByParticipantIds(any(), eq(GATHERING_ID)))
