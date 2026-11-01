@@ -41,13 +41,16 @@ public class NotificationDeliveryRepositoryImpl implements NotificationDeliveryR
     }
 
     @Override
-    public List<Long> findPublishableIdsForUpdate(
+    public List<NotificationDelivery> findPublishableForUpdate(
             LocalDateTime now,
             LocalDateTime publishedBefore,
             LocalDateTime claimedBefore,
             int limit) {
-        return notificationDeliveryJpaRepository.findPublishableIdsForUpdate(
-                now, publishedBefore, claimedBefore, limit);
+        return notificationDeliveryJpaRepository
+                .findPublishableForUpdate(now, publishedBefore, claimedBefore, limit)
+                .stream()
+                .map(NotificationDeliveryJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

@@ -16,7 +16,7 @@ public interface NotificationDeliveryRepository {
 
     // 보낼 시각이 됐는데 아직 발행하지 않았거나, 발행한 지 오래됐는데 보내지 못한 발송 기록을 잠그고 찾는다.
     // 컨슈머가 맡고 있는 발송 기록과 다른 서버가 발행 중인 발송 기록은 건너뛴다.
-    List<Long> findPublishableIdsForUpdate(
+    List<NotificationDelivery> findPublishableForUpdate(
             LocalDateTime now,
             LocalDateTime publishedBefore,
             LocalDateTime claimedBefore,

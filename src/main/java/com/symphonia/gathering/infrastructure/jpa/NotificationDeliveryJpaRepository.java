@@ -25,7 +25,7 @@ public interface NotificationDeliveryJpaRepository
     @Query(
             value =
                     """
-                    SELECT id FROM notification_delivery
+                    SELECT * FROM notification_delivery
                     WHERE status = 'PENDING'
                       AND available_at <= :now
                       AND (published_at IS NULL OR published_at < :publishedBefore)
@@ -35,7 +35,7 @@ public interface NotificationDeliveryJpaRepository
                     FOR UPDATE SKIP LOCKED
                     """,
             nativeQuery = true)
-    List<Long> findPublishableIdsForUpdate(
+    List<NotificationDeliveryJpaEntity> findPublishableForUpdate(
             @Param("now") LocalDateTime now,
             @Param("publishedBefore") LocalDateTime publishedBefore,
             @Param("claimedBefore") LocalDateTime claimedBefore,
