@@ -18,6 +18,7 @@ import com.symphonia.gathering.application.usecase.RegisterBankAccountUseCase;
 import com.symphonia.gathering.application.usecase.RevertShareUseCase;
 import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
@@ -25,16 +26,19 @@ import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.domain.vo.SplitMethod;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 // 정산 건은 결제자가 개인 링크 토큰으로 기록하고 수정하고 취소한다. 요청한 참여자가 곧 결제자다.
+// 기록과 수정은 모임의 발송 예약을 먼저 잠근다. 발송도 예약을 잠근 뒤 정산 건을 잠그므로, 같은 순서로 잠가 교착 상태가 생기지 않는다.
 // 분담금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다.
 @CommandService
 @RequiredArgsConstructor
@@ -50,12 +54,14 @@ public class SettlementCommandService
     private final GatheringRepository gatheringRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
+    private final NotificationScheduleRepository notificationScheduleRepository;
+    private final Clock clock;
 
     @Override
     public void register(RegisterBankAccountCommand command) {
         Long participantId = findParticipantId(command.linkToken());
         Gathering gathering = findGatheringByParticipantId(participantId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         SettlementPolicy.validateRecordable(gathering.getCreatedAt(), now);
         BankAccount bankAccount = BankAccount.of(command.bankName(), command.accountNumber());
         SettlementPolicy.validateBankAccountConsent(
@@ -73,7 +79,7 @@ public class SettlementCommandService
     public SettlementResult record(RecordSettlementCommand command) {
         Long participantId = findParticipantId(command.linkToken());
         Gathering gathering = findGatheringByParticipantId(participantId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         SettlementPolicy.validateRecordable(gathering.getCreatedAt(), now);
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
@@ -86,10 +92,16 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
+        NotificationSchedule notificationSchedule =
+                notificationScheduleRepository.findOrCreateForUpdate(gathering.getId());
+
         Settlement settlement = Settlement.record(gathering.getId(), splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
+        notificationSchedule.reschedule(savedSettlement.getRecordedAt());
+        NotificationSchedule savedSchedule =
+                notificationScheduleRepository.save(notificationSchedule);
 
-        return SettlementResult.from(savedSettlement);
+        return SettlementResult.of(savedSettlement, savedSchedule.getScheduledAt());
     }
 
     @Override
@@ -101,7 +113,7 @@ public class SettlementCommandService
                 gatheringRepository
                         .findById(settlement.getGatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         SettlementPolicy.validateRecordable(gathering.getCreatedAt(), now);
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
@@ -112,10 +124,16 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
+        NotificationSchedule notificationSchedule =
+                notificationScheduleRepository.findOrCreateForUpdate(gathering.getId());
+
         settlement.update(splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
+        notificationSchedule.reschedule(savedSettlement.getRecordedAt());
+        NotificationSchedule savedSchedule =
+                notificationScheduleRepository.save(notificationSchedule);
 
-        return SettlementResult.from(savedSettlement);
+        return SettlementResult.of(savedSettlement, savedSchedule.getScheduledAt());
     }
 
     @Override
@@ -124,7 +142,8 @@ public class SettlementCommandService
         Settlement settlement = findSettlement(command.settlementId());
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
-        settlement.cancel(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now(clock);
+        settlement.cancel(now);
         settlementRepository.save(settlement);
     }
 
@@ -164,7 +183,8 @@ public class SettlementCommandService
         settlement.confirmShare(command.participantId());
         Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.from(savedSettlement);
+        return SettlementResult.of(
+                savedSettlement, findScheduledAt(savedSettlement.getGatheringId()));
     }
 
     @Override
@@ -176,7 +196,8 @@ public class SettlementCommandService
         settlement.revertShareToUnpaid(command.participantId());
         Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.from(savedSettlement);
+        return SettlementResult.of(
+                savedSettlement, findScheduledAt(savedSettlement.getGatheringId()));
     }
 
     private Long findParticipantId(String linkToken) {
@@ -195,6 +216,14 @@ public class SettlementCommandService
         return settlementRepository
                 .findById(settlementId)
                 .orElseThrow(SettlementNotFoundException::new);
+    }
+
+
+    private LocalDateTime findScheduledAt(Long gatheringId) {
+        return notificationScheduleRepository
+                .findByGatheringId(gatheringId)
+                .map(NotificationSchedule::getScheduledAt)
+                .orElse(null);
     }
 
     // 결제자는 계좌를 등록해야 정산 건을 기록할 수 있고 계좌는 모임을 파기할 때만 지우므로, 없으면 서버 버그라서 500으로 둔다.

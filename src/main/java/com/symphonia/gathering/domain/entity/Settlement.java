@@ -64,6 +64,14 @@ public class Settlement {
         cancelledAt = now;
     }
 
+    // 모임의 발송 예약이 이 정산 건의 정산 메시지를 보내기 시작하면 발송 시각을 남긴다. 이때부터 수정할 수 없다.
+    public void markNotified(LocalDateTime now) {
+        validateNotCancelled();
+        validateNotNotified();
+
+        notifiedAt = now;
+    }
+
     // 정산 메시지를 보내기 전에도 개인 링크로 분담금을 볼 수 있으므로, 발송 여부와 관계없이 보냄으로 바꿀 수 있다.
     public void markShareSent(Long participantId) {
         validateNotCancelled();

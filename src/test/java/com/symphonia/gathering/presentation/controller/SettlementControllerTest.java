@@ -1,5 +1,6 @@
 package com.symphonia.gathering.presentation.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -10,10 +11,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.symphonia.IntegrationTest;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
+import com.symphonia.gathering.domain.policy.NotificationPolicy;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
+import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
+import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -25,6 +30,7 @@ import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,15 +38,21 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.databind.JsonNode;
 
 class SettlementControllerTest extends IntegrationTest {
 
     private static final String MASKED_KIM_PHONE_NUMBER = "010-****-5678";
+    // 초를 넣어 LocalDateTime.toString()과 JSON 직렬화 결과가 같은 문자열이 되게 한다.
+    private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 27, 20, 30, 15);
 
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
+    @Autowired private SettlementRepository settlementRepository;
+    @Autowired private NotificationScheduleRepository notificationScheduleRepository;
 
     private Gathering gathering;
     private Participant payer;
@@ -106,6 +118,37 @@ class SettlementControllerTest extends IntegrationTest {
                                                         park.getId().intValue())))
                         .andExpect(jsonPath("$.data.settlements[0].id").value(settlement.getId()))
                         .andExpect(jsonPath("$.data.settlements[0].payerAmount").value(3_334));
+            }
+
+            @Test
+            @DisplayName("보내지 않은 정산 건에만 모임의 정산 메시지 발송 예정 시각을 담는다")
+            void shouldReturnNotificationScheduledAtOnlyForUnnotifiedSettlements()
+                    throws Exception {
+                // given
+                settlementHelper.registerBankAccount(gathering, payer);
+                Settlement unnotified =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+                Settlement notified =
+                        markNotified(
+                                settlementHelper.record(
+                                        SettlementFixture.SECOND_ROUND, gathering, payer));
+                saveSchedule();
+
+                // when & then
+                mockMvc.perform(
+                                get("/api/v1/settlements/form")
+                                        .header("X-Link-Token", payerLinkToken))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.settlements[0].id").value(unnotified.getId()))
+                        .andExpect(jsonPath("$.data.settlements[0].notified").value(false))
+                        .andExpect(
+                                jsonPath("$.data.settlements[0].notificationScheduledAt")
+                                        .value(SCHEDULED_AT.toString()))
+                        .andExpect(jsonPath("$.data.settlements[1].id").value(notified.getId()))
+                        .andExpect(jsonPath("$.data.settlements[1].notified").value(true))
+                        .andExpect(
+                                jsonPath("$.data.settlements[1].notificationScheduledAt")
+                                        .doesNotExist());
             }
         }
 
@@ -182,6 +225,33 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.shares[1].participantId").value(park.getId()))
                         .andExpect(jsonPath("$.data.shares[1].amount").value(4_475))
                         .andExpect(jsonPath("$.data.shares[1].fixed").value(false));
+            }
+
+            @Test
+            @DisplayName("기록 시각에 수정 시간을 더한 정산 메시지 발송 예정 시각을 모임의 발송 예약에 저장하고 응답에 담는다")
+            void shouldReturnNotificationScheduledAt() throws Exception {
+                // given
+                settlementHelper.registerBankAccount(gathering, payer);
+                RecordSettlementRequest request =
+                        new RecordSettlementRequest(10_000L, participantIds(), List.of());
+
+                // when
+                MvcResult result = performRecord(request).andReturn();
+
+                // then
+                JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString());
+                LocalDateTime recordedAt = readDateTime(data, "/data/recordedAt");
+                LocalDateTime notificationScheduledAt =
+                        readDateTime(data, "/data/notificationScheduledAt");
+                assertThat(result.getResponse().getStatus()).isEqualTo(201);
+                assertThat(notificationScheduledAt)
+                        .isEqualTo(NotificationPolicy.scheduledAt(recordedAt));
+                assertThat(
+                                notificationScheduleRepository
+                                        .findByGatheringId(gathering.getId())
+                                        .orElseThrow()
+                                        .getScheduledAt())
+                        .isEqualTo(notificationScheduledAt);
             }
         }
 
@@ -676,5 +746,23 @@ class SettlementControllerTest extends IntegrationTest {
 
     private List<Long> participantIds() {
         return List.of(payer.getId(), lee.getId(), park.getId());
+    }
+
+    private Settlement markNotified(Settlement settlement) {
+        settlement.markNotified(LocalDateTime.now());
+
+        return settlementRepository.save(settlement);
+    }
+
+    private void saveSchedule() {
+        notificationScheduleRepository.save(
+                NotificationSchedule.builder()
+                        .gatheringId(gathering.getId())
+                        .scheduledAt(SCHEDULED_AT)
+                        .build());
+    }
+
+    private LocalDateTime readDateTime(JsonNode node, String pointer) {
+        return objectMapper.treeToValue(node.at(pointer), LocalDateTime.class);
     }
 }
