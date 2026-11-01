@@ -1,4 +1,4 @@
-package com.symphonia.gathering.domain.publisher;
+package com.symphonia.notification.domain.publisher;
 
 import java.util.List;
 

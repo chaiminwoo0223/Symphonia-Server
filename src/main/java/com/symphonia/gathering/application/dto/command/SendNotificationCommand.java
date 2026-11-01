@@ -1,11 +1,11 @@
 package com.symphonia.gathering.application.dto.command;
 
 import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
-import com.symphonia.gathering.domain.vo.NotificationMessage;
-import com.symphonia.gathering.domain.vo.PayerAmount;
-import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.domain.vo.NotificationMessage;
 import com.symphonia.notification.domain.vo.NotificationType;
+import com.symphonia.notification.domain.vo.PayerAmount;
+import com.symphonia.notification.domain.vo.PhoneNumber;
 import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.NonNull;

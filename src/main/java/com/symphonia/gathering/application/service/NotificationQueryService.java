@@ -2,7 +2,7 @@ package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.QueryService;
 import com.symphonia.gathering.application.usecase.GetDueNotificationSchedulesUseCase;
-import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
+import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;

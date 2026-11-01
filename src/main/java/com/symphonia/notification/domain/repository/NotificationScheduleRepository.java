@@ -1,6 +1,6 @@
-package com.symphonia.gathering.domain.repository;
+package com.symphonia.notification.domain.repository;
 
-import com.symphonia.gathering.domain.entity.NotificationSchedule;
+import com.symphonia.notification.domain.entity.NotificationSchedule;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;

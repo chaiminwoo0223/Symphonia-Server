@@ -1,6 +1,6 @@
-package com.symphonia.gathering.domain.entity;
+package com.symphonia.notification.domain.entity;
 
-import com.symphonia.gathering.domain.policy.NotificationPolicy;
+import com.symphonia.notification.domain.policy.NotificationPolicy;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

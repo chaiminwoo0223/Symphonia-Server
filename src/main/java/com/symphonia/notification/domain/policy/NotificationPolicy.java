@@ -1,4 +1,4 @@
-package com.symphonia.gathering.domain.policy;
+package com.symphonia.notification.domain.policy;
 
 import java.time.Duration;
 import java.time.LocalDateTime;

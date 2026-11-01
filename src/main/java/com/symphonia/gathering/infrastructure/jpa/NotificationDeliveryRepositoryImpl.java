@@ -1,7 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
-import com.symphonia.gathering.domain.entity.NotificationDelivery;
-import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
+import com.symphonia.notification.domain.entity.NotificationDelivery;
+import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;

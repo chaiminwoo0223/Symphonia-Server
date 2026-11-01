@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
-import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;

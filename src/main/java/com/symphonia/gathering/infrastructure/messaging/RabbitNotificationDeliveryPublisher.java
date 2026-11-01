@@ -1,7 +1,7 @@
 package com.symphonia.gathering.infrastructure.messaging;
 
-import com.symphonia.gathering.domain.publisher.NotificationDeliveryPublisher;
 import com.symphonia.gathering.infrastructure.messaging.config.properties.NotificationQueueProperties;
+import com.symphonia.notification.domain.publisher.NotificationDeliveryPublisher;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;

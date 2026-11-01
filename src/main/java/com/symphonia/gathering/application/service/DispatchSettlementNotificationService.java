@@ -2,13 +2,13 @@ package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.gathering.application.usecase.DispatchSettlementNotificationUseCase;
-import com.symphonia.gathering.domain.entity.NotificationDelivery;
-import com.symphonia.gathering.domain.entity.NotificationSchedule;
-import com.symphonia.gathering.domain.policy.NotificationPolicy;
-import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
-import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.notification.application.dto.command.NotifySettlementsCommand;
 import com.symphonia.notification.application.provider.NotificationTargetProvider;
+import com.symphonia.notification.domain.entity.NotificationDelivery;
+import com.symphonia.notification.domain.entity.NotificationSchedule;
+import com.symphonia.notification.domain.policy.NotificationPolicy;
+import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
+import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
