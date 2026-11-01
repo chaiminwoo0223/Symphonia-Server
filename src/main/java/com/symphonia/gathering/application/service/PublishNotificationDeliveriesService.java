@@ -2,9 +2,9 @@ package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.gathering.application.usecase.PublishNotificationDeliveriesUseCase;
-import com.symphonia.gathering.domain.entity.NotificationDelivery;
-import com.symphonia.gathering.domain.publisher.NotificationDeliveryPublisher;
-import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
+import com.symphonia.notification.domain.entity.NotificationDelivery;
+import com.symphonia.notification.domain.publisher.NotificationDeliveryPublisher;
+import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;

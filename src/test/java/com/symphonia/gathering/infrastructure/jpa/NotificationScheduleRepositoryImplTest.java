@@ -5,12 +5,12 @@ import static com.symphonia.gathering.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.symphonia.RepositoryTest;
-import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
+import com.symphonia.notification.domain.entity.NotificationSchedule;
+import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;

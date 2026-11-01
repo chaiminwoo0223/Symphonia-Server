@@ -1,8 +1,8 @@
 package com.symphonia.gathering.infrastructure.sender;
 
-import com.symphonia.gathering.domain.sender.NotificationSender;
-import com.symphonia.gathering.domain.vo.NotificationMessage;
 import com.symphonia.gathering.infrastructure.sender.config.properties.NotificationLinkProperties;
+import com.symphonia.notification.domain.sender.NotificationSender;
+import com.symphonia.notification.domain.vo.NotificationMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

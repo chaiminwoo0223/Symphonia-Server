@@ -1,10 +1,10 @@
-package com.symphonia.gathering.domain.exception;
+package com.symphonia.notification.domain.exception;
 
 import com.symphonia.common.exception.InternalServerException;
-import com.symphonia.gathering.domain.error.GatheringErrorCode;
+import com.symphonia.notification.domain.error.NotificationErrorCode;
 
 public class NotificationSendFailedException extends InternalServerException {
     public NotificationSendFailedException() {
-        super(GatheringErrorCode.NOTIFICATION_SEND_FAILED);
+        super(NotificationErrorCode.NOTIFICATION_SEND_FAILED);
     }
 }

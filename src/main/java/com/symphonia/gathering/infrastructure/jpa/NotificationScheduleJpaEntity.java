@@ -1,6 +1,6 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
-import com.symphonia.gathering.domain.entity.NotificationSchedule;
+import com.symphonia.notification.domain.entity.NotificationSchedule;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;

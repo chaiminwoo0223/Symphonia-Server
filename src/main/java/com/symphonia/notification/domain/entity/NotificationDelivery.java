@@ -1,7 +1,7 @@
-package com.symphonia.gathering.domain.entity;
+package com.symphonia.notification.domain.entity;
 
-import com.symphonia.gathering.domain.policy.NotificationPolicy;
-import com.symphonia.gathering.domain.vo.DeliveryStatus;
+import com.symphonia.notification.domain.policy.NotificationPolicy;
+import com.symphonia.notification.domain.vo.DeliveryStatus;
 import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.Duration;
 import java.time.LocalDateTime;
