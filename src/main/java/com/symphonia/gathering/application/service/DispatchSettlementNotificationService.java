@@ -4,25 +4,24 @@ import com.symphonia.common.annotation.CommandService;
 import com.symphonia.gathering.application.usecase.DispatchSettlementNotificationUseCase;
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.entity.NotificationSchedule;
-import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.policy.NotificationPolicy;
 import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
-import com.symphonia.gathering.domain.repository.SettlementRepository;
+import com.symphonia.notification.application.dto.command.NotifySettlementsCommand;
+import com.symphonia.notification.application.provider.NotificationTargetProvider;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 
 // 예약 시각이 된 모임의 정산 메시지 발송을 시작한다. 실제 발송은 수신자별 발송 기록을 큐로 받은 컨슈머가 한다.
-// 예약을 잠근 뒤 정산 건을 잠근다. 기록과 수정도 예약을 먼저 잠그므로 같은 순서로 잠가 교착 상태가 생기지 않는다.
+// 예약을 잠근 뒤 NotificationTargetProvider가 정산 건을 잠근다. 기록과 수정도 예약을 먼저 잠그므로 같은 순서로 잠가 교착 상태가 생기지 않는다.
 // 기록이 예약을 잠그고 있으면 SKIP LOCKED로 건너뛰고 다음 주기에 다시 본다.
 @CommandService
 @RequiredArgsConstructor
 public class DispatchSettlementNotificationService
         implements DispatchSettlementNotificationUseCase {
     private final NotificationScheduleRepository notificationScheduleRepository;
-    private final SettlementRepository settlementRepository;
+    private final NotificationTargetProvider notificationTargetProvider;
     private final NotificationDeliveryRepository notificationDeliveryRepository;
     private final Clock clock;
 
@@ -48,15 +47,17 @@ public class DispatchSettlementNotificationService
 
     // 예약 뒤에 모두 취소됐으면 보낼 정산 건이 없어 발송 기록도 만들지 않는다.
     private void notifySettlements(Long gatheringId, LocalDateTime now) {
-        List<Settlement> settlements =
-                settlementRepository.findAllUnnotifiedByGatheringIdForUpdate(gatheringId);
-        settlements.forEach(
-                settlement -> {
-                    settlement.markNotified(now);
-                    settlementRepository.save(settlement);
-                });
-
         notificationDeliveryRepository.saveAll(
-                NotificationDelivery.forSettlement(gatheringId, settlements, now));
+                notificationTargetProvider
+                        .notifySettlements(NotifySettlementsCommand.of(gatheringId, now))
+                        .stream()
+                        .map(
+                                target ->
+                                        NotificationDelivery.forSettlement(
+                                                gatheringId,
+                                                target.participantId(),
+                                                target.settlementIds(),
+                                                now))
+                        .toList());
     }
 }

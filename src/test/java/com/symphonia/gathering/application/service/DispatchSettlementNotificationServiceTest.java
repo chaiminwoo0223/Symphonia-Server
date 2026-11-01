@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.provider.NotificationTargetProviderImpl;
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.entity.NotificationSchedule;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -16,10 +17,10 @@ import com.symphonia.gathering.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.gathering.domain.repository.NotificationScheduleRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.DeliveryStatus;
-import com.symphonia.gathering.domain.vo.NotificationType;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -248,7 +249,7 @@ class DispatchSettlementNotificationServiceTest extends UnitTest {
         dispatchSettlementNotificationService =
                 new DispatchSettlementNotificationService(
                         notificationScheduleRepository,
-                        settlementRepository,
+                        new NotificationTargetProviderImpl(settlementRepository),
                         notificationDeliveryRepository,
                         Clock.fixed(
                                 now.atZone(TimeConfig.SERVICE_ZONE).toInstant(),

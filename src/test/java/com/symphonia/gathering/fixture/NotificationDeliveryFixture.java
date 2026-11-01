@@ -2,7 +2,7 @@ package com.symphonia.gathering.fixture;
 
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.vo.DeliveryStatus;
-import com.symphonia.gathering.domain.vo.NotificationType;
+import com.symphonia.notification.domain.vo.NotificationType;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Getter;

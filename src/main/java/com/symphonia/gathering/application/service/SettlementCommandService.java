@@ -152,7 +152,10 @@ public class SettlementCommandService
         if (settlement.isNotified()) {
             notificationDeliveryRepository.saveAll(
                     NotificationDelivery.forCancellation(
-                            settlement, findReachedRecipientIds(settlement.getId()), now));
+                            settlement.getGatheringId(),
+                            settlement.getId(),
+                            findReachedRecipientIds(settlement.getId()),
+                            now));
         }
     }
 

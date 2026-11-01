@@ -3,7 +3,7 @@ package com.symphonia.gathering.infrastructure.jpa;
 import com.symphonia.common.entity.BaseTimeEntity;
 import com.symphonia.gathering.domain.entity.NotificationDelivery;
 import com.symphonia.gathering.domain.vo.DeliveryStatus;
-import com.symphonia.gathering.domain.vo.NotificationType;
+import com.symphonia.notification.domain.vo.NotificationType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
