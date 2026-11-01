@@ -10,6 +10,24 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+  # 브로커가 받았다고 확인한 메시지만 발행한 것으로 본다. 라우팅되지 않은 메시지는 버리지 않고 돌려받아 발행 실패로 본다.
+  # 리스너는 처리를 마친 뒤에 ack하고, 재시도를 다 쓴 메시지는 다시 큐에 넣지 않고 DLQ로 보낸다.
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          # Spring Boot 4부터 max-attempts는 무시되고 첫 시도를 뺀 재시도 횟수를 max-retries로 받는다. 첫 시도를 합쳐 3번 시도한다.
+          max-retries: 2
+          initial-interval: 1s
+          multiplier: 2
+
 # LB 뒤에서 감사 로그에 실제 클라이언트 IP를 남기기 위해, 신뢰하는 프록시가 보낸 X-Forwarded-For만 반영한다.
 # TRUSTED_PROXIES가 없으면 Spring Boot 기본값(사설 IP 대역)을 쓴다. 배포 시 LB 대역을 기본값과 같은 쉼표 구분 CIDR 형식으로 넣는다.
 server:
@@ -56,3 +74,14 @@ import:
 gathering:
   crypto:
     master-key: ${GATHERING_MASTER_KEY}
+  # 정산 메시지 발송(#126). 폴러는 이 주기로 예약 시각이 된 모임과 발행할 발송 기록을 찾는다.
+  # 개인 링크의 웹 주소는 클라이언트 배포 주소에 맞춰 GATHERING_LINK_BASE_URL로 넣는다.
+  notification:
+    poll-interval: 10s
+    link:
+      base-url: ${GATHERING_LINK_BASE_URL:http://localhost:5173/shares}
+    queue:
+      exchange: gathering.notification
+      delivery: gathering.notification.delivery
+      dead-letter-exchange: gathering.notification.dlx
+      dead-letter: gathering.notification.delivery.dlq
