@@ -1,4 +1,4 @@
-package com.symphonia.gathering.application.service;
+package com.symphonia.notification.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;

@@ -1,6 +1,6 @@
-package com.symphonia.gathering.application.usecase;
+package com.symphonia.notification.application.usecase;
 
-import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
+import com.symphonia.notification.application.dto.result.PreparedNotificationResult;
 import java.util.Optional;
 
 public interface PrepareNotificationUseCase {

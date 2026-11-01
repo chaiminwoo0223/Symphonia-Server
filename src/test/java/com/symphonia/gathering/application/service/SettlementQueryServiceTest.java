@@ -28,6 +28,7 @@ import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.notification.application.service.NotificationQueryService;
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.Clock;
@@ -73,16 +74,17 @@ class SettlementQueryServiceTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
+        Clock clock =
+                Clock.fixed(
+                        NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
         settlementQueryService =
                 new SettlementQueryService(
                         participantLinkTokenRepository,
                         gatheringRepository,
                         participantBankAccountRepository,
                         settlementRepository,
-                        notificationScheduleRepository,
-                        Clock.fixed(
-                                NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
-                                TimeConfig.SERVICE_ZONE));
+                        new NotificationQueryService(notificationScheduleRepository, clock),
+                        clock);
     }
 
     @Nested

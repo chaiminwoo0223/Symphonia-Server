@@ -1,7 +1,7 @@
-package com.symphonia.gathering.application.dto.command;
+package com.symphonia.notification.application.dto.command;
 
-import com.symphonia.gathering.application.dto.result.PreparedNotificationResult;
 import com.symphonia.notification.application.dto.result.NotificationContentResult.PayerAmountResult;
+import com.symphonia.notification.application.dto.result.PreparedNotificationResult;
 import com.symphonia.notification.domain.vo.NotificationMessage;
 import com.symphonia.notification.domain.vo.NotificationType;
 import com.symphonia.notification.domain.vo.PayerAmount;

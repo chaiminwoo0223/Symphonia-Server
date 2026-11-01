@@ -1,8 +1,8 @@
 package com.symphonia.gathering.presentation.scheduler;
 
-import com.symphonia.gathering.application.usecase.DispatchSettlementNotificationUseCase;
-import com.symphonia.gathering.application.usecase.GetDueNotificationSchedulesUseCase;
-import com.symphonia.gathering.application.usecase.PublishNotificationDeliveriesUseCase;
+import com.symphonia.notification.application.usecase.DispatchSettlementNotificationUseCase;
+import com.symphonia.notification.application.usecase.GetDueNotificationSchedulesUseCase;
+import com.symphonia.notification.application.usecase.PublishNotificationDeliveriesUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

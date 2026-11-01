@@ -1,8 +1,8 @@
-package com.symphonia.gathering.application.service;
+package com.symphonia.notification.application.service;
 
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.gathering.application.dto.command.SendNotificationCommand;
-import com.symphonia.gathering.application.usecase.SendNotificationUseCase;
+import com.symphonia.notification.application.dto.command.SendNotificationCommand;
+import com.symphonia.notification.application.usecase.SendNotificationUseCase;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.exception.NotificationSendFailedException;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;

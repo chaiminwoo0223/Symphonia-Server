@@ -1,4 +1,4 @@
-package com.symphonia.gathering.fixture;
+package com.symphonia.notification.fixture;
 
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.vo.DeliveryStatus;

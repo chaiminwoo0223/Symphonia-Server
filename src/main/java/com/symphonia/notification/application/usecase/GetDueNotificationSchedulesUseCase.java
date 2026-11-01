@@ -1,4 +1,4 @@
-package com.symphonia.gathering.application.usecase;
+package com.symphonia.notification.application.usecase;
 
 import java.util.List;
 
