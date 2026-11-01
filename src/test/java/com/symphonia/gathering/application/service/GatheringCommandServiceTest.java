@@ -158,7 +158,7 @@ class GatheringCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodPassed {
+        class WhenRecordingPeriodClosed {
 
             @Test
             @DisplayName("예외를 던지고 참여 토큰을 발급하거나 저장하지 않는다")
@@ -235,7 +235,7 @@ class GatheringCommandServiceTest extends UnitTest {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodPassed {
+        class WhenRecordingPeriodClosed {
 
             @Test
             @DisplayName("예외를 던지고 참여자와 개인 링크 토큰을 저장하지 않는다")
