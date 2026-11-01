@@ -100,6 +100,7 @@ com.symphonia
 ├── catalog/    {domain, application, presentation, infrastructure} (음료, 안주, 음악 무드 카탈로그와 적재, 이슈 #139)
 ├── pairing/    {domain, application, presentation, infrastructure} (술, 안주, 음악 페어링 추천, 이슈 #45)
 ├── gathering/  {domain, application, presentation, infrastructure} (술자리 정산, 이슈 #122)
+├── notification/ {domain, application, presentation, infrastructure} (정산 메시지 발송 예약, 발송 기록, 큐 발행, 이슈 #159)
 ├── common/     공통 예외, 응답 포맷, BaseTimeEntity, CQRS 트랜잭션 애노테이션 (공유 커널: domain/application도 참조)
 └── global/     Security, JPA/Redis/Swagger 설정 등 기술 부트스트랩 (domain/application은 참조하지 않음)
 ```
