@@ -1,4 +1,4 @@
-package com.symphonia.gathering.presentation.scheduler;
+package com.symphonia.notification.presentation.scheduler;
 
 import com.symphonia.notification.application.usecase.DispatchSettlementNotificationUseCase;
 import com.symphonia.notification.application.usecase.GetDueNotificationSchedulesUseCase;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(
-        name = "gathering.notification.scheduling.enabled",
+        name = "notification.scheduling.enabled",
         havingValue = "true",
         matchIfMissing = true)
 public class NotificationScheduler {
@@ -25,7 +25,7 @@ public class NotificationScheduler {
     private final PublishNotificationDeliveriesUseCase publishNotificationDeliveriesUseCase;
 
     // 모임마다 트랜잭션을 나눠, 한 모임에서 실패해도 다른 모임의 메시지는 나간다. 실패한 모임은 다음 주기에 다시 시도한다.
-    @Scheduled(fixedDelayString = "${gathering.notification.poll-interval}")
+    @Scheduled(fixedDelayString = "${notification.poll-interval}")
     public void dispatchDueSchedules() {
         getDueNotificationSchedulesUseCase
                 .getDueGatheringIds()
@@ -39,7 +39,7 @@ public class NotificationScheduler {
                         });
     }
 
-    @Scheduled(fixedDelayString = "${gathering.notification.poll-interval}")
+    @Scheduled(fixedDelayString = "${notification.poll-interval}")
     public void publishPendingDeliveries() {
         publishNotificationDeliveriesUseCase.publishPending();
     }

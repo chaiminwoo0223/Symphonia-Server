@@ -23,10 +23,9 @@ spring:
 refresh-token:
   cookie-secure: ${REFRESH_TOKEN_COOKIE_SECURE:false}
 
-gathering:
-  notification:
-    link:
-      base-url: ${GATHERING_LINK_BASE_URL:http://localhost:5173/shares}
+notification:
+  link:
+    base-url: ${GATHERING_LINK_BASE_URL:http://localhost:5173/shares}
 
 logging:
   level:

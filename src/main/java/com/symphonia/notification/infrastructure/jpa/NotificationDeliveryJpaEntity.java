@@ -1,4 +1,4 @@
-package com.symphonia.gathering.infrastructure.jpa;
+package com.symphonia.notification.infrastructure.jpa;
 
 import com.symphonia.common.entity.BaseTimeEntity;
 import com.symphonia.notification.domain.entity.NotificationDelivery;

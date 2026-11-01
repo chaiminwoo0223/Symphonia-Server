@@ -1,4 +1,4 @@
-package com.symphonia.gathering.infrastructure.jpa;
+package com.symphonia.notification.infrastructure.jpa;
 
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import jakarta.persistence.Entity;

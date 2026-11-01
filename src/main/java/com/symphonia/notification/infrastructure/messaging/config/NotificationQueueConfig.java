@@ -1,6 +1,6 @@
-package com.symphonia.gathering.infrastructure.messaging.config;
+package com.symphonia.notification.infrastructure.messaging.config;
 
-import com.symphonia.gathering.infrastructure.messaging.config.properties.NotificationQueueProperties;
+import com.symphonia.notification.infrastructure.messaging.config.properties.NotificationQueueProperties;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
