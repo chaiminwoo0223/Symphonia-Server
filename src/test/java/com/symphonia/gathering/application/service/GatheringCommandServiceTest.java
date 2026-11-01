@@ -33,14 +33,16 @@ import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
+import com.symphonia.global.config.TimeConfig;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
 @DisplayName("GatheringCommandService 단위 테스트")
@@ -54,13 +56,32 @@ class GatheringCommandServiceTest extends UnitTest {
     private static final String LINK_TOKEN = "link-token";
     private static final String HYPHENATED_PHONE_NUMBER = "010-1234-5678";
     private static final String MASKED_PHONE_NUMBER = "010-****-5678";
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
 
-    @InjectMocks private GatheringCommandService gatheringCommandService;
+    // 참여 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
+    // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
+    private static final LocalDateTime OPEN_CREATED_AT = NOW.minusHours(48).plusSeconds(1);
+    private static final LocalDateTime CLOSED_CREATED_AT = NOW.minusHours(48);
+
+    private GatheringCommandService gatheringCommandService;
 
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
+
+    @BeforeEach
+    void setUp() {
+        gatheringCommandService =
+                new GatheringCommandService(
+                        gatheringRepository,
+                        gatheringJoinTokenRepository,
+                        participantLinkTokenRepository,
+                        gatheringTokenProvider,
+                        Clock.fixed(
+                                NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
+                                TimeConfig.SERVICE_ZONE));
+    }
 
     @Nested
     @DisplayName("open 메서드는")
@@ -72,8 +93,7 @@ class GatheringCommandServiceTest extends UnitTest {
             // given
             GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
             given(gatheringRepository.save(any(Gathering.class)))
-                    .willReturn(
-                            fixture.createWithIdAndCreatedAt(GATHERING_ID, LocalDateTime.now()));
+                    .willReturn(fixture.createWithIdAndCreatedAt(GATHERING_ID, NOW));
             given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
             OpenGatheringCommand command =
                     new OpenGatheringCommand(fixture.getHostMemberId(), fixture.getName());
@@ -124,7 +144,7 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 참여 토큰을 저장하지 않는다")
             void shouldThrowNotGatheringHostException() {
                 // given
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(OTHER_MEMBER_ID, GATHERING_ID);
 
@@ -137,14 +157,14 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
             @DisplayName("예외를 던지고 참여 토큰을 발급하거나 저장하지 않는다")
             void shouldThrowGatheringJoinClosedException() {
                 // given
-                givenGathering(LocalDateTime.now().minusHours(49));
+                givenGathering(CLOSED_CREATED_AT);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(
                                 GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
@@ -165,7 +185,7 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("새 참여 토큰을 저장하고 반환한다")
             void shouldSaveNewJoinToken() {
                 // given
-                givenGathering(LocalDateTime.now().minusHours(1));
+                givenGathering(OPEN_CREATED_AT);
                 given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(
@@ -214,7 +234,7 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
         class WhenRecordingPeriodPassed {
 
             @Test
@@ -223,7 +243,7 @@ class GatheringCommandServiceTest extends UnitTest {
                 // given
                 givenGathering(
                         GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
-                                GATHERING_ID, LocalDateTime.now().minusHours(49)));
+                                GATHERING_ID, CLOSED_CREATED_AT));
                 JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
@@ -325,7 +345,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         .willReturn(
                                 GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
                                         GATHERING_ID,
-                                        LocalDateTime.now().minusHours(1),
+                                        OPEN_CREATED_AT,
                                         List.of(
                                                 ParticipantFixture.KIM.createWithId(
                                                         PARTICIPANT_ID))));
@@ -366,7 +386,7 @@ class GatheringCommandServiceTest extends UnitTest {
         private void givenJoinableGathering(List<Participant> participants) {
             givenGathering(
                     GatheringFixture.FRIDAY_DINNER.createWithIdAndCreatedAt(
-                            GATHERING_ID, LocalDateTime.now().minusHours(1), participants));
+                            GATHERING_ID, OPEN_CREATED_AT, participants));
         }
 
         private void givenGathering(Gathering gathering) {
