@@ -68,7 +68,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 |---|---|
 | `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository`·`*Reader` 인터페이스. 비즈니스 로직이 실제로 사는 곳 |
 | `application` | `*UseCase` 인터페이스 + `*Service` 구현체(`@CommandService`/`@QueryService`). 오케스트레이션만 담당 |
-| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` DTO, 수동 실행 진입점 `*Runner`(`ApplicationRunner`) |
+| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` DTO, 수동 실행 진입점 `*Runner`(`ApplicationRunner`), 메시지 큐 리스너(`listener`)와 스케줄러(`scheduler`) 진입점(#126에서 변경) |
 | `infrastructure` | `*RepositoryImpl`(`*Repository` 구현체), `*JpaEntity`(Domain↔JPA 변환용 `from()`/`toDomain()` 포함), Redis 등 외부 연동, 파일 원본을 읽는 `*Reader` 구현체 |
 
 ## 계층별 타입 어휘 (Layer Type Vocabulary)
@@ -79,7 +79,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 |---|---|---|---|
 | Presentation | `*Request` | `*Response` | `Request.toCommand()`/`toQuery()`, `*Response.from(Result)` |
 | Application (조회) | 단일 식별자면 원시값, 그 외엔 `*Query` | `*Result` 또는 `void`(존재 검증처럼 결과를 예외로만 알리는 조회, #140에서 변경) | `*UseCase` 인터페이스 시그니처 |
-| Application (쓰기) | `*Command` | `*Result` 또는 `void`(반환값이 불필요한 경우, 예: 삭제) | `*UseCase` 인터페이스 시그니처 |
+| Application (쓰기) | `*Command`, 내부 트리거가 단일 식별자만 넘기면 원시값(#126에서 변경) | `*Result` 또는 `void`(반환값이 불필요한 경우, 예: 삭제) | `*UseCase` 인터페이스 시그니처 |
 | Domain | 원시값 | 도메인 객체 | 도메인 팩토리 메서드/생성자 |
 | Infrastructure | 도메인 객체 | `*JpaEntity` | `*JpaEntity.from()`/`toDomain()` (별도 `*Mapper` 없음, #123에서 변경) |
 
@@ -87,6 +87,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - **DTO(`*Command`/`*Result`/`*Request`/`*Response`)는 자기 자신에게 정적 팩토리(`from`/`of`)나 변환 메서드(`to*`)를 두고 그 안에서 필드를 채운다.** Service/Controller 같은 호출부가 `new`로 필드를 나열해 직접 조립하지 않는다 (예: `MemberResult.from(Member)`, `TokenResult.of(...)`). 변환 대상이 다른 도메인 소속이면, 이미 그 도메인을 의존하고 있는 쪽이 변환 메서드를 소유해 크로스 도메인 의존 방향을 거스르지 않는다 (예: `auth.OAuthMemberResult.toMemberCreateCommand()`는 `auth → member` 기존 의존 방향과 같은 쪽에 둔 것이지, `member.MemberCreateCommand`에 `from(OAuthMemberResult)`를 두어 역방향 의존을 만들지 않는다).
 - 조회(Query) 파라미터가 단일 식별자(ID, code 등 원시값 하나)면 감싸지 않고 그대로 받는다. 파라미터가 2개 이상이거나 필터·정렬·페이징처럼 확장 가능성이 있는 조건이면 `*Query`로 감싼다 (단일 식별자까지 감싸는 건 계층 응집도보다 보일러플레이트 비용이 더 크다).
 - 반환값이 필요 없는 Command(삭제 등)는 `void`를 허용한다. 빈 `*Result`를 억지로 만들지 않는다.
+- 스케줄러, 큐 리스너, 이벤트 리스너처럼 내부에서 시작하는 쓰기는 Request DTO가 없어 `toCommand()`를 거치지 않는다. 이때 넘길 값이 식별자 하나뿐이면 `*Command`로 감싸지 않고 원시값을 받는다(예: `forceRevoke(String memberId)`, `dispatch(Long gatheringId)`). 의도는 UseCase와 메서드 이름이 이미 드러내기 때문이다. 넘길 값이 2개 이상이면 `*Command`로 감싼다(예: `SendNotificationCommand`).
 
 ## 크로스 도메인 참조 예시
 
@@ -130,7 +131,7 @@ DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설�
 
 ## 메시지 큐 (RabbitMQ)
 
-**(2026-10-25 결정, 이슈 #122)**: 메시지 큐는 RabbitMQ를 쓴다. 쓰기로 한 곳은 `gathering`의 정산 메시지와 리마인드 지연 발송(#126, #127)뿐이다. 도입은 #126에서 한다. 도입 근거는 세 가지다. 첫째, 발송 시각이 모임과 참여자마다 달라 예약이 시각별로 흩어진다. 둘째, 서버가 재시작돼도 예약이 유실되면 안 된다. 셋째, 외부 발송 장애가 API 서버로 번지지 않아야 하고 재시도와 DLQ가 필요하다. DB에 발송 예정 시각을 두고 스윕하는 안은 택하지 않았다. 발송은 분 단위로 정확해야 해서 스윕 주기를 짧게 둬야 한다. 그러면 DB 폴링이 계속 생긴다. 재시도, DLQ, 외부 장애 격리도 직접 만들어야 한다. Redis를 지연 큐로 쓰는 안도 택하지 않았다. 지금 Redis는 토큰 저장소라서, 지연 큐로 쓰려면 영속성 설정, 재시도, DLQ를 모두 직접 구현해야 한다. 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다. 큐에 개인정보가 남지 않게 하고, 그사이 입금되거나 파기된 건을 보내지 않기 위해서다. 정산 건이 커밋된 뒤 메시지 발행이 실패해 예약이 사라지는 경우의 대책과 컨슈머가 지난 예약을 알아보는 방식은 지연 발송 방식(메시지별 TTL의 head-of-line 문제 등)과 함께 #126에서 정한다. 리마인드 횟수 제한 같은 도메인 규칙은 큐 설정이 아니라 애그리거트가 판단한다. 큐를 쓸 근거가 없는 곳에는 쓰지 않는다. 개인정보 파기(#128)는 주기적 스윕으로 처리한다. 지연 메시지가 유실되면 데이터가 영구히 남고, 파기는 한 시간 늦어도 문제가 없기 때문이다. 페어링 피드백 집계(#130)도 큐를 쓰지 않는다. 근거는 `pairing.md`에 있다. 다른 곳에 큐를 새로 쓰려면 위 세 근거 중 하나에 해당하는지 먼저 따진다.
+**(2026-10-25 결정, 이슈 #122)**: 메시지 큐는 RabbitMQ를 쓴다. 쓰기로 한 곳은 `gathering`의 정산 메시지와 리마인드 지연 발송(#126, #127)뿐이다. 도입은 #126에서 한다. 도입 근거는 세 가지다. 첫째, 발송 시각이 모임과 참여자마다 달라 예약이 시각별로 흩어진다. 둘째, 서버가 재시작돼도 예약이 유실되면 안 된다. 셋째, 외부 발송 장애가 API 서버로 번지지 않아야 하고 재시도와 DLQ가 필요하다. 발송 예정 시각은 DB의 예약이 갖고, 큐는 수신자별 발송과 재시도, DLQ, 외부 장애 격리를 맡는다(#126에서 변경). 지연까지 큐에 맡기는 안은 택하지 않았다. 메시지별 TTL은 앞 메시지가 뒤 메시지를 막는 head-of-line 문제가 있고, 지연 플러그인은 기본 이미지에 없으며 지연 메시지를 한 노드에만 저장한다. 또 커밋 뒤 발행 실패에 대비하려면 어차피 예약을 DB에 두고 주기적으로 다시 발행해야 해서, 큐가 지연을 맡아도 DB 조회가 없어지지 않는다. Redis를 함께 두는 안도 택하지 않았다. Redis는 정산 건과 같은 트랜잭션으로 묶을 수 없어 유실 틈이 그대로 남고, PostgreSQL이 내려가면 정산 건도 커밋되지 않으며, 발송에 필요한 휴대폰과 데이터 키도 PostgreSQL에 있기 때문이다. 상세 결정은 `gathering.md`에 있다. Redis를 지연 큐로 쓰는 안도 택하지 않았다. 지금 Redis는 토큰 저장소라서, 지연 큐로 쓰려면 영속성 설정, 재시도, DLQ를 모두 직접 구현해야 한다. 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다. 큐에 개인정보가 남지 않게 하고, 그사이 입금되거나 파기된 건을 보내지 않기 위해서다. 리마인드 횟수 제한 같은 도메인 규칙은 큐 설정이 아니라 애그리거트가 판단한다. 큐를 쓸 근거가 없는 곳에는 쓰지 않는다. 개인정보 파기(#128)는 주기적 스윕으로 처리한다. 지연 메시지가 유실되면 데이터가 영구히 남고, 파기는 한 시간 늦어도 문제가 없기 때문이다. 페어링 피드백 집계(#130)도 큐를 쓰지 않는다. 근거는 `pairing.md`에 있다. 다른 곳에 큐를 새로 쓰려면 위 세 근거 중 하나에 해당하는지 먼저 따진다.
 
 ## DDD 핵심 원칙
 

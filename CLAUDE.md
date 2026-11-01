@@ -88,6 +88,7 @@
 | 언어/프레임워크 | Java / Spring Boot / Spring Security |
 | 인증 | JWT 액세스 토큰(jjwt 0.12+, 응답 바디) + UUID 리프레시 토큰(Redis 저장, RTR 적용, httpOnly 쿠키 전달) |
 | DB / Cache | PostgreSQL 17 (`pgvector/pgvector:pg17` 이미지) + JPA (Hibernate) / Redis |
+| 메시지 큐 | RabbitMQ 4.3 (정산 메시지 발송, 이슈 #126) |
 | 테스트 | JUnit 5 / Mockito / Testcontainers |
 
 ## 프로젝트 구조 (단일 모듈, 도메인별 패키지)
