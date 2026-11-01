@@ -75,11 +75,9 @@ gathering:
   crypto:
     master-key: ${GATHERING_MASTER_KEY}
   # 정산 메시지 발송(#126). 폴러는 이 주기로 예약 시각이 된 모임과 발행할 발송 기록을 찾는다.
-  # 개인 링크의 웹 주소는 클라이언트 배포 주소에 맞춰 GATHERING_LINK_BASE_URL로 넣는다.
+  # 개인 링크의 웹 주소(link.base-url)는 환경마다 달라 application-{profile}.yaml에 둔다.
   notification:
     poll-interval: 10s
-    link:
-      base-url: ${GATHERING_LINK_BASE_URL:http://localhost:5173/shares}
     queue:
       exchange: gathering.notification
       delivery: gathering.notification.delivery

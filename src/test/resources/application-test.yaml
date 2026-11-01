@@ -11,3 +11,5 @@ gathering:
   notification:
     scheduling:
       enabled: false
+    link:
+      base-url: https://test.symphonia.local/shares
