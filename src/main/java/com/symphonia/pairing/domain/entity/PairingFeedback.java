@@ -2,6 +2,7 @@ package com.symphonia.pairing.domain.entity;
 
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
+import com.symphonia.pairing.domain.vo.PairingRatingChange;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -40,5 +41,16 @@ public class PairingFeedback {
                 .moodType(moodType)
                 .rating(rating)
                 .build();
+    }
+
+    // 같은 조합에 다시 낸 피드백으로 바꾸고, 조합별 집계가 바뀌는 수를 돌려준다.
+    public PairingRatingChange resubmit(
+            RelationshipType relationshipType, MoodType moodType, PairingRating rating) {
+        PairingRatingChange change = PairingRatingChange.between(this.rating, rating);
+        this.relationshipType = relationshipType;
+        this.moodType = moodType;
+        this.rating = rating;
+
+        return change;
     }
 }

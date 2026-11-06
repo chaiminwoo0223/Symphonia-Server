@@ -17,7 +17,13 @@ import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaRepository;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
+import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingRating;
+import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
+import jakarta.persistence.EntityManager;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,61 +35,191 @@ import org.springframework.test.context.jdbc.Sql;
 @Sql("/sql/clear-catalog.sql")
 class PairingFeedbackRepositoryImplTest extends RepositoryTest {
 
+    private static final Long OTHER_MEMBER_ID = 99L;
+
     @Autowired private PairingFeedbackRepository pairingFeedbackRepository;
+    @Autowired private PairingFeedbackJpaRepository pairingFeedbackJpaRepository;
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
     @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
+    @Autowired private EntityManager entityManager;
+
+    private Long drinkId;
+    private Long anjuId;
+    private Long musicMoodId;
+
+    // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
+    @BeforeEach
+    void setUp() {
+        Long drinkStyleId =
+                drinkStyleJpaRepository
+                        .save(DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()))
+                        .getId();
+        drinkId =
+                drinkJpaRepository
+                        .save(DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
+                        .getId();
+        anjuId =
+                anjuJpaRepository
+                        .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
+                        .getId();
+        musicMoodId =
+                musicMoodJpaRepository
+                        .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
+                        .getId();
+    }
 
     @Nested
     @DisplayName("save 메서드는")
     class Save {
 
+        @Nested
+        @DisplayName("저장된 피드백을 다시 낸 값으로 바꾼 경우")
+        class WhenResubmitted {
+
+            @Test
+            @DisplayName("같은 행의 관계, 분위기, 평점을 바꾼다")
+            void shouldUpdatePairingFeedback() {
+                // given
+                PairingFeedback saved = savedFeedback();
+                saved.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
+
+                // when
+                pairingFeedbackRepository.save(saved);
+
+                // then
+                entityManager.flush();
+                entityManager.clear();
+                assertThat(
+                                pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                                        saved.getMemberId(), drinkId, anjuId, musicMoodId))
+                        .hasValueSatisfying(
+                                feedback -> {
+                                    assertThat(feedback.getId()).isEqualTo(saved.getId());
+                                    assertThat(feedback.getRelationshipType())
+                                            .isEqualTo(RelationshipType.LOVER);
+                                    assertThat(feedback.getMoodType()).isEqualTo(MoodType.ROMANTIC);
+                                    assertThat(feedback.getRating())
+                                            .isEqualTo(PairingRating.DISLIKE);
+                                });
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("saveIfAbsent 메서드는")
+    class SaveIfAbsent {
+
+        @Nested
+        @DisplayName("회원이 같은 조합에 낸 피드백이 없는 경우")
+        class WhenFeedbackNotExists {
+
+            @Test
+            @DisplayName("피드백을 생성 시각과 함께 저장하고 true를 반환한다")
+            void shouldInsertFeedbackAndReturnTrue() {
+                // given
+                PairingFeedback pairingFeedback =
+                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
+                                drinkId, anjuId, musicMoodId);
+
+                // when
+                boolean inserted = pairingFeedbackRepository.saveIfAbsent(pairingFeedback);
+
+                // then
+                assertThat(inserted).isTrue();
+                PairingFeedbackJpaEntity saved = savedEntityOf(pairingFeedback.getMemberId());
+                assertThat(saved.getRelationshipType())
+                        .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRelationshipType());
+                assertThat(saved.getMoodType())
+                        .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getMoodType());
+                assertThat(saved.getRating())
+                        .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
+                assertThat(saved.getCreatedAt()).isNotNull();
+                assertThat(saved.getUpdatedAt()).isNotNull();
+            }
+        }
+
+        @Nested
+        @DisplayName("회원이 같은 조합에 낸 피드백이 있는 경우")
+        class WhenFeedbackExists {
+
+            // 동시에 낸 첫 피드백 중 나중 요청도 먼저 넣은 요청이 커밋한 뒤 같은 충돌을 만나므로, 순서대로 두 번 넣어 확인한다.
+            @Test
+            @DisplayName("기존 피드백을 바꾸지 않고 false를 반환한다")
+            void shouldKeepExistingFeedbackAndReturnFalse() {
+                // given
+                PairingFeedback existing = savedFeedback();
+                PairingFeedback another =
+                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
+                                drinkId, anjuId, musicMoodId);
+                another.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
+
+                // when
+                boolean inserted = pairingFeedbackRepository.saveIfAbsent(another);
+
+                // then
+                assertThat(inserted).isFalse();
+                PairingFeedbackJpaEntity saved = savedEntityOf(existing.getMemberId());
+                assertThat(saved.getId()).isEqualTo(existing.getId());
+                assertThat(saved.getRating()).isEqualTo(existing.getRating());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("findByMemberIdAndCombinationForUpdate 메서드는")
+    class FindByMemberIdAndCombinationForUpdate {
+
         @Test
-        @DisplayName("피드백을 저장하고 ID를 채워 반환한다")
-        void shouldPersistPairingFeedback() {
+        @DisplayName("회원이 같은 조합에 낸 피드백을 반환한다")
+        void shouldReturnFeedbackOfMemberAndCombination() {
             // given
-            // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
-            Long drinkStyleId =
-                    drinkStyleJpaRepository
-                            .save(
-                                    DrinkStyleJpaEntity.from(
-                                            DrinkStyleFixture.DISTILLED_SOJU.create()))
-                            .getId();
-            Long drinkId =
-                    drinkJpaRepository
-                            .save(
-                                    DrinkJpaEntity.from(
-                                            DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
-                            .getId();
-            Long anjuId =
-                    anjuJpaRepository
-                            .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
-                            .getId();
-            Long musicMoodId =
-                    musicMoodJpaRepository
-                            .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
-                            .getId();
-            PairingFeedback pairingFeedback =
-                    PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                            drinkId, anjuId, musicMoodId);
+            PairingFeedback saved = savedFeedback();
 
             // when
-            PairingFeedback saved = pairingFeedbackRepository.save(pairingFeedback);
+            Optional<PairingFeedback> found =
+                    pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                            saved.getMemberId(), drinkId, anjuId, musicMoodId);
 
             // then
-            assertThat(saved.getId()).isNotNull();
-            assertThat(saved.getMemberId())
-                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getMemberId());
-            assertThat(saved.getDrinkId()).isEqualTo(drinkId);
-            assertThat(saved.getAnjuId()).isEqualTo(anjuId);
-            assertThat(saved.getMusicMoodId()).isEqualTo(musicMoodId);
-            assertThat(saved.getRelationshipType())
-                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRelationshipType());
-            assertThat(saved.getMoodType())
-                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getMoodType());
-            assertThat(saved.getRating())
-                    .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
+            assertThat(found).map(PairingFeedback::getId).hasValue(saved.getId());
         }
+
+        @Test
+        @DisplayName("다른 회원이 같은 조합에 낸 피드백은 반환하지 않는다")
+        void shouldReturnEmptyWhenOnlyOtherMemberSubmitted() {
+            // given
+            savedFeedback();
+
+            // when
+            Optional<PairingFeedback> found =
+                    pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                            OTHER_MEMBER_ID, drinkId, anjuId, musicMoodId);
+
+            // then
+            assertThat(found).isEmpty();
+        }
+    }
+
+    private PairingFeedback savedFeedback() {
+        PairingFeedback pairingFeedback =
+                PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
+                        drinkId, anjuId, musicMoodId);
+        pairingFeedbackRepository.saveIfAbsent(pairingFeedback);
+
+        return pairingFeedbackRepository
+                .findByMemberIdAndCombinationForUpdate(
+                        pairingFeedback.getMemberId(), drinkId, anjuId, musicMoodId)
+                .orElseThrow();
+    }
+
+    // 네이티브 INSERT 결과를 영속성 컨텍스트가 아니라 DB에서 읽도록 비운 뒤 조회한다.
+    private PairingFeedbackJpaEntity savedEntityOf(Long memberId) {
+        entityManager.clear();
+
+        return pairingFeedbackJpaRepository
+                .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId, musicMoodId)
+                .orElseThrow();
     }
 }
