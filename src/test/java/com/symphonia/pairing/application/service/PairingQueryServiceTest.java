@@ -2,12 +2,14 @@ package com.symphonia.pairing.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.service.CatalogQueryService;
+import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
@@ -22,15 +24,18 @@ import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
+import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.Occasion;
+import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.PairingReason;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.RecommendPairingQueryFixture;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +51,7 @@ class PairingQueryServiceTest extends UnitTest {
     @Mock private DrinkRepository drinkRepository;
     @Mock private AnjuRepository anjuRepository;
     @Mock private MusicMoodRepository musicMoodRepository;
+    @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
 
     // 카탈로그 조회는 실제 CatalogQueryService에 맡긴다. 그래서 Repository 스텁만으로 카탈로그 상태를 준비한다.
     @BeforeEach
@@ -53,7 +59,8 @@ class PairingQueryServiceTest extends UnitTest {
         pairingQueryService =
                 new PairingQueryService(
                         new CatalogQueryService(
-                                drinkRepository, anjuRepository, musicMoodRepository));
+                                drinkRepository, anjuRepository, musicMoodRepository),
+                        pairingRatingSummaryRepository);
     }
 
     @Nested
@@ -61,6 +68,10 @@ class PairingQueryServiceTest extends UnitTest {
     class Recommend {
         // 골든 세트 조합의 안주가 들어야 하는 순위다. 추천 결과가 최대 5개라 그보다 좁게 잡는다.
         private static final int GOLDEN_TOP_RANK = 3;
+        private static final Long SOJU_ID = 1L;
+        private static final Long CASUAL_ACOUSTIC_ID = 1L;
+        private static final List<Long> TIED_ANJU_IDS = List.of(1L, 2L, 3L, 4L, 5L);
+        private static final Long WEAKER_ANJU_ID = 6L;
 
         @Test
         @DisplayName("조합 중 점수가 높은 순으로 PairingResult 목록을 반환한다")
@@ -1434,6 +1445,190 @@ class PairingQueryServiceTest extends UnitTest {
                                                             .message()));
         }
 
+        @Test
+        @DisplayName("좋아요가 많은 조합은 피드백 점수를 더해 맛 점수가 조금 더 높은 조합보다 앞에 둔다")
+        void shouldRankLikedCombinationAheadOfSlightlyBetterCombinations() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(
+                    PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, CASUAL_ACOUSTIC_ID, 20, 0));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            then(pairingRatingSummaryRepository)
+                    .should()
+                    .findAllWithSampleAtLeast(PairingRatingSummary.MINIMUM_SAMPLE);
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(6L, 1L, 2L, 3L, 4L);
+        }
+
+        @Test
+        @DisplayName("싫어요가 많은 조합은 피드백 점수를 빼 순위를 내리고, 상위 경계 밖이던 조합이 그 자리를 채운다")
+        void shouldReplaceDislikedCombinationWithNextCombination() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(
+                    PairingRatingSummary.of(
+                            SOJU_ID, TIED_ANJU_IDS.getFirst(), CASUAL_ACOUSTIC_ID, 0, 20));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(2L, 3L, 4L, 5L, 6L);
+        }
+
+        @Test
+        @DisplayName("스타일 최고 조합이 싫어요로 밀려나면 상위 경계 밖이던 같은 스타일의 다음 조합이 그 스타일을 대표한다")
+        void shouldReplaceDislikedStyleBestWithNextPairOfSameStyle() {
+            // given
+            // 스타일 101의 소주 5개와 스타일 102의 소주 하나는 맛이 같다. 상위 경계는 마른안주와의 쌍 6개가 차지하고, 약한 마른안주와의 쌍은 경계 밖이다.
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(14L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(15L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(21L, 102L)));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.DRIED_SNACK.createWithId(1L),
+                                    weakerDriedSnack(WEAKER_ANJU_ID)));
+            given(musicMoodRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(
+                                            CASUAL_ACOUSTIC_ID)));
+            givenRatingSummaries(PairingRatingSummary.of(21L, 1L, CASUAL_ACOUSTIC_ID, 0, 20));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkId, PairingResult::anjuId)
+                    .containsExactly(
+                            tuple(11L, 1L),
+                            tuple(12L, 1L),
+                            tuple(13L, 1L),
+                            tuple(14L, 1L),
+                            tuple(21L, WEAKER_ANJU_ID));
+        }
+
+        @Test
+        @DisplayName("싫어요로 밀려난 조합의 자리는 상위 음악 수 밖이던 음악이 채운다")
+        void shouldReplaceDislikedCombinationWithNextMusicMood() {
+            // given
+            // 음악 1~5번은 자리 분위기와 같고, 6번은 한 축만 1 달라 음악 점수가 0.04 낮다.
+            Occasion occasion =
+                    Occasion.of(RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
+            MoodProfile matching = catalogMoodProfileOf(occasion);
+            MoodProfile weaker =
+                    MoodProfile.of(
+                            matching.getFormality(),
+                            matching.getRomance(),
+                            matching.getCelebration(),
+                            matching.getComfort() == 5 ? 4 : matching.getComfort() + 1);
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId(1L)));
+            given(musicMoodRepository.findAll())
+                    .willReturn(
+                            Stream.concat(
+                                            LongStream.rangeClosed(1, 5)
+                                                    .mapToObj(
+                                                            id ->
+                                                                    MusicMoodFixture.CASUAL_ACOUSTIC
+                                                                            .createWithIdAndMoodProfile(
+                                                                                    id, matching)),
+                                            Stream.of(
+                                                    MusicMoodFixture.CASUAL_ACOUSTIC
+                                                            .createWithIdAndMoodProfile(
+                                                                    6L, weaker)))
+                                    .toList());
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, 1L, 1L, 0, 20));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.FRIEND)
+                            .moodType(MoodType.CASUAL)
+                            .build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::musicMoodId)
+                    .containsExactly(2L, 3L, 4L, 5L, 6L);
+        }
+
+        @Test
+        @DisplayName("표본이 최소 표본 수보다 적은 집계는 추천 점수에 반영하지 않는다")
+        void shouldIgnoreRatingSummaryWithoutEnoughSample() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(
+                    PairingRatingSummary.of(
+                            SOJU_ID,
+                            WEAKER_ANJU_ID,
+                            CASUAL_ACOUSTIC_ID,
+                            PairingRatingSummary.MINIMUM_SAMPLE - 1,
+                            0));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(1L, 2L, 3L, 4L, 5L);
+        }
+
+        // 마른안주 1~5번은 맛이 같아 동점이고, 6번은 단맛만 1 낮아 소주와의 점수가 약 0.043 낮다.
+        // 피드백이 없으면 1~5번이 추천된다. 좋아요나 싫어요 20개의 피드백 점수(약 ±0.067)는 이 차이를 뒤집는다.
+        private void givenDriedSnacksWithWeakerLast() {
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            Stream.concat(
+                                            TIED_ANJU_IDS.stream()
+                                                    .map(AnjuFixture.DRIED_SNACK::createWithId),
+                                            Stream.of(weakerDriedSnack(WEAKER_ANJU_ID)))
+                                    .toList());
+            given(musicMoodRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(
+                                            CASUAL_ACOUSTIC_ID)));
+        }
+
+        // 마른안주에서 단맛만 1 낮춰 소주와의 점수가 약 0.043 낮은 안주다.
+        private Anju weakerDriedSnack(Long id) {
+            return AnjuFixture.DRIED_SNACK.createWithIdAndFlavorProfile(
+                    id, FlavorProfile.of(0, 1, 0, 1, 0));
+        }
+
+        private void givenRatingSummaries(PairingRatingSummary... ratingSummaries) {
+            given(
+                            pairingRatingSummaryRepository.findAllWithSampleAtLeast(
+                                    PairingRatingSummary.MINIMUM_SAMPLE))
+                    .willReturn(List.of(ratingSummaries));
+        }
+
         private void givenStandardCatalog() {
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
@@ -1486,8 +1681,8 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.createWithId()));
         }
 
-        // 소주와 마른안주는 도수 제한·light anju·무알코올 조건과 무관하고, 맛 유사도와 편안한 어쿠스틱과의
-        // 무드 적합도만 임계값(0.7)을 넘는 조합이다.
+        // 소주와 마른안주는 도수 제한·light anju·무알코올 조건과 무관하다.
+        // 맛 유사도와 편안한 어쿠스틱과의 무드 적합도만 임계값(0.7)을 넘는 조합이다.
         private void givenSojuAndDriedSnackWithCasualAcousticMusicMood() {
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
