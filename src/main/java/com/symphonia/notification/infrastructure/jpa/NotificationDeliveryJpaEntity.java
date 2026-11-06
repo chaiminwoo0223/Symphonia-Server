@@ -43,7 +43,7 @@ public class NotificationDeliveryJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private NotificationType type;
 
-    // 메시지에 담을 정산 건 목록은 발송 기록을 만든 뒤 바뀌지 않는다.
+    // 메시지에 담을 정산 건 목록은 컨슈머가 맡을 때마다 실제로 담은 정산 건으로 바뀐다(#127).
     // Set으로 두어 상태만 바꿔 저장할 때 Hibernate가 바뀐 원소만 반영한다. List는 저장할 때마다 행을 모두 지우고 다시 넣는다.
     @ElementCollection
     @CollectionTable(

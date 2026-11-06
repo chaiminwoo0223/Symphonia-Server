@@ -63,4 +63,25 @@ public interface NotificationDeliveryJpaRepository
             """)
     List<NotificationDeliveryJpaEntity> findAllSettlementDeliveriesForUpdate(
             @Param("settlementId") Long settlementId);
+
+    @Query(
+            """
+            SELECT delivery FROM NotificationDeliveryJpaEntity delivery
+            WHERE delivery.gatheringId = :gatheringId
+              AND delivery.type = com.symphonia.notification.domain.vo.NotificationType.REMINDER
+            ORDER BY delivery.id
+            """)
+    List<NotificationDeliveryJpaEntity> findAllRemindersByGatheringId(
+            @Param("gatheringId") Long gatheringId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT delivery FROM NotificationDeliveryJpaEntity delivery
+            WHERE delivery.gatheringId = :gatheringId
+              AND delivery.type = com.symphonia.notification.domain.vo.NotificationType.REMINDER
+            ORDER BY delivery.id
+            """)
+    List<NotificationDeliveryJpaEntity> findAllRemindersByGatheringIdForUpdate(
+            @Param("gatheringId") Long gatheringId);
 }

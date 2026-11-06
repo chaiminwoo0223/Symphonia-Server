@@ -49,6 +49,7 @@ class PrepareNotificationServiceTest extends UnitTest {
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
     private static final Long THIRD_SETTLEMENT_ID = 32L;
+    private static final Long FOURTH_SETTLEMENT_ID = 33L;
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
@@ -267,6 +268,27 @@ class PrepareNotificationServiceTest extends UnitTest {
                 thenSkipped(delivery);
             }
 
+            @Test
+            @DisplayName("리마인드에 담을 미입금 분담금이 없으면 보내지 않음으로 바꿔 저장하고 빈 값을 반환한다")
+            void shouldSkipWhenReminderHasNoOutstandingShare() {
+                // given
+                NotificationDelivery delivery = reminderBuilder(PARK_ID).build();
+                givenDelivery(delivery);
+                Settlement settlement =
+                        SettlementFixture.DINNER.createNotified(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                settlement.markShareSent(PARK_ID);
+                givenSharedSettlements(PARK_ID, settlement);
+
+                // when
+                Optional<PreparedNotificationResult> result =
+                        prepareNotificationService.prepare(DELIVERY_ID);
+
+                // then
+                assertThat(result).isEmpty();
+                thenSkipped(delivery);
+            }
+
             private void thenSkipped(NotificationDelivery delivery) {
                 then(notificationDeliveryRepository).should().save(delivery);
                 assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.SKIPPED);
@@ -352,6 +374,37 @@ class PrepareNotificationServiceTest extends UnitTest {
                 assertThat(delivery.getClaimedAt()).isEqualTo(NOW);
             }
 
+            @Test
+            @DisplayName("그사이 보낸 정산 건은 빼고 메시지에 실제로 담은 정산 건만 남겨 맡는다")
+            void shouldClaimWithoutSettlementsSentInMeantime() {
+                // given
+                NotificationDelivery delivery =
+                        settlementNoticeBuilder(
+                                        PARK_ID, List.of(SETTLEMENT_ID, SECOND_SETTLEMENT_ID))
+                                .build();
+                givenDelivery(delivery);
+                givenGathering();
+                Settlement sentSettlement =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                sentSettlement.markShareSent(PARK_ID);
+                givenSettlements(
+                        List.of(SETTLEMENT_ID, SECOND_SETTLEMENT_ID),
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                        sentSettlement);
+                givenClaimSaved();
+                givenLinkTokenGenerated();
+
+                // when
+                prepareNotificationService.prepare(DELIVERY_ID);
+
+                // then
+                then(notificationDeliveryRepository).should().save(delivery);
+                assertThat(delivery.getSettlementIds()).containsExactly(SETTLEMENT_ID);
+                assertThat(delivery.getClaimedAt()).isEqualTo(NOW);
+            }
+
             // 박은 결제자에게 1차 3,333원과 2차 6,666원을, 이에게 3차 5,000원을 낸다.
             private void givenPreparableSettlementNotice(NotificationDelivery delivery) {
                 givenDelivery(delivery);
@@ -373,6 +426,77 @@ class PrepareNotificationServiceTest extends UnitTest {
 
             private List<Long> settlementIdsOfPark() {
                 return List.of(SETTLEMENT_ID, SECOND_SETTLEMENT_ID, THIRD_SETTLEMENT_ID);
+            }
+        }
+
+        @Nested
+        @DisplayName("리마인드를 보낼 수 있는 경우")
+        class WhenReminderPreparable {
+
+            @Test
+            @DisplayName("발송 기록의 정산 건과 관계없이 참여자의 정산 건 중 정산 메시지를 보낸 미입금 분담금만 결제자별로 담아 반환한다")
+            void shouldReturnPreparedNotificationWithOutstandingSharesOfNotifiedSettlements() {
+                // given
+                givenPreparableReminder(reminderBuilder(PARK_ID).build());
+
+                // when
+                Optional<PreparedNotificationResult> result =
+                        prepareNotificationService.prepare(DELIVERY_ID);
+
+                // then
+                assertThat(result).isPresent();
+                PreparedNotificationResult prepared = result.get();
+                assertThat(prepared.type()).isEqualTo(NotificationType.REMINDER);
+                assertThat(prepared.recipientName()).isEqualTo(ParticipantFixture.PARK.getName());
+                assertThat(prepared.payerAmounts())
+                        .extracting(PayerAmountResult::payerName, PayerAmountResult::amount)
+                        .containsExactly(
+                                tuple(ParticipantFixture.KIM.getName(), 3_333L),
+                                tuple(ParticipantFixture.LEE.getName(), 5_000L));
+                then(settlementRepository).should(never()).findAllByIds(any());
+            }
+
+            @Test
+            @DisplayName("메시지에 실제로 담은 정산 건으로 발송 기록의 정산 건을 바꾸고 맡은 시각을 남겨 저장한다")
+            void shouldClaimWithIncludedSettlementIds() {
+                // given
+                NotificationDelivery delivery = reminderBuilder(PARK_ID).build();
+                givenPreparableReminder(delivery);
+
+                // when
+                prepareNotificationService.prepare(DELIVERY_ID);
+
+                // then
+                then(notificationDeliveryRepository).should().save(delivery);
+                assertThat(delivery.getSettlementIds())
+                        .containsExactly(SETTLEMENT_ID, FOURTH_SETTLEMENT_ID);
+                assertThat(delivery.getClaimedAt()).isEqualTo(NOW);
+                assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.PENDING);
+            }
+
+            // 박은 결제자의 1차 3,333원과 이의 정산 건 5,000원을 아직 내지 않았다.
+            // 2차는 이미 보냈고, 3차는 정산 메시지를 보내기 전이라 담지 않는다.
+            private void givenPreparableReminder(NotificationDelivery delivery) {
+                givenDelivery(delivery);
+                givenGathering();
+                Settlement sentSettlement =
+                        SettlementFixture.SECOND_ROUND.createNotified(
+                                SECOND_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                sentSettlement.markShareSent(PARK_ID);
+                givenSharedSettlements(
+                        PARK_ID,
+                        SettlementFixture.DINNER.createNotified(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                        sentSettlement,
+                        SettlementFixture.DINNER.createWithId(
+                                THIRD_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                        SettlementFixture.DINNER.createNotified(
+                                FOURTH_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                LEE_ID,
+                                List.of(LEE_ID, PARK_ID)));
+                givenClaimSaved();
+                givenLinkTokenGenerated();
             }
         }
 
@@ -417,6 +541,14 @@ class PrepareNotificationServiceTest extends UnitTest {
                     DELIVERY_ID, GATHERING_ID, participantId, settlementIds);
         }
 
+        // 보낼 시각이 된 리마인드다. 발송 기록이 처음 담은 정산 건은 리마인드 내용에 쓰지 않는다.
+        private NotificationDelivery.NotificationDeliveryBuilder reminderBuilder(
+                Long participantId) {
+            return NotificationDeliveryFixture.REMINDER_NOTICE
+                    .builder(DELIVERY_ID, GATHERING_ID, participantId, List.of(SETTLEMENT_ID))
+                    .availableAt(NOW);
+        }
+
         private void givenDelivery(NotificationDelivery delivery) {
             given(notificationDeliveryRepository.findByIdForUpdate(DELIVERY_ID))
                     .willReturn(Optional.of(delivery));
@@ -428,6 +560,11 @@ class PrepareNotificationServiceTest extends UnitTest {
 
         private void givenSettlements(List<Long> settlementIds, Settlement... settlements) {
             given(settlementRepository.findAllByIds(settlementIds))
+                    .willReturn(List.of(settlements));
+        }
+
+        private void givenSharedSettlements(Long participantId, Settlement... settlements) {
+            given(settlementRepository.findAllByShareParticipantId(participantId))
                     .willReturn(List.of(settlements));
         }
 

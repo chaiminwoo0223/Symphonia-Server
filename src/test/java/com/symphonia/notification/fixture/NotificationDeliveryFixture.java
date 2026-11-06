@@ -13,7 +13,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum NotificationDeliveryFixture {
     SETTLEMENT_NOTICE(NotificationType.SETTLEMENT, LocalDateTime.of(2026, 10, 27, 20, 30)),
-    CANCELLATION_NOTICE(NotificationType.CANCELLATION, LocalDateTime.of(2026, 10, 28, 11, 0));
+    CANCELLATION_NOTICE(NotificationType.CANCELLATION, LocalDateTime.of(2026, 10, 28, 11, 0)),
+    REMINDER_NOTICE(NotificationType.REMINDER, LocalDateTime.of(2026, 10, 30, 20, 30));
 
     private final NotificationType type;
     private final LocalDateTime availableAt;

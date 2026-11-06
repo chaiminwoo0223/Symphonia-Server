@@ -21,6 +21,7 @@ import com.symphonia.notification.domain.repository.NotificationDeliveryReposito
 import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import com.symphonia.notification.domain.vo.DeliveryStatus;
 import com.symphonia.notification.domain.vo.NotificationType;
+import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +38,8 @@ import org.mockito.Mock;
 class DispatchSettlementNotificationServiceTest extends UnitTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 28, 15, 0);
+    private static final LocalDateTime THREE_DAYS_LATER = LocalDateTime.of(2026, 10, 31, 15, 0);
+    private static final LocalDateTime FIVE_DAYS_LATER = LocalDateTime.of(2026, 11, 2, 15, 0);
     private static final Long GATHERING_ID = 10L;
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
@@ -119,6 +122,7 @@ class DispatchSettlementNotificationServiceTest extends UnitTest {
                 ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
                 then(notificationDeliveryRepository).should().saveAll(captor.capture());
                 assertThat(captor.getValue())
+                        .filteredOn(delivery -> delivery.getType() == NotificationType.SETTLEMENT)
                         .extracting(
                                 NotificationDelivery::getGatheringId,
                                 NotificationDelivery::getParticipantId,
@@ -141,6 +145,123 @@ class DispatchSettlementNotificationServiceTest extends UnitTest {
                                         List.of(THIRD_SETTLEMENT_ID),
                                         DeliveryStatus.PENDING,
                                         NOW));
+            }
+
+            @Test
+            @DisplayName("수신자마다 정산 메시지를 보내기 시작한 시각부터 3일 뒤와 5일 뒤에 수신자의 정산 건을 담은 리마인드를 저장한다")
+            void shouldSaveRemindersAfterThreeAndFiveDaysForEachRecipient() {
+                // given
+                givenDueSchedule(NOW);
+                givenUnnotifiedSettlements();
+
+                // when
+                dispatchSettlementNotificationService.dispatch(GATHERING_ID);
+
+                // then
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                then(notificationDeliveryRepository).should().saveAll(captor.capture());
+                assertThat(captor.getValue())
+                        .filteredOn(delivery -> delivery.getType() == NotificationType.REMINDER)
+                        .extracting(
+                                NotificationDelivery::getGatheringId,
+                                NotificationDelivery::getParticipantId,
+                                NotificationDelivery::getSettlementIds,
+                                NotificationDelivery::getStatus,
+                                NotificationDelivery::getAvailableAt)
+                        .containsExactly(
+                                tuple(
+                                        GATHERING_ID,
+                                        PARK_ID,
+                                        List.of(SETTLEMENT_ID, SECOND_SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        THREE_DAYS_LATER),
+                                tuple(
+                                        GATHERING_ID,
+                                        PARK_ID,
+                                        List.of(SETTLEMENT_ID, SECOND_SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        FIVE_DAYS_LATER),
+                                tuple(
+                                        GATHERING_ID,
+                                        PAYER_ID,
+                                        List.of(THIRD_SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        THREE_DAYS_LATER),
+                                tuple(
+                                        GATHERING_ID,
+                                        PAYER_ID,
+                                        List.of(THIRD_SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        FIVE_DAYS_LATER));
+            }
+
+            @Test
+            @DisplayName(
+                    "같은 참여자의 보내기를 기다리는 리마인드가 3일 뒤 시각보다 24시간에서 1초 모자란 시각에 있으면 3일 뒤 리마인드를 만들지 않는다")
+            void shouldNotSaveReminderWhenPendingReminderWithinGap() {
+                // given
+                givenDueSchedule(NOW);
+                givenUnnotifiedSettlements();
+                givenReminders(
+                        reminderOf(PARK_ID)
+                                .availableAt(THREE_DAYS_LATER.minusHours(24).plusSeconds(1))
+                                .build());
+
+                // when
+                dispatchSettlementNotificationService.dispatch(GATHERING_ID);
+
+                // then
+                thenRemindersOfParkSavedAt(FIVE_DAYS_LATER);
+            }
+
+            @Test
+            @DisplayName("같은 참여자의 보내기를 기다리는 리마인드가 3일 뒤 시각보다 정확히 24시간 전에 있으면 3일 뒤 리마인드를 만든다")
+            void shouldSaveReminderWhenPendingReminderAtGap() {
+                // given
+                givenDueSchedule(NOW);
+                givenUnnotifiedSettlements();
+                givenReminders(
+                        reminderOf(PARK_ID).availableAt(THREE_DAYS_LATER.minusHours(24)).build());
+
+                // when
+                dispatchSettlementNotificationService.dispatch(GATHERING_ID);
+
+                // then
+                thenRemindersOfParkSavedAt(THREE_DAYS_LATER, FIVE_DAYS_LATER);
+            }
+
+            @Test
+            @DisplayName("같은 참여자의 리마인드가 같은 시각에 있어도 건너뛴 리마인드면 리마인드를 만든다")
+            void shouldSaveReminderWhenSkippedReminderWithinGap() {
+                // given
+                givenDueSchedule(NOW);
+                givenUnnotifiedSettlements();
+                givenReminders(
+                        reminderOf(PARK_ID)
+                                .availableAt(THREE_DAYS_LATER)
+                                .status(DeliveryStatus.SKIPPED)
+                                .build());
+
+                // when
+                dispatchSettlementNotificationService.dispatch(GATHERING_ID);
+
+                // then
+                thenRemindersOfParkSavedAt(THREE_DAYS_LATER, FIVE_DAYS_LATER);
+            }
+
+            @Test
+            @DisplayName("다른 참여자의 리마인드가 같은 시각에 있어도 리마인드를 만든다")
+            void shouldSaveReminderWhenOtherParticipantReminderWithinGap() {
+                // given
+                givenDueSchedule(NOW);
+                givenUnnotifiedSettlements();
+                givenReminders(reminderOf(LEE_ID).availableAt(THREE_DAYS_LATER).build());
+
+                // when
+                dispatchSettlementNotificationService.dispatch(GATHERING_ID);
+
+                // then
+                thenRemindersOfParkSavedAt(THREE_DAYS_LATER, FIVE_DAYS_LATER);
             }
 
             @Test
@@ -186,6 +307,29 @@ class DispatchSettlementNotificationServiceTest extends UnitTest {
                 given(settlementRepository.findAllUnnotifiedByGatheringIdForUpdate(GATHERING_ID))
                         .willReturn(settlements);
                 return settlements;
+            }
+
+            private NotificationDelivery.NotificationDeliveryBuilder reminderOf(
+                    Long participantId) {
+                return NotificationDeliveryFixture.REMINDER_NOTICE.builder(
+                        1L, GATHERING_ID, participantId, List.of(SETTLEMENT_ID));
+            }
+
+            private void givenReminders(NotificationDelivery... reminders) {
+                given(notificationDeliveryRepository.findAllRemindersByGatheringId(GATHERING_ID))
+                        .willReturn(List.of(reminders));
+            }
+
+            private void thenRemindersOfParkSavedAt(LocalDateTime... availableAts) {
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                then(notificationDeliveryRepository).should().saveAll(captor.capture());
+                assertThat(captor.getValue())
+                        .filteredOn(
+                                delivery ->
+                                        delivery.getType() == NotificationType.REMINDER
+                                                && delivery.getParticipantId().equals(PARK_ID))
+                        .extracting(NotificationDelivery::getAvailableAt)
+                        .containsExactly(availableAts);
             }
         }
 
