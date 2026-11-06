@@ -50,6 +50,7 @@ public class DispatchSettlementNotificationService
 
     // 예약 뒤에 모두 취소됐으면 보낼 정산 건이 없어 발송 기록도 만들지 않는다.
     // 정산 메시지와 함께 그 수신자의 3일 뒤, 5일 뒤 리마인드를 만든다. 그때까지 모두 내면 리마인드는 보내지 않고 건너뛴다.
+    // 같은 참여자에게 그 시점과 24시간 안에 나갈 리마인드가 이미 있으면 그 시점의 리마인드는 만들지 않는다.
     private void notifySettlements(Long gatheringId, LocalDateTime now) {
         List<NotificationTargetResult> targets =
                 notificationTargetProvider.notifySettlements(
