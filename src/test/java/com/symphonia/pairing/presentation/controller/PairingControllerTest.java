@@ -1,5 +1,6 @@
 package com.symphonia.pairing.presentation.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -18,8 +19,13 @@ import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import com.symphonia.pairing.domain.entity.PairingFeedback;
+import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
+import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
+import com.symphonia.pairing.domain.vo.PairingRatingChange;
+import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +42,8 @@ class PairingControllerTest extends IntegrationTest {
     @Autowired private CatalogHelper catalogHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
+    @Autowired private PairingFeedbackRepository pairingFeedbackRepository;
+    @Autowired private PairingRatingSummaryRepository pairingRatingSummaryRepository;
 
     @Nested
     @DisplayName("GET /api/v1/pairings/recommendations는")
@@ -185,6 +193,48 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.anjuId").value(request.anjuId()))
                         .andExpect(jsonPath("$.data.musicMoodId").value(request.musicMoodId()))
                         .andExpect(jsonPath("$.data.rating").value(request.rating().name()));
+            }
+
+            @Test
+            @DisplayName("같은 조합에 다시 내면 기존 피드백을 바꾸고 집계를 고친 뒤 200을 반환한다")
+            void shouldUpdateFeedbackWhenResubmitted() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                SubmitPairingFeedbackRequest request = seedFeedbackRequest(PairingRating.DISLIKE);
+                PairingFeedback submitted =
+                        pairingFeedbackRepository.save(
+                                PairingFeedback.of(
+                                        member.getId(),
+                                        request.drinkId(),
+                                        request.anjuId(),
+                                        request.musicMoodId(),
+                                        request.relationshipType(),
+                                        request.moodType(),
+                                        PairingRating.LIKE));
+                pairingRatingSummaryRepository.accumulate(
+                        request.drinkId(),
+                        request.anjuId(),
+                        request.musicMoodId(),
+                        PairingRatingChange.added(PairingRating.LIKE));
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/pairings/feedback")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.id").value(submitted.getId()))
+                        .andExpect(jsonPath("$.data.rating").value(PairingRating.DISLIKE.name()));
+                assertThat(pairingRatingSummaryRepository.findAllWithSampleAtLeast(1))
+                        .containsExactly(
+                                PairingRatingSummary.of(
+                                        request.drinkId(),
+                                        request.anjuId(),
+                                        request.musicMoodId(),
+                                        0,
+                                        1));
             }
 
             @Test

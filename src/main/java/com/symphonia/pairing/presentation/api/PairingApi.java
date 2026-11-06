@@ -27,7 +27,9 @@ public interface PairingApi {
             @Valid @ModelAttribute RecommendPairingRequest request);
 
     @PostMapping(PairingEndpoints.FEEDBACK)
-    @Operation(summary = "페어링 피드백 기록", description = "인증된 멤버가 선택한 페어링 조합을 기록합니다.")
+    @Operation(
+            summary = "페어링 피드백 기록",
+            description = "인증된 멤버가 선택한 페어링 조합을 기록합니다. 같은 조합에 다시 내면 기존 피드백을 바꾸고 200을 응답합니다.")
     ResponseEntity<StandardResponse<PairingFeedbackResponse>> submitFeedback(
             @AuthenticationPrincipal String memberId,
             @Valid @RequestBody SubmitPairingFeedbackRequest request);

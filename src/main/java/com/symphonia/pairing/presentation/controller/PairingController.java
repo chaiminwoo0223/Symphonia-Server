@@ -38,8 +38,8 @@ public class PairingController implements PairingApi {
         PairingFeedbackResult result =
                 submitPairingFeedbackUseCase.submit(request.toCommand(memberId));
         PairingFeedbackResponse response = PairingFeedbackResponse.from(result);
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(StandardResponse.success(HttpStatus.CREATED, response));
+        return ResponseEntity.status(status).body(StandardResponse.success(status, response));
     }
 }
