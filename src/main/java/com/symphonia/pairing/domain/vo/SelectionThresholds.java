@@ -9,33 +9,22 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 // 쌍이 선정 규칙(상위 topLimit개, 스타일별 최고, 무알코올 최고)에 들 수 있는 경계 점수를 음료마다 하나씩 들고 있다.
+// 스타일별 최고와 무알코올 최고는 bestRank번째 점수가 경계다. 피드백 감점이 있으면 Pairing이 두 값을 넓힌다(#130).
 // 음료의 경계는 그 음료에 해당하는 경계 중 가장 낮은 값에서 tolerance를 뺀 값이다.
 public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
     public static SelectionThresholds of(
-            DrinkAnjuScores scores, int topLimit, boolean nonAlcoholicOption, double tolerance) {
-        List<PairingDrink> drinks = scores.drinks();
+            DrinkAnjuScores scores,
+            int topLimit,
+            int bestRank,
+            boolean nonAlcoholicOption,
+            double tolerance) {
         double top = rankedScore(Arrays.stream(scores.scores()), topLimit);
-        double[] bestByDrink =
-                IntStream.range(0, drinks.size()).mapToDouble(scores::bestOf).toArray();
-        Map<Long, Double> bestByStyle =
-                IntStream.range(0, drinks.size())
-                        .boxed()
-                        .collect(
-                                Collectors.toMap(
-                                        index -> drinks.get(index).getDrinkStyleId(),
-                                        index -> bestByDrink[index],
-                                        Math::max));
+        Map<Long, Double> bestByStyle = bestByStyle(scores, bestRank);
         double bestNonAlcoholic =
-                nonAlcoholicOption
-                        ? IntStream.range(0, drinks.size())
-                                .filter(index -> drinks.get(index).isNonAlcoholic())
-                                .mapToDouble(index -> bestByDrink[index])
-                                .max()
-                                .orElse(Double.NEGATIVE_INFINITY)
-                        : Double.POSITIVE_INFINITY;
+                nonAlcoholicOption ? bestNonAlcoholic(scores, bestRank) : Double.POSITIVE_INFINITY;
 
         double[] thresholdByDrink =
-                drinks.stream()
+                scores.drinks().stream()
                         .mapToDouble(
                                 drink ->
                                         thresholdOf(drink, top, bestByStyle, bestNonAlcoholic)
@@ -53,6 +42,36 @@ public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDr
     private static double rankedScore(DoubleStream scores, int rank) {
         return scores.collect(() -> TopScores.of(rank), TopScores::offer, TopScores::offerAll)
                 .threshold();
+    }
+
+    private static Map<Long, Double> bestByStyle(DrinkAnjuScores scores, int bestRank) {
+        List<PairingDrink> drinks = scores.drinks();
+
+        return IntStream.range(0, drinks.size())
+                .boxed()
+                .collect(
+                        Collectors.groupingBy(
+                                index -> drinks.get(index).getDrinkStyleId(),
+                                Collectors.collectingAndThen(
+                                        Collectors.toList(),
+                                        indexes ->
+                                                rankedScore(
+                                                        pairScoresOf(scores, indexes.stream()),
+                                                        bestRank))));
+    }
+
+    private static DoubleStream pairScoresOf(DrinkAnjuScores scores, Stream<Integer> drinkIndexes) {
+        return drinkIndexes.flatMapToDouble(scores::scoresOf);
+    }
+
+    private static double bestNonAlcoholic(DrinkAnjuScores scores, int bestRank) {
+        List<PairingDrink> drinks = scores.drinks();
+        Stream<Integer> nonAlcoholicIndexes =
+                IntStream.range(0, drinks.size())
+                        .filter(index -> drinks.get(index).isNonAlcoholic())
+                        .boxed();
+
+        return rankedScore(pairScoresOf(scores, nonAlcoholicIndexes), bestRank);
     }
 
     private static double thresholdOf(

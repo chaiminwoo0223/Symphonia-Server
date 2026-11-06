@@ -10,6 +10,7 @@ import com.symphonia.common.annotation.QueryService;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
 import com.symphonia.pairing.application.usecase.RecommendPairingUseCase;
+import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
 import com.symphonia.pairing.domain.vo.MoodProfile;
 import com.symphonia.pairing.domain.vo.Occasion;
@@ -17,6 +18,7 @@ import com.symphonia.pairing.domain.vo.Pairing;
 import com.symphonia.pairing.domain.vo.PairingAnju;
 import com.symphonia.pairing.domain.vo.PairingDrink;
 import com.symphonia.pairing.domain.vo.PairingMusicMood;
+import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PairingQueryService implements RecommendPairingUseCase {
     private final GetCatalogUseCase getCatalogUseCase;
+    private final PairingRatingSummaryRepository pairingRatingSummaryRepository;
 
     @Override
     public List<PairingResult> recommend(RecommendPairingQuery query) {
@@ -43,7 +46,12 @@ public class PairingQueryService implements RecommendPairingUseCase {
         List<PairingMusicMood> musicMoods =
                 catalog.musicMoods().stream().map(PairingQueryService::toPairingMusicMood).toList();
 
-        return Pairing.recommend(drinks, anjus, musicMoods, occasion).stream()
+        // 조합마다 집계를 조회하지 않도록 표본이 충분한 집계를 요청마다 한 번에 읽는다.
+        List<PairingRatingSummary> ratingSummaries =
+                pairingRatingSummaryRepository.findAllWithSampleAtLeast(
+                        PairingRatingSummary.MINIMUM_SAMPLE);
+
+        return Pairing.recommend(drinks, anjus, musicMoods, ratingSummaries, occasion).stream()
                 .map(PairingResult::from)
                 .toList();
     }

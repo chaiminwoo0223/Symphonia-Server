@@ -3,6 +3,7 @@ package com.symphonia.pairing.domain.vo;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;
+import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -32,13 +33,10 @@ public record DrinkAnjuScores(List<PairingDrink> drinks, List<PairingAnju> anjus
         return drinks.size();
     }
 
-    // 한 음료와 허용된 안주들의 쌍 중 가장 높은 점수다. 안주가 없으면 음의 무한대다.
-    public double bestOf(int drinkIndex) {
+    public DoubleStream scoresOf(int drinkIndex) {
         int from = drinkIndex * anjus.size();
 
-        return Arrays.stream(scores, from, from + anjus.size())
-                .max()
-                .orElse(Double.NEGATIVE_INFINITY);
+        return Arrays.stream(scores, from, from + anjus.size());
     }
 
     // 한 음료의 쌍 중 점수가 경계 이상인 쌍을 안주 순서대로 만든다.
