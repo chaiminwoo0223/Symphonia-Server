@@ -155,11 +155,9 @@ public class SettlementCommandService
         settlement.cancel(now);
         settlementRepository.save(settlement);
 
-        if (settlement.isNotified()) {
-            announceCancellationUseCase.announceCancellation(
-                    AnnounceCancellationCommand.of(
-                            settlement.getGatheringId(), settlement.getId()));
-        }
+        Optional.of(settlement)
+                .filter(Settlement::isNotified)
+                .ifPresent(this::announceCancellation);
     }
 
     // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
@@ -236,6 +234,11 @@ public class SettlementCommandService
         return settlementRepository
                 .findById(settlementId)
                 .orElseThrow(SettlementNotFoundException::new);
+    }
+
+    private void announceCancellation(Settlement settlement) {
+        announceCancellationUseCase.announceCancellation(
+                AnnounceCancellationCommand.of(settlement.getGatheringId(), settlement.getId()));
     }
 
     // 결제자는 계좌를 등록해야 정산 건을 기록할 수 있고 계좌는 모임을 파기할 때만 지우므로, 없으면 서버 버그라서 500으로 둔다.
