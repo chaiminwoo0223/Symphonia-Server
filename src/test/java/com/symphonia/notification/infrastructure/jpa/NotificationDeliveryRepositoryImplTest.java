@@ -1,6 +1,7 @@
 package com.symphonia.notification.infrastructure.jpa;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.gathering.domain.entity.Gathering;
@@ -144,6 +145,54 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
             assertThat(reloaded.getPublishedAt()).isEqualTo(NOW.minusMinutes(2));
             assertThat(reloaded.getClaimedAt()).isEqualTo(NOW.minusMinutes(1));
             assertThat(reloaded.getSentAt()).isEqualTo(NOW);
+        }
+
+        @Test
+        @DisplayName("맡으며 담을 정산 건을 바꾼 발송 기록을 저장하면 바뀐 정산 건으로 다시 읽힌다")
+        void shouldPersistClaimedSettlementIds() {
+            // given
+            Long deliveryId =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE.builder(
+                                    null, gatheringId, leeId, List.of(dinnerId)));
+            clearPersistenceContext();
+            NotificationDelivery delivery =
+                    notificationDeliveryRepository.findByIdForUpdate(deliveryId).orElseThrow();
+            delivery.claim(NOW, List.of(dinnerId, secondRoundId));
+
+            // when
+            notificationDeliveryRepository.save(delivery);
+
+            // then
+            clearPersistenceContext();
+            NotificationDelivery reloaded =
+                    notificationDeliveryRepository.findByIdForUpdate(deliveryId).orElseThrow();
+            assertThat(reloaded.getSettlementIds())
+                    .containsExactlyInAnyOrder(dinnerId, secondRoundId);
+            assertThat(reloaded.getClaimedAt()).isEqualTo(NOW);
+        }
+
+        @Test
+        @DisplayName("맡으며 담을 정산 건이 줄어든 발송 기록을 저장하면 빠진 정산 건 없이 다시 읽힌다")
+        void shouldPersistReducedSettlementIdsWhenClaimed() {
+            // given
+            Long deliveryId =
+                    save(
+                            NotificationDeliveryFixture.SETTLEMENT_NOTICE.builder(
+                                    null, gatheringId, leeId, List.of(dinnerId, secondRoundId)));
+            clearPersistenceContext();
+            NotificationDelivery delivery =
+                    notificationDeliveryRepository.findByIdForUpdate(deliveryId).orElseThrow();
+            delivery.claim(NOW, List.of(secondRoundId));
+
+            // when
+            notificationDeliveryRepository.save(delivery);
+
+            // then
+            clearPersistenceContext();
+            NotificationDelivery reloaded =
+                    notificationDeliveryRepository.findByIdForUpdate(deliveryId).orElseThrow();
+            assertThat(reloaded.getSettlementIds()).containsExactly(secondRoundId);
         }
     }
 
@@ -347,8 +396,9 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
     class FindAllSettlementDeliveriesForUpdate {
 
         @Test
-        @DisplayName("정산 건이 담긴 정산 메시지의 발송 기록을 상태와 상관없이 id 순서대로 반환하고, 취소 알림과 다른 정산 건만 담은 발송 기록은 뺀다")
-        void shouldReturnSettlementDeliveriesContainingSettlementOrderedById() {
+        @DisplayName(
+                "정산 건이 담긴 정산 메시지의 발송 기록을 상태와 상관없이 id 순서대로 반환하고, 그 정산 건을 담았어도 취소 알림과 리마인드는 빼며 다른 정산 건만 담은 발송 기록도 뺀다")
+        void shouldReturnSettlementNoticesContainingSettlementOrderedById() {
             // given
             saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, leeId, dinnerId, secondRoundId);
             Long pending =
@@ -357,6 +407,7 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
                                     null, gatheringId, parkId, List.of(dinnerId)));
             saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, kimId, secondRoundId);
             saveSent(NotificationDeliveryFixture.CANCELLATION_NOTICE, kimId, dinnerId);
+            saveSent(NotificationDeliveryFixture.REMINDER_NOTICE, kimId, dinnerId);
             clearPersistenceContext();
 
             // when
@@ -365,23 +416,145 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result)
-                    .extracting(NotificationDelivery::getParticipantId)
-                    .containsExactly(leeId, parkId);
+                    .extracting(
+                            NotificationDelivery::getParticipantId, NotificationDelivery::getType)
+                    .containsExactly(
+                            tuple(leeId, NotificationType.SETTLEMENT),
+                            tuple(parkId, NotificationType.SETTLEMENT));
             assertThat(result.getLast().getId()).isEqualTo(pending);
             assertThat(result.getLast().getStatus()).isEqualTo(DeliveryStatus.PENDING);
         }
 
         @Test
-        @DisplayName("정산 건이 담긴 정산 메시지의 발송 기록이 없으면 빈 목록을 반환한다")
+        @DisplayName("정산 건이 담긴 정산 메시지의 발송 기록이 없으면 리마인드가 그 정산 건을 담았어도 빈 목록을 반환한다")
         void shouldReturnEmptyListWhenNoSettlementDeliveryContainsSettlement() {
             // given
             saveSent(NotificationDeliveryFixture.CANCELLATION_NOTICE, leeId, dinnerId);
             saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, parkId, secondRoundId);
+            saveSent(NotificationDeliveryFixture.REMINDER_NOTICE, parkId, dinnerId);
             clearPersistenceContext();
 
             // when
             List<NotificationDelivery> result =
                     notificationDeliveryRepository.findAllSettlementDeliveriesForUpdate(dinnerId);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllRemindersByGatheringId 메서드는")
+    class FindAllRemindersByGatheringId {
+
+        @Test
+        @DisplayName("모임의 리마인드 발송 기록을 상태와 상관없이 id 순서대로 반환하고, 다른 모임의 리마인드와 다른 종류의 발송 기록은 뺀다")
+        void shouldReturnRemindersOfGatheringOrderedById() {
+            // given
+            Long sent =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE
+                                    .builder(null, gatheringId, leeId, List.of(dinnerId))
+                                    .status(DeliveryStatus.SENT)
+                                    .sentAt(NOW));
+            saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, leeId, dinnerId);
+            Long skipped =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE
+                                    .builder(null, gatheringId, parkId, List.of(dinnerId))
+                                    .status(DeliveryStatus.SKIPPED));
+            saveSent(NotificationDeliveryFixture.CANCELLATION_NOTICE, parkId, dinnerId);
+            saveReminderOfOtherGathering();
+            Long pending =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE.builder(
+                                    null, gatheringId, leeId, List.of(secondRoundId)));
+            clearPersistenceContext();
+
+            // when
+            List<NotificationDelivery> result =
+                    notificationDeliveryRepository.findAllRemindersByGatheringId(gatheringId);
+
+            // then
+            assertThat(result)
+                    .extracting(NotificationDelivery::getId)
+                    .containsExactly(sent, skipped, pending);
+            assertThat(result)
+                    .extracting(NotificationDelivery::getStatus)
+                    .containsExactly(
+                            DeliveryStatus.SENT, DeliveryStatus.SKIPPED, DeliveryStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("모임의 리마인드 발송 기록이 없으면 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenRemindersNotExist() {
+            // given
+            saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, leeId, dinnerId);
+            saveReminderOfOtherGathering();
+            clearPersistenceContext();
+
+            // when
+            List<NotificationDelivery> result =
+                    notificationDeliveryRepository.findAllRemindersByGatheringId(gatheringId);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllRemindersByGatheringIdForUpdate 메서드는")
+    class FindAllRemindersByGatheringIdForUpdate {
+
+        @Test
+        @DisplayName("모임의 리마인드 발송 기록을 상태와 상관없이 id 순서대로 반환하고, 다른 모임의 리마인드와 다른 종류의 발송 기록은 뺀다")
+        void shouldReturnRemindersOfGatheringOrderedById() {
+            // given
+            Long sent =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE
+                                    .builder(null, gatheringId, leeId, List.of(dinnerId))
+                                    .status(DeliveryStatus.SENT)
+                                    .sentAt(NOW));
+            saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, leeId, dinnerId);
+            saveReminderOfOtherGathering();
+            Long claimed =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE
+                                    .builder(null, gatheringId, parkId, List.of(secondRoundId))
+                                    .claimedAt(NOW));
+            saveSent(NotificationDeliveryFixture.CANCELLATION_NOTICE, parkId, dinnerId);
+            Long failed =
+                    save(
+                            NotificationDeliveryFixture.REMINDER_NOTICE
+                                    .builder(null, gatheringId, kimId, List.of(dinnerId))
+                                    .status(DeliveryStatus.FAILED));
+            clearPersistenceContext();
+
+            // when
+            List<NotificationDelivery> result =
+                    notificationDeliveryRepository.findAllRemindersByGatheringIdForUpdate(
+                            gatheringId);
+
+            // then
+            assertThat(result)
+                    .extracting(NotificationDelivery::getId)
+                    .containsExactly(sent, claimed, failed);
+            assertThat(result.get(1).getSettlementIds()).containsExactly(secondRoundId);
+        }
+
+        @Test
+        @DisplayName("모임의 리마인드 발송 기록이 없으면 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenRemindersNotExist() {
+            // given
+            saveSent(NotificationDeliveryFixture.SETTLEMENT_NOTICE, leeId, dinnerId);
+            saveReminderOfOtherGathering();
+            clearPersistenceContext();
+
+            // when
+            List<NotificationDelivery> result =
+                    notificationDeliveryRepository.findAllRemindersByGatheringIdForUpdate(
+                            gatheringId);
 
             // then
             assertThat(result).isEmpty();
@@ -422,6 +595,32 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
                 .findByIdForUpdate(deliveryId)
                 .orElseThrow()
                 .getPublishedAt();
+    }
+
+    // 다른 모임의 정산 건을 담은 리마인드다. 모임으로 걸러지는지 확인한다.
+    private void saveReminderOfOtherGathering() {
+        Gathering otherGathering =
+                gatheringRepository.save(
+                        GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                List.of(
+                                        ParticipantFixture.KIM.create(),
+                                        ParticipantFixture.LEE.create())));
+        List<Long> otherParticipantIds =
+                otherGathering.getParticipants().stream().map(Participant::getId).toList();
+        Long otherSettlementId =
+                settlementRepository
+                        .save(
+                                SettlementFixture.DINNER.create(
+                                        otherGathering.getId(),
+                                        otherParticipantIds.getFirst(),
+                                        otherParticipantIds))
+                        .getId();
+        save(
+                NotificationDeliveryFixture.REMINDER_NOTICE.builder(
+                        null,
+                        otherGathering.getId(),
+                        otherParticipantIds.getLast(),
+                        List.of(otherSettlementId)));
     }
 
     // 1차 캐시를 비워 다음 조회가 DB에서 다시 읽게 한다.

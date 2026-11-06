@@ -1214,6 +1214,70 @@ class SettlementCommandServiceTest extends UnitTest {
                 thenCancellationNoticesSavedAvailableAt(LocalDateTime.of(2026, 10, 28, 10, 0));
             }
 
+            @Test
+            @DisplayName("그 정산 건을 담고 수신자에게 닿은 리마인드의 참여자에게도 취소 알림을 저장한다")
+            void shouldSaveCancellationNoticesForReachedReminderRecipients() {
+                // given
+                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
+                givenNotifiedSettlementCancelledAt(now);
+                givenReminders(
+                        reminder(11L, CHOI_ID, List.of(SECOND_SETTLEMENT_ID, SETTLEMENT_ID))
+                                .status(DeliveryStatus.SENT)
+                                .claimedAt(now.minusHours(1))
+                                .sentAt(now.minusHours(1))
+                                .build(),
+                        reminder(12L, JUNG_ID, List.of(SETTLEMENT_ID))
+                                .claimedAt(now.minusMinutes(1))
+                                .build());
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                thenCancellationNoticesSavedFor(LEE_ID, PARK_ID, CHOI_ID, JUNG_ID);
+            }
+
+            @Test
+            @DisplayName("다른 정산 건만 담은 리마인드와 컨슈머가 아직 맡지 않은 리마인드의 참여자는 뺀다")
+            void shouldExcludeRecipientsOfRemindersNotReachedOrWithoutSettlement() {
+                // given
+                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
+                givenNotifiedSettlementCancelledAt(now);
+                givenReminders(
+                        reminder(11L, KANG_ID, List.of(SECOND_SETTLEMENT_ID))
+                                .status(DeliveryStatus.SENT)
+                                .claimedAt(now.minusHours(1))
+                                .sentAt(now.minusHours(1))
+                                .build(),
+                        reminder(12L, CHOI_ID, List.of(SETTLEMENT_ID)).build());
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                thenCancellationNoticesSavedFor(LEE_ID, PARK_ID);
+            }
+
+            @Test
+            @DisplayName("정산 메시지와 리마인드를 모두 받은 참여자에게는 취소 알림을 하나만 저장한다")
+            void shouldSaveOneCancellationNoticeForRecipientOfNoticeAndReminder() {
+                // given
+                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
+                givenNotifiedSettlementCancelledAt(now);
+                givenReminders(
+                        reminder(11L, LEE_ID, List.of(SETTLEMENT_ID))
+                                .status(DeliveryStatus.SENT)
+                                .claimedAt(now.minusMinutes(30))
+                                .sentAt(now.minusMinutes(30))
+                                .build());
+
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                thenCancellationNoticesSavedFor(LEE_ID, PARK_ID);
+            }
+
             // 이는 정산 메시지를 받았고, 박은 컨슈머가 맡아 내용을 만들었다. 나머지 수신자에게는 정산 메시지가 닿지 않았다.
             private void givenNotifiedSettlementCancelledAt(LocalDateTime now) {
                 givenNow(now);
@@ -1251,6 +1315,27 @@ class SettlementCommandServiceTest extends UnitTest {
                     Long deliveryId, Long participantId) {
                 return NotificationDeliveryFixture.SETTLEMENT_NOTICE.builder(
                         deliveryId, GATHERING_ID, participantId, List.of(SETTLEMENT_ID));
+            }
+
+            private NotificationDelivery.NotificationDeliveryBuilder reminder(
+                    Long deliveryId, Long participantId, List<Long> settlementIds) {
+                return NotificationDeliveryFixture.REMINDER_NOTICE.builder(
+                        deliveryId, GATHERING_ID, participantId, settlementIds);
+            }
+
+            private void givenReminders(NotificationDelivery... reminders) {
+                given(
+                                notificationDeliveryRepository
+                                        .findAllRemindersByGatheringIdForUpdate(GATHERING_ID))
+                        .willReturn(List.of(reminders));
+            }
+
+            private void thenCancellationNoticesSavedFor(Long... participantIds) {
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                then(notificationDeliveryRepository).should().saveAll(captor.capture());
+                assertThat(captor.getValue())
+                        .extracting(NotificationDelivery::getParticipantId)
+                        .containsExactly(participantIds);
             }
 
             private void thenCancellationNoticesSavedAvailableAt(LocalDateTime availableAt) {
@@ -1821,20 +1906,17 @@ class SettlementCommandServiceTest extends UnitTest {
                         .containsOnly(ShareStatus.UNPAID);
                 assertThat(result.confirmedAmount()).isZero();
             }
+        }
+
+        @Nested
+        @DisplayName("정산 메시지를 보내기 전의 정산 건인 경우")
+        class WhenSettlementNotNotified {
 
             @Test
-            @DisplayName("정산 메시지를 보내기 전이면 모임의 발송 예정 시각을 담아 반환한다")
-            void shouldReturnNotificationScheduledAtWhenSettlementNotNotified() {
+            @DisplayName("모임의 발송 예정 시각을 담아 반환한다")
+            void shouldReturnNotificationScheduledAt() {
                 // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
+                givenUnnotifiedSettlement();
                 givenSchedule();
 
                 // when
@@ -1845,9 +1927,148 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("정산 메시지를 보낸 정산 건이면 모임에 다른 예약이 있어도 발송 예정 시각을 비워 반환한다")
-            void shouldReturnNullNotificationScheduledAtWhenSettlementNotified() {
+            @DisplayName("발송 예약을 잠그지 않고 리마인드를 저장하지 않는다")
+            void shouldNotScheduleReminder() {
                 // given
+                givenUnnotifiedSettlement();
+
+                // when
+                settlementCommandService.revert(command());
+
+                // then
+                then(notificationScheduleRepository)
+                        .should(never())
+                        .findOrCreateForUpdate(anyLong());
+                then(notificationDeliveryRepository).shouldHaveNoInteractions();
+            }
+
+            private void givenUnnotifiedSettlement() {
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithFirstShareStatus(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS,
+                                ShareStatus.SENT));
+                givenSaveReturnsSettlement();
+            }
+        }
+
+        @Nested
+        @DisplayName("정산 메시지를 보낸 정산 건의 분담금을 되돌리는 경우")
+        class WhenSettlementNotified {
+
+            @Test
+            @DisplayName("모임에 다른 예약이 있어도 발송 예정 시각을 비워 반환한다")
+            void shouldReturnNullNotificationScheduledAt() {
+                // given
+                givenNotifiedSettlementRevertedAt(NOW);
+                givenSchedule();
+
+                // when
+                SettlementResult result = settlementCommandService.revert(command());
+
+                // then
+                assertThat(result.notified()).isTrue();
+                assertThat(result.notificationScheduledAt()).isNull();
+            }
+
+            @Test
+            @DisplayName("정산 건을 저장하기 전에 모임의 발송 예약을 잠그고, 되돌린 참여자에게 24시간 뒤 그 정산 건을 담은 리마인드를 저장한다")
+            void shouldLockScheduleAndSaveReminderBeforeSavingSettlement() {
+                // given
+                givenNotifiedSettlementRevertedAt(NOW);
+
+                // when
+                settlementCommandService.revert(command());
+
+                // then
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                InOrder inOrder =
+                        inOrder(
+                                notificationScheduleRepository,
+                                notificationDeliveryRepository,
+                                settlementRepository);
+                inOrder.verify(notificationScheduleRepository).findOrCreateForUpdate(GATHERING_ID);
+                inOrder.verify(notificationDeliveryRepository).saveAll(captor.capture());
+                inOrder.verify(settlementRepository).save(any(Settlement.class));
+                assertThat(captor.getValue())
+                        .extracting(
+                                NotificationDelivery::getGatheringId,
+                                NotificationDelivery::getParticipantId,
+                                NotificationDelivery::getType,
+                                NotificationDelivery::getSettlementIds,
+                                NotificationDelivery::getStatus,
+                                NotificationDelivery::getAvailableAt)
+                        .containsExactly(
+                                tuple(
+                                        GATHERING_ID,
+                                        LEE_ID,
+                                        NotificationType.REMINDER,
+                                        List.of(SETTLEMENT_ID),
+                                        DeliveryStatus.PENDING,
+                                        LocalDateTime.of(2026, 10, 30, 18, 0)));
+            }
+
+            @Test
+            @DisplayName("21:59:59에 되돌리면 다음 날 21:59:59에 보낼 리마인드를 저장한다")
+            void shouldSaveReminderNextDayWhenRevertedJustBeforeSendingEnd() {
+                // given
+                givenNotifiedSettlementRevertedAt(LocalDateTime.of(2026, 10, 29, 21, 59, 59));
+
+                // when
+                settlementCommandService.revert(command());
+
+                // then
+                thenReminderSavedAt(LocalDateTime.of(2026, 10, 30, 21, 59, 59));
+            }
+
+            @Test
+            @DisplayName("22:00에 되돌리면 24시간 뒤가 보낼 수 없는 시간대라 그다음 10:00에 보낼 리마인드를 저장한다")
+            void shouldSaveReminderAtSendingStartWhenRevertedAtSendingEnd() {
+                // given
+                givenNotifiedSettlementRevertedAt(LocalDateTime.of(2026, 10, 29, 22, 0));
+
+                // when
+                settlementCommandService.revert(command());
+
+                // then
+                thenReminderSavedAt(LocalDateTime.of(2026, 10, 31, 10, 0));
+            }
+
+            @Test
+            @DisplayName("되돌린 참여자의 보내기를 기다리는 리마인드가 새 리마인드 시각과 24시간에서 1초 모자란 차이면 리마인드를 저장하지 않는다")
+            void shouldNotSaveReminderWhenPendingReminderWithinGap() {
+                // given
+                givenNotifiedSettlementRevertedAt(NOW);
+                givenPendingReminderOfLeeAt(LocalDateTime.of(2026, 10, 31, 17, 59, 59));
+
+                // when
+                settlementCommandService.revert(command());
+
+                // then
+                then(notificationDeliveryRepository).should().saveAll(List.of());
+                then(settlementRepository).should().save(any(Settlement.class));
+            }
+
+            @Test
+            @DisplayName("되돌린 참여자의 보내기를 기다리는 리마인드가 새 리마인드 시각과 정확히 24시간 차이면 리마인드를 저장한다")
+            void shouldSaveReminderWhenPendingReminderAtGap() {
+                // given
+                givenNotifiedSettlementRevertedAt(NOW);
+                givenPendingReminderOfLeeAt(LocalDateTime.of(2026, 10, 31, 18, 0));
+
+                // when
+                settlementCommandService.revert(command());
+
+                // then
+                thenReminderSavedAt(LocalDateTime.of(2026, 10, 30, 18, 0));
+            }
+
+            // 이의 분담금을 보냄으로 바꾼 뒤 정산 메시지를 보낸 정산 건이다.
+            private void givenNotifiedSettlementRevertedAt(LocalDateTime now) {
+                givenNow(now);
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
@@ -1859,14 +2080,28 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(settlement);
                 givenSaveReturnsSettlement();
-                givenSchedule();
+            }
 
-                // when
-                SettlementResult result = settlementCommandService.revert(command());
+            private void givenPendingReminderOfLeeAt(LocalDateTime availableAt) {
+                given(notificationDeliveryRepository.findAllRemindersByGatheringId(GATHERING_ID))
+                        .willReturn(
+                                List.of(
+                                        NotificationDeliveryFixture.REMINDER_NOTICE
+                                                .builder(
+                                                        1L,
+                                                        GATHERING_ID,
+                                                        LEE_ID,
+                                                        List.of(SECOND_SETTLEMENT_ID))
+                                                .availableAt(availableAt)
+                                                .build()));
+            }
 
-                // then
-                assertThat(result.notified()).isTrue();
-                assertThat(result.notificationScheduledAt()).isNull();
+            private void thenReminderSavedAt(LocalDateTime availableAt) {
+                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
+                then(notificationDeliveryRepository).should().saveAll(captor.capture());
+                assertThat(captor.getValue())
+                        .extracting(NotificationDelivery::getAvailableAt)
+                        .containsExactly(availableAt);
             }
         }
 
@@ -1942,6 +2177,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 notificationCommandService,
                 notificationCommandService,
                 new NotificationQueryService(notificationScheduleRepository, clock),
+                notificationCommandService,
                 clock);
     }
 

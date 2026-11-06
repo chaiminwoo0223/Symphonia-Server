@@ -2,6 +2,7 @@ package com.symphonia.notification.application.service;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.notification.application.dto.command.NotifySettlementsCommand;
+import com.symphonia.notification.application.dto.result.NotificationTargetResult;
 import com.symphonia.notification.application.provider.NotificationTargetProvider;
 import com.symphonia.notification.application.usecase.DispatchSettlementNotificationUseCase;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
@@ -11,6 +12,8 @@ import com.symphonia.notification.domain.repository.NotificationDeliveryReposito
 import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 
 // 예약 시각이 된 모임의 정산 메시지 발송을 시작한다. 실제 발송은 수신자별 발송 기록을 큐로 받은 컨슈머가 한다.
@@ -46,18 +49,35 @@ public class DispatchSettlementNotificationService
     }
 
     // 예약 뒤에 모두 취소됐으면 보낼 정산 건이 없어 발송 기록도 만들지 않는다.
+    // 정산 메시지와 함께 그 수신자의 3일 뒤, 5일 뒤 리마인드를 만든다. 그때까지 모두 내면 리마인드는 보내지 않고 건너뛴다.
     private void notifySettlements(Long gatheringId, LocalDateTime now) {
+        List<NotificationTargetResult> targets =
+                notificationTargetProvider.notifySettlements(
+                        NotifySettlementsCommand.of(gatheringId, now));
+        List<NotificationDelivery> reminders =
+                notificationDeliveryRepository.findAllRemindersByGatheringId(gatheringId);
+
         notificationDeliveryRepository.saveAll(
-                notificationTargetProvider
-                        .notifySettlements(NotifySettlementsCommand.of(gatheringId, now))
-                        .stream()
-                        .map(
-                                target ->
-                                        NotificationDelivery.forSettlement(
-                                                gatheringId,
-                                                target.participantId(),
-                                                target.settlementIds(),
-                                                now))
+                targets.stream()
+                        .flatMap(target -> deliveriesOf(gatheringId, target, reminders, now))
                         .toList());
+    }
+
+    private Stream<NotificationDelivery> deliveriesOf(
+            Long gatheringId,
+            NotificationTargetResult target,
+            List<NotificationDelivery> reminders,
+            LocalDateTime now) {
+        return Stream.concat(
+                Stream.of(
+                        NotificationDelivery.forSettlement(
+                                gatheringId, target.participantId(), target.settlementIds(), now)),
+                NotificationDelivery.forReminders(
+                        gatheringId,
+                        target.participantId(),
+                        target.settlementIds(),
+                        NotificationPolicy.reminderTimes(now),
+                        reminders)
+                        .stream());
     }
 }

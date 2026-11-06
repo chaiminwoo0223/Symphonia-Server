@@ -69,7 +69,7 @@ public class PrepareNotificationService implements PrepareNotificationUseCase {
             NotificationDelivery notificationDelivery,
             NotificationContentResult content,
             LocalDateTime now) {
-        notificationDelivery.claim(now);
+        notificationDelivery.claim(now, content.settlementIds());
         return PreparedNotificationResult.of(notificationDelivery, content);
     }
 

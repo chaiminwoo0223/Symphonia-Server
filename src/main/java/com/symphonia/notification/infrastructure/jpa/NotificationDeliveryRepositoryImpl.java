@@ -69,4 +69,20 @@ public class NotificationDeliveryRepositoryImpl implements NotificationDeliveryR
                 .map(NotificationDeliveryJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<NotificationDelivery> findAllRemindersByGatheringId(Long gatheringId) {
+        return notificationDeliveryJpaRepository.findAllRemindersByGatheringId(gatheringId).stream()
+                .map(NotificationDeliveryJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<NotificationDelivery> findAllRemindersByGatheringIdForUpdate(Long gatheringId) {
+        return notificationDeliveryJpaRepository
+                .findAllRemindersByGatheringIdForUpdate(gatheringId)
+                .stream()
+                .map(NotificationDeliveryJpaEntity::toDomain)
+                .toList();
+    }
 }

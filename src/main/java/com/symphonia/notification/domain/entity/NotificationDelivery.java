@@ -38,6 +38,7 @@ public class NotificationDelivery {
     private Long participantId;
     private NotificationType type;
     // 메시지에 담을 정산 건이다. 발송 뒤에 기록한 정산 건은 새 메시지로 따로 알리므로, 같은 금액을 두 번 안내하지 않는다.
+    // 컨슈머가 맡을 때마다 실제로 메시지에 담은 정산 건으로 바꾼다. 취소 알림을 받을 참여자를 이 목록으로 고르기 때문이다(#127).
     private List<Long> settlementIds;
     private DeliveryStatus status;
     private int attempts;
@@ -68,11 +69,40 @@ public class NotificationDelivery {
                 .toList();
     }
 
+    // 같은 참여자에게 24시간 안에 나갈 리마인드가 있으면 그 시각의 리마인드는 만들지 않는다.
+    // 리마인드는 보내기 직전에 모임의 미입금 분담금을 모두 담으므로, 가까운 리마인드 하나가 그 금액을 함께 안내한다.
+    // 그래서 정산 메시지를 여러 번 받은 참여자에게도 24시간 안에 겹치는 리마인드는 하나만 나간다.
+    // reminderTimes는 서로 24시간 이상 떨어져 있어, 새로 만드는 리마인드끼리는 겹치지 않는다.
+    public static List<NotificationDelivery> forReminders(
+            Long gatheringId,
+            Long participantId,
+            List<Long> settlementIds,
+            List<LocalDateTime> reminderTimes,
+            List<NotificationDelivery> existingReminders) {
+        return reminderTimes.stream()
+                .filter(
+                        reminderTime ->
+                                hasNoReminderNear(existingReminders, participantId, reminderTime))
+                .map(
+                        reminderTime ->
+                                pending(
+                                        gatheringId,
+                                        participantId,
+                                        NotificationType.REMINDER,
+                                        settlementIds,
+                                        reminderTime))
+                .toList();
+    }
+
     // 같은 메시지가 두 번 발행됐거나 다른 컨슈머가 보내는 중이면 맡지 않는다.
     public boolean isClaimable(LocalDateTime now) {
         return isPending()
                 && !availableAt.isAfter(now)
                 && (claimedAt == null || claimedAt.isBefore(claimExpiryThreshold(now)));
+    }
+
+    public boolean includes(Long settlementId) {
+        return settlementIds.contains(settlementId);
     }
 
     // 보냈거나 컨슈머가 맡아 이미 내용을 만든 발송 기록이다. 그 뒤에 취소된 정산 건은 메시지에서 빠지지 않으므로 취소 알림을 보낸다.
@@ -90,8 +120,10 @@ public class NotificationDelivery {
         return status == DeliveryStatus.PENDING;
     }
 
-    public void claim(LocalDateTime now) {
+    // 보내기 직전에 담을 금액을 다시 계산하므로, 실제로 담은 정산 건은 처음 만들 때와 다를 수 있다.
+    public void claim(LocalDateTime now, List<Long> includedSettlementIds) {
         claimedAt = now;
+        settlementIds = List.copyOf(includedSettlementIds);
     }
 
     // 보낼 수 없는 시간대에 맡게 되면 그다음 10:00로 미루고, 그때 다시 발행한다.
@@ -145,6 +177,22 @@ public class NotificationDelivery {
                 .status(DeliveryStatus.PENDING)
                 .availableAt(availableAt)
                 .build();
+    }
+
+    private static boolean hasNoReminderNear(
+            List<NotificationDelivery> reminders, Long participantId, LocalDateTime time) {
+        return reminders.stream()
+                .noneMatch(reminder -> reminder.isReminderNear(participantId, time));
+    }
+
+    // 아직 보내기를 기다리는 같은 참여자의 리마인드가 그 시각과 24시간 안에 있는지 본다.
+    // 새 리마인드는 언제나 지금부터 24시간 이후라서, 이미 보낸 리마인드와는 24시간 안에 겹치지 않는다.
+    // 건너뛰었거나 실패한 리마인드는 참여자에게 닿지 않았으므로 세지 않는다.
+    private boolean isReminderNear(Long participantId, LocalDateTime time) {
+        return type == NotificationType.REMINDER
+                && this.participantId.equals(participantId)
+                && isPending()
+                && NotificationPolicy.isWithinReminderGap(availableAt, time);
     }
 
     // 미뤄진 시각이 되면 폴러가 다시 발행하도록 발행 시각을 비우고, 다른 컨슈머가 맡을 수 있게 맡은 시각도 비운다.
