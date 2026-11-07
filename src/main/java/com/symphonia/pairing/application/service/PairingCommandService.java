@@ -23,7 +23,7 @@ public class PairingCommandService implements SubmitPairingFeedbackUseCase {
     // 잠가 읽기 때문에 동시에 다시 낸 평점이 집계에 두 번 반영되지도 않는다.
     @Override
     public PairingFeedbackResult submit(SubmitPairingFeedbackCommand command) {
-        verifyCatalogReferencesUseCase.verify(command.toVerifyCatalogReferencesQuery());
+        verifyCatalogReferencesUseCase.verify(command.toCatalogReferencesQuery());
         boolean created = pairingFeedbackRepository.saveIfAbsent(feedbackOf(command));
         // 이 요청이 넣지 않았어도 먼저 넣은 요청이 커밋한 뒤에야 saveIfAbsent가 끝나므로 피드백은 반드시 있다.
         PairingFeedback pairingFeedback =

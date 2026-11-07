@@ -6,7 +6,7 @@ import static org.mockito.BDDMockito.given;
 
 import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.query.CatalogQuery;
-import com.symphonia.catalog.application.dto.query.VerifyCatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.AnjuResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.DrinkResult;
@@ -191,8 +191,8 @@ class CatalogQueryServiceTest extends UnitTest {
             }
         }
 
-        private VerifyCatalogReferencesQuery query() {
-            return VerifyCatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
+        private CatalogReferencesQuery query() {
+            return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
         }
     }
 }

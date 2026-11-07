@@ -1,7 +1,7 @@
 package com.symphonia.catalog.application.service;
 
 import com.symphonia.catalog.application.dto.query.CatalogQuery;
-import com.symphonia.catalog.application.dto.query.VerifyCatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
 import com.symphonia.catalog.application.usecase.GetCatalogUseCase;
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
@@ -31,7 +31,7 @@ public class CatalogQueryService implements GetCatalogUseCase, VerifyCatalogRefe
     }
 
     @Override
-    public void verify(VerifyCatalogReferencesQuery query) {
+    public void verify(CatalogReferencesQuery query) {
         drinkRepository.findById(query.drinkId()).orElseThrow(DrinkNotFoundException::new);
         anjuRepository.findById(query.anjuId()).orElseThrow(AnjuNotFoundException::new);
         musicMoodRepository

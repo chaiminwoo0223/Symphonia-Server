@@ -9,7 +9,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
-import com.symphonia.catalog.application.dto.query.VerifyCatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.pairing.application.dto.command.SubmitPairingFeedbackCommand;
@@ -59,7 +59,7 @@ class PairingCommandServiceTest extends UnitTest {
                 // given
                 willThrow(new DrinkNotFoundException())
                         .given(verifyCatalogReferencesUseCase)
-                        .verify(VerifyCatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
 
                 // when & then
                 assertThatThrownBy(() -> pairingCommandService.submit(command()))
@@ -87,7 +87,7 @@ class PairingCommandServiceTest extends UnitTest {
                 // then
                 then(verifyCatalogReferencesUseCase)
                         .should()
-                        .verify(VerifyCatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
                 ArgumentCaptor<PairingFeedback> inserted =
                         ArgumentCaptor.forClass(PairingFeedback.class);
                 then(pairingFeedbackRepository).should().saveIfAbsent(inserted.capture());
