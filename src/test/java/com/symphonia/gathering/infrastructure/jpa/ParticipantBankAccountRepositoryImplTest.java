@@ -1,7 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
-import static com.symphonia.gathering.helper.ConcurrencyHelper.await;
-import static com.symphonia.gathering.helper.ConcurrencyHelper.runConcurrently;
+import static com.symphonia.common.helper.ConcurrencyHelper.await;
+import static com.symphonia.common.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;

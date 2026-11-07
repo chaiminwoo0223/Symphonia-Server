@@ -1,6 +1,6 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
-import static com.symphonia.gathering.helper.ConcurrencyHelper.runConcurrently;
+import static com.symphonia.common.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.symphonia.RepositoryTest;
