@@ -35,7 +35,7 @@ public class PairingCommandService implements SubmitPairingFeedbackUseCase {
                                 command.musicMoodId())
                         .orElseThrow();
 
-        return created ? submitted(pairingFeedback) : resubmit(pairingFeedback, command);
+        return created ? submitFirst(pairingFeedback) : resubmit(pairingFeedback, command);
     }
 
     private PairingFeedback feedbackOf(SubmitPairingFeedbackCommand command) {
@@ -49,10 +49,18 @@ public class PairingCommandService implements SubmitPairingFeedbackUseCase {
                 command.rating());
     }
 
-    private PairingFeedbackResult submitted(PairingFeedback pairingFeedback) {
+    private PairingFeedbackResult submitFirst(PairingFeedback pairingFeedback) {
         accumulate(pairingFeedback, PairingRatingChange.added(pairingFeedback.getRating()));
 
         return PairingFeedbackResult.submitted(pairingFeedback);
+    }
+
+    private void accumulate(PairingFeedback pairingFeedback, PairingRatingChange change) {
+        pairingRatingSummaryRepository.accumulate(
+                pairingFeedback.getDrinkId(),
+                pairingFeedback.getAnjuId(),
+                pairingFeedback.getMusicMoodId(),
+                change);
     }
 
     private PairingFeedbackResult resubmit(
@@ -66,13 +74,5 @@ public class PairingCommandService implements SubmitPairingFeedbackUseCase {
                 .ifPresent(countChange -> accumulate(savedPairingFeedback, countChange));
 
         return PairingFeedbackResult.resubmitted(savedPairingFeedback);
-    }
-
-    private void accumulate(PairingFeedback pairingFeedback, PairingRatingChange change) {
-        pairingRatingSummaryRepository.accumulate(
-                pairingFeedback.getDrinkId(),
-                pairingFeedback.getAnjuId(),
-                pairingFeedback.getMusicMoodId(),
-                change);
     }
 }
