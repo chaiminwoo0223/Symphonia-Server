@@ -4,10 +4,12 @@ import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
+import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class GatheringController implements GatheringApi {
     private final OpenGatheringUseCase openGatheringUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
+    private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
     private final GetGatheringUseCase getGatheringUseCase;
 
     @Override
@@ -43,6 +46,14 @@ public class GatheringController implements GatheringApi {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(StandardResponse.success(HttpStatus.CREATED, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<Void>> choosePairing(
+            String memberId, Long gatheringId, GatheringPairingRequest request) {
+        chooseGatheringPairingUseCase.choose(request.toChooseCommand(memberId, gatheringId));
+
+        return ResponseEntity.status(HttpStatus.OK).body(StandardResponse.success(HttpStatus.OK));
     }
 
     @Override

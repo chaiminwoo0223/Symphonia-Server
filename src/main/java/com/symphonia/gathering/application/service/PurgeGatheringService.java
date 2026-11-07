@@ -3,10 +3,12 @@ package com.symphonia.gathering.application.service;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
+import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
+import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
 import com.symphonia.notification.application.usecase.PurgeNotificationsUseCase;
@@ -27,6 +29,8 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
+    private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
+    private final GatheringPairingRepository gatheringPairingRepository;
     private final SettlementRepository settlementRepository;
     private final PurgeNotificationsUseCase purgeNotificationsUseCase;
     private final Clock clock;
@@ -50,8 +54,10 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
         purgeNotificationsUseCase.purge(gatheringId);
         participantLinkTokenRepository.deleteAllByGatheringId(gatheringId);
         participantBankAccountRepository.deleteAllByGatheringId(gatheringId);
+        participantPairingFeedbackRepository.deleteAllByGatheringId(gatheringId);
         settlementRepository.deleteAllByGatheringId(gatheringId);
         gatheringJoinTokenRepository.deleteAllByGatheringId(gatheringId);
+        gatheringPairingRepository.deleteByGatheringId(gatheringId);
         gatheringRepository.delete(gatheringId);
     }
 }

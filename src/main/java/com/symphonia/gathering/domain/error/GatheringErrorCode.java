@@ -20,6 +20,7 @@ public enum GatheringErrorCode implements ErrorCode {
     INVALID_SETTLEMENT_AMOUNT(HttpStatus.BAD_REQUEST, "총액은 0보다 크고, 지정 금액은 0 이상이어야 합니다."),
     FIXED_AMOUNT_EXCEEDS_TOTAL(HttpStatus.BAD_REQUEST, "지정 금액의 합이 총액보다 클 수 없습니다."),
     INVALID_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "정산 건 인원이나 지정 금액의 대상이 올바르지 않습니다."),
+    GATHERING_PAIRING_CLOSED(HttpStatus.BAD_REQUEST, "페어링을 바꿀 수 있는 기간이 끝난 모임입니다."),
 
     // 403
     NOT_GATHERING_HOST(HttpStatus.FORBIDDEN, "모임을 만든 회원만 요청할 수 있습니다."),
@@ -31,10 +32,12 @@ public enum GatheringErrorCode implements ErrorCode {
     LINK_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "유효하지 않은 링크입니다. 받은 링크를 다시 확인해 주세요."),
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정산 건을 찾을 수 없습니다."),
     SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담금을 찾을 수 없습니다."),
+    GATHERING_PAIRING_NOT_FOUND(HttpStatus.NOT_FOUND, "모임에서 고른 페어링이 없습니다."),
 
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
     BANK_ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 계좌를 등록한 참여자입니다."),
+    PAIRING_FEEDBACK_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 페어링 피드백을 남긴 참여자입니다."),
     SETTLEMENT_ALREADY_NOTIFIED(
             HttpStatus.CONFLICT, "정산 메시지를 보낸 정산 건은 수정할 수 없습니다. 취소하고 다시 기록해 주세요."),
     SETTLEMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 취소한 정산 건입니다."),
