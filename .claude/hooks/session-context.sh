@@ -20,6 +20,7 @@ expected="$(expected_gh_user)"
 
 echo "현재 브랜치: ${branch:-알 수 없음}"
 echo "gh 활성 계정: ${gh_user:-알 수 없음}"
+echo "기대 계정: ${expected:-알 수 없음(git 작성자 이메일이 noreply 형식이 아니라 계정 게이트가 동작하지 않는다)}"
 
 if [[ -n "$gh_user" && -n "$expected" && "$gh_user" != "$expected" ]]; then
     echo "경고: gh 활성 계정이 git 작성자 계정 ${expected}와 다르다. gh로 이슈나 PR을 만들기 전에 'gh auth switch -u ${expected}'로 계정을 바꿔라."

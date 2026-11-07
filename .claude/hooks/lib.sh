@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# PreToolUse(Bash) 훅 공통 함수. 각 훅이 `source "$(dirname "$0")/lib.sh"`로 불러 쓴다.
+# 훅 공통 함수(PreToolUse, SessionStart). 각 훅이 `source "$(dirname "$0")/lib.sh"`로 불러 쓴다.
 #
-# 입력 파싱, 명령 판별, 브랜치 조회, 차단 응답 출력처럼 훅마다 똑같이 반복되던 코드를 한곳에 모은다.
+# 입력 파싱, 명령 판별, 브랜치 조회, gh 계정 조회, 차단 응답 출력처럼 훅마다 똑같이 반복되던 코드를 한곳에 모은다.
 # 판정 규칙 자체는 각 훅이 갖는다.
 
 # stdin의 훅 payload에서 Bash 명령 문자열을 읽어 전역 변수 command에 담는다.
