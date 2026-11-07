@@ -4,9 +4,10 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.function.BinaryOperator;
 
 // 모임의 개인정보를 언제 파기하는지 정한다(#128).
 // 모든 분담금이 끝나고 7일 뒤에 파기하고, 끝나지 않았어도 모임을 연 지 29일 뒤에는 파기한다.
@@ -45,20 +46,28 @@ public record GatheringRetention(
         return dataKeyDiscarded || !now.isBefore(deletesAt);
     }
 
-    // 취소하지 않은 정산 건에 미입금 분담금이 남았으면 끝나지 않았다.
-    // 끝났으면 기록 기간이 끝난 시각, 분담금 상태를 바꾼 시각, 정산 건을 취소한 시각 중 가장 늦은 시각에 끝난 것으로 본다.
-    // 기록 기간 안에는 정산 건이 더 들어올 수 있고, 정산 건이 없는 모임도 기록 기간이 끝나면 더 쓸 일이 없기 때문이다.
+    // 정산이 끝나지 않았으면 끝난 시각이 없어 빈 값을 돌려준다.
     private static Optional<LocalDateTime> completedAt(
             LocalDateTime openedAt, List<Settlement> settlements) {
-        if (settlements.stream().anyMatch(Settlement::hasUnpaidShares)) {
-            return Optional.empty();
-        }
+        return Optional.of(settlements)
+                .filter(GatheringRetention::isSettled)
+                .map(settled -> lastChangedAt(openedAt, settled));
+    }
 
-        return Stream.concat(
-                        Stream.of(GatheringPolicy.recordingClosesAt(openedAt)),
-                        settlements.stream()
-                                .map(Settlement::getLastChangedAt)
-                                .flatMap(Optional::stream))
-                .max(LocalDateTime::compareTo);
+    // 취소하지 않은 정산 건에 미입금 분담금이 남았으면 정산이 끝나지 않았다.
+    private static boolean isSettled(List<Settlement> settlements) {
+        return settlements.stream().noneMatch(Settlement::hasUnpaidShares);
+    }
+
+    // 기록 기간이 끝난 시각에서 시작해, 분담금 상태를 바꾼 시각과 정산 건을 취소한 시각 중 더 늦은 시각으로 바꿔 간다.
+    // 기록 기간 안에는 정산 건이 더 들어올 수 있고, 정산 건이 없는 모임도 기록 기간이 끝나면 더 쓸 일이 없기 때문이다.
+    private static LocalDateTime lastChangedAt(
+            LocalDateTime openedAt, List<Settlement> settlements) {
+        return settlements.stream()
+                .map(Settlement::getLastChangedAt)
+                .flatMap(Optional::stream)
+                .reduce(
+                        GatheringPolicy.recordingClosesAt(openedAt),
+                        BinaryOperator.maxBy(Comparator.naturalOrder()));
     }
 }
