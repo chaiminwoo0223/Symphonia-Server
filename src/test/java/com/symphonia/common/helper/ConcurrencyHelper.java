@@ -1,4 +1,4 @@
-package com.symphonia.gathering.helper;
+package com.symphonia.common.helper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
