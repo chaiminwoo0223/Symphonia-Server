@@ -44,7 +44,8 @@ public class Pairing {
     private final List<PairingReason> reasons;
 
     // 선정 규칙에 들 수 있는 음료×안주 쌍과 상위 음악만 결합하고, 피드백이 있는 조합은 경계 밖이어도 함께 결합한다.
-    // 감점받은 조합이 밀려난 자리를 채울 수 있도록 감점받은 조합 수만큼 경계를 넓힌다.
+    // 감점받은 조합이 밀려난 자리를 채울 수 있도록 상위 경계와 음악 수는 감점받은 조합 수만큼 넓힌다.
+    // 스타일별 최고와 무알코올 최고는 그 경계에 속한 음료의 감점 조합 수만큼만 넓힌다.
     public static List<Pairing> recommend(
             List<PairingDrink> drinks,
             List<PairingAnju> anjus,
@@ -69,7 +70,7 @@ public class Pairing {
         int displaceable = feedbackScores.penalizedCount();
 
         List<ScoredDrinkAnju> drinkAnjus =
-                selectableDrinkAnjus(allowedDrinks, allowedAnjus, occasion, displaceable);
+                selectableDrinkAnjus(allowedDrinks, allowedAnjus, occasion, feedbackScores);
         List<ScoredMusicMood> topMusicMoods =
                 nearTop(
                         musicMoodById.values(),
@@ -121,7 +122,7 @@ public class Pairing {
             List<PairingDrink> allowedDrinks,
             List<PairingAnju> allowedAnjus,
             Occasion occasion,
-            int displaceable) {
+            FeedbackScores feedbackScores) {
         DrinkAnjuScores scores =
                 DrinkAnjuScores.of(
                         allowedDrinks,
@@ -130,8 +131,8 @@ public class Pairing {
         SelectionThresholds thresholds =
                 SelectionThresholds.of(
                         scores,
-                        RECOMMENDATION_LIMIT + displaceable,
-                        1 + displaceable,
+                        RECOMMENDATION_LIMIT + feedbackScores.penalizedCount(),
+                        feedbackScores.penalizedCountByDrink(),
                         occasion.requiresNonAlcoholicOption(),
                         TIE_TOLERANCE);
 
