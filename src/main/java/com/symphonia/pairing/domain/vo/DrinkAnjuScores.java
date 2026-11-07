@@ -1,9 +1,8 @@
 package com.symphonia.pairing.domain.vo;
 
-import java.util.Arrays;
 import java.util.List;
+import java.util.function.DoubleConsumer;
 import java.util.function.ToDoubleBiFunction;
-import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -33,10 +32,13 @@ public record DrinkAnjuScores(List<PairingDrink> drinks, List<PairingAnju> anjus
         return drinks.size();
     }
 
-    public DoubleStream scoresOf(int drinkIndex) {
+    // 선정 경계를 구할 때 모든 쌍을 훑으므로 음료마다 스트림을 만들지 않고 반복문으로 넘긴다.
+    public void forEachScoreOf(int drinkIndex, DoubleConsumer action) {
         int from = drinkIndex * anjus.size();
 
-        return Arrays.stream(scores, from, from + anjus.size());
+        for (int index = from; index < from + anjus.size(); index++) {
+            action.accept(scores[index]);
+        }
     }
 
     // 한 음료의 쌍 중 점수가 경계 이상인 쌍을 안주 순서대로 만든다.

@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 // 이번 추천에 쓸 수 있는 조합 중 피드백 집계가 있는 조합과 그 피드백 점수다.
 // 도수 상한이나 알레르기로 빠진 음료와 안주의 집계는 담지 않는다.
@@ -42,7 +43,21 @@ public record FeedbackScores(Map<CombinationId, Double> scoreByCombination) {
 
     // 감점받은 조합은 피드백이 없을 때의 순위보다 밀려날 수 있다. 그 수만큼 미리 거르는 경계를 넓힌다.
     public int penalizedCount() {
-        return (int) scoreByCombination.values().stream().filter(score -> score < 0).count();
+        return (int) penalized().count();
+    }
+
+    // 스타일별 최고와 무알코올 최고는 그 경계에 속한 음료의 감점 조합만큼만 넓히도록 음료별로 센다.
+    public Map<Long, Integer> penalizedCountByDrink() {
+        return penalized()
+                .collect(
+                        Collectors.groupingBy(
+                                CombinationId::drinkId, Collectors.summingInt(_ -> 1)));
+    }
+
+    private Stream<CombinationId> penalized() {
+        return scoreByCombination.entrySet().stream()
+                .filter(entry -> entry.getValue() < 0)
+                .map(Map.Entry::getKey);
     }
 
     public Set<CombinationId> combinations() {
