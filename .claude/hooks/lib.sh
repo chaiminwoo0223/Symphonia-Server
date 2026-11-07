@@ -42,3 +42,18 @@ deny() {
     jq -n --arg reason "$1" '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
     exit 0
 }
+
+# git 작성자 이메일(<id>+<login>@users.noreply.github.com 또는 <login>@users.noreply.github.com)에서 GitHub 로그인을 출력한다.
+# GitHub 로그인은 대소문자를 구분하지 않으므로 활성 계정과 비교하기 쉽게 소문자로 출력한다.
+# noreply 형식이 아니면 로그인을 알 수 없으므로 1을 돌려준다(호출한 훅이 통과시킨다).
+expected_gh_user() {
+    local email
+    email="$(git config user.email 2>/dev/null)"
+    [[ "$email" =~ ^([0-9]+\+)?([A-Za-z0-9-]+)@users\.noreply\.github\.com$ ]] || return 1
+    tr '[:upper:]' '[:lower:]' <<<"${BASH_REMATCH[2]}"
+}
+
+# gh 활성 계정을 네트워크 호출 없이 gh 로컬 설정에서 읽어 소문자로 출력한다.
+active_gh_user() {
+    gh config get -h github.com user 2>/dev/null | tr '[:upper:]' '[:lower:]'
+}
