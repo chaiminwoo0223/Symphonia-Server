@@ -19,6 +19,7 @@ import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfi
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -121,7 +122,7 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
         @DisplayName("데이터 키를 지운 모임이면 참여자를 복호화하지 않고 데이터 키를 지운 것으로 반환한다")
         void shouldReturnDataKeyDiscardedWithoutDecrypting() {
             // given
-            gatheringRepository.discardDataKeys(List.of(gatheringId));
+            gatheringRepository.discardDataKey(gatheringId);
 
             // when
             GatheringRetention result =
@@ -134,49 +135,78 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findGatheringIdsOpenedUntil 메서드는")
-    class FindGatheringIdsOpenedUntil {
+    @DisplayName("findAllOpenedUntil 메서드는")
+    class FindAllOpenedUntil {
 
         @Test
-        @DisplayName("기준 시각에 연 모임을 찾는다")
-        void shouldFindGatheringOpenedAtBoundary() {
+        @DisplayName("기준 시각에 연 모임을 취소한 정산 건까지 읽어 파기 시각을 계산해 반환한다")
+        void shouldReturnRetentionOfGatheringOpenedAtBoundary() {
+            // given
+            LocalDateTime cancelledAt = OPENED_AT.plusDays(6);
+            Settlement cancelled = recordDinner();
+            cancelled.cancel(cancelledAt);
+            settlementRepository.save(cancelled);
+            clearPersistenceContext();
+
             // when
-            List<Long> result = gatheringRetentionRepository.findGatheringIdsOpenedUntil(OPENED_AT);
+            List<GatheringRetention> result =
+                    gatheringRetentionRepository.findAllOpenedUntil(OPENED_AT);
 
             // then
-            assertThat(result).contains(gatheringId);
+            assertThat(result)
+                    .filteredOn(retention -> retention.gatheringId().equals(gatheringId))
+                    .singleElement()
+                    .extracting(GatheringRetention::deletesAt)
+                    .isEqualTo(cancelledAt.plusDays(7));
         }
 
         @Test
-        @DisplayName("기준 시각보다 1초 뒤에 연 모임은 찾지 않는다")
-        void shouldNotFindGatheringOpenedAfterBoundary() {
+        @DisplayName("기준 시각보다 1초 뒤에 연 모임은 읽지 않는다")
+        void shouldNotReturnGatheringOpenedAfterBoundary() {
             // when
-            List<Long> result =
-                    gatheringRetentionRepository.findGatheringIdsOpenedUntil(
-                            OPENED_AT.minusSeconds(1));
+            List<GatheringRetention> result =
+                    gatheringRetentionRepository.findAllOpenedUntil(OPENED_AT.minusSeconds(1));
 
             // then
-            assertThat(result).doesNotContain(gatheringId);
+            assertThat(result)
+                    .extracting(GatheringRetention::gatheringId)
+                    .doesNotContain(gatheringId);
+        }
+
+        @Test
+        @DisplayName("데이터 키를 지운 모임은 데이터 키를 지운 것으로 반환한다")
+        void shouldReturnDataKeyDiscarded() {
+            // given
+            gatheringRepository.discardDataKey(gatheringId);
+
+            // when
+            List<GatheringRetention> result =
+                    gatheringRetentionRepository.findAllOpenedUntil(OPENED_AT);
+
+            // then
+            assertThat(result)
+                    .filteredOn(retention -> retention.gatheringId().equals(gatheringId))
+                    .singleElement()
+                    .extracting(GatheringRetention::dataKeyDiscarded)
+                    .isEqualTo(true);
         }
     }
 
     @Nested
-    @DisplayName("findAllByGatheringIdsForUpdate 메서드는")
-    class FindAllByGatheringIdsForUpdate {
+    @DisplayName("findByGatheringIdForUpdate 메서드는")
+    class FindByGatheringIdForUpdate {
 
         @Test
         @DisplayName("정산 건이 없는 모임도 파기 시각을 계산해 반환한다")
         void shouldReturnRetentionOfGatheringWithoutSettlements() {
             // when
-            List<GatheringRetention> result =
-                    gatheringRetentionRepository.findAllByGatheringIdsForUpdate(
-                            List.of(gatheringId));
+            GatheringRetention result =
+                    gatheringRetentionRepository
+                            .findByGatheringIdForUpdate(gatheringId)
+                            .orElseThrow();
 
             // then
-            assertThat(result)
-                    .singleElement()
-                    .extracting(GatheringRetention::deletesAt)
-                    .isEqualTo(OPENED_AT.plusHours(48).plusDays(7));
+            assertThat(result.deletesAt()).isEqualTo(OPENED_AT.plusHours(48).plusDays(7));
         }
 
         @Nested
@@ -200,18 +230,18 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
-            @DisplayName("기다리지 않고 그 모임을 건너뛴다")
-            void shouldSkipLockedGathering() {
+            @DisplayName("기다리지 않고 빈 값을 반환한다")
+            void shouldReturnEmptyWithoutWaiting() {
                 // given
                 lockHolder = CompletableFuture.runAsync(this::holdGatheringLock);
                 await(locked);
 
                 // when
-                List<GatheringRetention> result =
+                Optional<GatheringRetention> result =
                         transactionTemplate.execute(
                                 _ ->
-                                        gatheringRetentionRepository.findAllByGatheringIdsForUpdate(
-                                                List.of(gatheringId)));
+                                        gatheringRetentionRepository.findByGatheringIdForUpdate(
+                                                gatheringId));
 
                 // then
                 assertThat(result).isEmpty();

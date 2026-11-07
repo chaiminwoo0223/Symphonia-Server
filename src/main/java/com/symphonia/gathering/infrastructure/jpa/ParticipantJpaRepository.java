@@ -1,6 +1,5 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
-import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,6 +12,6 @@ public interface ParticipantJpaRepository extends JpaRepository<ParticipantJpaEn
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             "DELETE FROM ParticipantJpaEntity participant"
-                    + " WHERE participant.gatheringId IN :gatheringIds")
-    void deleteAllByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
+                    + " WHERE participant.gatheringId = :gatheringId")
+    void deleteAllByGatheringId(@Param("gatheringId") Long gatheringId);
 }

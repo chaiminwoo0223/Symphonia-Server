@@ -5,7 +5,6 @@ import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,11 +27,9 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
                 .findById(gatheringId)
                 .map(
                         gatheringEntity ->
-                                GatheringRetention.of(
-                                        gatheringId,
-                                        gatheringEntity.getOpenedAt(),
-                                        settlementRepository.findAllByGatheringId(gatheringId),
-                                        !gatheringDataKeyJpaRepository.existsById(gatheringId)));
+                                toRetention(
+                                        gatheringEntity,
+                                        settlementRepository.findAllByGatheringId(gatheringId)));
     }
 
     @Override
@@ -43,25 +40,16 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
     }
 
     @Override
-    public List<Long> findGatheringIdsOpenedUntil(LocalDateTime openedAt) {
-        return gatheringJpaRepository.findIdsOpenedUntil(openedAt);
-    }
-
-    // 모임마다 따로 조회하지 않도록 정산 건과 데이터 키를 한 번에 읽어 모임별로 나눈다.
-    @Override
-    public List<GatheringRetention> findAllByGatheringIdsForUpdate(Collection<Long> gatheringIds) {
+    public List<GatheringRetention> findAllOpenedUntil(LocalDateTime openedAt) {
         List<GatheringJpaEntity> gatheringEntities =
-                gatheringJpaRepository.findAllByIdsForUpdateSkipLocked(gatheringIds);
-        List<Long> lockedGatheringIds =
+                gatheringJpaRepository.findAllByOpenedAtLessThanEqualOrderById(openedAt);
+        List<Long> gatheringIds =
                 gatheringEntities.stream().map(GatheringJpaEntity::getId).toList();
-        if (lockedGatheringIds.isEmpty()) {
-            return List.of();
-        }
         Map<Long, List<Settlement>> settlementsByGatheringId =
-                settlementRepository.findAllByGatheringIdsForUpdate(lockedGatheringIds).stream()
+                settlementRepository.findAllByGatheringIds(gatheringIds).stream()
                         .collect(Collectors.groupingBy(Settlement::getGatheringId));
         Set<Long> dataKeyGatheringIds =
-                gatheringDataKeyJpaRepository.findAllById(lockedGatheringIds).stream()
+                gatheringDataKeyJpaRepository.findAllById(gatheringIds).stream()
                         .map(GatheringDataKeyJpaEntity::getGatheringId)
                         .collect(Collectors.toSet());
 
@@ -75,5 +63,26 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
                                                 gatheringEntity.getId(), List.of()),
                                         !dataKeyGatheringIds.contains(gatheringEntity.getId())))
                 .toList();
+    }
+
+    @Override
+    public Optional<GatheringRetention> findByGatheringIdForUpdate(Long gatheringId) {
+        return gatheringJpaRepository
+                .findByIdForUpdateSkipLocked(gatheringId)
+                .map(
+                        gatheringEntity ->
+                                toRetention(
+                                        gatheringEntity,
+                                        settlementRepository.findAllByGatheringIdForUpdate(
+                                                gatheringId)));
+    }
+
+    private GatheringRetention toRetention(
+            GatheringJpaEntity gatheringEntity, List<Settlement> settlements) {
+        return GatheringRetention.of(
+                gatheringEntity.getId(),
+                gatheringEntity.getOpenedAt(),
+                settlements,
+                !gatheringDataKeyJpaRepository.existsById(gatheringEntity.getId()));
     }
 }

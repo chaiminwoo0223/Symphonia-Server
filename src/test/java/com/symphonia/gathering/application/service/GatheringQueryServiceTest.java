@@ -157,25 +157,29 @@ class GatheringQueryServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("getPurgeCandidateIds 메서드는")
-    class GetPurgeCandidateIds {
+    @DisplayName("getExpiredGatheringIds 메서드는")
+    class GetExpiredGatheringIds {
 
         @Test
-        @DisplayName("기록 기간 48시간과 정산이 끝난 뒤 7일이 모두 지났을 수 있는 모임만 후보로 찾는다")
-        void shouldFindGatheringsOpenedBeforeEarliestDeletion() {
+        @DisplayName("기록 기간 48시간과 정산이 끝난 뒤 7일이 모두 지났을 수 있는 모임 중 파기 시각이 된 모임만 반환한다")
+        void shouldReturnOnlyExpiredGatherings() {
             // given
-            LocalDateTime latestExpirableOpenedAt = NOW.minusDays(7).minusHours(48);
-            given(gatheringRetentionRepository.findGatheringIdsOpenedUntil(latestExpirableOpenedAt))
-                    .willReturn(List.of(GATHERING_ID));
+            Long retainedGatheringId = GATHERING_ID + 1;
+            Long discardedGatheringId = GATHERING_ID + 2;
+            given(gatheringRetentionRepository.findAllOpenedUntil(NOW.minusDays(7).minusHours(48)))
+                    .willReturn(
+                            List.of(
+                                    GatheringRetentionFixture.EXPIRED.create(GATHERING_ID, NOW),
+                                    GatheringRetentionFixture.RETAINED.create(
+                                            retainedGatheringId, NOW),
+                                    GatheringRetentionFixture.DATA_KEY_DISCARDED.create(
+                                            discardedGatheringId, NOW)));
 
             // when
-            List<Long> result = gatheringQueryService.getPurgeCandidateIds();
+            List<Long> result = gatheringQueryService.getExpiredGatheringIds();
 
             // then
-            assertThat(result).containsExactly(GATHERING_ID);
-            then(gatheringRetentionRepository)
-                    .should()
-                    .findGatheringIdsOpenedUntil(latestExpirableOpenedAt);
+            assertThat(result).containsExactly(GATHERING_ID, discardedGatheringId);
         }
     }
 }

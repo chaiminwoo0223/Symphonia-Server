@@ -34,8 +34,11 @@ public interface SettlementRepository {
     // 취소한 정산 건까지 모임의 정산 건을 모두 찾는다. 모임의 파기 시각을 정하는 데 쓴다.
     List<Settlement> findAllByGatheringId(Long gatheringId);
 
-    // 취소한 정산 건까지 모임들의 정산 건을 id 순으로 잠그고 찾는다. 파기 스윕이 파기 시각을 다시 판단하는 데 쓴다.
-    List<Settlement> findAllByGatheringIdsForUpdate(Collection<Long> gatheringIds);
+    // 취소한 정산 건까지 여러 모임의 정산 건을 한 번에 찾는다. 파기 스윕이 파기할 모임을 고르는 데 쓴다.
+    List<Settlement> findAllByGatheringIds(Collection<Long> gatheringIds);
 
-    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
+    // 취소한 정산 건까지 모임의 정산 건을 id 순으로 잠그고 찾는다. 파기하기 직전에 파기 시각을 다시 판단하는 데 쓴다.
+    List<Settlement> findAllByGatheringIdForUpdate(Long gatheringId);
+
+    void deleteAllByGatheringId(Long gatheringId);
 }

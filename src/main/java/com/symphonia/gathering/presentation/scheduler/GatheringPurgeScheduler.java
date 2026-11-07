@@ -1,8 +1,8 @@
 package com.symphonia.gathering.presentation.scheduler;
 
-import com.symphonia.gathering.application.usecase.GetPurgeCandidatesUseCase;
+import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
 import com.symphonia.gathering.application.usecase.PurgeGatheringsUseCase;
-import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,29 +21,24 @@ import org.springframework.stereotype.Component;
         havingValue = "true",
         matchIfMissing = true)
 public class GatheringPurgeScheduler {
-    private static final int BATCH_SIZE = 100;
-
-    private final GetPurgeCandidatesUseCase getPurgeCandidatesUseCase;
+    private final GetExpiredGatheringsUseCase getExpiredGatheringsUseCase;
     private final PurgeGatheringsUseCase purgeGatheringsUseCase;
 
-    // 묶음마다 트랜잭션을 나눠, 한 묶음에서 실패해도 다른 묶음은 파기한다. 실패한 묶음은 다음 회차에 다시 시도한다.
+    // 파기할 모임은 잠그지 않고 한 번에 골라, 아직 파기 시각이 남은 모임에는 트랜잭션을 열지 않는다.
     @Scheduled(fixedDelayString = "${gathering.purge.interval}")
     public void purgeExpiredGatherings() {
-        List<Long> candidateIds = getPurgeCandidatesUseCase.getPurgeCandidateIds();
-        for (int from = 0; from < candidateIds.size(); from += BATCH_SIZE) {
-            purge(candidateIds.subList(from, Math.min(from + BATCH_SIZE, candidateIds.size())));
-        }
+        getExpiredGatheringsUseCase.getExpiredGatheringIds().forEach(this::purge);
     }
 
-    // 로그에는 개인정보 없이 모임 id만 남긴다.
-    private void purge(List<Long> gatheringIds) {
+    // 모임마다 트랜잭션을 나눠, 한 모임이 계속 실패해도 다른 모임은 보유 기간 안에 파기된다.
+    // 실패한 모임은 다음 회차에 다시 시도한다. 로그에는 개인정보 없이 모임 id만 남긴다.
+    private void purge(Long gatheringId) {
         try {
-            List<Long> expiredGatheringIds =
-                    purgeGatheringsUseCase.discardExpiredDataKeys(gatheringIds);
-            purgeGatheringsUseCase.purge(expiredGatheringIds);
-            log.info("[Gathering] 모임 {}개 파기", expiredGatheringIds.size());
+            Optional.of(gatheringId)
+                    .filter(purgeGatheringsUseCase::discardDataKeyIfExpired)
+                    .ifPresent(purgeGatheringsUseCase::purge);
         } catch (RuntimeException e) {
-            log.error("[Gathering] gatheringIds={} 파기 실패", gatheringIds, e);
+            log.error("[Gathering] gatheringId={} 파기 실패", gatheringId, e);
         }
     }
 }

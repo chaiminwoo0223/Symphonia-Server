@@ -61,19 +61,20 @@ public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEnti
 
     List<SettlementJpaEntity> findAllByGatheringIdOrderById(Long gatheringId);
 
+    List<SettlementJpaEntity> findAllByGatheringIdInOrderById(Collection<Long> gatheringIds);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
             """
             SELECT settlement FROM SettlementJpaEntity settlement
-            WHERE settlement.gatheringId IN :gatheringIds
+            WHERE settlement.gatheringId = :gatheringId
             ORDER BY settlement.id
             """)
-    List<SettlementJpaEntity> findAllByGatheringIdsForUpdate(
-            @Param("gatheringIds") Collection<Long> gatheringIds);
+    List<SettlementJpaEntity> findAllByGatheringIdForUpdate(@Param("gatheringId") Long gatheringId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             "DELETE FROM SettlementJpaEntity settlement"
-                    + " WHERE settlement.gatheringId IN :gatheringIds")
-    void deleteAllByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
+                    + " WHERE settlement.gatheringId = :gatheringId")
+    void deleteAllByGatheringId(@Param("gatheringId") Long gatheringId);
 }

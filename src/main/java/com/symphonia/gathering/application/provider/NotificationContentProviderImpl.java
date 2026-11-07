@@ -40,19 +40,17 @@ public class NotificationContentProviderImpl implements NotificationContentProvi
     // 금액을 먼저 계산해, 담을 금액이 없을 때는 참여자 정보를 복호화하는 모임 조회와 토큰 발급을 하지 않는다.
     @Override
     public Optional<NotificationContentResult> compose(ComposeNotificationCommand command) {
-        if (isExpired(command.gatheringId())) {
-            return Optional.empty();
-        }
-
-        return Optional.of(findAnnounceableSettlements(command))
+        return Optional.of(command)
+                .filter(this::isRetained)
+                .map(this::findAnnounceableSettlements)
                 .filter(settlements -> !settlements.isEmpty())
                 .map(settlements -> toContent(command, settlements));
     }
 
     // 부른 쪽이 발송 기록을 잠갔으므로 FK 때문에 모임을 지울 수 없어, 모임은 항상 있다.
-    private boolean isExpired(Long gatheringId) {
-        return gatheringRetentionRepository
-                .findByGatheringId(gatheringId)
+    private boolean isRetained(ComposeNotificationCommand command) {
+        return !gatheringRetentionRepository
+                .findByGatheringId(command.gatheringId())
                 .orElseThrow(GatheringNotFoundException::new)
                 .isExpired(LocalDateTime.now(clock));
     }

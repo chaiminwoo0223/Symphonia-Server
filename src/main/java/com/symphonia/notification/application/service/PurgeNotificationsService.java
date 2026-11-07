@@ -4,7 +4,6 @@ import com.symphonia.common.annotation.CommandService;
 import com.symphonia.notification.application.usecase.PurgeNotificationsUseCase;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
 import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
-import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 
 // 발송 예약을 먼저 지운다. 정산 건을 바꾸는 흐름이 예약을 잠근 뒤 정산 건을 잠그므로, 같은 순서로 잠가 교착 상태가 생기지 않는다.
@@ -16,8 +15,8 @@ public class PurgeNotificationsService implements PurgeNotificationsUseCase {
     private final NotificationDeliveryRepository notificationDeliveryRepository;
 
     @Override
-    public void purge(Collection<Long> gatheringIds) {
-        notificationScheduleRepository.deleteAllByGatheringIds(gatheringIds);
-        notificationDeliveryRepository.deleteAllByGatheringIds(gatheringIds);
+    public void purge(Long gatheringId) {
+        notificationScheduleRepository.deleteAllByGatheringId(gatheringId);
+        notificationDeliveryRepository.deleteAllByGatheringId(gatheringId);
     }
 }

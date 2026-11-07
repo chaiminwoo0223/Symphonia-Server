@@ -88,15 +88,20 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     }
 
     @Override
-    public List<Settlement> findAllByGatheringIdsForUpdate(Collection<Long> gatheringIds) {
-        return toDomains(settlementJpaRepository.findAllByGatheringIdsForUpdate(gatheringIds));
+    public List<Settlement> findAllByGatheringIds(Collection<Long> gatheringIds) {
+        return toDomains(settlementJpaRepository.findAllByGatheringIdInOrderById(gatheringIds));
+    }
+
+    @Override
+    public List<Settlement> findAllByGatheringIdForUpdate(Long gatheringId) {
+        return toDomains(settlementJpaRepository.findAllByGatheringIdForUpdate(gatheringId));
     }
 
     // 정산 건을 참조하는 분담금을 먼저 지운다.
     @Override
-    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
-        settlementShareJpaRepository.deleteAllByGatheringIds(gatheringIds);
-        settlementJpaRepository.deleteAllByGatheringIds(gatheringIds);
+    public void deleteAllByGatheringId(Long gatheringId) {
+        settlementShareJpaRepository.deleteAllByGatheringId(gatheringId);
+        settlementJpaRepository.deleteAllByGatheringId(gatheringId);
     }
 
     // 다른 요청이 먼저 바꾼 정산 건이면 버전이 달라 저장이 실패한다.

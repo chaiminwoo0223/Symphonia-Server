@@ -1,7 +1,7 @@
 package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
@@ -25,6 +25,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,6 @@ import org.mockito.Mock;
 class PurgeGatheringServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
-    private static final Long OTHER_GATHERING_ID = 11L;
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
     private static final Long PAYER_ID = 20L;
@@ -61,8 +61,8 @@ class PurgeGatheringServiceTest extends UnitTest {
     @Mock private NotificationDeliveryRepository notificationDeliveryRepository;
 
     @Nested
-    @DisplayName("discardExpiredDataKeys 메서드는")
-    class DiscardExpiredDataKeys {
+    @DisplayName("discardDataKeyIfExpired 메서드는")
+    class DiscardDataKeyIfExpired {
 
         @Nested
         @DisplayName("미입금 분담금이 남은 경우")
@@ -76,28 +76,26 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(unpaidSettlement());
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).isEmpty();
-                then(gatheringRepository).should(never()).discardDataKeys(anyCollection());
+                assertThat(result).isFalse();
+                then(gatheringRepository).should(never()).discardDataKey(anyLong());
             }
 
             @Test
-            @DisplayName("모임을 연 지 29일이 되는 순간 정산이 끝나지 않았어도 데이터 키를 지우고 모임 id를 반환한다")
+            @DisplayName("모임을 연 지 29일이 되는 순간 정산이 끝나지 않았어도 데이터 키를 지운다")
             void shouldDiscardDataKeyAtMaxRetention() {
                 // given
                 givenNow(MAX_DELETES_AT);
                 givenRetention(unpaidSettlement());
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
-                then(gatheringRepository).should().discardDataKeys(List.of(GATHERING_ID));
+                assertThat(result).isTrue();
+                then(gatheringRepository).should().discardDataKey(GATHERING_ID);
             }
 
             @Test
@@ -110,11 +108,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(settlement);
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).isEmpty();
+                assertThat(result).isFalse();
             }
         }
 
@@ -130,11 +127,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(settledSettlementAt(COMPLETED_AT));
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).isEmpty();
+                assertThat(result).isFalse();
             }
 
             @Test
@@ -152,11 +148,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(settledSettlementAt(COMPLETED_AT.minusDays(1)), lastSettled);
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
+                assertThat(result).isTrue();
             }
 
             @Test
@@ -169,11 +164,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(settledSettlementAt(COMPLETED_AT.minusDays(1)), cancelled);
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
+                assertThat(result).isTrue();
             }
         }
 
@@ -189,11 +183,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(settledSettlementAt(OPENED_AT.plusHours(1)));
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).isEmpty();
+                assertThat(result).isFalse();
             }
 
             @Test
@@ -204,11 +197,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention(settledSettlementAt(OPENED_AT.plusHours(1)));
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
+                assertThat(result).isTrue();
             }
 
             @Test
@@ -225,11 +217,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                                 Map.of(LEE_ID, 0L, PARK_ID, 0L)));
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
+                assertThat(result).isTrue();
             }
         }
 
@@ -245,11 +236,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention();
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).isEmpty();
+                assertThat(result).isFalse();
             }
 
             @Test
@@ -260,11 +250,10 @@ class PurgeGatheringServiceTest extends UnitTest {
                 givenRetention();
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
+                assertThat(result).isTrue();
             }
         }
 
@@ -273,15 +262,13 @@ class PurgeGatheringServiceTest extends UnitTest {
         class WhenDataKeyDiscarded {
 
             @Test
-            @DisplayName("물리 삭제가 실패해 남은 모임이면 그사이 미입금으로 바뀌었어도 파기할 모임으로 반환한다")
-            void shouldReturnGatheringIdEvenIfNotExpired() {
+            @DisplayName("물리 삭제가 실패해 남은 모임이면 그사이 미입금으로 바뀌었어도 파기할 모임으로 본다")
+            void shouldTreatAsExpiredEvenIfUnpaidAgain() {
                 // given
                 givenNow(OPENED_AT.plusDays(10));
-                given(
-                                gatheringRetentionRepository.findAllByGatheringIdsForUpdate(
-                                        List.of(GATHERING_ID)))
+                given(gatheringRetentionRepository.findByGatheringIdForUpdate(GATHERING_ID))
                         .willReturn(
-                                List.of(
+                                Optional.of(
                                         GatheringRetention.of(
                                                 GATHERING_ID,
                                                 OPENED_AT,
@@ -289,39 +276,31 @@ class PurgeGatheringServiceTest extends UnitTest {
                                                 true)));
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(List.of(GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(GATHERING_ID);
+                assertThat(result).isTrue();
             }
         }
 
         @Nested
-        @DisplayName("다른 서버가 파기 중인 모임이 있는 경우")
+        @DisplayName("다른 서버가 파기 중인 모임인 경우")
         class WhenGatheringLockedByOtherServer {
 
             @Test
-            @DisplayName("잠그지 못해 읽지 못한 모임은 건너뛰고 읽은 모임만 판단한다")
-            void shouldSkipGatheringsNotLocked() {
+            @DisplayName("잠그지 못한 모임은 기다리지 않고 건너뛰어 데이터 키를 지우지 않는다")
+            void shouldSkipGatheringNotLocked() {
                 // given
                 givenNow(MAX_DELETES_AT);
-                given(
-                                gatheringRetentionRepository.findAllByGatheringIdsForUpdate(
-                                        List.of(GATHERING_ID, OTHER_GATHERING_ID)))
-                        .willReturn(
-                                List.of(
-                                        GatheringRetention.of(
-                                                OTHER_GATHERING_ID, OPENED_AT, List.of(), false)));
+                given(gatheringRetentionRepository.findByGatheringIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.empty());
 
                 // when
-                List<Long> result =
-                        purgeGatheringService.discardExpiredDataKeys(
-                                List.of(GATHERING_ID, OTHER_GATHERING_ID));
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
 
                 // then
-                assertThat(result).containsExactly(OTHER_GATHERING_ID);
-                then(gatheringRepository).should().discardDataKeys(List.of(OTHER_GATHERING_ID));
+                assertThat(result).isFalse();
+                then(gatheringRepository).should(never()).discardDataKey(anyLong());
             }
         }
     }
@@ -331,14 +310,13 @@ class PurgeGatheringServiceTest extends UnitTest {
     class Purge {
 
         @Test
-        @DisplayName("발송 예약과 발송 기록부터 참조하는 쪽 순서로 모임의 행을 한 번에 지운다")
+        @DisplayName("발송 예약과 발송 기록부터 참조하는 쪽 순서로 모임의 행을 테이블마다 한 번씩 지운다")
         void shouldDeleteRowsInForeignKeyOrder() {
             // given
             givenNow(MAX_DELETES_AT);
-            List<Long> gatheringIds = List.of(GATHERING_ID, OTHER_GATHERING_ID);
 
             // when
-            purgeGatheringService.purge(gatheringIds);
+            purgeGatheringService.purge(GATHERING_ID);
 
             // then
             InOrder inOrder =
@@ -350,29 +328,13 @@ class PurgeGatheringServiceTest extends UnitTest {
                             settlementRepository,
                             gatheringJoinTokenRepository,
                             gatheringRepository);
-            inOrder.verify(notificationScheduleRepository).deleteAllByGatheringIds(gatheringIds);
-            inOrder.verify(notificationDeliveryRepository).deleteAllByGatheringIds(gatheringIds);
-            inOrder.verify(participantLinkTokenRepository).deleteAllByGatheringIds(gatheringIds);
-            inOrder.verify(participantBankAccountRepository).deleteAllByGatheringIds(gatheringIds);
-            inOrder.verify(settlementRepository).deleteAllByGatheringIds(gatheringIds);
-            inOrder.verify(gatheringJoinTokenRepository).deleteAllByGatheringIds(gatheringIds);
-            inOrder.verify(gatheringRepository).deleteAllByIds(gatheringIds);
-        }
-
-        @Test
-        @DisplayName("파기할 모임이 없으면 아무것도 지우지 않는다")
-        void shouldDeleteNothingWhenGatheringIdsEmpty() {
-            // given
-            givenNow(MAX_DELETES_AT);
-
-            // when
-            purgeGatheringService.purge(List.of());
-
-            // then
-            then(notificationScheduleRepository).shouldHaveNoInteractions();
-            then(notificationDeliveryRepository).shouldHaveNoInteractions();
-            then(settlementRepository).shouldHaveNoInteractions();
-            then(gatheringRepository).shouldHaveNoInteractions();
+            inOrder.verify(notificationScheduleRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(notificationDeliveryRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(participantLinkTokenRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(participantBankAccountRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(settlementRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(gatheringJoinTokenRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(gatheringRepository).delete(GATHERING_ID);
         }
     }
 
@@ -392,9 +354,9 @@ class PurgeGatheringServiceTest extends UnitTest {
     }
 
     private void givenRetention(Settlement... settlements) {
-        given(gatheringRetentionRepository.findAllByGatheringIdsForUpdate(List.of(GATHERING_ID)))
+        given(gatheringRetentionRepository.findByGatheringIdForUpdate(GATHERING_ID))
                 .willReturn(
-                        List.of(
+                        Optional.of(
                                 GatheringRetention.of(
                                         GATHERING_ID, OPENED_AT, List.of(settlements), false)));
     }
