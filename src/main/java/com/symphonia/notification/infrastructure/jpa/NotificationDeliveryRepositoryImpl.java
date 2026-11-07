@@ -88,8 +88,8 @@ public class NotificationDeliveryRepositoryImpl implements NotificationDeliveryR
 
     // 발송 기록을 참조하는 담은 정산 건을 먼저 지운다.
     @Override
-    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
-        notificationDeliveryJpaRepository.deleteSettlementIdsByGatheringIds(gatheringIds);
-        notificationDeliveryJpaRepository.deleteAllByGatheringIds(gatheringIds);
+    public void deleteAllByGatheringId(Long gatheringId) {
+        notificationDeliveryJpaRepository.deleteSettlementIdsByGatheringId(gatheringId);
+        notificationDeliveryJpaRepository.deleteAllByGatheringId(gatheringId);
     }
 }

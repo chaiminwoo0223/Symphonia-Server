@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
-import com.symphonia.gathering.application.usecase.GetPurgeCandidatesUseCase;
+import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
 import com.symphonia.gathering.application.usecase.PurgeGatheringsUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
@@ -77,7 +77,7 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
                                     + " IN (SELECT id FROM notification_delivery WHERE"
                                     + " gathering_id = ?)"));
 
-    @Autowired private GetPurgeCandidatesUseCase getPurgeCandidatesUseCase;
+    @Autowired private GetExpiredGatheringsUseCase getExpiredGatheringsUseCase;
     @Autowired private PurgeGatheringsUseCase purgeGatheringsUseCase;
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
@@ -111,10 +111,10 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
     class Sweep {
 
         @Test
-        @DisplayName("파기 시각이 지났을 수 있는 모임만 후보로 찾는다")
-        void shouldFindOnlyGatheringsOpenedLongAgo() {
+        @DisplayName("파기 시각이 지난 모임만 찾는다")
+        void shouldFindOnlyExpiredGatherings() {
             // when
-            List<Long> result = getPurgeCandidatesUseCase.getPurgeCandidateIds();
+            List<Long> result = getExpiredGatheringsUseCase.getExpiredGatheringIds();
 
             // then
             assertThat(result).contains(expiredGatheringId).doesNotContain(retainedGatheringId);
@@ -124,9 +124,7 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
         @DisplayName("데이터 키를 먼저 지우면 물리 삭제 전이라도 그 모임의 개인 링크는 링크 토큰을 찾지 못한 것으로 404를 반환한다")
         void shouldRejectLinkTokenAfterDataKeyDiscarded() throws Exception {
             // given
-            List<Long> discarded =
-                    purgeGatheringsUseCase.discardExpiredDataKeys(
-                            List.of(expiredGatheringId, retainedGatheringId));
+            boolean discarded = purgeGatheringsUseCase.discardDataKeyIfExpired(expiredGatheringId);
 
             // when & then
             mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", expiredLinkToken))
@@ -134,21 +132,30 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
                     .andExpect(
                             jsonPath("$.data.code")
                                     .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()));
-            assertThat(discarded).containsExactly(expiredGatheringId);
+            assertThat(discarded).isTrue();
             assertThat(countRows("gathering_data_key", expiredGatheringId)).isZero();
             assertThat(countRows("participant", expiredGatheringId)).isPositive();
+        }
+
+        @Test
+        @DisplayName("파기 시각이 남은 모임은 데이터 키를 지우지 않는다")
+        void shouldKeepDataKeyOfRetainedGathering() {
+            // when
+            boolean discarded = purgeGatheringsUseCase.discardDataKeyIfExpired(retainedGatheringId);
+
+            // then
+            assertThat(discarded).isFalse();
+            assertThat(countRows("gathering_data_key", retainedGatheringId)).isOne();
         }
 
         @Test
         @DisplayName("데이터 키를 지운 모임의 행을 모든 테이블에서 지우고 다른 모임의 행은 남긴다")
         void shouldDeleteAllRowsOfExpiredGatheringOnly() {
             // given
-            List<Long> discarded =
-                    purgeGatheringsUseCase.discardExpiredDataKeys(
-                            List.of(expiredGatheringId, retainedGatheringId));
+            purgeGatheringsUseCase.discardDataKeyIfExpired(expiredGatheringId);
 
             // when
-            purgeGatheringsUseCase.purge(discarded);
+            purgeGatheringsUseCase.purge(expiredGatheringId);
 
             // then
             COUNT_QUERIES_BY_TABLE

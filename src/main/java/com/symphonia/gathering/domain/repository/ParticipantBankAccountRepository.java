@@ -14,5 +14,5 @@ public interface ParticipantBankAccountRepository {
     List<ParticipantBankAccount> findAllByParticipantIds(
             Collection<Long> participantIds, Long gatheringId);
 
-    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
+    void deleteAllByGatheringId(Long gatheringId);
 }

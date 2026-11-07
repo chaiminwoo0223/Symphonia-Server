@@ -38,5 +38,5 @@ public interface NotificationDeliveryRepository {
     List<NotificationDelivery> findAllRemindersByGatheringIdForUpdate(Long gatheringId);
 
     // 발송 기록과 발송 기록이 담은 정산 건을 함께 지운다.
-    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
+    void deleteAllByGatheringId(Long gatheringId);
 }

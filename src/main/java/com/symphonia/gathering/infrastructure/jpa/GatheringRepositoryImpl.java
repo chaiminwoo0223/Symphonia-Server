@@ -6,7 +6,6 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -77,15 +76,15 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
-    public void discardDataKeys(Collection<Long> gatheringIds) {
-        gatheringDataKeyJpaRepository.deleteAllByGatheringIds(gatheringIds);
+    public void discardDataKey(Long gatheringId) {
+        gatheringDataKeyJpaRepository.deleteAllByGatheringId(gatheringId);
     }
 
     // 참여 토큰, 개인 링크 토큰, 계좌, 정산 건은 부른 쪽이 먼저 지운다. 데이터 키는 파기 1단계에서 이미 지웠다.
     @Override
-    public void deleteAllByIds(Collection<Long> gatheringIds) {
-        participantJpaRepository.deleteAllByGatheringIds(gatheringIds);
-        gatheringJpaRepository.deleteAllByIds(gatheringIds);
+    public void delete(Long gatheringId) {
+        participantJpaRepository.deleteAllByGatheringId(gatheringId);
+        gatheringJpaRepository.deleteGathering(gatheringId);
     }
 
     private GatheringDataKey createDataKey(Long gatheringId) {

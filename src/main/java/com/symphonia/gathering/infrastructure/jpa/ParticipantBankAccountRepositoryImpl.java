@@ -52,8 +52,8 @@ public class ParticipantBankAccountRepositoryImpl implements ParticipantBankAcco
     }
 
     @Override
-    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
-        participantBankAccountJpaRepository.deleteAllByGatheringIds(gatheringIds);
+    public void deleteAllByGatheringId(Long gatheringId) {
+        participantBankAccountJpaRepository.deleteAllByGatheringId(gatheringId);
     }
 
     private List<ParticipantBankAccount> decrypt(

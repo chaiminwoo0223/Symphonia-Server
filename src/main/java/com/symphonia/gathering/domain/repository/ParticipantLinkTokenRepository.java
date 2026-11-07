@@ -1,6 +1,5 @@
 package com.symphonia.gathering.domain.repository;
 
-import java.util.Collection;
 import java.util.Optional;
 
 public interface ParticipantLinkTokenRepository {
@@ -10,5 +9,5 @@ public interface ParticipantLinkTokenRepository {
     Optional<Long> findParticipantIdByValue(String value);
 
     // 모임 참여자의 토큰을 모두 지운다. 파기된 모임의 개인 링크는 이때 무효가 된다.
-    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
+    void deleteAllByGatheringId(Long gatheringId);
 }

@@ -2,7 +2,6 @@ package com.symphonia.notification.infrastructure.jpa;
 
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -61,6 +60,6 @@ public interface NotificationScheduleJpaRepository
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
             "DELETE FROM NotificationScheduleJpaEntity schedule"
-                    + " WHERE schedule.gatheringId IN :gatheringIds")
-    void deleteAllByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
+                    + " WHERE schedule.gatheringId = :gatheringId")
+    void deleteAllByGatheringId(@Param("gatheringId") Long gatheringId);
 }
