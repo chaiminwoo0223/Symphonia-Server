@@ -1,7 +1,7 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
-import com.symphonia.gathering.application.usecase.PurgeGatheringsUseCase;
+import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 // 데이터 키를 지운 모임은 조회할 때 파기된 것으로 보므로, 그 뒤에 정산 건이 바뀌어도 파기는 되돌리지 않는다.
 @CommandService
 @RequiredArgsConstructor
-public class PurgeGatheringService implements PurgeGatheringsUseCase {
+public class PurgeGatheringService implements PurgeGatheringUseCase {
     private final GatheringRetentionRepository gatheringRetentionRepository;
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;

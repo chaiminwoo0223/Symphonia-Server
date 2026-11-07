@@ -196,17 +196,22 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
     @DisplayName("findByGatheringIdForUpdate 메서드는")
     class FindByGatheringIdForUpdate {
 
-        @Test
-        @DisplayName("정산 건이 없는 모임도 파기 시각을 계산해 반환한다")
-        void shouldReturnRetentionOfGatheringWithoutSettlements() {
-            // when
-            GatheringRetention result =
-                    gatheringRetentionRepository
-                            .findByGatheringIdForUpdate(gatheringId)
-                            .orElseThrow();
+        @Nested
+        @DisplayName("다른 트랜잭션이 모임을 잠그지 않은 경우")
+        class WhenGatheringNotLocked {
 
-            // then
-            assertThat(result.deletesAt()).isEqualTo(OPENED_AT.plusHours(48).plusDays(7));
+            @Test
+            @DisplayName("정산 건이 없는 모임도 파기 시각을 계산해 반환한다")
+            void shouldReturnRetentionOfGatheringWithoutSettlements() {
+                // when
+                GatheringRetention result =
+                        gatheringRetentionRepository
+                                .findByGatheringIdForUpdate(gatheringId)
+                                .orElseThrow();
+
+                // then
+                assertThat(result.deletesAt()).isEqualTo(OPENED_AT.plusHours(48).plusDays(7));
+            }
         }
 
         @Nested

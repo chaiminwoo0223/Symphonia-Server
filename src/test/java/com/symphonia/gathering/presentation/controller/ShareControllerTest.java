@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.ResultActions;
 
 class ShareControllerTest extends IntegrationTest {
@@ -34,6 +35,7 @@ class ShareControllerTest extends IntegrationTest {
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private Gathering gathering;
     private Participant payer;
@@ -112,6 +114,26 @@ class ShareControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.payers[1].shares[0].settlementId")
                                         .value(secondRound.getId()));
+            }
+        }
+
+        @Nested
+        @DisplayName("파기 1단계로 모임의 데이터 키를 지운 경우")
+        class WhenGatheringDataKeyDiscarded {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 LINK_TOKEN_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                jdbcTemplate.update(
+                        "DELETE FROM gathering_data_key WHERE gathering_id = ?", gathering.getId());
+
+                // when & then
+                mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", leeLinkToken))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()));
             }
         }
 

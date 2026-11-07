@@ -227,7 +227,7 @@ class PrepareNotificationServiceTest extends UnitTest {
 
             @Test
             @DisplayName("파기 시각이 된 모임이면 보내지 않음으로 바꿔 저장하고 모임과 정산 건을 읽지 않는다")
-            void shouldSkipWhenGatheringExpired() {
+            void shouldSkipWhenDeletesAtReached() {
                 // given
                 NotificationDelivery delivery = reminderBuilder(PARK_ID).build();
                 givenDelivery(delivery);

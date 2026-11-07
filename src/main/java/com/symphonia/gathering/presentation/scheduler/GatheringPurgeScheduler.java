@@ -1,7 +1,7 @@
 package com.symphonia.gathering.presentation.scheduler;
 
 import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
-import com.symphonia.gathering.application.usecase.PurgeGatheringsUseCase;
+import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
         matchIfMissing = true)
 public class GatheringPurgeScheduler {
     private final GetExpiredGatheringsUseCase getExpiredGatheringsUseCase;
-    private final PurgeGatheringsUseCase purgeGatheringsUseCase;
+    private final PurgeGatheringUseCase purgeGatheringUseCase;
 
     // 파기할 모임은 잠그지 않고 한 번에 골라, 아직 파기 시각이 남은 모임에는 트랜잭션을 열지 않는다.
     @Scheduled(fixedDelayString = "${gathering.purge.interval}")
@@ -35,8 +35,8 @@ public class GatheringPurgeScheduler {
     private void purge(Long gatheringId) {
         try {
             Optional.of(gatheringId)
-                    .filter(purgeGatheringsUseCase::discardDataKeyIfExpired)
-                    .ifPresent(purgeGatheringsUseCase::purge);
+                    .filter(purgeGatheringUseCase::discardDataKeyIfExpired)
+                    .ifPresent(purgeGatheringUseCase::purge);
         } catch (RuntimeException e) {
             log.error("[Gathering] gatheringId={} 파기 실패", gatheringId, e);
         }

@@ -33,11 +33,7 @@ public class GatheringQueryService implements GetGatheringUseCase, GetExpiredGat
                 gatheringJoinTokenRepository
                         .findGatheringIdByValue(joinToken)
                         .orElseThrow(JoinTokenNotFoundException::new);
-        GatheringRetention retention =
-                gatheringRetentionRepository
-                        .findByGatheringId(gatheringId)
-                        .filter(found -> !found.isExpired(now))
-                        .orElseThrow(JoinTokenNotFoundException::new);
+        GatheringRetention retention = findRetention(gatheringId, now);
         Gathering gathering =
                 gatheringRepository
                         .findById(gatheringId)
@@ -62,5 +58,12 @@ public class GatheringQueryService implements GetGatheringUseCase, GetExpiredGat
                 .filter(retention -> retention.isExpired(now))
                 .map(GatheringRetention::gatheringId)
                 .toList();
+    }
+
+    private GatheringRetention findRetention(Long gatheringId, LocalDateTime now) {
+        return gatheringRetentionRepository
+                .findByGatheringId(gatheringId)
+                .filter(retention -> !retention.isExpired(now))
+                .orElseThrow(JoinTokenNotFoundException::new);
     }
 }
