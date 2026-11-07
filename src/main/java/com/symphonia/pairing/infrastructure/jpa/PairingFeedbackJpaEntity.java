@@ -28,7 +28,7 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    // 익명 피드백(#131)은 회원 id가 없다.
     private Long memberId;
 
     @Column(nullable = false)

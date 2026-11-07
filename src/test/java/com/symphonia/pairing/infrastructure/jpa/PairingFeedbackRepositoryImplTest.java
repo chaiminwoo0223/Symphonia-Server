@@ -22,6 +22,7 @@ import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import jakarta.persistence.EntityManager;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -74,30 +75,87 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
     @DisplayName("save 메서드는")
     class Save {
 
-        @Test
-        @DisplayName("다시 낸 값으로 바꾼 피드백을 저장하면 같은 행의 관계, 분위기, 평점을 바꾼다")
-        void shouldUpdatePairingFeedbackWhenResubmitted() {
-            // given
-            PairingFeedback saved = savedFeedback();
-            saved.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
+        @Nested
+        @DisplayName("다시 낸 값으로 바꾼 피드백을 저장하는 경우")
+        class WhenResubmitted {
 
-            // when
-            pairingFeedbackRepository.save(saved);
+            @Test
+            @DisplayName("같은 행의 관계, 분위기, 평점을 바꾼다")
+            void shouldUpdatePairingFeedback() {
+                // given
+                PairingFeedback saved = savedFeedback();
+                saved.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
 
-            // then
-            entityManager.flush();
-            entityManager.clear();
-            assertThat(
-                            pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                                    saved.getMemberId(), drinkId, anjuId, musicMoodId))
-                    .hasValueSatisfying(
-                            feedback -> {
-                                assertThat(feedback.getId()).isEqualTo(saved.getId());
-                                assertThat(feedback.getRelationshipType())
-                                        .isEqualTo(RelationshipType.LOVER);
-                                assertThat(feedback.getMoodType()).isEqualTo(MoodType.ROMANTIC);
-                                assertThat(feedback.getRating()).isEqualTo(PairingRating.DISLIKE);
-                            });
+                // when
+                pairingFeedbackRepository.save(saved);
+
+                // then
+                entityManager.flush();
+                entityManager.clear();
+                assertThat(
+                                pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                                        saved.getMemberId(), drinkId, anjuId, musicMoodId))
+                        .hasValueSatisfying(
+                                feedback -> {
+                                    assertThat(feedback.getId()).isEqualTo(saved.getId());
+                                    assertThat(feedback.getRelationshipType())
+                                            .isEqualTo(RelationshipType.LOVER);
+                                    assertThat(feedback.getMoodType()).isEqualTo(MoodType.ROMANTIC);
+                                    assertThat(feedback.getRating())
+                                            .isEqualTo(PairingRating.DISLIKE);
+                                });
+            }
+        }
+
+        @Nested
+        @DisplayName("익명 피드백을 저장하는 경우")
+        class WhenAnonymous {
+
+            @Test
+            @DisplayName("회원 id 없이 저장한다")
+            void shouldSaveFeedbackWithoutMemberId() {
+                // given
+                PairingFeedback anonymous =
+                        PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
+                                drinkId, anjuId, musicMoodId);
+
+                // when
+                PairingFeedback saved = pairingFeedbackRepository.save(anonymous);
+
+                // then
+                entityManager.flush();
+                entityManager.clear();
+                PairingFeedbackJpaEntity stored =
+                        pairingFeedbackJpaRepository.findById(saved.getId()).orElseThrow();
+                assertThat(stored.getMemberId()).isNull();
+                assertThat(stored.getRating())
+                        .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
+            }
+
+            @Test
+            @DisplayName("같은 조합에 여러 번 저장해도 회원별 조합 유니크 제약에 걸리지 않고 행마다 새로 쌓인다")
+            void shouldAccumulateRowsForSameCombination() {
+                // given
+                PairingFeedback first =
+                        PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
+                                drinkId, anjuId, musicMoodId);
+                pairingFeedbackRepository.save(first);
+                entityManager.flush();
+                PairingFeedback second =
+                        PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
+                                drinkId, anjuId, musicMoodId);
+
+                // when
+                pairingFeedbackRepository.save(second);
+
+                // then
+                entityManager.flush();
+                entityManager.clear();
+                List<PairingFeedbackJpaEntity> stored = pairingFeedbackJpaRepository.findAll();
+                assertThat(stored)
+                        .hasSize(2)
+                        .allSatisfy(feedback -> assertThat(feedback.getMemberId()).isNull());
+            }
         }
     }
 

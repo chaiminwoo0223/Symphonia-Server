@@ -2,8 +2,10 @@ package com.symphonia.pairing.application.service;
 
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.common.annotation.CommandService;
+import com.symphonia.pairing.application.dto.command.SubmitAnonymousPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.command.SubmitPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
+import com.symphonia.pairing.application.usecase.SubmitAnonymousPairingFeedbackUseCase;
 import com.symphonia.pairing.application.usecase.SubmitPairingFeedbackUseCase;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
@@ -14,7 +16,8 @@ import lombok.RequiredArgsConstructor;
 
 @CommandService
 @RequiredArgsConstructor
-public class PairingCommandService implements SubmitPairingFeedbackUseCase {
+public class PairingCommandService
+        implements SubmitPairingFeedbackUseCase, SubmitAnonymousPairingFeedbackUseCase {
     private final VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
     private final PairingFeedbackRepository pairingFeedbackRepository;
     private final PairingRatingSummaryRepository pairingRatingSummaryRepository;
@@ -36,6 +39,23 @@ public class PairingCommandService implements SubmitPairingFeedbackUseCase {
                         .orElseThrow();
 
         return created ? submitFirst(pairingFeedback) : resubmit(pairingFeedback, command);
+    }
+
+    // 익명 피드백은 찾아서 바꿀 회원이 없으므로 늘 새로 저장한다.
+    @Override
+    public PairingFeedbackResult submitAnonymous(SubmitAnonymousPairingFeedbackCommand command) {
+        verifyCatalogReferencesUseCase.verify(command.toCatalogReferencesQuery());
+        PairingFeedback pairingFeedback =
+                pairingFeedbackRepository.save(
+                        PairingFeedback.anonymous(
+                                command.drinkId(),
+                                command.anjuId(),
+                                command.musicMoodId(),
+                                command.relationshipType(),
+                                command.moodType(),
+                                command.rating()));
+
+        return submitFirst(pairingFeedback);
     }
 
     private PairingFeedback feedbackOf(SubmitPairingFeedbackCommand command) {

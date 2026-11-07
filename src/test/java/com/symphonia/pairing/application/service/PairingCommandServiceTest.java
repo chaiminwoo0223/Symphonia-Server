@@ -12,6 +12,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
+import com.symphonia.pairing.application.dto.command.SubmitAnonymousPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.command.SubmitPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
@@ -198,6 +199,81 @@ class PairingCommandServiceTest extends UnitTest {
                     relationshipType,
                     moodType,
                     rating);
+        }
+    }
+
+    @Nested
+    @DisplayName("submitAnonymous 메서드는")
+    class SubmitAnonymous {
+
+        @Nested
+        @DisplayName("참조하는 카탈로그가 존재하지 않는 경우")
+        class WhenCatalogReferenceNotFound {
+
+            @Test
+            @DisplayName("카탈로그 검증 예외를 그대로 던지고 피드백을 저장하거나 집계하지 않는다")
+            void shouldThrowDrinkNotFoundException() {
+                // given
+                willThrow(new DrinkNotFoundException())
+                        .given(verifyCatalogReferencesUseCase)
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+
+                // when & then
+                assertThatThrownBy(() -> pairingCommandService.submitAnonymous(command()))
+                        .isInstanceOf(DrinkNotFoundException.class);
+                then(pairingFeedbackRepository).shouldHaveNoInteractions();
+                then(pairingRatingSummaryRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("참조하는 카탈로그가 존재하는 경우")
+        class WhenCatalogReferencesExist {
+
+            @Test
+            @DisplayName("회원 id 없이 피드백을 새로 저장하고 조합별 집계에 평점을 더한 뒤 새로 만든 PairingFeedbackResult를 반환한다")
+            void shouldSaveAnonymousFeedbackAndAccumulateRating() {
+                // given: save는 받은 피드백을 그대로 돌려준다
+                given(pairingFeedbackRepository.save(any(PairingFeedback.class)))
+                        .willAnswer(invocation -> invocation.getArgument(0));
+
+                // when
+                PairingFeedbackResult result = pairingCommandService.submitAnonymous(command());
+
+                // then
+                then(verifyCatalogReferencesUseCase)
+                        .should()
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                ArgumentCaptor<PairingFeedback> saved =
+                        ArgumentCaptor.forClass(PairingFeedback.class);
+                then(pairingFeedbackRepository).should().save(saved.capture());
+                assertThat(saved.getValue().getMemberId()).isNull();
+                assertThat(saved.getValue().getDrinkId()).isEqualTo(DRINK_ID);
+                assertThat(saved.getValue().getAnjuId()).isEqualTo(ANJU_ID);
+                assertThat(saved.getValue().getMusicMoodId()).isEqualTo(MUSIC_MOOD_ID);
+                assertThat(saved.getValue().getRelationshipType())
+                        .isEqualTo(RelationshipType.COLLEAGUE);
+                assertThat(saved.getValue().getMoodType()).isEqualTo(MoodType.CASUAL);
+                assertThat(saved.getValue().getRating()).isEqualTo(PairingRating.DISLIKE);
+                then(pairingFeedbackRepository).should(never()).saveIfAbsent(any());
+                then(pairingRatingSummaryRepository)
+                        .should()
+                        .accumulate(
+                                DRINK_ID, ANJU_ID, MUSIC_MOOD_ID, new PairingRatingChange(0, 1));
+                assertThat(result.memberId()).isNull();
+                assertThat(result.rating()).isEqualTo(PairingRating.DISLIKE);
+                assertThat(result.created()).isTrue();
+            }
+        }
+
+        private SubmitAnonymousPairingFeedbackCommand command() {
+            return SubmitAnonymousPairingFeedbackCommand.of(
+                    DRINK_ID,
+                    ANJU_ID,
+                    MUSIC_MOOD_ID,
+                    RelationshipType.COLLEAGUE,
+                    MoodType.CASUAL,
+                    PairingRating.DISLIKE);
         }
     }
 }

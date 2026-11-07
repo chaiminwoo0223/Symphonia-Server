@@ -36,6 +36,12 @@ public enum PairingFeedbackFixture {
         return build(null, memberId, drinkId, anjuId, musicMoodId);
     }
 
+    // 정산 페이지에서 참여자가 낸 익명 피드백이다. 회원 id를 남기지 않는다(#131).
+    public PairingFeedback createAnonymousWithReferences(
+            Long drinkId, Long anjuId, Long musicMoodId) {
+        return build(null, null, drinkId, anjuId, musicMoodId);
+    }
+
     // 저장된 피드백을 흉내 낼 때 id와 참조 id를 함께 받는다.
     public PairingFeedback createWithIdAndReferences(
             Long id, Long drinkId, Long anjuId, Long musicMoodId) {
