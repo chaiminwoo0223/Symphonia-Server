@@ -74,36 +74,30 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
     @DisplayName("save 메서드는")
     class Save {
 
-        @Nested
-        @DisplayName("저장된 피드백을 다시 낸 값으로 바꾼 경우")
-        class WhenResubmitted {
+        @Test
+        @DisplayName("다시 낸 값으로 바꾼 피드백을 저장하면 같은 행의 관계, 분위기, 평점을 바꾼다")
+        void shouldUpdatePairingFeedbackWhenResubmitted() {
+            // given
+            PairingFeedback saved = savedFeedback();
+            saved.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
 
-            @Test
-            @DisplayName("같은 행의 관계, 분위기, 평점을 바꾼다")
-            void shouldUpdatePairingFeedback() {
-                // given
-                PairingFeedback saved = savedFeedback();
-                saved.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
+            // when
+            pairingFeedbackRepository.save(saved);
 
-                // when
-                pairingFeedbackRepository.save(saved);
-
-                // then
-                entityManager.flush();
-                entityManager.clear();
-                assertThat(
-                                pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                                        saved.getMemberId(), drinkId, anjuId, musicMoodId))
-                        .hasValueSatisfying(
-                                feedback -> {
-                                    assertThat(feedback.getId()).isEqualTo(saved.getId());
-                                    assertThat(feedback.getRelationshipType())
-                                            .isEqualTo(RelationshipType.LOVER);
-                                    assertThat(feedback.getMoodType()).isEqualTo(MoodType.ROMANTIC);
-                                    assertThat(feedback.getRating())
-                                            .isEqualTo(PairingRating.DISLIKE);
-                                });
-            }
+            // then
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(
+                            pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                                    saved.getMemberId(), drinkId, anjuId, musicMoodId))
+                    .hasValueSatisfying(
+                            feedback -> {
+                                assertThat(feedback.getId()).isEqualTo(saved.getId());
+                                assertThat(feedback.getRelationshipType())
+                                        .isEqualTo(RelationshipType.LOVER);
+                                assertThat(feedback.getMoodType()).isEqualTo(MoodType.ROMANTIC);
+                                assertThat(feedback.getRating()).isEqualTo(PairingRating.DISLIKE);
+                            });
         }
     }
 
@@ -171,34 +165,44 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
     @DisplayName("findByMemberIdAndCombinationForUpdate 메서드는")
     class FindByMemberIdAndCombinationForUpdate {
 
-        @Test
-        @DisplayName("회원이 같은 조합에 낸 피드백을 반환한다")
-        void shouldReturnFeedbackOfMemberAndCombination() {
-            // given
-            PairingFeedback saved = savedFeedback();
+        @Nested
+        @DisplayName("회원이 같은 조합에 낸 피드백이 있는 경우")
+        class WhenFeedbackExists {
 
-            // when
-            Optional<PairingFeedback> found =
-                    pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                            saved.getMemberId(), drinkId, anjuId, musicMoodId);
+            @Test
+            @DisplayName("그 피드백을 반환한다")
+            void shouldReturnFeedbackOfMemberAndCombination() {
+                // given
+                PairingFeedback saved = savedFeedback();
 
-            // then
-            assertThat(found).map(PairingFeedback::getId).hasValue(saved.getId());
+                // when
+                Optional<PairingFeedback> found =
+                        pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                                saved.getMemberId(), drinkId, anjuId, musicMoodId);
+
+                // then
+                assertThat(found).map(PairingFeedback::getId).hasValue(saved.getId());
+            }
         }
 
-        @Test
-        @DisplayName("다른 회원이 같은 조합에 낸 피드백은 반환하지 않는다")
-        void shouldReturnEmptyWhenOnlyOtherMemberSubmitted() {
-            // given
-            savedFeedback();
+        @Nested
+        @DisplayName("같은 조합에 다른 회원의 피드백만 있는 경우")
+        class WhenOnlyOtherMemberSubmitted {
 
-            // when
-            Optional<PairingFeedback> found =
-                    pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                            OTHER_MEMBER_ID, drinkId, anjuId, musicMoodId);
+            @Test
+            @DisplayName("빈 값을 반환한다")
+            void shouldReturnEmpty() {
+                // given
+                savedFeedback();
 
-            // then
-            assertThat(found).isEmpty();
+                // when
+                Optional<PairingFeedback> found =
+                        pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
+                                OTHER_MEMBER_ID, drinkId, anjuId, musicMoodId);
+
+                // then
+                assertThat(found).isEmpty();
+            }
         }
     }
 

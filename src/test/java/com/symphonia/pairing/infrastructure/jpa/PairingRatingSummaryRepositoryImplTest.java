@@ -17,6 +17,7 @@ import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
 import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
+import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.PairingRatingChange;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import java.util.List;
@@ -62,7 +63,7 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
             @DisplayName("받은 변화량으로 집계를 만든다")
             void shouldCreateSummaryWithChange() {
                 // given
-                Combination combination =
+                CombinationId combination =
                         savedCombinations(MusicMoodFixture.FORMAL_JAZZ).getFirst();
 
                 // when
@@ -93,7 +94,7 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
             @DisplayName("기존 수에 변화량을 더한다")
             void shouldAddChangeToSummary() {
                 // given
-                Combination combination =
+                CombinationId combination =
                         savedCombinations(MusicMoodFixture.FORMAL_JAZZ).getFirst();
                 accumulate(combination, LIKE_ADDED, 2);
 
@@ -125,12 +126,12 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
 
             private static final int ACCUMULATIONS_PER_THREAD = 20;
 
-            private Combination combination;
+            private CombinationId combination;
 
             @BeforeEach
             void setUp() {
                 combination =
-                        new Combination(
+                        new CombinationId(
                                 jdbcTemplate.queryForObject(
                                         "SELECT MIN(id) FROM drink", Long.class),
                                 jdbcTemplate.queryForObject("SELECT MIN(id) FROM anju", Long.class),
@@ -184,11 +185,11 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
         @DisplayName("좋아요와 싫어요를 합친 표본 수가 기준 이상인 집계만 반환한다")
         void shouldReturnSummariesWithEnoughSample() {
             // given
-            List<Combination> combinations =
+            List<CombinationId> combinations =
                     savedCombinations(
                             MusicMoodFixture.FORMAL_JAZZ, MusicMoodFixture.CASUAL_ACOUSTIC);
-            Combination belowMinimum = combinations.get(0);
-            Combination atMinimum = combinations.get(1);
+            CombinationId belowMinimum = combinations.get(0);
+            CombinationId atMinimum = combinations.get(1);
             accumulate(belowMinimum, new PairingRatingChange(2, 2), 1);
             accumulate(atMinimum, new PairingRatingChange(2, 3), 1);
 
@@ -210,7 +211,7 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
 
     // 음료와 안주는 하나씩 저장하고 음악만 다르게 해 조합을 만든다. 안주와 스타일 이름에 unique 제약이 있기 때문이다.
     // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
-    private List<Combination> savedCombinations(MusicMoodFixture... musicMoods) {
+    private List<CombinationId> savedCombinations(MusicMoodFixture... musicMoods) {
         Long drinkStyleId =
                 drinkStyleJpaRepository
                         .save(DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()))
@@ -229,11 +230,11 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
                         musicMood ->
                                 musicMoodJpaRepository.save(
                                         MusicMoodJpaEntity.from(musicMood.create())))
-                .map(saved -> new Combination(drinkId, anjuId, saved.getId()))
+                .map(saved -> new CombinationId(drinkId, anjuId, saved.getId()))
                 .toList();
     }
 
-    private void accumulate(Combination combination, PairingRatingChange change, int times) {
+    private void accumulate(CombinationId combination, PairingRatingChange change, int times) {
         IntStream.range(0, times)
                 .forEach(
                         _ ->
@@ -244,7 +245,7 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
                                         change));
     }
 
-    private PairingRatingSummary summaryOf(Combination combination) {
+    private PairingRatingSummary summaryOf(CombinationId combination) {
         return pairingRatingSummaryJpaRepository
                 .findById(
                         new PairingRatingSummaryJpaEntity.Combination(
@@ -254,6 +255,4 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
                 .orElseThrow()
                 .toDomain();
     }
-
-    private record Combination(Long drinkId, Long anjuId, Long musicMoodId) {}
 }

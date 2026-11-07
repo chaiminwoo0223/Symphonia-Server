@@ -27,6 +27,7 @@ import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.PairingRatingChange;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.RelationshipType;
+import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -204,19 +205,17 @@ class PairingControllerTest extends IntegrationTest {
                 SubmitPairingFeedbackRequest request = seedFeedbackRequest(PairingRating.DISLIKE);
                 PairingFeedback submitted =
                         pairingFeedbackRepository.save(
-                                PairingFeedback.of(
+                                PairingFeedbackFixture.FRIEND_FORMAL.createWithMemberAndReferences(
                                         member.getId(),
                                         request.drinkId(),
                                         request.anjuId(),
-                                        request.musicMoodId(),
-                                        request.relationshipType(),
-                                        request.moodType(),
-                                        PairingRating.LIKE));
+                                        request.musicMoodId()));
                 pairingRatingSummaryRepository.accumulate(
                         request.drinkId(),
                         request.anjuId(),
                         request.musicMoodId(),
-                        PairingRatingChange.added(PairingRating.LIKE));
+                        PairingRatingChange.added(
+                                PairingFeedbackFixture.FRIEND_FORMAL.getRating()));
 
                 // when & then
                 mockMvc.perform(
