@@ -7,6 +7,7 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.notification.application.dto.command.ComposeNotificationCommand;
@@ -14,6 +15,8 @@ import com.symphonia.notification.application.dto.result.NotificationContentResu
 import com.symphonia.notification.application.dto.result.PayerAmountResult;
 import com.symphonia.notification.application.provider.NotificationContentProvider;
 import com.symphonia.notification.domain.vo.NotificationType;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,13 +33,28 @@ public class NotificationContentProviderImpl implements NotificationContentProvi
     private final GatheringRepository gatheringRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
+    private final GatheringRetentionRepository gatheringRetentionRepository;
+    private final Clock clock;
 
+    // 파기 시각이 지난 모임에는 보내지 않는다. 물리 삭제 전에 남은 리마인드가 나가거나, 데이터 키를 지운 모임을 복호화하지 않게 하기 위해서다.
     // 금액을 먼저 계산해, 담을 금액이 없을 때는 참여자 정보를 복호화하는 모임 조회와 토큰 발급을 하지 않는다.
     @Override
     public Optional<NotificationContentResult> compose(ComposeNotificationCommand command) {
+        if (isExpired(command.gatheringId())) {
+            return Optional.empty();
+        }
+
         return Optional.of(findAnnounceableSettlements(command))
                 .filter(settlements -> !settlements.isEmpty())
                 .map(settlements -> toContent(command, settlements));
+    }
+
+    // 부른 쪽이 발송 기록을 잠갔으므로 FK 때문에 모임을 지울 수 없어, 모임은 항상 있다.
+    private boolean isExpired(Long gatheringId) {
+        return gatheringRetentionRepository
+                .findByGatheringId(gatheringId)
+                .orElseThrow(GatheringNotFoundException::new)
+                .isExpired(LocalDateTime.now(clock));
     }
 
     // 리마인드는 발송 기록이 처음 담은 정산 건이 아니라 모임에서 참여자가 아직 내지 않은 분담금을 모두 담는다.

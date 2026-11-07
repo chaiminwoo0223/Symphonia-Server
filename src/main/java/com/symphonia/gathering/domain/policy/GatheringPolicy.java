@@ -15,10 +15,14 @@ public enum GatheringPolicy {
     public static final String CONSENT_VERSION = "2026-10-30";
 
     // 모임 생성 후 정산 건을 기록할 수 있는 기간이다. 이 기간이 지나 참여한 사람은 분담에 들어갈 수 없어 참여도 함께 막는다.
-    private static final Duration RECORDING_PERIOD = Duration.ofHours(48);
+    public static final Duration RECORDING_PERIOD = Duration.ofHours(48);
 
     public static boolean isWithinRecordingPeriod(LocalDateTime openedAt, LocalDateTime now) {
-        return now.isBefore(openedAt.plus(RECORDING_PERIOD));
+        return now.isBefore(recordingClosesAt(openedAt));
+    }
+
+    public static LocalDateTime recordingClosesAt(LocalDateTime openedAt) {
+        return openedAt.plus(RECORDING_PERIOD);
     }
 
     public static void validateJoinable(LocalDateTime openedAt, LocalDateTime now) {

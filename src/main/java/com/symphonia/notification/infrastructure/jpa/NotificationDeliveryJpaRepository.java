@@ -84,4 +84,24 @@ public interface NotificationDeliveryJpaRepository
             """)
     List<NotificationDeliveryJpaEntity> findAllRemindersByGatheringIdForUpdate(
             @Param("gatheringId") Long gatheringId);
+
+    // 발송 기록이 담은 정산 건은 엔티티가 아닌 컬렉션 테이블이라 JPQL로 지울 수 없어 네이티브 쿼리로 지운다.
+    // 발송 기록 id를 따로 읽지 않고 서브쿼리로 넘겨, 모임 수와 관계없이 한 번에 지운다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            value =
+                    """
+                    DELETE FROM notification_delivery_settlement
+                    WHERE delivery_id IN (
+                        SELECT id FROM notification_delivery
+                        WHERE gathering_id IN (:gatheringIds))
+                    """,
+            nativeQuery = true)
+    void deleteSettlementIdsByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            "DELETE FROM NotificationDeliveryJpaEntity delivery"
+                    + " WHERE delivery.gatheringId IN :gatheringIds")
+    void deleteAllByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
 }

@@ -48,12 +48,14 @@ import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -106,6 +108,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringRepository gatheringRepository;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
@@ -1396,6 +1399,31 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 링크 토큰을 찾지 못한 예외를 던지고 정산 건을 잠그거나 저장하지 않는다")
+            void shouldThrowLinkTokenNotFoundException() {
+                // given
+                given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
+                        .willReturn(Optional.of(LEE_ID));
+                given(gatheringRetentionRepository.findByParticipantId(LEE_ID))
+                        .willReturn(
+                                Optional.of(
+                                        GatheringRetentionFixture.EXPIRED.create(
+                                                GATHERING_ID, NOW)));
+                MarkSharesSentCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.markSent(command))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
         @DisplayName("그 결제자에게 낼 분담금이 없는 경우")
         class WhenSharesNotFound {
 
@@ -1464,6 +1492,10 @@ class SettlementCommandServiceTest extends UnitTest {
                         .containsExactly(
                                 tuple(SETTLEMENT_ID, 3_333L, ShareStatus.SENT),
                                 tuple(THIRD_SETTLEMENT_ID, 10_000L, ShareStatus.SENT));
+                assertThat(captor.getAllValues())
+                        .extracting(
+                                settlement -> settlement.getShareOf(LEE_ID).getStatusChangedAt())
+                        .containsOnly(NOW);
             }
         }
 
@@ -2123,6 +2155,9 @@ class SettlementCommandServiceTest extends UnitTest {
     private void givenParticipant(Long participantId) {
         given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
                 .willReturn(Optional.of(participantId));
+        given(gatheringRetentionRepository.findByParticipantId(participantId))
+                .willReturn(
+                        Optional.of(GatheringRetentionFixture.RETAINED.create(GATHERING_ID, NOW)));
     }
 
     private void givenGatheringOfPayer(LocalDateTime openedAt) {
@@ -2172,6 +2207,7 @@ class SettlementCommandServiceTest extends UnitTest {
         return new SettlementCommandService(
                 participantLinkTokenRepository,
                 gatheringRepository,
+                gatheringRetentionRepository,
                 participantBankAccountRepository,
                 settlementRepository,
                 notificationCommandService,

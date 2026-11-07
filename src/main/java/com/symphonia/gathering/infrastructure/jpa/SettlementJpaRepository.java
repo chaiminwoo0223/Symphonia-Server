@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -57,4 +58,22 @@ public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEnti
             """)
     List<SettlementJpaEntity> findAllUnnotifiedByGatheringIdForUpdate(
             @Param("gatheringId") Long gatheringId);
+
+    List<SettlementJpaEntity> findAllByGatheringIdOrderById(Long gatheringId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT settlement FROM SettlementJpaEntity settlement
+            WHERE settlement.gatheringId IN :gatheringIds
+            ORDER BY settlement.id
+            """)
+    List<SettlementJpaEntity> findAllByGatheringIdsForUpdate(
+            @Param("gatheringIds") Collection<Long> gatheringIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            "DELETE FROM SettlementJpaEntity settlement"
+                    + " WHERE settlement.gatheringId IN :gatheringIds")
+    void deleteAllByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
 }

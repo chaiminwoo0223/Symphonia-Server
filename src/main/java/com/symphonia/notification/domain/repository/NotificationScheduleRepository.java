@@ -2,6 +2,7 @@ package com.symphonia.notification.domain.repository;
 
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +20,6 @@ public interface NotificationScheduleRepository {
 
     // 예약 시각이 지난 모임의 예약을 잠그고 찾는다. 다른 서버가 잠근 예약은 건너뛰어, 여러 서버가 같은 예약을 발송하지 않는다.
     Optional<NotificationSchedule> findDueForUpdate(Long gatheringId, LocalDateTime now);
+
+    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
 }

@@ -3,6 +3,7 @@ package com.symphonia.gathering.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
@@ -10,10 +11,13 @@ import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +41,7 @@ class GatheringQueryServiceTest extends UnitTest {
 
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
 
     @BeforeEach
     void setUp() {
@@ -44,6 +49,7 @@ class GatheringQueryServiceTest extends UnitTest {
                 new GatheringQueryService(
                         gatheringRepository,
                         gatheringJoinTokenRepository,
+                        gatheringRetentionRepository,
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));
@@ -71,6 +77,25 @@ class GatheringQueryServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 참여 토큰을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                        .willReturn(Optional.of(GATHERING_ID));
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringQueryService.getByJoinToken(JOIN_TOKEN))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
         @DisplayName("모임을 만든 지 48시간이 되기 직전인 경우")
         class WhenWithinRecordingPeriod {
 
@@ -87,6 +112,11 @@ class GatheringQueryServiceTest extends UnitTest {
                 assertThat(result.name()).isEqualTo(GatheringFixture.FRIDAY_DINNER.getName());
                 assertThat(result.joinable()).isTrue();
                 assertThat(result.consentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
+                assertThat(result.deletesAt())
+                        .isEqualTo(
+                                GatheringRetentionFixture.RETAINED
+                                        .create(GATHERING_ID, NOW)
+                                        .deletesAt());
             }
         }
 
@@ -112,11 +142,40 @@ class GatheringQueryServiceTest extends UnitTest {
         private void givenGatheringOpenedAt(LocalDateTime openedAt) {
             given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                     .willReturn(Optional.of(GATHERING_ID));
+            givenRetention(GatheringRetentionFixture.RETAINED);
             given(gatheringRepository.findById(GATHERING_ID))
                     .willReturn(
                             Optional.of(
                                     GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                                             GATHERING_ID, openedAt)));
+        }
+
+        private void givenRetention(GatheringRetentionFixture retention) {
+            given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                    .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
+        }
+    }
+
+    @Nested
+    @DisplayName("getPurgeCandidateIds 메서드는")
+    class GetPurgeCandidateIds {
+
+        @Test
+        @DisplayName("기록 기간 48시간과 정산이 끝난 뒤 7일이 모두 지났을 수 있는 모임만 후보로 찾는다")
+        void shouldFindGatheringsOpenedBeforeEarliestDeletion() {
+            // given
+            LocalDateTime latestExpirableOpenedAt = NOW.minusDays(7).minusHours(48);
+            given(gatheringRetentionRepository.findGatheringIdsOpenedUntil(latestExpirableOpenedAt))
+                    .willReturn(List.of(GATHERING_ID));
+
+            // when
+            List<Long> result = gatheringQueryService.getPurgeCandidateIds();
+
+            // then
+            assertThat(result).containsExactly(GATHERING_ID);
+            then(gatheringRetentionRepository)
+                    .should()
+                    .findGatheringIdsOpenedUntil(latestExpirableOpenedAt);
         }
     }
 }

@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,6 +42,8 @@ public class SettlementShareJpaEntity {
     @Column(nullable = false)
     private ShareStatus status;
 
+    private LocalDateTime statusChangedAt;
+
     public static SettlementShareJpaEntity from(SettlementShare share, Long settlementId) {
         return new SettlementShareJpaEntity(
                 null,
@@ -48,7 +51,8 @@ public class SettlementShareJpaEntity {
                 share.getParticipantId(),
                 share.getAmount(),
                 share.isFixed(),
-                share.getStatus());
+                share.getStatus(),
+                share.getStatusChangedAt());
     }
 
     public SettlementShare toDomain() {
@@ -57,6 +61,7 @@ public class SettlementShareJpaEntity {
                 .amount(amount)
                 .fixed(fixed)
                 .status(status)
+                .statusChangedAt(statusChangedAt)
                 .build();
     }
 }

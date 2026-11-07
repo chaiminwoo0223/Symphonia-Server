@@ -13,4 +13,6 @@ public interface ParticipantBankAccountRepository {
     // 참여자가 보낼 분담금의 결제자 계좌를 한 번에 읽는다. 복호화할 모임별 데이터 키를 찾도록 모임을 함께 받는다.
     List<ParticipantBankAccount> findAllByParticipantIds(
             Collection<Long> participantIds, Long gatheringId);
+
+    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
 }

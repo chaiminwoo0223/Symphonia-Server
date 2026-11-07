@@ -8,6 +8,8 @@ import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.domain.vo.SplitMethod;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -73,19 +75,34 @@ public class Settlement {
     }
 
     // 정산 메시지를 보내기 전에도 개인 링크로 분담금을 볼 수 있으므로, 발송 여부와 관계없이 보냄으로 바꿀 수 있다.
-    public void markShareSent(Long participantId) {
+    public void markShareSent(Long participantId, LocalDateTime now) {
         validateNotCancelled();
-        replaceShare(getShareOf(participantId).sent());
+        replaceShare(getShareOf(participantId).sent(now));
     }
 
-    public void confirmShare(Long participantId) {
+    public void confirmShare(Long participantId, LocalDateTime now) {
         validateNotCancelled();
-        replaceShare(getShareOf(participantId).confirmed());
+        replaceShare(getShareOf(participantId).confirmed(now));
     }
 
-    public void revertShareToUnpaid(Long participantId) {
+    public void revertShareToUnpaid(Long participantId, LocalDateTime now) {
         validateNotCancelled();
-        replaceShare(getShareOf(participantId).unpaid());
+        replaceShare(getShareOf(participantId).unpaid(now));
+    }
+
+    // 취소하지 않은 정산 건에 아직 내지 않은 분담금이 있으면 정산이 끝나지 않은 것이다. 모임의 파기 시각을 정하는 데 쓴다(#128).
+    public boolean hasUnpaidShares() {
+        return !isCancelled() && shares.stream().anyMatch(SettlementShare::isUnpaid);
+    }
+
+    // 정산 건이 마지막으로 바뀐 시각이다. 분담금 상태를 바꾼 시각과 취소한 시각 중 가장 늦은 값이다.
+    // 기록이나 수정만 한 정산 건은 바뀐 시각이 없다. 기록과 수정은 기록 기간 안에만 할 수 있어, 파기 시각은 기록 기간이 끝나는 시각으로 정해진다.
+    public Optional<LocalDateTime> getLastChangedAt() {
+        return Stream.concat(
+                        Stream.of(cancelledAt),
+                        shares.stream().map(SettlementShare::getStatusChangedAt))
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo);
     }
 
     public boolean hasUnpaidShareOf(Long participantId) {

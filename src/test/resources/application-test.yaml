@@ -7,6 +7,9 @@ refresh-token:
 gathering:
   crypto:
     master-key: dGVzdC1vbmx5LWdhdGhlcmluZy1tYXN0ZXIta2V5ISE=
+  # 테스트는 시각을 고정해 UseCase를 직접 부르므로 파기 스윕을 띄우지 않는다.
+  purge:
+    enabled: false
 
 # 테스트는 시각을 고정해 UseCase를 직접 부르므로 폴러를 띄우지 않는다.
 notification:

@@ -3,6 +3,7 @@ package com.symphonia.notification.infrastructure.jpa;
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -48,5 +49,10 @@ public class NotificationScheduleRepositoryImpl implements NotificationScheduleR
         return notificationScheduleJpaRepository
                 .findDueForUpdate(gatheringId, now)
                 .map(NotificationScheduleJpaEntity::toDomain);
+    }
+
+    @Override
+    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
+        notificationScheduleJpaRepository.deleteAllByGatheringIds(gatheringIds);
     }
 }

@@ -67,7 +67,7 @@ class ShareControllerTest extends IntegrationTest {
         class WhenLinkTokenValid {
 
             @Test
-            @DisplayName("인증 없이도 결제자별로 묶은 분담금을 결제자 계좌, 계산 근거와 함께 담아 200을 반환한다")
+            @DisplayName("인증 없이도 결제자별로 묶은 분담금을 결제자 계좌, 계산 근거, 모임의 파기 예정 시각과 함께 담아 200을 반환한다")
             void shouldReturnSharesGroupedByPayer() throws Exception {
                 // given
                 Settlement dinner =
@@ -78,34 +78,39 @@ class ShareControllerTest extends IntegrationTest {
                 // when & then
                 mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", leeLinkToken))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.length()").value(2))
-                        .andExpect(jsonPath("$.data[0].payerParticipantId").value(payer.getId()))
+                        .andExpect(jsonPath("$.data.deletesAt").isNotEmpty())
+                        .andExpect(jsonPath("$.data.payers.length()").value(2))
                         .andExpect(
-                                jsonPath("$.data[0].payerName")
+                                jsonPath("$.data.payers[0].payerParticipantId")
+                                        .value(payer.getId()))
+                        .andExpect(
+                                jsonPath("$.data.payers[0].payerName")
                                         .value(ParticipantFixture.KIM.getName()))
                         .andExpect(
-                                jsonPath("$.data[0].bankName")
+                                jsonPath("$.data.payers[0].bankName")
                                         .value(ParticipantBankAccountFixture.KOOKMIN.getBankName()))
                         .andExpect(
-                                jsonPath("$.data[0].accountNumber")
+                                jsonPath("$.data.payers[0].accountNumber")
                                         .value(
                                                 ParticipantBankAccountFixture.KOOKMIN
                                                         .getAccountNumber()))
-                        .andExpect(jsonPath("$.data[0].unpaidAmount").value(3_333))
-                        .andExpect(jsonPath("$.data[0].hasUnpaidShares").value(true))
-                        .andExpect(jsonPath("$.data[0].shares.length()").value(1))
+                        .andExpect(jsonPath("$.data.payers[0].unpaidAmount").value(3_333))
+                        .andExpect(jsonPath("$.data.payers[0].hasUnpaidShares").value(true))
+                        .andExpect(jsonPath("$.data.payers[0].shares.length()").value(1))
                         .andExpect(
-                                jsonPath("$.data[0].shares[0].settlementId").value(dinner.getId()))
-                        .andExpect(jsonPath("$.data[0].shares[0].totalAmount").value(10_000))
-                        .andExpect(jsonPath("$.data[0].shares[0].headcount").value(3))
-                        .andExpect(jsonPath("$.data[0].shares[0].fixed").value(false))
-                        .andExpect(jsonPath("$.data[0].shares[0].amount").value(3_333))
-                        .andExpect(jsonPath("$.data[0].shares[0].status").value("UNPAID"))
-                        .andExpect(jsonPath("$.data[0].shares[0].recordedAt").isNotEmpty())
-                        .andExpect(jsonPath("$.data[1].payerParticipantId").value(park.getId()))
-                        .andExpect(jsonPath("$.data[1].unpaidAmount").value(6_666))
+                                jsonPath("$.data.payers[0].shares[0].settlementId")
+                                        .value(dinner.getId()))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].totalAmount").value(10_000))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].headcount").value(3))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].fixed").value(false))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].amount").value(3_333))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].status").value("UNPAID"))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].recordedAt").isNotEmpty())
                         .andExpect(
-                                jsonPath("$.data[1].shares[0].settlementId")
+                                jsonPath("$.data.payers[1].payerParticipantId").value(park.getId()))
+                        .andExpect(jsonPath("$.data.payers[1].unpaidAmount").value(6_666))
+                        .andExpect(
+                                jsonPath("$.data.payers[1].shares[0].settlementId")
                                         .value(secondRound.getId()));
             }
         }

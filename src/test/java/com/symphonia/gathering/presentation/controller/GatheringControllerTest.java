@@ -165,7 +165,7 @@ class GatheringControllerTest extends IntegrationTest {
     class Preview {
 
         @Test
-        @DisplayName("인증 없이도 모임 이름, 참여 가능 여부, 동의 안내 버전을 반환한다")
+        @DisplayName("인증 없이도 모임 이름, 참여 가능 여부, 동의 안내 버전, 파기 예정 시각을 반환한다")
         void shouldReturnGatheringWithoutAuthentication() throws Exception {
             // given
             String joinToken = saveGatheringWithJoinToken();
@@ -178,7 +178,8 @@ class GatheringControllerTest extends IntegrationTest {
                     .andExpect(jsonPath("$.data.joinable").value(true))
                     .andExpect(
                             jsonPath("$.data.consentVersion")
-                                    .value(GatheringPolicy.CONSENT_VERSION));
+                                    .value(GatheringPolicy.CONSENT_VERSION))
+                    .andExpect(jsonPath("$.data.deletesAt").isNotEmpty());
         }
     }
 

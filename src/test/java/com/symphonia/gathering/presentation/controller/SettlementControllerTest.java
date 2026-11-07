@@ -97,6 +97,7 @@ class SettlementControllerTest extends IntegrationTest {
                                         .header("X-Link-Token", payerLinkToken))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.recordable").value(true))
+                        .andExpect(jsonPath("$.data.deletesAt").isNotEmpty())
                         .andExpect(jsonPath("$.data.bankAccountRegistered").value(true))
                         .andExpect(
                                 jsonPath("$.data.bankAccountConsentVersion")
