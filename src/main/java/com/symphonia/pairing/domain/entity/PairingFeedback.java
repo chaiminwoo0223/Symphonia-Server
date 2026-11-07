@@ -43,6 +43,17 @@ public class PairingFeedback {
                 .build();
     }
 
+    // 회원이 아닌 사람의 피드백이다. 모임 데이터와 회원 데이터를 피드백으로 연결하지 않도록 회원 id를 남기지 않는다(#131).
+    public static PairingFeedback anonymous(
+            Long drinkId,
+            Long anjuId,
+            Long musicMoodId,
+            RelationshipType relationshipType,
+            MoodType moodType,
+            PairingRating rating) {
+        return of(null, drinkId, anjuId, musicMoodId, relationshipType, moodType, rating);
+    }
+
     // 같은 조합에 다시 낸 피드백으로 바꾸고, 조합별 집계가 바뀌는 수를 돌려준다.
     public PairingRatingChange resubmit(
             RelationshipType relationshipType, MoodType moodType, PairingRating rating) {
