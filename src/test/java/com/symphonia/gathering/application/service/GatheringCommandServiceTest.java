@@ -29,9 +29,11 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
@@ -69,6 +71,7 @@ class GatheringCommandServiceTest extends UnitTest {
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
 
     @BeforeEach
     void setUp() {
@@ -77,6 +80,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         gatheringRepository,
                         gatheringJoinTokenRepository,
                         participantLinkTokenRepository,
+                        gatheringRetentionRepository,
                         gatheringTokenProvider,
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
@@ -146,7 +150,8 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 참여 토큰을 저장하지 않는다")
             void shouldThrowGatheringNotFoundException() {
                 // given
-                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(
                                 GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
@@ -154,6 +159,27 @@ class GatheringCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> gatheringCommandService.reissue(command))
                         .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽거나 참여 토큰을 저장하지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+                ReissueJoinTokenCommand command =
+                        ReissueJoinTokenCommand.of(
+                                GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.reissue(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
                 then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
             }
         }
@@ -224,6 +250,7 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         private void givenGathering(LocalDateTime openedAt) {
+            givenRetention(GatheringRetentionFixture.RETAINED);
             given(gatheringRepository.findById(GATHERING_ID))
                     .willReturn(
                             Optional.of(
@@ -252,6 +279,27 @@ class GatheringCommandServiceTest extends UnitTest {
                 assertThatThrownBy(() -> gatheringCommandService.join(command))
                         .isInstanceOf(JoinTokenNotFoundException.class);
                 thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 참여 토큰을 찾지 못한 예외를 던지고 모임을 읽거나 참여자를 저장하지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                        .willReturn(Optional.of(GATHERING_ID));
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+                JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.join(command))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(participantLinkTokenRepository).shouldHaveNoInteractions();
             }
         }
 
@@ -414,6 +462,7 @@ class GatheringCommandServiceTest extends UnitTest {
         private void givenGathering(Gathering gathering) {
             given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                     .willReturn(Optional.of(GATHERING_ID));
+            givenRetention(GatheringRetentionFixture.RETAINED);
             given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.of(gathering));
         }
 
@@ -421,5 +470,10 @@ class GatheringCommandServiceTest extends UnitTest {
             then(gatheringRepository).should(never()).save(any(Gathering.class));
             then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
         }
+    }
+
+    private void givenRetention(GatheringRetentionFixture retention) {
+        given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
     }
 }

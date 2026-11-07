@@ -5,6 +5,7 @@ import com.symphonia.gathering.domain.exception.ShareAlreadySentException;
 import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.vo.ShareStatus;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,9 @@ public class SettlementShare {
     private long amount;
     private boolean fixed;
     private ShareStatus status;
+    // 참여자나 결제자가 상태를 마지막으로 바꾼 시각이다. 기록할 때 정해진 상태 그대로면 null이다.
+    // 모든 분담금이 끝난 시각을 구해 모임의 파기 시각을 정하는 데 쓴다(#128).
+    private LocalDateTime statusChangedAt;
 
     public static SettlementShare equal(Long participantId, long amount) {
         return of(participantId, amount, false);
@@ -51,28 +55,28 @@ public class SettlementShare {
     }
 
     // 참여자가 "보냈어요"를 누르면 미입금 분담금만 보냄이 된다.
-    public SettlementShare sent() {
+    public SettlementShare sent(LocalDateTime now) {
         validateNotSent();
         validateNotConfirmed();
 
-        return withStatus(ShareStatus.SENT);
+        return withStatus(ShareStatus.SENT, now);
     }
 
     // 결제자가 보냄을 확인하거나 직접 받은 돈을 처리하므로, 미입금과 보냄 모두 확인 완료가 될 수 있다.
-    public SettlementShare confirmed() {
+    public SettlementShare confirmed(LocalDateTime now) {
         validateAmountNotZero();
         validateNotConfirmed();
 
-        return withStatus(ShareStatus.CONFIRMED);
+        return withStatus(ShareStatus.CONFIRMED, now);
     }
 
     // 결제자가 "아직 안 들어왔어요"로 보냄을 되돌린다.
     // 받은 돈을 돌려주고 정산 건을 취소할 수 있도록 확인 완료도 미입금으로 되돌릴 수 있다.
-    public SettlementShare unpaid() {
+    public SettlementShare unpaid(LocalDateTime now) {
         validateAmountNotZero();
         validateNotUnpaid();
 
-        return withStatus(ShareStatus.UNPAID);
+        return withStatus(ShareStatus.UNPAID, now);
     }
 
     // 생일인 사람처럼 낼 돈이 없는 0원 분담금은 받을 것도 없으므로 확인 완료로 시작한다.
@@ -85,12 +89,13 @@ public class SettlementShare {
                 .build();
     }
 
-    private SettlementShare withStatus(ShareStatus status) {
+    private SettlementShare withStatus(ShareStatus status, LocalDateTime now) {
         return SettlementShare.builder()
                 .participantId(participantId)
                 .amount(amount)
                 .fixed(fixed)
                 .status(status)
+                .statusChangedAt(now)
                 .build();
     }
 

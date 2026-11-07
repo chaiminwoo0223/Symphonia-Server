@@ -1,5 +1,6 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,4 +16,15 @@ public interface SettlementShareJpaRepository
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM SettlementShareJpaEntity share WHERE share.settlementId = :settlementId")
     void deleteAllBySettlementId(@Param("settlementId") Long settlementId);
+
+    // 정산 건 id를 따로 읽지 않고 서브쿼리로 넘겨, 모임 수와 관계없이 한 번에 지운다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            """
+            DELETE FROM SettlementShareJpaEntity share
+            WHERE share.settlementId IN (
+                SELECT settlement.id FROM SettlementJpaEntity settlement
+                WHERE settlement.gatheringId IN :gatheringIds)
+            """)
+    void deleteAllByGatheringIds(@Param("gatheringIds") Collection<Long> gatheringIds);
 }

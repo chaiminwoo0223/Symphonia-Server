@@ -2,6 +2,7 @@ package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.common.crypto.Sha256;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
+import java.util.Collection;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -22,5 +23,10 @@ public class ParticipantLinkTokenRepositoryImpl implements ParticipantLinkTokenR
         return participantLinkTokenJpaRepository
                 .findByTokenHash(Sha256.hash(value))
                 .map(ParticipantLinkTokenJpaEntity::getParticipantId);
+    }
+
+    @Override
+    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
+        participantLinkTokenJpaRepository.deleteAllByGatheringIds(gatheringIds);
     }
 }

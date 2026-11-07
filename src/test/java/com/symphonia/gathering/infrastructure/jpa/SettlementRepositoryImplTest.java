@@ -170,7 +170,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
                 clearPersistenceContext();
                 Settlement loaded = settlementRepository.findById(settlementId).orElseThrow();
-                loaded.markShareSent(leeId);
+                loaded.markShareSent(leeId, LocalDateTime.now());
 
                 // when
                 Settlement saved = settlementRepository.save(loaded);
@@ -220,7 +220,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 clearPersistenceContext();
                 Settlement first = settlementRepository.findById(settlementId).orElseThrow();
                 Settlement stale = settlementRepository.findById(settlementId).orElseThrow();
-                first.markShareSent(leeId);
+                first.markShareSent(leeId, LocalDateTime.now());
                 settlementRepository.save(first);
                 clearPersistenceContext();
                 stale.cancel(LocalDateTime.now());
@@ -297,7 +297,9 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 () ->
                                         saveAfterBothLoaded(
                                                 settlementId,
-                                                settlement -> settlement.markShareSent(leeId),
+                                                settlement ->
+                                                        settlement.markShareSent(
+                                                                leeId, LocalDateTime.now()),
                                                 loaded),
                                 () ->
                                         saveAfterBothLoaded(
@@ -654,7 +656,8 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                                 participantId, kimId)
                                         .forEach(
                                                 settlement -> {
-                                                    settlement.markShareSent(participantId);
+                                                    settlement.markShareSent(
+                                                            participantId, LocalDateTime.now());
                                                     settlementRepository.save(settlement);
                                                 }));
             }

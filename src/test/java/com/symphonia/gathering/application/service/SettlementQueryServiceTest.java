@@ -14,16 +14,19 @@ import com.symphonia.gathering.application.dto.result.SettlementFormResult;
 import com.symphonia.gathering.application.dto.result.SettlementParticipantResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
+import com.symphonia.gathering.application.dto.result.SharesResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -68,6 +71,7 @@ class SettlementQueryServiceTest extends UnitTest {
 
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringRepository gatheringRepository;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
@@ -81,6 +85,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 new SettlementQueryService(
                         participantLinkTokenRepository,
                         gatheringRepository,
+                        gatheringRetentionRepository,
                         participantBankAccountRepository,
                         settlementRepository,
                         new NotificationQueryService(notificationScheduleRepository, clock),
@@ -105,6 +110,57 @@ class SettlementQueryServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementQueryService.getForm(LINK_TOKEN))
                         .isInstanceOf(LinkTokenNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("파기 시각이 된 모임이면 물리 삭제 전이라도 링크 토큰을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowLinkTokenNotFoundException() {
+                // given
+                givenParticipant(PAYER_ID, GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getForm(LINK_TOKEN))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+
+            @Test
+            @DisplayName("데이터 키를 지운 모임이면 링크 토큰을 찾지 못한 예외를 던지고 모임을 복호화하지 않는다")
+            void shouldThrowLinkTokenNotFoundExceptionWhenDataKeyDiscarded() {
+                // given
+                givenParticipant(PAYER_ID, GatheringRetentionFixture.DATA_KEY_DISCARDED);
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getForm(LINK_TOKEN))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 남은 경우")
+        class WhenGatheringRetained {
+
+            @Test
+            @DisplayName("모임의 파기 시각을 함께 반환한다")
+            void shouldReturnDeletesAt() {
+                // given
+                givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.deletesAt())
+                        .isEqualTo(
+                                GatheringRetentionFixture.RETAINED
+                                        .create(GATHERING_ID, NOW)
+                                        .deletesAt());
             }
         }
 
@@ -281,8 +337,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement latestSettlement,
                 boolean bankAccountRegistered,
                 List<Settlement> payerSettlements) {
-            given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                    .willReturn(Optional.of(PAYER_ID));
+            givenParticipant(PAYER_ID, GatheringRetentionFixture.RETAINED);
             given(gatheringRepository.findByParticipantId(PAYER_ID))
                     .willReturn(Optional.of(gathering(openedAt)));
             given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
@@ -316,6 +371,50 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 링크 토큰을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowLinkTokenNotFoundException() {
+                // given
+                givenParticipant(LEE_ID, GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getShares(LINK_TOKEN))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 남은 경우")
+        class WhenGatheringRetained {
+
+            @Test
+            @DisplayName("결제자별 분담금과 함께 모임의 파기 시각을 반환한다")
+            void shouldReturnDeletesAt() {
+                // given
+                givenShares(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+
+                // when
+                SharesResult result = settlementQueryService.getShares(LINK_TOKEN);
+
+                // then
+                assertThat(result.deletesAt())
+                        .isEqualTo(
+                                GatheringRetentionFixture.RETAINED
+                                        .create(GATHERING_ID, NOW)
+                                        .deletesAt());
+                assertThat(result.payers())
+                        .extracting(PayerSharesResult::payerParticipantId)
+                        .containsExactly(PAYER_ID);
+            }
+        }
+
+        @Nested
         @DisplayName("낼 분담금이 없는 경우")
         class WhenSharesNotFound {
 
@@ -323,15 +422,15 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("빈 목록을 반환한다")
             void shouldReturnEmptyListWhenSharesNotFound() {
                 // given
-                given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                        .willReturn(Optional.of(LEE_ID));
+                givenParticipant(LEE_ID, GatheringRetentionFixture.RETAINED);
                 given(gatheringRepository.findByParticipantId(LEE_ID))
                         .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
                 given(settlementRepository.findAllByShareParticipantId(LEE_ID))
                         .willReturn(List.of());
 
                 // when
-                List<PayerSharesResult> result = settlementQueryService.getShares(LINK_TOKEN);
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
 
                 // then
                 assertThat(result).isEmpty();
@@ -359,7 +458,8 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ShareStatus.SENT));
 
                 // when
-                List<PayerSharesResult> result = settlementQueryService.getShares(LINK_TOKEN);
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
 
                 // then
                 assertThat(result)
@@ -402,7 +502,8 @@ class SettlementQueryServiceTest extends UnitTest {
                                 SECOND_SETTLEMENT_ID, GATHERING_ID, PARK_ID, PARTICIPANT_IDS));
 
                 // when
-                List<PayerSharesResult> result = settlementQueryService.getShares(LINK_TOKEN);
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
 
                 // then
                 assertThat(result)
@@ -427,7 +528,8 @@ class SettlementQueryServiceTest extends UnitTest {
                                 SECOND_SETTLEMENT_ID, GATHERING_ID, PARK_ID, PARTICIPANT_IDS));
 
                 // when
-                List<PayerSharesResult> result = settlementQueryService.getShares(LINK_TOKEN);
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
 
                 // then
                 assertThat(result)
@@ -488,7 +590,8 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ShareStatus.CONFIRMED));
 
                 // when
-                List<PayerSharesResult> result = settlementQueryService.getShares(LINK_TOKEN);
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
 
                 // then
                 PayerSharesResult payerShares = result.getFirst();
@@ -521,7 +624,8 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenShares(settlement);
 
                 // when
-                List<PayerSharesResult> result = settlementQueryService.getShares(LINK_TOKEN);
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
 
                 // then
                 assertThat(result.getFirst().shares())
@@ -539,8 +643,7 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         private void givenShares(Settlement... settlements) {
-            given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                    .willReturn(Optional.of(LEE_ID));
+            givenParticipant(LEE_ID, GatheringRetentionFixture.RETAINED);
             given(gatheringRepository.findByParticipantId(LEE_ID))
                     .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
             given(settlementRepository.findAllByShareParticipantId(LEE_ID))
@@ -551,6 +654,13 @@ class SettlementQueryServiceTest extends UnitTest {
                                     ParticipantBankAccountFixture.KOOKMIN.create(PAYER_ID),
                                     ParticipantBankAccountFixture.KOOKMIN.create(PARK_ID)));
         }
+    }
+
+    private void givenParticipant(Long participantId, GatheringRetentionFixture retention) {
+        given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
+                .willReturn(Optional.of(participantId));
+        given(gatheringRetentionRepository.findByParticipantId(participantId))
+                .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
     }
 
     private Gathering gathering(LocalDateTime openedAt) {

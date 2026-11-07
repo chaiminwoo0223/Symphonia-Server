@@ -1,5 +1,6 @@
 package com.symphonia.gathering.domain.repository;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface GatheringJoinTokenRepository {
@@ -7,4 +8,6 @@ public interface GatheringJoinTokenRepository {
     void save(String value, Long gatheringId);
 
     Optional<Long> findGatheringIdByValue(String value);
+
+    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
 }

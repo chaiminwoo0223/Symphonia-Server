@@ -36,4 +36,7 @@ public interface NotificationDeliveryRepository {
     // 리마인드는 컨슈머가 맡을 때 담을 정산 건이 정해져, 정산 건으로 찾으면 맡는 중인 리마인드를 놓친다.
     // 그래서 모임의 리마인드를 모두 잠가 맡는 중이면 끝날 때까지 기다리고, 담은 정산 건은 잠근 뒤에 다시 읽어 거른다.
     List<NotificationDelivery> findAllRemindersByGatheringIdForUpdate(Long gatheringId);
+
+    // 발송 기록과 발송 기록이 담은 정산 건을 함께 지운다.
+    void deleteAllByGatheringIds(Collection<Long> gatheringIds);
 }

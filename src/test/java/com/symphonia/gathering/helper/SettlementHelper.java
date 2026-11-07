@@ -35,13 +35,13 @@ public class SettlementHelper {
 
     // 참여자가 "보냈어요"를 누른 상태를 만든다.
     public Settlement markSent(Settlement settlement, Participant participant) {
-        settlement.markShareSent(participant.getId());
+        settlement.markShareSent(participant.getId(), LocalDateTime.now());
 
         return settlementRepository.save(settlement);
     }
 
     public Settlement confirm(Settlement settlement, Participant participant) {
-        settlement.confirmShare(participant.getId());
+        settlement.confirmShare(participant.getId(), LocalDateTime.now());
 
         return settlementRepository.save(settlement);
     }

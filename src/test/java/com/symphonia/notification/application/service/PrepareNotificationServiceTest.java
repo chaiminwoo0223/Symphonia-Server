@@ -15,10 +15,12 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
@@ -63,6 +65,7 @@ class PrepareNotificationServiceTest extends UnitTest {
     @Mock private SettlementRepository settlementRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
 
     @BeforeEach
     void setUp() {
@@ -219,6 +222,53 @@ class PrepareNotificationServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("파기 시각이 된 모임이면 보내지 않음으로 바꿔 저장하고 모임과 정산 건을 읽지 않는다")
+            void shouldSkipWhenGatheringExpired() {
+                // given
+                NotificationDelivery delivery = reminderBuilder(PARK_ID).build();
+                givenDelivery(delivery);
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when
+                Optional<PreparedNotificationResult> result =
+                        prepareNotificationService.prepare(DELIVERY_ID);
+
+                // then
+                assertThat(result).isEmpty();
+                thenSkippedWithoutReading(delivery);
+            }
+
+            @Test
+            @DisplayName("데이터 키를 지운 모임이면 보내지 않음으로 바꿔 저장하고 모임과 정산 건을 읽지 않는다")
+            void shouldSkipWhenDataKeyDiscarded() {
+                // given
+                NotificationDelivery delivery = reminderBuilder(PARK_ID).build();
+                givenDelivery(delivery);
+                givenRetention(GatheringRetentionFixture.DATA_KEY_DISCARDED);
+
+                // when
+                Optional<PreparedNotificationResult> result =
+                        prepareNotificationService.prepare(DELIVERY_ID);
+
+                // then
+                assertThat(result).isEmpty();
+                thenSkippedWithoutReading(delivery);
+            }
+
+            private void thenSkippedWithoutReading(NotificationDelivery delivery) {
+                then(notificationDeliveryRepository).should().save(delivery);
+                assertThat(delivery.getStatus()).isEqualTo(DeliveryStatus.SKIPPED);
+                then(settlementRepository).shouldHaveNoInteractions();
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(gatheringTokenProvider).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
         @DisplayName("알릴 금액이 없는 경우")
         class WhenNothingToAnnounce {
 
@@ -277,7 +327,7 @@ class PrepareNotificationServiceTest extends UnitTest {
                 Settlement settlement =
                         SettlementFixture.DINNER.createNotified(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                settlement.markShareSent(PARK_ID);
+                settlement.markShareSent(PARK_ID, NOW);
                 givenSharedSettlements(PARK_ID, settlement);
 
                 // when
@@ -387,7 +437,7 @@ class PrepareNotificationServiceTest extends UnitTest {
                 Settlement sentSettlement =
                         SettlementFixture.SECOND_ROUND.createWithId(
                                 SECOND_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                sentSettlement.markShareSent(PARK_ID);
+                sentSettlement.markShareSent(PARK_ID, NOW);
                 givenSettlements(
                         List.of(SETTLEMENT_ID, SECOND_SETTLEMENT_ID),
                         SettlementFixture.DINNER.createWithId(
@@ -482,7 +532,7 @@ class PrepareNotificationServiceTest extends UnitTest {
                 Settlement sentSettlement =
                         SettlementFixture.SECOND_ROUND.createNotified(
                                 SECOND_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                sentSettlement.markShareSent(PARK_ID);
+                sentSettlement.markShareSent(PARK_ID, NOW);
                 givenSharedSettlements(
                         PARK_ID,
                         SettlementFixture.DINNER.createNotified(
@@ -559,13 +609,24 @@ class PrepareNotificationServiceTest extends UnitTest {
         }
 
         private void givenSettlements(List<Long> settlementIds, Settlement... settlements) {
+            givenRetained();
             given(settlementRepository.findAllByIds(settlementIds))
                     .willReturn(List.of(settlements));
         }
 
         private void givenSharedSettlements(Long participantId, Settlement... settlements) {
+            givenRetained();
             given(settlementRepository.findAllByShareParticipantId(participantId))
                     .willReturn(List.of(settlements));
+        }
+
+        private void givenRetained() {
+            givenRetention(GatheringRetentionFixture.RETAINED);
+        }
+
+        private void givenRetention(GatheringRetentionFixture retention) {
+            given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                    .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
         }
 
         private void givenClaimSaved() {
@@ -589,6 +650,9 @@ class PrepareNotificationServiceTest extends UnitTest {
     }
 
     private void givenNow(LocalDateTime now) {
+        Clock clock =
+                Clock.fixed(
+                        now.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
         prepareNotificationService =
                 new PrepareNotificationService(
                         notificationDeliveryRepository,
@@ -596,9 +660,9 @@ class PrepareNotificationServiceTest extends UnitTest {
                                 settlementRepository,
                                 gatheringRepository,
                                 participantLinkTokenRepository,
-                                gatheringTokenProvider),
-                        Clock.fixed(
-                                now.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
-                                TimeConfig.SERVICE_ZONE));
+                                gatheringTokenProvider,
+                                gatheringRetentionRepository,
+                                clock),
+                        clock);
     }
 }

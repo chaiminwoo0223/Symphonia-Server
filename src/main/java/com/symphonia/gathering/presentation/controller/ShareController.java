@@ -2,12 +2,13 @@ package com.symphonia.gathering.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
+import com.symphonia.gathering.application.dto.result.SharesResult;
 import com.symphonia.gathering.application.usecase.GetSharesUseCase;
 import com.symphonia.gathering.application.usecase.MarkSharesSentUseCase;
 import com.symphonia.gathering.presentation.api.ShareApi;
 import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest;
 import com.symphonia.gathering.presentation.dto.response.PayerSharesResponse;
-import java.util.List;
+import com.symphonia.gathering.presentation.dto.response.SharesResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +21,9 @@ public class ShareController implements ShareApi {
     private final MarkSharesSentUseCase markSharesSentUseCase;
 
     @Override
-    public ResponseEntity<StandardResponse<List<PayerSharesResponse>>> getShares(String linkToken) {
-        List<PayerSharesResult> results = getSharesUseCase.getShares(linkToken);
-        List<PayerSharesResponse> response =
-                results.stream().map(PayerSharesResponse::from).toList();
+    public ResponseEntity<StandardResponse<SharesResponse>> getShares(String linkToken) {
+        SharesResult result = getSharesUseCase.getShares(linkToken);
+        SharesResponse response = SharesResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));

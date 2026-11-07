@@ -51,6 +51,11 @@ public class ParticipantBankAccountRepositoryImpl implements ParticipantBankAcco
                 .orElseGet(List::of);
     }
 
+    @Override
+    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
+        participantBankAccountJpaRepository.deleteAllByGatheringIds(gatheringIds);
+    }
+
     private List<ParticipantBankAccount> decrypt(
             List<ParticipantBankAccountJpaEntity> entities, GatheringDataKey dataKey) {
         return entities.stream().map(entity -> entity.toDomain(dataKey)).toList();

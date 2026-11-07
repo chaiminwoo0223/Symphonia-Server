@@ -1,6 +1,7 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
+import com.symphonia.common.exception.BusinessException;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
@@ -17,10 +18,12 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 
 @CommandService
@@ -30,6 +33,7 @@ public class GatheringCommandService
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
+    private final GatheringRetentionRepository gatheringRetentionRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
     private final Clock clock;
 
@@ -42,30 +46,34 @@ public class GatheringCommandService
         return issueJoinToken(savedGathering.getId());
     }
 
+    // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
     @Override
     public GatheringJoinTokenResult reissue(ReissueJoinTokenCommand command) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        validateRetained(command.gatheringId(), now, GatheringNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
-        GatheringPolicy.validateJoinable(gathering.getOpenedAt(), LocalDateTime.now(clock));
+        GatheringPolicy.validateJoinable(gathering.getOpenedAt(), now);
 
         return issueJoinToken(gathering.getId());
     }
 
     @Override
     public ParticipantResult join(JoinGatheringCommand command) {
+        LocalDateTime now = LocalDateTime.now(clock);
         Long gatheringId =
                 gatheringJoinTokenRepository
                         .findGatheringIdByValue(command.joinToken())
                         .orElseThrow(JoinTokenNotFoundException::new);
+        validateRetained(gatheringId, now, JoinTokenNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
                         .findById(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
         PhoneNumber phoneNumber = PhoneNumber.from(command.phoneNumber());
-        LocalDateTime now = LocalDateTime.now(clock);
         GatheringPolicy.validateJoinable(gathering.getOpenedAt(), now);
         GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
         GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
@@ -77,6 +85,14 @@ public class GatheringCommandService
         participantLinkTokenRepository.save(linkToken, participant.getId());
 
         return ParticipantResult.of(participant, linkToken);
+    }
+
+    private void validateRetained(
+            Long gatheringId, LocalDateTime now, Supplier<? extends BusinessException> notFound) {
+        gatheringRetentionRepository
+                .findByGatheringId(gatheringId)
+                .filter(retention -> !retention.isExpired(now))
+                .orElseThrow(notFound);
     }
 
     // 모임마다 참여 토큰은 하나라서, 새로 발급하면 기존 토큰은 무효가 된다.

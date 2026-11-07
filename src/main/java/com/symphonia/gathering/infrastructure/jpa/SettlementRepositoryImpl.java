@@ -82,6 +82,23 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                         participantId, payerParticipantId));
     }
 
+    @Override
+    public List<Settlement> findAllByGatheringId(Long gatheringId) {
+        return toDomains(settlementJpaRepository.findAllByGatheringIdOrderById(gatheringId));
+    }
+
+    @Override
+    public List<Settlement> findAllByGatheringIdsForUpdate(Collection<Long> gatheringIds) {
+        return toDomains(settlementJpaRepository.findAllByGatheringIdsForUpdate(gatheringIds));
+    }
+
+    // 정산 건을 참조하는 분담금을 먼저 지운다.
+    @Override
+    public void deleteAllByGatheringIds(Collection<Long> gatheringIds) {
+        settlementShareJpaRepository.deleteAllByGatheringIds(gatheringIds);
+        settlementJpaRepository.deleteAllByGatheringIds(gatheringIds);
+    }
+
     // 다른 요청이 먼저 바꾼 정산 건이면 버전이 달라 저장이 실패한다.
     // 커밋 시점에 실패하면 이 메서드가 예외를 바꿀 수 없으므로 바로 flush한다.
     // 분담금 행만 바뀌면 정산 건 행이 그대로라 Hibernate가 버전을 올리지 않으므로, 저장할 때마다 버전을 올린다.

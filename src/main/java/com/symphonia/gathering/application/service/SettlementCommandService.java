@@ -25,6 +25,7 @@ import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -62,6 +63,7 @@ public class SettlementCommandService
                 RevertShareUseCase {
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final GatheringRepository gatheringRepository;
+    private final GatheringRetentionRepository gatheringRetentionRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
     private final RescheduleNotificationUseCase rescheduleNotificationUseCase;
@@ -171,12 +173,13 @@ public class SettlementCommandService
                         participantId, command.payerParticipantId());
         SettlementPolicy.validateSharesFound(!settlements.isEmpty());
         Gathering gathering = findGatheringByParticipantId(participantId);
+        LocalDateTime now = LocalDateTime.now(clock);
 
         settlements.stream()
                 .filter(settlement -> settlement.hasUnpaidShareOf(participantId))
                 .forEach(
                         settlement -> {
-                            settlement.markShareSent(participantId);
+                            settlement.markShareSent(participantId, now);
                             settlementRepository.save(settlement);
                         });
 
@@ -193,7 +196,7 @@ public class SettlementCommandService
         Settlement settlement = findSettlement(command.settlementId());
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
-        settlement.confirmShare(command.participantId());
+        settlement.confirmShare(command.participantId(), LocalDateTime.now(clock));
         Settlement savedSettlement = settlementRepository.save(settlement);
 
         return SettlementResult.of(
@@ -208,7 +211,7 @@ public class SettlementCommandService
         Settlement settlement = findSettlement(command.settlementId());
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
-        settlement.revertShareToUnpaid(command.participantId());
+        settlement.revertShareToUnpaid(command.participantId(), LocalDateTime.now(clock));
         Optional.of(settlement)
                 .filter(Settlement::isNotified)
                 .ifPresent(notified -> scheduleReminder(notified, command.participantId()));
@@ -218,9 +221,18 @@ public class SettlementCommandService
                 savedSettlement, findScheduledAt(savedSettlement.getGatheringId()));
     }
 
+    // 파기 시각이 지난 모임의 링크는 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
+    // 데이터 키를 지운 모임을 복호화하지 않도록 모임을 읽기 전에 확인한다.
     private Long findParticipantId(String linkToken) {
+        LocalDateTime now = LocalDateTime.now(clock);
         return participantLinkTokenRepository
                 .findParticipantIdByValue(linkToken)
+                .filter(
+                        participantId ->
+                                gatheringRetentionRepository
+                                        .findByParticipantId(participantId)
+                                        .filter(retention -> !retention.isExpired(now))
+                                        .isPresent())
                 .orElseThrow(LinkTokenNotFoundException::new);
     }
 
