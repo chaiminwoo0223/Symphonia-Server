@@ -1,6 +1,6 @@
 package com.symphonia.pairing.application.dto.command;
 
-import com.symphonia.catalog.application.dto.query.VerifyCatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -13,7 +13,7 @@ public record SubmitPairingFeedbackCommand(
         RelationshipType relationshipType,
         MoodType moodType,
         PairingRating rating) {
-    public VerifyCatalogReferencesQuery toVerifyCatalogReferencesQuery() {
-        return VerifyCatalogReferencesQuery.of(drinkId, anjuId, musicMoodId);
+    public CatalogReferencesQuery toCatalogReferencesQuery() {
+        return CatalogReferencesQuery.of(drinkId, anjuId, musicMoodId);
     }
 }
