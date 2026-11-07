@@ -2,8 +2,10 @@ package com.symphonia.gathering.domain.policy;
 
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
+import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
+import com.symphonia.gathering.domain.exception.PairingFeedbackAlreadySubmittedException;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -50,6 +52,20 @@ public enum GatheringPolicy {
     public static void validateHost(Long hostMemberId, Long memberId) {
         if (!hostMemberId.equals(memberId)) {
             throw new NotGatheringHostException();
+        }
+    }
+
+    // 모임장은 기록 기간 안에만 페어링을 고르거나 바꾼다. 실제로 먹은 조합을 바로잡는 기능이라 술자리가 끝나면 쓸 일이 없다.
+    // 또 참여자가 피드백을 내는 동안 묻는 조합이 바뀌는 기간을 줄이기 위해서다.
+    public static void validatePairingChangeable(LocalDateTime openedAt, LocalDateTime now) {
+        if (!isWithinRecordingPeriod(openedAt, now)) {
+            throw new GatheringPairingClosedException();
+        }
+    }
+
+    public static void validatePairingFeedbackNotSubmitted(boolean submitted) {
+        if (submitted) {
+            throw new PairingFeedbackAlreadySubmittedException();
         }
     }
 }

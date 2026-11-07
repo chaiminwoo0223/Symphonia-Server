@@ -7,9 +7,14 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
+import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
+import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
+import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
+import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
@@ -20,6 +25,7 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
+import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
@@ -28,11 +34,13 @@ import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedExceptio
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
+import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringPairingFixture;
 import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
@@ -72,6 +80,8 @@ class GatheringCommandServiceTest extends UnitTest {
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
+    @Mock private GatheringPairingRepository gatheringPairingRepository;
+    @Mock private VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
 
     @BeforeEach
     void setUp() {
@@ -81,7 +91,9 @@ class GatheringCommandServiceTest extends UnitTest {
                         gatheringJoinTokenRepository,
                         participantLinkTokenRepository,
                         gatheringRetentionRepository,
+                        gatheringPairingRepository,
                         gatheringTokenProvider,
+                        verifyCatalogReferencesUseCase,
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));
@@ -91,44 +103,130 @@ class GatheringCommandServiceTest extends UnitTest {
     @DisplayName("open 메서드는")
     class Open {
 
-        @Test
-        @DisplayName("저장한 모임 id로 참여 토큰을 저장하고 반환한다")
-        void shouldSaveJoinTokenWithSavedGatheringId() {
-            // given
-            GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
-            givenSavedGathering(fixture);
-            OpenGatheringCommand command =
-                    new OpenGatheringCommand(fixture.getHostMemberId(), fixture.getName());
+        @Nested
+        @DisplayName("페어링 없이 모임을 여는 경우")
+        class WhenPairingAbsent {
 
-            // when
-            GatheringJoinTokenResult result = gatheringCommandService.open(command);
+            @Test
+            @DisplayName("저장한 모임 id로 참여 토큰을 저장하고 반환한다")
+            void shouldSaveJoinTokenWithSavedGatheringId() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                givenSavedGathering(fixture);
+                OpenGatheringCommand command =
+                        new OpenGatheringCommand(
+                                fixture.getHostMemberId(), fixture.getName(), null);
 
-            // then
-            ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
-            then(gatheringRepository).should().save(captor.capture());
-            assertThat(captor.getValue().getHostMemberId()).isEqualTo(fixture.getHostMemberId());
-            assertThat(captor.getValue().getName()).isEqualTo(fixture.getName());
-            then(gatheringJoinTokenRepository).should().save(JOIN_TOKEN, GATHERING_ID);
-            assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
-            assertThat(result.joinToken()).isEqualTo(JOIN_TOKEN);
+                // when
+                GatheringJoinTokenResult result = gatheringCommandService.open(command);
+
+                // then
+                ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
+                then(gatheringRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getHostMemberId())
+                        .isEqualTo(fixture.getHostMemberId());
+                assertThat(captor.getValue().getName()).isEqualTo(fixture.getName());
+                then(gatheringJoinTokenRepository).should().save(JOIN_TOKEN, GATHERING_ID);
+                assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
+                assertThat(result.joinToken()).isEqualTo(JOIN_TOKEN);
+            }
+
+            @Test
+            @DisplayName("Clock의 현재 시각을 모임을 연 시각으로 저장한다")
+            void shouldSaveGatheringOpenedAtCurrentTime() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                givenSavedGathering(fixture);
+                OpenGatheringCommand command =
+                        new OpenGatheringCommand(
+                                fixture.getHostMemberId(), fixture.getName(), null);
+
+                // when
+                gatheringCommandService.open(command);
+
+                // then
+                ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
+                then(gatheringRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getOpenedAt()).isEqualTo(NOW);
+            }
+
+            @Test
+            @DisplayName("카탈로그를 검증하거나 페어링을 저장하지 않는다")
+            void shouldNotSavePairing() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                givenSavedGathering(fixture);
+                OpenGatheringCommand command =
+                        new OpenGatheringCommand(
+                                fixture.getHostMemberId(), fixture.getName(), null);
+
+                // when
+                gatheringCommandService.open(command);
+
+                // then
+                then(verifyCatalogReferencesUseCase).shouldHaveNoInteractions();
+                then(gatheringPairingRepository).shouldHaveNoInteractions();
+            }
         }
 
-        @Test
-        @DisplayName("Clock의 현재 시각을 모임을 연 시각으로 저장한다")
-        void shouldSaveGatheringOpenedAtCurrentTime() {
-            // given
+        @Nested
+        @DisplayName("페어링과 함께 모임을 여는 경우")
+        class WhenPairingGiven {
+
+            @Test
+            @DisplayName("카탈로그를 검증한 뒤 저장한 모임 id로 페어링을 저장하고 참여 토큰을 반환한다")
+            void shouldSavePairingWithSavedGatheringId() {
+                // given
+                GatheringPairingFixture pairing = GatheringPairingFixture.FRIEND_CASUAL;
+                givenSavedGathering(GatheringFixture.FRIDAY_DINNER);
+
+                // when
+                GatheringJoinTokenResult result = gatheringCommandService.open(command(pairing));
+
+                // then
+                then(verifyCatalogReferencesUseCase)
+                        .should()
+                        .verify(
+                                CatalogReferencesQuery.of(
+                                        pairing.getDrinkId(),
+                                        pairing.getAnjuId(),
+                                        pairing.getMusicMoodId()));
+                then(gatheringPairingRepository).should().save(GATHERING_ID, pairing.create());
+                assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
+                assertThat(result.joinToken()).isEqualTo(JOIN_TOKEN);
+            }
+        }
+
+        @Nested
+        @DisplayName("페어링이 가리키는 카탈로그가 존재하지 않는 경우")
+        class WhenPairingReferenceNotFound {
+
+            @Test
+            @DisplayName("카탈로그 검증 예외를 그대로 던지고 페어링과 참여 토큰을 저장하지 않는다")
+            void shouldThrowDrinkNotFoundException() {
+                // given
+                GatheringPairingFixture pairing = GatheringPairingFixture.FRIEND_CASUAL;
+                given(gatheringRepository.save(any(Gathering.class)))
+                        .willReturn(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID, NOW));
+                willThrow(new DrinkNotFoundException())
+                        .given(verifyCatalogReferencesUseCase)
+                        .verify(any(CatalogReferencesQuery.class));
+                OpenGatheringCommand command = command(pairing);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.open(command))
+                        .isInstanceOf(DrinkNotFoundException.class);
+                then(gatheringPairingRepository).shouldHaveNoInteractions();
+                then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        private OpenGatheringCommand command(GatheringPairingFixture pairing) {
             GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
-            givenSavedGathering(fixture);
-            OpenGatheringCommand command =
-                    new OpenGatheringCommand(fixture.getHostMemberId(), fixture.getName());
-
-            // when
-            gatheringCommandService.open(command);
-
-            // then
-            ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
-            then(gatheringRepository).should().save(captor.capture());
-            assertThat(captor.getValue().getOpenedAt()).isEqualTo(NOW);
+            return new OpenGatheringCommand(
+                    fixture.getHostMemberId(), fixture.getName(), pairing.createCommand());
         }
 
         private void givenSavedGathering(GatheringFixture fixture) {
@@ -192,7 +290,7 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 참여 토큰을 저장하지 않는다")
             void shouldThrowNotGatheringHostException() {
                 // given
-                givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(OTHER_MEMBER_ID, GATHERING_ID);
 
@@ -212,7 +310,7 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 참여 토큰을 발급하거나 저장하지 않는다")
             void shouldThrowGatheringJoinClosedException() {
                 // given
-                givenGathering(CLOSED_PERIOD_OPENED_AT);
+                givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(
                                 GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
@@ -233,7 +331,7 @@ class GatheringCommandServiceTest extends UnitTest {
             @DisplayName("새 참여 토큰을 저장하고 반환한다")
             void shouldSaveNewJoinToken() {
                 // given
-                givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
                 given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
                 ReissueJoinTokenCommand command =
                         ReissueJoinTokenCommand.of(
@@ -247,15 +345,6 @@ class GatheringCommandServiceTest extends UnitTest {
                 assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
                 assertThat(result.joinToken()).isEqualTo(NEW_JOIN_TOKEN);
             }
-        }
-
-        private void givenGathering(LocalDateTime openedAt) {
-            givenRetention(GatheringRetentionFixture.RETAINED);
-            given(gatheringRepository.findById(GATHERING_ID))
-                    .willReturn(
-                            Optional.of(
-                                    GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
-                                            GATHERING_ID, openedAt)));
         }
     }
 
@@ -470,6 +559,158 @@ class GatheringCommandServiceTest extends UnitTest {
             then(gatheringRepository).should(never()).save(any(Gathering.class));
             then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
         }
+    }
+
+    @Nested
+    @DisplayName("choose 메서드는")
+    class Choose {
+
+        @Nested
+        @DisplayName("모임이 존재하지 않는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 페어링을 저장하지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.choose(hostCommand()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                thenPairingNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽거나 페어링을 저장하지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.choose(hostCommand()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                thenPairingNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 페어링을 저장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+                ChooseGatheringPairingCommand command =
+                        ChooseGatheringPairingCommand.of(
+                                OTHER_MEMBER_ID,
+                                GATHERING_ID,
+                                GatheringPairingFixture.FRIEND_CASUAL.createCommand());
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.choose(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                thenPairingNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("예외를 던지고 카탈로그를 검증하거나 페어링을 저장하지 않는다")
+            void shouldThrowGatheringPairingClosedException() {
+                // given
+                givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.choose(hostCommand()))
+                        .isInstanceOf(GatheringPairingClosedException.class);
+                thenPairingNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("페어링이 가리키는 카탈로그가 존재하지 않는 경우")
+        class WhenPairingReferenceNotFound {
+
+            @Test
+            @DisplayName("카탈로그 검증 예외를 그대로 던지고 페어링을 저장하지 않는다")
+            void shouldThrowDrinkNotFoundException() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+                willThrow(new DrinkNotFoundException())
+                        .given(verifyCatalogReferencesUseCase)
+                        .verify(any(CatalogReferencesQuery.class));
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.choose(hostCommand()))
+                        .isInstanceOf(DrinkNotFoundException.class);
+                then(gatheringPairingRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임장이 기록 기간 안에 고르는 경우")
+        class WhenChangeable {
+
+            @Test
+            @DisplayName("48시간이 되기 1초 전이면 카탈로그를 검증한 뒤 모임의 페어링으로 저장한다")
+            void shouldSavePairingBeforeRecordingPeriodCloses() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+                GatheringPairingFixture pairing = GatheringPairingFixture.LOVER_ROMANTIC;
+                ChooseGatheringPairingCommand command =
+                        ChooseGatheringPairingCommand.of(
+                                GatheringFixture.FRIDAY_DINNER.getHostMemberId(),
+                                GATHERING_ID,
+                                pairing.createCommand());
+
+                // when
+                gatheringCommandService.choose(command);
+
+                // then
+                then(verifyCatalogReferencesUseCase)
+                        .should()
+                        .verify(
+                                CatalogReferencesQuery.of(
+                                        pairing.getDrinkId(),
+                                        pairing.getAnjuId(),
+                                        pairing.getMusicMoodId()));
+                then(gatheringPairingRepository).should().save(GATHERING_ID, pairing.create());
+            }
+        }
+
+        private ChooseGatheringPairingCommand hostCommand() {
+            return ChooseGatheringPairingCommand.of(
+                    GatheringFixture.FRIDAY_DINNER.getHostMemberId(),
+                    GATHERING_ID,
+                    GatheringPairingFixture.FRIEND_CASUAL.createCommand());
+        }
+
+        private void thenPairingNotSaved() {
+            then(verifyCatalogReferencesUseCase).shouldHaveNoInteractions();
+            then(gatheringPairingRepository).shouldHaveNoInteractions();
+        }
+    }
+
+    private void givenGatheringOpenedAt(LocalDateTime openedAt) {
+        givenRetention(GatheringRetentionFixture.RETAINED);
+        given(gatheringRepository.findById(GATHERING_ID))
+                .willReturn(
+                        Optional.of(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID, openedAt)));
     }
 
     private void givenRetention(GatheringRetentionFixture retention) {

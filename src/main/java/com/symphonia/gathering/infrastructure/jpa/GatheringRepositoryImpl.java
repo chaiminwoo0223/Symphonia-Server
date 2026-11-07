@@ -80,7 +80,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
         gatheringDataKeyJpaRepository.deleteAllByGatheringId(gatheringId);
     }
 
-    // 참여 토큰, 개인 링크 토큰, 계좌, 정산 건은 부른 쪽이 먼저 지운다. 데이터 키는 파기 1단계에서 이미 지웠다.
+    // 참여 토큰, 개인 링크 토큰, 계좌, 피드백 제출 표시, 정산 건, 모임 페어링은 부른 쪽이 먼저 지운다. 데이터 키는 파기 1단계에서 이미 지웠다.
     @Override
     public void delete(Long gatheringId) {
         participantJpaRepository.deleteAllByGatheringId(gatheringId);

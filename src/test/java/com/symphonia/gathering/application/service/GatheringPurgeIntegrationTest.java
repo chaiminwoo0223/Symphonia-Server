@@ -9,6 +9,7 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringPairingFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
@@ -56,6 +57,13 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
                             "SELECT COUNT(*) FROM participant_bank_account WHERE participant_id IN"
                                     + " (SELECT id FROM participant WHERE gathering_id = ?)"),
                     Map.entry(
+                            "participant_pairing_feedback",
+                            "SELECT COUNT(*) FROM participant_pairing_feedback WHERE participant_id IN"
+                                    + " (SELECT id FROM participant WHERE gathering_id = ?)"),
+                    Map.entry(
+                            "gathering_pairing",
+                            "SELECT COUNT(*) FROM gathering_pairing WHERE gathering_id = ?"),
+                    Map.entry(
                             "settlement", "SELECT COUNT(*) FROM settlement WHERE gathering_id = ?"),
                     Map.entry(
                             "settlement_share",
@@ -85,7 +93,7 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
     private Long expiredGatheringId;
     private Long retainedGatheringId;
 
-    // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 정산 건, 발송 예약, 발송 기록을 모두 만든다.
+    // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 모임 페어링, 피드백 제출 표시, 정산 건, 발송 예약, 발송 기록을 모두 만든다.
     // 한 모임만 29일 전에 연 모임으로 바꾼다.
     @BeforeEach
     void setUp() {
@@ -192,6 +200,8 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
         gatheringHelper.issueJoinToken(gathering);
         gatheringHelper.issueLinkToken(lee);
         settlementHelper.registerBankAccount(gathering, payer);
+        gatheringHelper.choosePairing(gathering, GatheringPairingFixture.FRIEND_CASUAL.create());
+        gatheringHelper.markPairingFeedbackSubmitted(lee);
         Settlement settlement = settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
         notificationScheduleRepository.findOrCreateForUpdate(gathering.getId());
         notificationDeliveryRepository.save(

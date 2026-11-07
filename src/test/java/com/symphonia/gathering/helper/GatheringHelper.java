@@ -5,8 +5,11 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
+import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
+import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
+import com.symphonia.gathering.domain.vo.GatheringPairing;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
@@ -21,6 +24,8 @@ public class GatheringHelper {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
+    private final GatheringPairingRepository gatheringPairingRepository;
+    private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
 
     public Gathering save(GatheringFixture gatheringFixture, Long hostMemberId) {
@@ -56,5 +61,16 @@ public class GatheringHelper {
         participantLinkTokenRepository.save(linkToken, participant.getId());
 
         return linkToken;
+    }
+
+    // 모임장이 피드백을 물을 페어링을 고른 상태를 만든다.
+    public void choosePairing(Gathering gathering, GatheringPairing gatheringPairing) {
+        gatheringPairingRepository.save(gathering.getId(), gatheringPairing);
+    }
+
+    // 참여자가 페어링 피드백을 이미 낸 상태를 만든다.
+    public void markPairingFeedbackSubmitted(Participant participant) {
+        participantPairingFeedbackRepository.markSubmitted(
+                participant.getId(), LocalDateTime.now());
     }
 }

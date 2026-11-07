@@ -10,10 +10,12 @@ import static org.mockito.Mockito.never;
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
+import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
+import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -54,6 +56,8 @@ class PurgeGatheringServiceTest extends UnitTest {
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
+    @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
+    @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private PurgeNotificationsUseCase purgeNotificationsUseCase;
 
@@ -321,14 +325,19 @@ class PurgeGatheringServiceTest extends UnitTest {
                             purgeNotificationsUseCase,
                             participantLinkTokenRepository,
                             participantBankAccountRepository,
+                            participantPairingFeedbackRepository,
                             settlementRepository,
                             gatheringJoinTokenRepository,
+                            gatheringPairingRepository,
                             gatheringRepository);
             inOrder.verify(purgeNotificationsUseCase).purge(GATHERING_ID);
             inOrder.verify(participantLinkTokenRepository).deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(participantBankAccountRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(participantPairingFeedbackRepository)
+                    .deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(settlementRepository).deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(gatheringJoinTokenRepository).deleteAllByGatheringId(GATHERING_ID);
+            inOrder.verify(gatheringPairingRepository).deleteByGatheringId(GATHERING_ID);
             inOrder.verify(gatheringRepository).delete(GATHERING_ID);
         }
     }
@@ -367,6 +376,8 @@ class PurgeGatheringServiceTest extends UnitTest {
                         gatheringJoinTokenRepository,
                         participantLinkTokenRepository,
                         participantBankAccountRepository,
+                        participantPairingFeedbackRepository,
+                        gatheringPairingRepository,
                         settlementRepository,
                         purgeNotificationsUseCase,
                         clock);
