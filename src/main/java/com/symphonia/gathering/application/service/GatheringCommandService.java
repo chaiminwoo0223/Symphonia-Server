@@ -87,19 +87,19 @@ public class GatheringCommandService
         return ParticipantResult.of(participant, linkToken);
     }
 
-    private void validateRetained(
-            Long gatheringId, LocalDateTime now, Supplier<? extends BusinessException> notFound) {
-        gatheringRetentionRepository
-                .findByGatheringId(gatheringId)
-                .filter(retention -> !retention.isExpired(now))
-                .orElseThrow(notFound);
-    }
-
     // 모임마다 참여 토큰은 하나라서, 새로 발급하면 기존 토큰은 무효가 된다.
     private GatheringJoinTokenResult issueJoinToken(Long gatheringId) {
         String joinToken = gatheringTokenProvider.generate();
         gatheringJoinTokenRepository.save(joinToken, gatheringId);
 
         return GatheringJoinTokenResult.of(gatheringId, joinToken);
+    }
+
+    private void validateRetained(
+            Long gatheringId, LocalDateTime now, Supplier<? extends BusinessException> notFound) {
+        gatheringRetentionRepository
+                .findByGatheringId(gatheringId)
+                .filter(retention -> !retention.isExpired(now))
+                .orElseThrow(notFound);
     }
 }

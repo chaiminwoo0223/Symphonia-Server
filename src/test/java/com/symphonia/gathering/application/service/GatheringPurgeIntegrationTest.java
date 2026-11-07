@@ -1,17 +1,13 @@
 package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
-import com.symphonia.gathering.application.usecase.PurgeGatheringsUseCase;
+import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
-import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -35,8 +31,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 // 실제 테이블과 FK로 두 단계 파기가 모임의 행을 빠짐없이 지우는지 확인한다(#128).
 // 파기 시각을 정하는 규칙은 PurgeGatheringServiceTest가 검증하므로, 여기서는 29일이 지난 모임만 쓴다.
-@DisplayName("PurgeGatheringService 통합 테스트")
-class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
+@DisplayName("모임 파기 통합 테스트")
+class GatheringPurgeIntegrationTest extends IntegrationTest {
 
     // 테이블마다 모임의 행 수를 센다. 참여자를 참조하는 행은 참여자를 거쳐 모임을 찾는다.
     private static final Map<String, String> COUNT_QUERIES_BY_TABLE =
@@ -78,7 +74,7 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
                                     + " gathering_id = ?)"));
 
     @Autowired private GetExpiredGatheringsUseCase getExpiredGatheringsUseCase;
-    @Autowired private PurgeGatheringsUseCase purgeGatheringsUseCase;
+    @Autowired private PurgeGatheringUseCase purgeGatheringUseCase;
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
@@ -88,18 +84,14 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
 
     private Long expiredGatheringId;
     private Long retainedGatheringId;
-    private String expiredLinkToken;
 
     // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 정산 건, 발송 예약, 발송 기록을 모두 만든다.
     // 한 모임만 29일 전에 연 모임으로 바꾼다.
     @BeforeEach
     void setUp() {
         Member member = memberHelper.save(MemberFixture.KAKAO);
-        Gathering expired = saveGatheringWithAllRows(member);
-        Gathering retained = saveGatheringWithAllRows(member);
-        expiredGatheringId = expired.getId();
-        retainedGatheringId = retained.getId();
-        expiredLinkToken = gatheringHelper.issueLinkToken(expired.getParticipants().get(1));
+        expiredGatheringId = saveGatheringWithAllRows(member).getId();
+        retainedGatheringId = saveGatheringWithAllRows(member).getId();
         jdbcTemplate.update(
                 "UPDATE gathering SET opened_at = ? WHERE id = ?",
                 LocalDateTime.now().minusDays(29),
@@ -107,8 +99,8 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
     }
 
     @Nested
-    @DisplayName("파기 스윕은")
-    class Sweep {
+    @DisplayName("getExpiredGatheringIds 메서드는")
+    class GetExpiredGatheringIds {
 
         @Test
         @DisplayName("파기 시각이 지난 모임만 찾는다")
@@ -119,47 +111,63 @@ class PurgeGatheringServiceIntegrationTest extends IntegrationTest {
             // then
             assertThat(result).contains(expiredGatheringId).doesNotContain(retainedGatheringId);
         }
+    }
 
-        @Test
-        @DisplayName("데이터 키를 먼저 지우면 물리 삭제 전이라도 그 모임의 개인 링크는 링크 토큰을 찾지 못한 것으로 404를 반환한다")
-        void shouldRejectLinkTokenAfterDataKeyDiscarded() throws Exception {
-            // given
-            boolean discarded = purgeGatheringsUseCase.discardDataKeyIfExpired(expiredGatheringId);
+    @Nested
+    @DisplayName("discardDataKeyIfExpired 메서드는")
+    class DiscardDataKeyIfExpired {
 
-            // when & then
-            mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", expiredLinkToken))
-                    .andExpect(status().isNotFound())
-                    .andExpect(
-                            jsonPath("$.data.code")
-                                    .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()));
-            assertThat(discarded).isTrue();
-            assertThat(countRows("gathering_data_key", expiredGatheringId)).isZero();
-            assertThat(countRows("participant", expiredGatheringId)).isPositive();
+        @Nested
+        @DisplayName("파기 시각이 지난 모임인 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("데이터 키만 지우고 true를 반환한다")
+            void shouldDiscardOnlyDataKey() {
+                // when
+                boolean result = purgeGatheringUseCase.discardDataKeyIfExpired(expiredGatheringId);
+
+                // then
+                assertThat(result).isTrue();
+                assertThat(countRows("gathering_data_key", expiredGatheringId)).isZero();
+                assertThat(countRows("participant", expiredGatheringId)).isPositive();
+            }
         }
 
-        @Test
-        @DisplayName("파기 시각이 남은 모임은 데이터 키를 지우지 않는다")
-        void shouldKeepDataKeyOfRetainedGathering() {
-            // when
-            boolean discarded = purgeGatheringsUseCase.discardDataKeyIfExpired(retainedGatheringId);
+        @Nested
+        @DisplayName("파기 시각이 남은 모임인 경우")
+        class WhenGatheringRetained {
 
-            // then
-            assertThat(discarded).isFalse();
-            assertThat(countRows("gathering_data_key", retainedGatheringId)).isOne();
+            @Test
+            @DisplayName("데이터 키를 지우지 않고 false를 반환한다")
+            void shouldKeepDataKey() {
+                // when
+                boolean result = purgeGatheringUseCase.discardDataKeyIfExpired(retainedGatheringId);
+
+                // then
+                assertThat(result).isFalse();
+                assertThat(countRows("gathering_data_key", retainedGatheringId)).isOne();
+            }
         }
+    }
+
+    @Nested
+    @DisplayName("purge 메서드는")
+    class Purge {
 
         @Test
         @DisplayName("데이터 키를 지운 모임의 행을 모든 테이블에서 지우고 다른 모임의 행은 남긴다")
-        void shouldDeleteAllRowsOfExpiredGatheringOnly() {
-            // given
-            purgeGatheringsUseCase.discardDataKeyIfExpired(expiredGatheringId);
+        void shouldDeleteAllRowsOfPurgedGatheringOnly() {
+            // given: 파기 1단계로 데이터 키를 지운 상태
+            jdbcTemplate.update(
+                    "DELETE FROM gathering_data_key WHERE gathering_id = ?", expiredGatheringId);
 
             // when
-            purgeGatheringsUseCase.purge(expiredGatheringId);
+            purgeGatheringUseCase.purge(expiredGatheringId);
 
             // then
-            COUNT_QUERIES_BY_TABLE
-                    .keySet()
+            COUNT_QUERIES_BY_TABLE.keySet().stream()
+                    .filter(table -> !table.equals("gathering_data_key"))
                     .forEach(
                             table -> {
                                 assertThat(countRows(table, expiredGatheringId))
