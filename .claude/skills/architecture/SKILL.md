@@ -29,10 +29,10 @@ com.symphonia
 │   ├── presentation/      # 수동 적재 진입점 ImportCatalogRunner(runner)
 │   └── infrastructure/    # DrinkRepository/AnjuRepository/DrinkStyleRepository/MusicMoodRepository 구현체, JPA 엔티티, *Reader 구현체(reader: JsonBjcpStyleReader, CsvFlavorRuleReader, CsvCuratedDrinkReader, CsvXWineReader, CsvWineFlavorRuleReader, CsvBeerHarmonizeRuleReader, CsvCuratedAnjuReader, CsvAnjuNutritionReader, CsvAnjuRuleReader)
 ├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45)
-│   ├── domain/            # 순수 도메인 모델(Pairing, PairingFeedback), 추천이 점수를 매기는 PairingDrink/PairingAnju/PairingMusicMood, 점수 계산 메서드를 가진 FlavorProfile/MoodProfile, Occasion 값 객체, 선정 규칙의 경계를 계산하는 DrinkAnjuScores/SelectionThresholds, PairingFeedbackRepository 인터페이스
+│   ├── domain/            # 순수 도메인 모델(Pairing, PairingFeedback), 추천이 점수를 매기는 PairingDrink/PairingAnju/PairingMusicMood, 점수 계산 메서드를 가진 FlavorProfile/MoodProfile, Occasion 값 객체, 선정 규칙의 경계를 계산하는 DrinkAnjuScores/SelectionThresholds, 조합별 평점 집계 PairingRatingSummary와 이를 추천 점수로 바꾸는 FeedbackScores, PairingFeedbackRepository/PairingRatingSummaryRepository 인터페이스
 │   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨)
 │   ├── presentation/      # Controller, *Api
-│   └── infrastructure/    # PairingFeedbackRepository 구현체, JPA 엔티티
+│   └── infrastructure/    # PairingFeedbackRepository/PairingRatingSummaryRepository 구현체, JPA 엔티티
 ├── gathering/             # 술자리 정산 (이슈 #122, 구현은 #123~#131)
 ├── notification/          # 정산 메시지 발송 예약, 발송 기록, 큐 발행, 발송 구현체 (이슈 #159에서 gathering에서 분리)
 ├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
