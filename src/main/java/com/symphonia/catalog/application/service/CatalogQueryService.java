@@ -2,9 +2,14 @@ package com.symphonia.catalog.application.service;
 
 import com.symphonia.catalog.application.dto.query.CatalogQuery;
 import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.result.CatalogReferencesResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
+import com.symphonia.catalog.application.usecase.GetCatalogReferencesUseCase;
 import com.symphonia.catalog.application.usecase.GetCatalogUseCase;
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
+import com.symphonia.catalog.domain.entity.Anju;
+import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.catalog.domain.exception.MusicMoodNotFoundException;
@@ -16,7 +21,8 @@ import lombok.RequiredArgsConstructor;
 
 @QueryService
 @RequiredArgsConstructor
-public class CatalogQueryService implements GetCatalogUseCase, VerifyCatalogReferencesUseCase {
+public class CatalogQueryService
+        implements GetCatalogUseCase, VerifyCatalogReferencesUseCase, GetCatalogReferencesUseCase {
     private final DrinkRepository drinkRepository;
     private final AnjuRepository anjuRepository;
     private final MusicMoodRepository musicMoodRepository;
@@ -32,10 +38,30 @@ public class CatalogQueryService implements GetCatalogUseCase, VerifyCatalogRefe
 
     @Override
     public void verify(CatalogReferencesQuery query) {
-        drinkRepository.findById(query.drinkId()).orElseThrow(DrinkNotFoundException::new);
-        anjuRepository.findById(query.anjuId()).orElseThrow(AnjuNotFoundException::new);
-        musicMoodRepository
-                .findById(query.musicMoodId())
+        findDrink(query.drinkId());
+        findAnju(query.anjuId());
+        findMusicMood(query.musicMoodId());
+    }
+
+    @Override
+    public CatalogReferencesResult getReferences(CatalogReferencesQuery query) {
+        return CatalogReferencesResult.of(
+                findDrink(query.drinkId()),
+                findAnju(query.anjuId()),
+                findMusicMood(query.musicMoodId()));
+    }
+
+    private Drink findDrink(Long drinkId) {
+        return drinkRepository.findById(drinkId).orElseThrow(DrinkNotFoundException::new);
+    }
+
+    private Anju findAnju(Long anjuId) {
+        return anjuRepository.findById(anjuId).orElseThrow(AnjuNotFoundException::new);
+    }
+
+    private MusicMood findMusicMood(Long musicMoodId) {
+        return musicMoodRepository
+                .findById(musicMoodId)
                 .orElseThrow(MusicMoodNotFoundException::new);
     }
 }

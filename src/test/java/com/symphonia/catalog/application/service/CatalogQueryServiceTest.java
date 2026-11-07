@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.query.CatalogQuery;
 import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.result.CatalogReferencesResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.AnjuResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.DrinkResult;
@@ -188,6 +189,102 @@ class CatalogQueryServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> catalogQueryService.verify(query()))
                         .isInstanceOf(MusicMoodNotFoundException.class);
+            }
+        }
+
+        private CatalogReferencesQuery query() {
+            return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
+        }
+    }
+
+    @Nested
+    @DisplayName("getReferences 메서드는")
+    class GetReferences {
+
+        @Nested
+        @DisplayName("Drink가 존재하지 않는 경우")
+        class WhenDrinkNotFound {
+
+            @Test
+            @DisplayName("DrinkNotFoundException을 던진다")
+            void shouldThrowDrinkNotFoundException() {
+                // given
+                given(drinkRepository.findById(DRINK_ID)).willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> catalogQueryService.getReferences(query()))
+                        .isInstanceOf(DrinkNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("Anju가 존재하지 않는 경우")
+        class WhenAnjuNotFound {
+
+            @Test
+            @DisplayName("AnjuNotFoundException을 던진다")
+            void shouldThrowAnjuNotFoundException() {
+                // given
+                given(drinkRepository.findById(DRINK_ID))
+                        .willReturn(Optional.of(DrinkFixture.SOJU.createWithId(DRINK_ID)));
+                given(anjuRepository.findById(ANJU_ID)).willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> catalogQueryService.getReferences(query()))
+                        .isInstanceOf(AnjuNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("MusicMood가 존재하지 않는 경우")
+        class WhenMusicMoodNotFound {
+
+            @Test
+            @DisplayName("MusicMoodNotFoundException을 던진다")
+            void shouldThrowMusicMoodNotFoundException() {
+                // given
+                given(drinkRepository.findById(DRINK_ID))
+                        .willReturn(Optional.of(DrinkFixture.SOJU.createWithId(DRINK_ID)));
+                given(anjuRepository.findById(ANJU_ID))
+                        .willReturn(
+                                Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
+                given(musicMoodRepository.findById(MUSIC_MOOD_ID)).willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> catalogQueryService.getReferences(query()))
+                        .isInstanceOf(MusicMoodNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("모든 대상이 존재하는 경우")
+        class WhenReferencesExist {
+
+            @Test
+            @DisplayName("음료와 안주 이름, 음악 무드 제목과 스트리밍 URL을 CatalogReferencesResult로 반환한다")
+            void shouldReturnCatalogReferencesResult() {
+                // given
+                given(drinkRepository.findById(DRINK_ID))
+                        .willReturn(Optional.of(DrinkFixture.SOJU.createWithId(DRINK_ID)));
+                given(anjuRepository.findById(ANJU_ID))
+                        .willReturn(
+                                Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
+                given(musicMoodRepository.findById(MUSIC_MOOD_ID))
+                        .willReturn(
+                                Optional.of(
+                                        MusicMoodFixture.FORMAL_JAZZ.createWithId(MUSIC_MOOD_ID)));
+
+                // when
+                CatalogReferencesResult result = catalogQueryService.getReferences(query());
+
+                // then
+                assertThat(result)
+                        .isEqualTo(
+                                new CatalogReferencesResult(
+                                        DrinkFixture.SOJU.getName(),
+                                        AnjuFixture.GOLBAENGI_MUCHIM.getName(),
+                                        MusicMoodFixture.FORMAL_JAZZ.getTitle(),
+                                        MusicMoodFixture.FORMAL_JAZZ.getStreamingUrl()));
             }
         }
 
