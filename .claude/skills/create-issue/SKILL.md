@@ -24,6 +24,7 @@ description: Load when creating a GitHub issue. 이슈 템플릿 타입 매핑, 
 - 7개 템플릿 모두 필드 구성이 동일하다. `설명`(무엇을 왜 하는지)과 `할 일 목록`(체크박스 TODO) 두 필드를 요구하며, 둘 다 필수 항목이다. 
 - `테스트 코드` 타입은 프로덕션 코드 변경 없이 테스트 코드만 대상으로 하는 작업에 쓴다(예: 테스트 메서드명/구조 정리, 커버리지 보강). 프로덕션 코드 리팩터링에 테스트가 따라가는 경우는 여전히 `리팩토링` 타입이다.
 - 정확한 제목 접두사와 라벨 문자열은 위 표를 신뢰하되, 템플릿 파일이 바뀌었을 가능성에 대비해 실제 생성 전에 해당 `.yml` 파일의 `title`/`labels` 값을 다시 확인한다.
+- gh 활성 계정이 git 작성자 이메일(`<id>+<login>@users.noreply.github.com`)의 로그인과 다르면 `.claude/hooks/check-gh-account.sh`가 `gh issue`/`gh pr` 쓰기 명령을 차단한다. `gh auth switch -u <login>`으로 바꾼 뒤 다시 실행한다.
 
 ## 절차
 
