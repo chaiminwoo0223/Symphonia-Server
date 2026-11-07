@@ -4,64 +4,41 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.CancelSettlementCommand;
-import com.symphonia.gathering.application.dto.command.ConfirmShareCommand;
-import com.symphonia.gathering.application.dto.command.MarkSharesSentCommand;
 import com.symphonia.gathering.application.dto.command.RecordSettlementCommand;
-import com.symphonia.gathering.application.dto.command.RegisterBankAccountCommand;
-import com.symphonia.gathering.application.dto.command.RevertShareCommand;
 import com.symphonia.gathering.application.dto.command.UpdateSettlementCommand;
-import com.symphonia.gathering.application.dto.result.PayerSharesResult;
+import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
-import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
+import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
-import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
-import com.symphonia.gathering.domain.exception.BankAccountAlreadyRegisteredException;
-import com.symphonia.gathering.domain.exception.BankAccountConsentRequiredException;
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
-import com.symphonia.gathering.domain.exception.InvalidBankAccountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
-import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyNotifiedException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
-import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
-import com.symphonia.gathering.domain.exception.ShareAlreadyConfirmedException;
-import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
-import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
-import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
-import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
-import com.symphonia.gathering.domain.vo.BankAccount;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.GatheringRetentionFixture;
-import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
 import com.symphonia.notification.application.service.NotificationCommandService;
-import com.symphonia.notification.application.service.NotificationQueryService;
 import com.symphonia.notification.domain.entity.NotificationDelivery;
 import com.symphonia.notification.domain.entity.NotificationSchedule;
 import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
@@ -88,16 +65,14 @@ class SettlementCommandServiceTest extends UnitTest {
     private static final Long GATHERING_ID = 10L;
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
-    private static final Long THIRD_SETTLEMENT_ID = 32L;
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
     private static final Long OUTSIDER_ID = 99L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
-    private static final String HYPHENATED_ACCOUNT_NUMBER = "1234-5678-9012";
-    private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
+    private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
 
     // 기록 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
     // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
@@ -106,9 +81,8 @@ class SettlementCommandServiceTest extends UnitTest {
 
     private SettlementCommandService settlementCommandService;
 
-    @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
+    @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
-    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private NotificationScheduleRepository notificationScheduleRepository;
@@ -121,183 +95,28 @@ class SettlementCommandServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("register 메서드는")
-    class Register {
+    @DisplayName("record 메서드는")
+    class Record {
 
+        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
         @Nested
-        @DisplayName("개인 링크 토큰에 해당하는 참여자가 없는 경우")
+        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
         class WhenLinkTokenNotFound {
 
             @Test
-            @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
+            @DisplayName("예외를 던지고 모임을 읽지 않으며 정산 건을 저장하지 않는다")
             void shouldThrowLinkTokenNotFoundException() {
                 // given
-                given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                        .willReturn(Optional.empty());
-                RegisterBankAccountCommand command = command(true);
+                givenLinkTokenNotFound();
+                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
                 // when & then
-                assertThatThrownBy(() -> settlementCommandService.register(command))
+                assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(LinkTokenNotFoundException.class);
-                thenBankAccountNotSaved();
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
             }
         }
-
-        @Nested
-        @DisplayName("모임을 만든 지 48시간이 된 경우")
-        class WhenRecordingPeriodClosed {
-
-            @Test
-            @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
-            void shouldThrowSettlementRecordingClosedException() {
-                // given
-                givenGatheringOfPayer(CLOSED_PERIOD_OPENED_AT);
-                RegisterBankAccountCommand command = command(true);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(SettlementRecordingClosedException.class);
-                thenBankAccountNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("계좌를 보여 주는 데 동의하지 않은 경우")
-        class WhenConsentNotAgreed {
-
-            @Test
-            @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
-            void shouldThrowBankAccountConsentRequiredException() {
-                // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-                RegisterBankAccountCommand command = command(false);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(BankAccountConsentRequiredException.class);
-                thenBankAccountNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("계좌 동의 안내 버전이 현재 버전과 다른 경우")
-        class WhenConsentVersionOutdated {
-
-            @Test
-            @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
-            void shouldThrowOutdatedBankAccountConsentVersionException() {
-                // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-                RegisterBankAccountCommand command =
-                        new RegisterBankAccountCommand(
-                                LINK_TOKEN,
-                                ParticipantBankAccountFixture.KOOKMIN.getBankName(),
-                                HYPHENATED_ACCOUNT_NUMBER,
-                                true,
-                                "2000-01-01");
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(OutdatedBankAccountConsentVersionException.class);
-                thenBankAccountNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("이미 계좌를 등록한 참여자인 경우")
-        class WhenBankAccountAlreadyRegistered {
-
-            @Test
-            @DisplayName("예외를 던지고 계좌를 다시 저장하지 않는다")
-            void shouldThrowBankAccountAlreadyRegisteredException() {
-                // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-                given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                        .willReturn(true);
-                RegisterBankAccountCommand command = command(true);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(BankAccountAlreadyRegisteredException.class);
-                thenBankAccountNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("계좌번호 형식이 틀린 경우")
-        class WhenAccountNumberInvalid {
-
-            @Test
-            @DisplayName("예외를 던지고 계좌를 저장하지 않는다")
-            void shouldThrowInvalidBankAccountException() {
-                // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-                RegisterBankAccountCommand command =
-                        new RegisterBankAccountCommand(
-                                LINK_TOKEN,
-                                ParticipantBankAccountFixture.KOOKMIN.getBankName(),
-                                "12345",
-                                true,
-                                SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.register(command))
-                        .isInstanceOf(InvalidBankAccountException.class);
-                thenBankAccountNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("등록할 수 있는 경우")
-        class WhenRegistrable {
-
-            @Test
-            @DisplayName("하이픈을 지운 계좌와 동의 버전을 참여자가 속한 모임 id와 함께 저장한다")
-            void shouldSaveNormalizedBankAccountWithGatheringId() {
-                // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-                given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                        .willReturn(false);
-                RegisterBankAccountCommand command = command(true);
-
-                // when
-                settlementCommandService.register(command);
-
-                // then
-                ArgumentCaptor<ParticipantBankAccount> captor =
-                        ArgumentCaptor.forClass(ParticipantBankAccount.class);
-                then(participantBankAccountRepository)
-                        .should()
-                        .save(captor.capture(), eq(GATHERING_ID));
-                ParticipantBankAccount saved = captor.getValue();
-                assertThat(saved.getParticipantId()).isEqualTo(PAYER_ID);
-                assertThat(saved.getBankAccount())
-                        .isEqualTo(
-                                new BankAccount(
-                                        ParticipantBankAccountFixture.KOOKMIN.getBankName(),
-                                        ParticipantBankAccountFixture.KOOKMIN.getAccountNumber()));
-                assertThat(saved.getConsentVersion())
-                        .isEqualTo(SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION);
-            }
-        }
-
-        private RegisterBankAccountCommand command(boolean consentAgreed) {
-            return new RegisterBankAccountCommand(
-                    LINK_TOKEN,
-                    ParticipantBankAccountFixture.KOOKMIN.getBankName(),
-                    HYPHENATED_ACCOUNT_NUMBER,
-                    consentAgreed,
-                    SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION);
-        }
-
-        private void thenBankAccountNotSaved() {
-            then(participantBankAccountRepository).should(never()).save(any(), anyLong());
-        }
-    }
-
-    @Nested
-    @DisplayName("record 메서드는")
-    class Record {
 
         @Nested
         @DisplayName("모임을 만든 지 48시간이 된 경우")
@@ -775,6 +594,26 @@ class SettlementCommandServiceTest extends UnitTest {
     @DisplayName("update 메서드는")
     class Update {
 
+        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
+        @Nested
+        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
+        class WhenLinkTokenNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건과 모임을 읽지 않는다")
+            void shouldThrowLinkTokenNotFoundException() {
+                // given
+                givenLinkTokenNotFound();
+                UpdateSettlementCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.update(command))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
         @Nested
         @DisplayName("정산 건이 없는 경우")
         class WhenSettlementNotFound {
@@ -1010,6 +849,25 @@ class SettlementCommandServiceTest extends UnitTest {
     @Nested
     @DisplayName("cancel 메서드는")
     class Cancel {
+
+        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
+        @Nested
+        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
+        class WhenLinkTokenNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 읽지 않는다")
+            void shouldThrowLinkTokenNotFoundException() {
+                // given
+                givenLinkTokenNotFound();
+                CancelSettlementCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.cancel(command))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
 
         @Nested
         @DisplayName("요청한 참여자가 결제자가 아닌 경우")
@@ -1375,773 +1233,6 @@ class SettlementCommandServiceTest extends UnitTest {
         }
     }
 
-    @Nested
-    @DisplayName("markSent 메서드는")
-    class MarkSent {
-
-        @Nested
-        @DisplayName("개인 링크 토큰에 해당하는 참여자가 없는 경우")
-        class WhenLinkTokenNotFound {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
-                // given
-                given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                        .willReturn(Optional.empty());
-                MarkSharesSentCommand command = command();
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.markSent(command))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("모임의 파기 시각이 지난 경우")
-        class WhenGatheringExpired {
-
-            @Test
-            @DisplayName("물리 삭제 전이라도 링크 토큰을 찾지 못한 예외를 던지고 정산 건을 잠그거나 저장하지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
-                // given
-                given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                        .willReturn(Optional.of(LEE_ID));
-                given(gatheringRetentionRepository.findByParticipantId(LEE_ID))
-                        .willReturn(
-                                Optional.of(
-                                        GatheringRetentionFixture.EXPIRED.create(
-                                                GATHERING_ID, NOW)));
-                MarkSharesSentCommand command = command();
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.markSent(command))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
-                then(gatheringRepository).shouldHaveNoInteractions();
-            }
-        }
-
-        @Nested
-        @DisplayName("그 결제자에게 낼 분담금이 없는 경우")
-        class WhenSharesNotFound {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowSettlementShareNotFoundException() {
-                // given
-                givenParticipant(LEE_ID);
-                givenSharedSettlements();
-                MarkSharesSentCommand command = command();
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.markSent(command))
-                        .isInstanceOf(SettlementShareNotFoundException.class);
-                thenSettlementNotSaved();
-                then(gatheringRepository).shouldHaveNoInteractions();
-                then(participantBankAccountRepository).shouldHaveNoInteractions();
-            }
-        }
-
-        @Nested
-        @DisplayName("그 결제자에게 낼 분담금이 모두 미입금인 경우")
-        class WhenSharesUnpaid {
-
-            @Test
-            @DisplayName("요청한 참여자와 결제자로 정산 건을 잠가 읽고, 정산 건마다 분담금을 보냄으로 바꿔 저장해 결제자 계좌와 함께 반환한다")
-            void shouldSaveSentShareForEachSettlementOfPayer() {
-                // given
-                givenParticipant(LEE_ID);
-                givenSharedSettlements(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
-                        SettlementFixture.SECOND_ROUND.createWithId(
-                                THIRD_SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                List.of(PAYER_ID, LEE_ID)));
-                givenGatheringWithPayerBankAccount();
-                givenSaveReturnsSettlement();
-
-                // when
-                PayerSharesResult result = settlementCommandService.markSent(command());
-
-                // then
-                then(settlementRepository)
-                        .should()
-                        .findAllByShareParticipantIdAndPayerForUpdate(LEE_ID, PAYER_ID);
-                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
-                then(settlementRepository).should(times(2)).save(captor.capture());
-                assertThat(captor.getAllValues())
-                        .extracting(Settlement::getId)
-                        .containsExactly(SETTLEMENT_ID, THIRD_SETTLEMENT_ID);
-                assertThat(result.payerParticipantId()).isEqualTo(PAYER_ID);
-                assertThat(result.payerName()).isEqualTo(ParticipantFixture.KIM.getName());
-                assertThat(result.bankName())
-                        .isEqualTo(ParticipantBankAccountFixture.KOOKMIN.getBankName());
-                assertThat(result.accountNumber())
-                        .isEqualTo(ParticipantBankAccountFixture.KOOKMIN.getAccountNumber());
-                assertThat(result.unpaidAmount()).isZero();
-                assertThat(result.hasUnpaidShares()).isFalse();
-                assertThat(result.shares())
-                        .extracting(
-                                ShareBreakdownResult::settlementId,
-                                ShareBreakdownResult::amount,
-                                ShareBreakdownResult::status)
-                        .containsExactly(
-                                tuple(SETTLEMENT_ID, 3_333L, ShareStatus.SENT),
-                                tuple(THIRD_SETTLEMENT_ID, 10_000L, ShareStatus.SENT));
-                assertThat(captor.getAllValues())
-                        .extracting(
-                                settlement -> settlement.getShareOf(LEE_ID).getStatusChangedAt())
-                        .containsOnly(NOW);
-            }
-        }
-
-        @Nested
-        @DisplayName("이미 보냄이나 확인 완료인 분담금이 있는 경우")
-        class WhenSharesAlreadySent {
-
-            @Test
-            @DisplayName("그 정산 건은 저장하지 않고 미입금인 정산 건만 보냄으로 바꿔 저장한다")
-            void shouldSaveOnlyUnpaidSettlement() {
-                // given
-                givenParticipant(LEE_ID);
-                givenSharedSettlements(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT),
-                        SettlementFixture.SECOND_ROUND.createWithFirstShareStatus(
-                                SECOND_SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.CONFIRMED),
-                        SettlementFixture.DINNER.createWithId(
-                                THIRD_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGatheringWithPayerBankAccount();
-                givenSaveReturnsSettlement();
-
-                // when
-                PayerSharesResult result = settlementCommandService.markSent(command());
-
-                // then
-                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
-                then(settlementRepository).should().save(captor.capture());
-                assertThat(captor.getValue().getId()).isEqualTo(THIRD_SETTLEMENT_ID);
-                assertThat(result.shares())
-                        .extracting(
-                                ShareBreakdownResult::settlementId, ShareBreakdownResult::status)
-                        .containsExactly(
-                                tuple(SETTLEMENT_ID, ShareStatus.SENT),
-                                tuple(SECOND_SETTLEMENT_ID, ShareStatus.CONFIRMED),
-                                tuple(THIRD_SETTLEMENT_ID, ShareStatus.SENT));
-            }
-
-            @Test
-            @DisplayName("미입금 분담금이 없으면 아무것도 저장하지 않고 예외 없이 반환한다")
-            void shouldReturnWithoutSavingWhenUnpaidSharesNotExist() {
-                // given
-                givenParticipant(LEE_ID);
-                givenSharedSettlements(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT),
-                        SettlementFixture.SECOND_ROUND.createWithFirstShareStatus(
-                                SECOND_SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.CONFIRMED));
-                givenGatheringWithPayerBankAccount();
-
-                // when
-                PayerSharesResult result = settlementCommandService.markSent(command());
-
-                // then
-                thenSettlementNotSaved();
-                assertThat(result.hasUnpaidShares()).isFalse();
-                assertThat(result.unpaidAmount()).isZero();
-                assertThat(result.shares())
-                        .extracting(ShareBreakdownResult::status)
-                        .containsExactly(ShareStatus.SENT, ShareStatus.CONFIRMED);
-            }
-        }
-
-        private MarkSharesSentCommand command() {
-            return new MarkSharesSentCommand(LINK_TOKEN, PAYER_ID);
-        }
-
-        private void givenSharedSettlements(Settlement... settlements) {
-            given(
-                            settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(
-                                    LEE_ID, PAYER_ID))
-                    .willReturn(List.of(settlements));
-        }
-
-        private void givenGatheringWithPayerBankAccount() {
-            given(gatheringRepository.findByParticipantId(LEE_ID))
-                    .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
-            given(
-                            participantBankAccountRepository.findAllByParticipantIds(
-                                    List.of(PAYER_ID), GATHERING_ID))
-                    .willReturn(List.of(ParticipantBankAccountFixture.KOOKMIN.create(PAYER_ID)));
-        }
-    }
-
-    @Nested
-    @DisplayName("confirm 메서드는")
-    class Confirm {
-
-        @Nested
-        @DisplayName("요청한 참여자가 결제자가 아닌 경우")
-        class WhenParticipantIsNotPayer {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowNotSettlementPayerException() {
-                // given
-                givenParticipant(LEE_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                ConfirmShareCommand command = command(LEE_ID);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(NotSettlementPayerException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("이미 확인 완료인 분담금인 경우")
-        class WhenShareConfirmed {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareAlreadyConfirmedException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.CONFIRMED));
-                ConfirmShareCommand command = command(LEE_ID);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(ShareAlreadyConfirmedException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("확인 완료로 시작한 0원 분담금인 경우")
-        class WhenShareAmountZero {
-
-            @Test
-            @DisplayName("이미 확인 완료가 아니라 0원 분담금이라는 예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowZeroShareStatusUnchangeableException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(settlementWithZeroShare());
-                ConfirmShareCommand command = command(PARK_ID);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(ZeroShareStatusUnchangeableException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("정산 건에 분담금이 없는 참여자인 경우")
-        class WhenShareNotFound {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowSettlementShareNotFoundException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                ConfirmShareCommand command = command(OUTSIDER_ID);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(SettlementShareNotFoundException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("취소한 정산 건인 경우")
-        class WhenSettlementCancelled {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowSettlementAlreadyCancelledException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createCancelled(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                ConfirmShareCommand command = command(LEE_ID);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.confirm(command))
-                        .isInstanceOf(SettlementAlreadyCancelledException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("확인 완료로 바꿀 수 있는 경우")
-        class WhenConfirmable {
-
-            @Test
-            @DisplayName("보냄 분담금을 확인 완료로 바꿔 저장하고 확인한 금액을 담아 반환한다")
-            void shouldConfirmSentShare() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-
-                // when
-                SettlementResult result = settlementCommandService.confirm(command(LEE_ID));
-
-                // then
-                then(settlementRepository).should().save(any(Settlement.class));
-                assertThat(result.shares())
-                        .extracting(
-                                SettlementShareResult::participantId, SettlementShareResult::status)
-                        .containsExactly(
-                                tuple(LEE_ID, ShareStatus.CONFIRMED),
-                                tuple(PARK_ID, ShareStatus.UNPAID));
-                assertThat(result.confirmedAmount()).isEqualTo(3_333L);
-                assertThat(result.sentAmount()).isZero();
-            }
-
-            @Test
-            @DisplayName("미입금 분담금도 확인 완료로 바꾸고, 보냄 분담금은 따로 더해 반환한다")
-            void shouldConfirmUnpaidShare() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-
-                // when
-                SettlementResult result = settlementCommandService.confirm(command(PARK_ID));
-
-                // then
-                assertThat(result.shares())
-                        .extracting(
-                                SettlementShareResult::participantId, SettlementShareResult::status)
-                        .containsExactly(
-                                tuple(LEE_ID, ShareStatus.SENT),
-                                tuple(PARK_ID, ShareStatus.CONFIRMED));
-                assertThat(result.confirmedAmount()).isEqualTo(3_333L);
-                assertThat(result.sentAmount()).isEqualTo(3_333L);
-            }
-
-            @Test
-            @DisplayName("정산 메시지를 보내기 전이면 모임의 발송 예정 시각을 담아 반환한다")
-            void shouldReturnNotificationScheduledAtWhenSettlementNotNotified() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-                givenSchedule();
-
-                // when
-                SettlementResult result = settlementCommandService.confirm(command(LEE_ID));
-
-                // then
-                assertThat(result.notificationScheduledAt()).isEqualTo(SCHEDULED_AT);
-            }
-
-            @Test
-            @DisplayName("정산 메시지를 보낸 정산 건이면 모임에 다른 예약이 있어도 발송 예정 시각을 비워 반환한다")
-            void shouldReturnNullNotificationScheduledAtWhenSettlementNotified() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createNotified(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenSaveReturnsSettlement();
-                givenSchedule();
-
-                // when
-                SettlementResult result = settlementCommandService.confirm(command(LEE_ID));
-
-                // then
-                assertThat(result.notified()).isTrue();
-                assertThat(result.notificationScheduledAt()).isNull();
-            }
-        }
-
-        private ConfirmShareCommand command(Long participantId) {
-            return ConfirmShareCommand.of(LINK_TOKEN, SETTLEMENT_ID, participantId);
-        }
-    }
-
-    @Nested
-    @DisplayName("revert 메서드는")
-    class Revert {
-
-        @Nested
-        @DisplayName("요청한 참여자가 결제자가 아닌 경우")
-        class WhenParticipantIsNotPayer {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowNotSettlementPayerException() {
-                // given
-                givenParticipant(LEE_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                RevertShareCommand command = command();
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(NotSettlementPayerException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("이미 미입금인 분담금인 경우")
-        class WhenShareUnpaid {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareAlreadyUnpaidException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                RevertShareCommand command = command();
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(ShareAlreadyUnpaidException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("확인 완료로 시작한 0원 분담금인 경우")
-        class WhenShareAmountZero {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowZeroShareStatusUnchangeableException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(settlementWithZeroShare());
-                RevertShareCommand command =
-                        RevertShareCommand.of(LINK_TOKEN, SETTLEMENT_ID, PARK_ID);
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.revert(command))
-                        .isInstanceOf(ZeroShareStatusUnchangeableException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
-        @DisplayName("미입금으로 되돌릴 수 있는 경우")
-        class WhenRevertible {
-
-            @Test
-            @DisplayName("보냄 분담금을 미입금으로 되돌려 저장하고 반환한다")
-            void shouldRevertSentShare() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-
-                // when
-                SettlementResult result = settlementCommandService.revert(command());
-
-                // then
-                then(settlementRepository).should().save(any(Settlement.class));
-                assertThat(result.shares())
-                        .extracting(SettlementShareResult::status)
-                        .containsOnly(ShareStatus.UNPAID);
-                assertThat(result.sentAmount()).isZero();
-            }
-
-            @Test
-            @DisplayName("확인 완료 분담금도 미입금으로 되돌려 저장하고 반환한다")
-            void shouldRevertConfirmedShare() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.CONFIRMED));
-                givenSaveReturnsSettlement();
-
-                // when
-                SettlementResult result = settlementCommandService.revert(command());
-
-                // then
-                then(settlementRepository).should().save(any(Settlement.class));
-                assertThat(result.shares())
-                        .extracting(SettlementShareResult::status)
-                        .containsOnly(ShareStatus.UNPAID);
-                assertThat(result.confirmedAmount()).isZero();
-            }
-        }
-
-        @Nested
-        @DisplayName("정산 메시지를 보내기 전의 정산 건인 경우")
-        class WhenSettlementNotNotified {
-
-            @Test
-            @DisplayName("모임의 발송 예정 시각을 담아 반환한다")
-            void shouldReturnNotificationScheduledAt() {
-                // given
-                givenUnnotifiedSettlement();
-                givenSchedule();
-
-                // when
-                SettlementResult result = settlementCommandService.revert(command());
-
-                // then
-                assertThat(result.notificationScheduledAt()).isEqualTo(SCHEDULED_AT);
-            }
-
-            @Test
-            @DisplayName("발송 예약을 잠그지 않고 리마인드를 저장하지 않는다")
-            void shouldNotScheduleReminder() {
-                // given
-                givenUnnotifiedSettlement();
-
-                // when
-                settlementCommandService.revert(command());
-
-                // then
-                then(notificationScheduleRepository)
-                        .should(never())
-                        .findOrCreateForUpdate(anyLong());
-                then(notificationDeliveryRepository).shouldHaveNoInteractions();
-            }
-
-            private void givenUnnotifiedSettlement() {
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-            }
-        }
-
-        @Nested
-        @DisplayName("정산 메시지를 보낸 정산 건의 분담금을 되돌리는 경우")
-        class WhenSettlementNotified {
-
-            @Test
-            @DisplayName("모임에 다른 예약이 있어도 발송 예정 시각을 비워 반환한다")
-            void shouldReturnNullNotificationScheduledAt() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-                givenSchedule();
-
-                // when
-                SettlementResult result = settlementCommandService.revert(command());
-
-                // then
-                assertThat(result.notified()).isTrue();
-                assertThat(result.notificationScheduledAt()).isNull();
-            }
-
-            @Test
-            @DisplayName("정산 건을 저장하기 전에 모임의 발송 예약을 잠그고, 되돌린 참여자에게 24시간 뒤 그 정산 건을 담은 리마인드를 저장한다")
-            void shouldLockScheduleAndSaveReminderBeforeSavingSettlement() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-
-                // when
-                settlementCommandService.revert(command());
-
-                // then
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                InOrder inOrder =
-                        inOrder(
-                                notificationScheduleRepository,
-                                notificationDeliveryRepository,
-                                settlementRepository);
-                inOrder.verify(notificationScheduleRepository).findOrCreateForUpdate(GATHERING_ID);
-                inOrder.verify(notificationDeliveryRepository).saveAll(captor.capture());
-                inOrder.verify(settlementRepository).save(any(Settlement.class));
-                assertThat(captor.getValue())
-                        .extracting(
-                                NotificationDelivery::getGatheringId,
-                                NotificationDelivery::getParticipantId,
-                                NotificationDelivery::getType,
-                                NotificationDelivery::getSettlementIds,
-                                NotificationDelivery::getStatus,
-                                NotificationDelivery::getAvailableAt)
-                        .containsExactly(
-                                tuple(
-                                        GATHERING_ID,
-                                        LEE_ID,
-                                        NotificationType.REMINDER,
-                                        List.of(SETTLEMENT_ID),
-                                        DeliveryStatus.PENDING,
-                                        LocalDateTime.of(2026, 10, 30, 18, 0)));
-            }
-
-            @Test
-            @DisplayName("21:59:59에 되돌리면 다음 날 21:59:59에 보낼 리마인드를 저장한다")
-            void shouldSaveReminderNextDayWhenRevertedJustBeforeSendingEnd() {
-                // given
-                givenNotifiedSettlementRevertedAt(LocalDateTime.of(2026, 10, 29, 21, 59, 59));
-
-                // when
-                settlementCommandService.revert(command());
-
-                // then
-                thenReminderSavedAt(LocalDateTime.of(2026, 10, 30, 21, 59, 59));
-            }
-
-            @Test
-            @DisplayName("22:00에 되돌리면 24시간 뒤가 보낼 수 없는 시간대라 그다음 10:00에 보낼 리마인드를 저장한다")
-            void shouldSaveReminderAtSendingStartWhenRevertedAtSendingEnd() {
-                // given
-                givenNotifiedSettlementRevertedAt(LocalDateTime.of(2026, 10, 29, 22, 0));
-
-                // when
-                settlementCommandService.revert(command());
-
-                // then
-                thenReminderSavedAt(LocalDateTime.of(2026, 10, 31, 10, 0));
-            }
-
-            @Test
-            @DisplayName("되돌린 참여자의 보내기를 기다리는 리마인드가 새 리마인드 시각과 24시간에서 1초 모자란 차이면 리마인드를 저장하지 않는다")
-            void shouldNotSaveReminderWhenPendingReminderWithinGap() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-                givenPendingReminderOfLeeAt(LocalDateTime.of(2026, 10, 31, 17, 59, 59));
-
-                // when
-                settlementCommandService.revert(command());
-
-                // then
-                then(notificationDeliveryRepository).should().saveAll(List.of());
-                then(settlementRepository).should().save(any(Settlement.class));
-            }
-
-            @Test
-            @DisplayName("되돌린 참여자의 보내기를 기다리는 리마인드가 새 리마인드 시각과 정확히 24시간 차이면 리마인드를 저장한다")
-            void shouldSaveReminderWhenPendingReminderAtGap() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-                givenPendingReminderOfLeeAt(LocalDateTime.of(2026, 10, 31, 18, 0));
-
-                // when
-                settlementCommandService.revert(command());
-
-                // then
-                thenReminderSavedAt(LocalDateTime.of(2026, 10, 30, 18, 0));
-            }
-
-            // 이의 분담금을 보냄으로 바꾼 뒤 정산 메시지를 보낸 정산 건이다.
-            private void givenNotifiedSettlementRevertedAt(LocalDateTime now) {
-                givenNow(now);
-                Settlement settlement =
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT);
-                settlement.markNotified(SettlementFixture.DINNER.getRecordedAt().plusHours(1));
-                givenParticipant(PAYER_ID);
-                givenSettlement(settlement);
-                givenSaveReturnsSettlement();
-            }
-
-            private void givenPendingReminderOfLeeAt(LocalDateTime availableAt) {
-                given(notificationDeliveryRepository.findAllRemindersByGatheringId(GATHERING_ID))
-                        .willReturn(
-                                List.of(
-                                        NotificationDeliveryFixture.REMINDER_NOTICE
-                                                .builder(
-                                                        1L,
-                                                        GATHERING_ID,
-                                                        LEE_ID,
-                                                        List.of(SECOND_SETTLEMENT_ID))
-                                                .availableAt(availableAt)
-                                                .build()));
-            }
-
-            private void thenReminderSavedAt(LocalDateTime availableAt) {
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                then(notificationDeliveryRepository).should().saveAll(captor.capture());
-                assertThat(captor.getValue())
-                        .extracting(NotificationDelivery::getAvailableAt)
-                        .containsExactly(availableAt);
-            }
-        }
-
-        private RevertShareCommand command() {
-            return RevertShareCommand.of(LINK_TOKEN, SETTLEMENT_ID, LEE_ID);
-        }
-    }
-
     private Gathering gathering(LocalDateTime openedAt) {
         return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                 GATHERING_ID,
@@ -2153,11 +1244,13 @@ class SettlementCommandServiceTest extends UnitTest {
     }
 
     private void givenParticipant(Long participantId) {
-        given(participantLinkTokenRepository.findParticipantIdByValue(LINK_TOKEN))
-                .willReturn(Optional.of(participantId));
-        given(gatheringRetentionRepository.findByParticipantId(participantId))
-                .willReturn(
-                        Optional.of(GatheringRetentionFixture.RETAINED.create(GATHERING_ID, NOW)));
+        given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
+                .willReturn(new LinkedParticipantResult(participantId, DELETES_AT));
+    }
+
+    private void givenLinkTokenNotFound() {
+        given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
+                .willThrow(new LinkTokenNotFoundException());
     }
 
     private void givenGatheringOfPayer(LocalDateTime openedAt) {
@@ -2182,39 +1275,22 @@ class SettlementCommandServiceTest extends UnitTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
     }
 
-    private void givenSchedule() {
-        given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
-                .willReturn(
-                        Optional.of(
-                                NotificationSchedule.builder()
-                                        .gatheringId(GATHERING_ID)
-                                        .scheduledAt(SCHEDULED_AT)
-                                        .build()));
-    }
-
     private void givenNow(LocalDateTime now) {
-        settlementCommandService =
-                settlementCommandService(
-                        Clock.fixed(
-                                now.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
-                                TimeConfig.SERVICE_ZONE));
-    }
-
-    private SettlementCommandService settlementCommandService(Clock clock) {
+        Clock clock =
+                Clock.fixed(
+                        now.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
         NotificationCommandService notificationCommandService =
                 new NotificationCommandService(
                         notificationScheduleRepository, notificationDeliveryRepository, clock);
-        return new SettlementCommandService(
-                participantLinkTokenRepository,
-                gatheringRepository,
-                gatheringRetentionRepository,
-                participantBankAccountRepository,
-                settlementRepository,
-                notificationCommandService,
-                notificationCommandService,
-                new NotificationQueryService(notificationScheduleRepository, clock),
-                notificationCommandService,
-                clock);
+        settlementCommandService =
+                new SettlementCommandService(
+                        getLinkedParticipantUseCase,
+                        gatheringRepository,
+                        participantBankAccountRepository,
+                        settlementRepository,
+                        notificationCommandService,
+                        notificationCommandService,
+                        clock);
     }
 
     private void thenSettlementNotSaved() {
