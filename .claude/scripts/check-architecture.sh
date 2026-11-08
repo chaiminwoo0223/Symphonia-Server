@@ -75,7 +75,7 @@ for domain in $DOMAINS; do
     report_matches \
         "domain이 global이나 application, presentation, infrastructure를 import한다" \
         "domain은 다른 계층에 의존하지 않는다. 필요한 기능은 domain에 인터페이스를 두고 바깥 계층이 구현하게 한다." \
-        < <(search -rn --include='*.java' -E '^import (static )?com\.symphonia\.(global\.|[a-z]+\.(application|presentation|infrastructure)\.)' "$layer_dir")
+        < <(search -rn --include='*.java' -E '^import (static )?com\.symphonia\.(global\.|[a-z][a-z0-9_]*\.(application|presentation|infrastructure)\.)' "$layer_dir")
 done
 
 for domain in $DOMAINS; do
@@ -85,7 +85,7 @@ for domain in $DOMAINS; do
     report_matches \
         "application이 global이나 presentation(*Request, *Response), infrastructure를 import한다" \
         "UseCase는 *Command, *Query, 원시값을 받는다. 변환은 Request.toCommand()와 Response.from(Result)에서 한다. 영속성과 외부 연동은 domain 인터페이스로 의존한다." \
-        < <(search -rn --include='*.java' -E '^import (static )?com\.symphonia\.(global\.|[a-z]+\.(presentation|infrastructure)\.)' "$layer_dir")
+        < <(search -rn --include='*.java' -E '^import (static )?com\.symphonia\.(global\.|[a-z][a-z0-9_]*\.(presentation|infrastructure)\.)' "$layer_dir")
 done
 
 # 다른 도메인에서는 application의 usecase, dto, event, provider와 domain의 enum만 참조한다.
