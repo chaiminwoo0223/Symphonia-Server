@@ -11,7 +11,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 ## 리뷰 전 필수
 
 - 스킬은 diff에 해당하는 것만 로드한다. `src/main`이 바뀌면 `architecture`, 예외나 에러 코드가 바뀌면 `error-handling`, `src/test`가 바뀌면 `testing`을 읽는다. `code-style`은 멤버 순서나 주석 판단이 필요할 때 해당 절만 읽는다.
-- import와 선언만 보고 판정할 수 있는 계층 규칙(Kotlin 파일, Adapter와 Port 이름, `RuntimeException` 직접 throw, 메서드 단위 `@Transactional`, domain의 프레임워크, global, infrastructure import, application의 global, presentation import, 다른 도메인의 infrastructure, application 구현, domain의 enum 외 타입 import)은 `check-architecture.sh`가 검사한다. 이 에이전트는 그 규칙을 다시 보지 않고 아래 판단형 항목만 본다.
+- import와 선언만 보고 판정할 수 있는 계층 규칙(Kotlin 파일, Adapter와 Port 이름, `RuntimeException` 직접 throw, 메서드 단위 `@Transactional`, domain의 프레임워크, global, application, presentation, infrastructure import, application의 global, presentation, infrastructure import, 다른 도메인의 presentation, infrastructure, application 구현, domain의 enum 외 타입 import)은 `check-architecture.sh`가 검사한다. 이 에이전트는 그 규칙을 다시 보지 않고 아래 판단형 항목만 본다.
 - 리뷰 입력은 호출자가 붙여 준 `git diff origin/develop...HEAD` 전체다. 이 에이전트는 Bash가 없어 diff를 직접 만들 수 없다. 입력이 요약이거나 일부 파일만 담고 있으면 리뷰를 시작하지 말고, 브랜치 전체 diff를 다시 달라고 보고한다.
 - 변경 사항에 테스트 파일이 포함되어 있으면 `testing` 체크리스트도 함께 적용한다. `test-writer` 에이전트를 거치지 않고 직접 작성된 테스트(사람이 짰거나 인라인으로 짠 테스트)의 컨벤션 위반을 잡아내는 유일한 지점이 이 리뷰다.
 
