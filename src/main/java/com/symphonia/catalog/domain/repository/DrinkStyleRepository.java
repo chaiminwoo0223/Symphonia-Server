@@ -10,5 +10,7 @@ public interface DrinkStyleRepository {
 
     Optional<DrinkStyle> findById(Long drinkStyleId);
 
+    List<DrinkStyle> findAll();
+
     List<DrinkStyle> findAllBySource(DrinkStyleSource source);
 }

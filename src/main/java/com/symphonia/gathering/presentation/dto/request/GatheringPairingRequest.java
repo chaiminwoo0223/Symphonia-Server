@@ -11,7 +11,7 @@ public record GatheringPairingRequest(
         @NotNull @Schema(description = "술 ID") Long drinkId,
         @NotNull @Schema(description = "안주 ID") Long anjuId,
         @NotNull @Schema(description = "추천받을 때 고른 관계 유형") RelationshipType relationshipType,
-        @NotNull @Schema(description = "추천받을 때 고른 분위기 유형") MoodType moodType) {
+        @Schema(description = "추천받을 때 고른 분위기 유형(선택)") MoodType moodType) {
     public ChooseGatheringPairingCommand toChooseCommand(String memberId, Long gatheringId) {
         return ChooseGatheringPairingCommand.of(Long.parseLong(memberId), gatheringId, toCommand());
     }

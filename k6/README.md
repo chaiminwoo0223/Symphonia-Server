@@ -14,7 +14,7 @@ pairing 도메인의 `GET /api/v1/pairings/recommendations`를 대상으로 한 
   ./gradlew bootRun
   ```
 
-  서버가 기동하면 Flyway 마이그레이션 시드로 Drink·Anju·MusicMood 카탈로그가 채워진다. 실제 규모로 측정하려면 같은 셸에서 `./gradlew importCatalog`로 BJCP와 X-Wines 음료를 적재한다. `RECOMMEND`는 인증이 필요 없는 `permitAll` 엔드포인트라 별도 로그인 준비는 필요 없다.
+  서버가 기동하면 Flyway 마이그레이션 시드로 Drink·Anju 카탈로그가 채워진다. 실제 규모로 측정하려면 같은 셸에서 `./gradlew importCatalog`로 BJCP와 X-Wines 음료를 적재한다. `RECOMMEND`는 인증이 필요 없는 `permitAll` 엔드포인트라 별도 로그인 준비는 필요 없다.
 
 ## 실행
 
@@ -40,7 +40,7 @@ k6 run --summary-export=k6/results/recommend-baseline.json k6/recommend.js
 
 ## 시나리오
 
-- `relationshipType`, `moodType`을 무작위로 섞는다.
+- `relationshipType`, `moodType`을 무작위로 섞는다. `moodType`은 선택 입력이라 넣지 않은 요청도 섞는다.
 - `attendeeConstraints`, `attendeeAllergies`는 0~2개를 무작위로 골라 섞는다.
 - 요청 사이에 `sleep`(think-time)을 두지 않는다. 실제 사용자 트래픽보다 VU당 요청 빈도가 높게 나오지만, 엔드포인트가 낼 수 있는 최대 처리량 기준으로 기준선을 잡기 위한 의도다.
 - `isAdultConfirmed`는 항상 `true`로 고정한다. 이 값이 없거나 `false`인 실패 케이스는 JUnit 테스트(`PairingControllerTest`)가 이미 검증하고 있어 부하테스트 범위에서는 다루지 않는다.

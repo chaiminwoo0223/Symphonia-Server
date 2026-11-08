@@ -2,6 +2,7 @@ package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.vo.GatheringPairing;
+import com.symphonia.pairing.domain.vo.MoodType;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -18,7 +19,7 @@ public class GatheringPairingRepositoryImpl implements GatheringPairingRepositor
                 gatheringPairing.drinkId(),
                 gatheringPairing.anjuId(),
                 gatheringPairing.relationshipType().name(),
-                gatheringPairing.moodType().name());
+                Optional.ofNullable(gatheringPairing.moodType()).map(MoodType::name).orElse(null));
     }
 
     @Override

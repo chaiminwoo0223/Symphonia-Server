@@ -9,7 +9,8 @@ import java.util.Set;
 
 public class RecommendPairingQueryFixture {
     private RelationshipType relationshipType = RelationshipType.FRIEND;
-    private MoodType moodType = MoodType.CASUAL;
+    // 분위기는 선택 입력이다. 기본값은 고르지 않은 상태로 두어 분위기 가산점이 다른 점수 규칙의 검증에 섞이지 않게 한다.
+    private MoodType moodType;
     private Set<AttendeeConstraint> attendeeConstraints = Set.of();
     private Set<AllergyType> attendeeAllergies = Set.of();
 

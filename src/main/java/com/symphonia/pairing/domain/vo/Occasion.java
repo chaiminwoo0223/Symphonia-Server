@@ -39,7 +39,16 @@ public class Occasion {
     }
 
     public boolean prefersLightAnju() {
-        return relationshipType.prefersLightAnju() || moodType == MoodType.FORMAL;
+        return relationshipType.prefersLightAnju();
+    }
+
+    // 분위기는 선택 입력이다. 고르지 않았으면 어떤 음료와 안주도 우대하지 않는다.
+    public boolean moodPrefers(PairingDrink drink) {
+        return moodType != null && moodType.prefers(drink);
+    }
+
+    public boolean moodPrefers(PairingAnju anju) {
+        return moodType != null && moodType.prefers(anju);
     }
 
     public boolean requiresNonAlcoholicOption() {

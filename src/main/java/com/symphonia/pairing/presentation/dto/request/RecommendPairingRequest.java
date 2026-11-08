@@ -13,7 +13,7 @@ import java.util.Set;
 
 public record RecommendPairingRequest(
         @NotNull @Schema(description = "관계 유형") RelationshipType relationshipType,
-        @NotNull @Schema(description = "분위기 유형") MoodType moodType,
+        @Schema(description = "분위기 유형(선택). 입력하지 않으면 맛 궁합만으로 추천합니다.") MoodType moodType,
         @AssertTrue(message = "성인 인증이 필요합니다.") @Schema(description = "성인 인증 여부")
                 boolean isAdultConfirmed,
         @Schema(description = "참석자 음주 제약(운전, 임신 등)") List<AttendeeConstraint> attendeeConstraints,

@@ -13,6 +13,7 @@ import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
+import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
 import com.symphonia.common.annotation.QueryService;
 import lombok.RequiredArgsConstructor;
 
@@ -21,13 +22,16 @@ import lombok.RequiredArgsConstructor;
 public class CatalogQueryService
         implements GetCatalogUseCase, VerifyCatalogReferencesUseCase, GetCatalogReferencesUseCase {
     private final DrinkRepository drinkRepository;
+    private final DrinkStyleRepository drinkStyleRepository;
     private final AnjuRepository anjuRepository;
 
     // 도수 상한을 넘는 음료는 조회 단계에서 먼저 걸러 읽는 행을 줄인다.
+    // 음료 종류는 스타일이 가지므로 스타일 전체를 한 번 읽어 음료마다 붙인다.
     @Override
     public CatalogResult get(CatalogQuery query) {
         return CatalogResult.of(
                 drinkRepository.findAllByAbvLessThanEqual(query.maxAbv()),
+                drinkStyleRepository.findAll(),
                 anjuRepository.findAll());
     }
 
