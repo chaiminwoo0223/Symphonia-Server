@@ -84,7 +84,7 @@
 
 ```bash
 ./gradlew test                     # 전체 테스트 (빠른 반복 확인용)
-./.claude/scripts/check-all.sh     # PR 전 전체 검증. 성공하면 한 줄만 출력하고, 전체 로그는 .git/check-all.log에 남긴다
+./.claude/scripts/check-all.sh     # PR 전 전체 검증. 성공하면 한 줄만 출력하고, 전체 로그는 .git/check-all.log에 남긴다. CI에서는 전체 로그를 출력한다
 ./.claude/scripts/check-architecture.sh      # import와 선언으로 판정하는 계층 규칙 검사
 ./.claude/scripts/check-test-conventions.sh  # 바뀐 테스트의 given-when-then 블록과 should 접두어 검사 (--all: 전체)
 ./.claude/scripts/check-harness-budget.sh    # 스킬과 CLAUDE.md의 분량 예산 검사

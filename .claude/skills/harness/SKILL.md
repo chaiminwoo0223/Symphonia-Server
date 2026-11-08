@@ -31,7 +31,7 @@ description: Load when editing harness artifacts. CLAUDE.md, settings.json, .cla
   - import와 선언으로 판정하는 계층 규칙: `check-architecture.sh`
   - 스킬과 `CLAUDE.md` 분량: `check-harness-budget.sh`
 - 스크립트의 에러 메시지에는 위치와 고치는 방법을 함께 적는다. 규칙은 위반했을 때만 컨텍스트에 들어오게 한다.
-- 검증 스크립트는 성공하면 한 줄만 출력한다. 실패하면 실패한 단계와 필요한 로그만 출력한다.
+- 검증 스크립트는 성공하면 한 줄만 출력한다. 실패하면 실패한 단계와 필요한 로그만 출력한다. 예외로 `check-all.sh`는 `CI` 환경 변수가 있으면 전체 로그를 출력한다.
 - 되돌리기 어렵거나 대외적인 행동(삭제, 배포, force-push, 게시)은 확인 없이 진행하지 않는다.
 - 하네스 아티팩트도 리뷰 대상이다. 스킬이 토큰을 과도하게 쓰거나 체크리스트를 잘못 적용하면 그 스킬 문서를 고친다.
 
