@@ -12,11 +12,15 @@ echo "  PR 전 전체 검증"
 echo "========================================"
 
 echo ""
-echo "[1/2] 테스트 컨벤션 검사..."
+echo "[1/3] 테스트 컨벤션 검사..."
 ./.claude/scripts/check-test-conventions.sh
 
 echo ""
-echo "[2/2] 빌드 + 전체 테스트..."
+echo "[2/3] 계층 규칙 검사..."
+./.claude/scripts/check-architecture.sh
+
+echo ""
+echo "[3/3] 빌드 + 전체 테스트..."
 ./gradlew clean build
 echo "✓ 빌드 및 테스트 통과"
 
