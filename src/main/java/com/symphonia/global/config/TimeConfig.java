@@ -1,6 +1,7 @@
 package com.symphonia.global.config;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.TimeZone;
 import org.springframework.context.annotation.Bean;
@@ -13,9 +14,10 @@ public class TimeConfig {
     public static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     // 시각에 따라 동작이 달라지는 서비스가 주입받아, 테스트에서 시각을 고정할 수 있게 한다.
+    // DB의 TIMESTAMP는 마이크로초까지만 저장하므로, 시계도 마이크로초 단위로 끊어 응답한 시각과 저장한 시각을 같게 한다.
     @Bean
     public Clock clock() {
-        return Clock.system(SERVICE_ZONE);
+        return Clock.tick(Clock.system(SERVICE_ZONE), Duration.ofNanos(1_000));
     }
 
     // 스프링 컨텍스트가 뜨기 전에 만들어지는 시각까지 맞추도록 main에서 가장 먼저 호출한다.
