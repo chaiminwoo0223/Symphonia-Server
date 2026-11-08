@@ -21,15 +21,9 @@ description: Load when handling exceptions/errors. BusinessException 계층(공�
 | `ValidationExceptionHandler` | `common.exception.handler` | `ResponseEntityExceptionHandler` 상속, `@Order(HIGHEST_PRECEDENCE)`. Bean Validation·파라미터·URL 등 스프링 프레임워크 예외를 `CommonErrorCode`로 매핑 |
 | `ErrorResponse` / `ValidationErrorResponse` | `common.exception.response` | 에러 응답 바디. 필드별 검증 오류는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 표현 |
 
-Symphonia는 단일 모듈이라 todakun처럼 `common-web` 모듈을 따로 두지 않는다. 예외 관련 컴포넌트는 모두 `common.exception` 패키지 아래 둔다.
+예외 관련 컴포넌트는 모두 `common.exception` 패키지 아래 둔다. 근거와 변경 이력은 `docs/decisions/error-handling.md`에 있다.
 
 **핸들러가 2개인 이유**: `GlobalExceptionHandler`는 도메인 비즈니스 예외(`BusinessException`)와 예상 못한 500(catch-all)만 담당하고, `ValidationExceptionHandler`는 스프링이 던지는 프레임워크 예외(Bean Validation, 파라미터, URL 등)만 담당한다. 관심사가 다르므로 핸들러를 하나로 합치지 않는다.
-
-> **구현 완료 (2026-09-07, 이슈 #35)**: 아래 "예외 계층"은 목표 설계가 아니라 실제 코드 상태다. `BusinessException.from(...)`은 더 이상 존재하지 않으며, `member`/`auth` 모두 공통 예외(`BadRequestException` 등)와 도메인별 구체 예외(`MemberNotFoundException`, `RefreshTokenNotFoundException` 등)를 실제로 쓰고 있다. 새 도메인을 스캐폴딩하거나 예외 관련 코드를 새로 작성할 때 `member`/`auth`의 기존 구체 예외 클래스를 그대로 참고 구현으로 삼아도 된다.
->
-> **`InternalServerException` 추가 (2026-09-12)**: 처음에는 공통 예외가 4xx 5종(`BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException`)뿐이었고, 500에 대응하는 공통 예외가 없어 `SocialAuthenticationFailedException`/`SocialMemberInfoFetchFailedException`이 `BusinessException`을 직접 상속했다. 여기에 `AccessTokenHashingFailedException`(체크 예외라 컴파일러가 강제로 잡게 만들지만 SHA-256처럼 실제로는 발생할 수 없는 JVM 불변조건 위반을 언체크로 바꾸는 방어적 분기)이 같은 패턴으로 세 번째 추가되면서, "예외적인 경우"라던 케이스 자체가 반복되는 패턴이 됐다(rule of three). 그래서 400/401/403/404/409와 동일하게 500도 공통 래퍼로 승격해 세 클래스 모두 `InternalServerException`을 상속하도록 통일했다.
->
-> **(2026-10-29 결정, 이슈 #123)**: 토큰 SHA-256 해싱을 `common.crypto.Sha256`으로 모았다. auth의 `RefreshTokenRepositoryImpl`, `BlacklistAccessTokenRepositoryImpl`과 gathering의 `GatheringJoinTokenRepositoryImpl`, `ParticipantLinkTokenRepositoryImpl`에 같은 private `hash()`가 네 벌 있었기 때문이다. 해싱 실패는 `InternalServerException(CommonErrorCode.HASHING_FAILED)`로 던진다. 그래서 `AccessTokenHashingFailedException`, `RefreshTokenHashingFailedException`, `GatheringTokenHashingFailedException`과 각 에러 코드를 지웠다. 모든 JDK는 SHA-256을 지원해야 해서 이 실패는 실제로 일어나지 않는다. 도메인마다 다른 에러 코드를 둘 이유가 없다. `Sha256`이 실패를 그대로 넘기고 호출부가 도메인 예외로 바꾸는 안은 택하지 않았다. 호출부마다 try/catch가 남아 중복이 줄지 않기 때문이다. 유틸은 `global`이 아니라 `common`에 둔다. `global`은 설정과 보안 필터를 두는 기술 부트스트랩이기 때문이다.
 
 ## 예외 계층
 
@@ -121,12 +115,10 @@ public enum MemberErrorCode implements ErrorCode {
 
 - `INVALID_`는 400에서만 쓴다. 클라이언트가 보낸 값이 형식이나 규칙을 어겼다는 뜻이다. 500에 쓰면 서버의 실패가 클라이언트 입력의 잘못처럼 읽힌다.
 - 404는 반드시 `*_NOT_FOUND`를 쓴다. `*_NOT_FOUND`는 찾는 대상이 없다는 사실을 나타내므로 다른 상태에도 쓸 수 있다. 상태는 그 대상을 누가 책임지는지로 정한다. 리프레시 토큰은 인증 수단이라 401(`REFRESH_TOKEN_NOT_FOUND`)이고, 서버가 저장한 데이터 키는 500(`GATHERING_DATA_KEY_NOT_FOUND`)이다.
-- 401은 클라이언트가 할 행동별로 코드를 하나씩 둔다. `UNAUTHENTICATED`를 받으면 재발급하고, `REFRESH_TOKEN_NOT_FOUND`를 받으면 다시 로그인한다. 액세스 토큰이 만료됐는지, 위조됐는지, 블랙리스트에 있는지는 응답에서 구분하지 않는다.
+- 401은 클라이언트가 할 행동별로 코드를 하나씩 둔다. `UNAUTHENTICATED`를 받으면 재발급하고, `REFRESH_TOKEN_NOT_FOUND`를 받으면 다시 로그인한다. 액세스 토큰이 만료됐는지, 위조됐는지, 블랙리스트에 있는지는 응답에서 구분하지 않는다. 실패 이유는 `JwtAccessTokenProvider`가 예외 이름만 debug 로그로 남긴다.
 - `CommonErrorCode`가 프레임워크 예외를 매핑한 코드는 그 예외 이름을 따른다(`METHOD_ARGUMENT_NOT_VALID`, `CONSTRAINT_VIOLATION`).
 - 상수로만 들어오는 값처럼 코드상 실행 중에 어길 수 없는 불변식은 검사하지 않는다. 어기면 JVM 예외가 catch-all로 가서 스택트레이스와 함께 `error`로 남는다. `BusinessException`으로 감싸면 `warn`으로 스택트레이스 없이 남아 버그가 덜 보인다.
 - 에러 코드 이름을 바꾸면 클라이언트 계약이 바뀐다. 그래서 PR 본문에 기존 이름과 새 이름을 함께 적는다.
-
-**(2026-11-01 결정, 이슈 #156)**: `INVALID_` 접두사를 400 전용으로 정했다. `INVALID_GATHERING_MASTER_KEY`(500)는 설정을 읽는 작업의 실패라 `GATHERING_MASTER_KEY_LOAD_FAILED`로 바꿨다. `INVALID_TOP_LIMIT`(500)는 상수로만 들어오는 값을 검사하던 분기라 검사와 함께 지웠고, 에러 코드가 남지 않은 `PairingErrorCode`도 지웠다. `INVALID_JWT_TOKEN`(401)은 `UNAUTHENTICATED`로 합쳤다. 필터는 같은 상황을 이미 `UNAUTHENTICATED`로 응답했고, 이 코드는 로그아웃 중 토큰이 만료되는 경합에서만 나왔다. 실패 이유를 응답에서 구분하면 공격자가 위조 토큰이 서명 검증을 통과했는지 알 수 있고, 클라이언트가 할 수 있는 행동도 늘지 않는다. 그래서 실패 이유는 `JwtAccessTokenProvider`가 예외 이름만 debug 로그로 남긴다. 던지는 곳이 없던 `TOKEN_IS_BLACKLISTED`는 지웠다. `INVALID_`를 400과 401에 함께 쓰는 안은 택하지 않았다. 다른 401 코드가 `INVALID_`를 쓰지 않아 지금 코드와 덜 맞기 때문이다. `*_NOT_FOUND`를 404 전용으로 묶는 안도 택하지 않았다. `REFRESH_TOKEN_NOT_FOUND`는 클라이언트가 재로그인을 결정하는 코드라, 이름을 바꾸면 계약이 깨지기 때문이다.
 
 ## GlobalExceptionHandler
 
@@ -141,15 +133,16 @@ public enum MemberErrorCode implements ErrorCode {
   - `HttpRequestMethodNotSupportedException` → 405 `METHOD_NOT_ALLOWED`
   - 그 외 `ResponseEntityExceptionHandler`가 처리하는 나머지 예외는 `handleExceptionInternal`에서 500 `INTERNAL_SERVER_ERROR`로 공통 처리
 - **필드별 검증 에러는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 보고**한다. 여러 필드가 동시에 실패해도 각각 리포트된다.
-- 4xx는 `warn`, 5xx는 `error`(스택트레이스 포함)로 로깅한다. `ValidationExceptionHandler.handleExceptionInternal`(그 외 프레임워크 예외의 500 폴백 경로)도 이 원칙에 맞춰 `log.error(..., ex)`로 스택트레이스를 남긴다(2026-09-12 수정 — 이전에는 `log.warn`으로 스택트레이스 없이 조용히 묻혔다).
+- 4xx는 `warn`, 5xx는 `error`(스택트레이스 포함)로 로깅한다. `ValidationExceptionHandler.handleExceptionInternal`(그 외 프레임워크 예외의 500 폴백 경로)도 이 원칙에 맞춰 `log.error(..., ex)`로 스택트레이스를 남긴다.
   - 단, **`BusinessException`(서브클래스 포함)은 이 규칙의 예외**다. `GlobalExceptionHandler.handleBusinessException`은 상태와 무관하게 무조건 `warn`(스택트레이스 없음)으로 로깅한다 — `InternalServerException`을 상속한 500 도메인 예외(`SocialAuthenticationFailedException` 등)도 마찬가지다. `BusinessException` 계열은 "코드가 의도를 갖고 명명한 실패"라 스택트레이스보다 어떤 도메인 실패인지가 중요하다는 전제이므로, 진짜 디버깅이 필요한, 도메인 코드로 명명할 의미가 없는 예상 못 한 500(버그, 알 수 없는 장애 등)은 `BusinessException` 계열로 감싸지 말고 그냥 던져서 catch-all의 `error` 로깅 경로를 타게 한다.
-- **(2026-10-29 결정, 이슈 #123)**: `MethodArgumentNotValidException` 로그에는 예외 메시지 대신 실패한 필드 이름만 남긴다. 예외 메시지에는 거부된 입력값이 그대로 들어 있어, 이름 같은 개인정보가 로그에 남기 때문이다.
+- `MethodArgumentNotValidException` 로그에는 예외 메시지 대신 실패한 필드 이름만 남긴다. 예외 메시지에 거부된 입력값(개인정보)이 들어 있다.
 
 ## 원칙
 
 - `RuntimeException`을 직접 throw하지 않는다. 항상 `BusinessException`의 서브클래스(공통 6종 또는 도메인별 구체 예외)를 사용한다.
 - **도메인 실패는 반드시 공통 6종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_SERVER_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다. 체크 예외를 언체크로 바꿔야만 하는 "도달 불가능한" 방어적 분기도 마찬가지다 — `InternalServerException`을 상속한 도메인별 구체 예외를 만든다. 단, 여러 도메인이 함께 쓰는 `common` 유틸의 실패는 도메인과 무관하므로 `CommonErrorCode`로 공통 예외를 던진다(예: `Sha256.hash`의 `NoSuchAlgorithmException` → `InternalServerException(CommonErrorCode.HASHING_FAILED)`).
 - HTTP status는 **오직 `ErrorCode.getStatus()`를 통해서만** 표현한다. 핸들러나 예외 클래스에 하드코딩하지 않는다.
+- 토큰 SHA-256 해싱은 `common.crypto.Sha256`을 쓴다. Repository마다 해싱 메서드를 두지 않는다.
 - 예외 메시지는 한국어로 작성한다.
 - Controller 계층에서 비즈니스 예외를 직접 catch하지 않는다.
 - Bean Validation 실패도 동일하게 `StandardResponse` 포맷으로 변환한다.
