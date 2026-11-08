@@ -1,6 +1,7 @@
 package com.symphonia.pairing.presentation.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -73,9 +74,24 @@ class PairingControllerTest extends IntegrationTest {
             // when & then
             mockMvc.perform(
                             get("/api/v1/pairings/recommendations")
-                                    .param("relationshipType", "FRIEND")
+                                    .param("moodType", "CASUAL")
                                     .param("isAdultConfirmed", "true"))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("moodType 없이 요청해도 추천 목록을 반환한다")
+        void shouldReturnRecommendationsWhenMoodTypeMissing() throws Exception {
+            // given
+            seedCatalog();
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/recommendations")
+                                    .param("relationshipType", "FRIEND")
+                                    .param("isAdultConfirmed", "true"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data").isNotEmpty());
         }
 
         @Test
@@ -189,6 +205,31 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.drinkId").value(request.drinkId()))
                         .andExpect(jsonPath("$.data.anjuId").value(request.anjuId()))
                         .andExpect(jsonPath("$.data.rating").value(request.rating().name()));
+            }
+
+            @Test
+            @DisplayName("분위기 없이 받은 추천의 피드백도 저장하고 201을 반환한다")
+            void shouldSaveFeedbackWhenMoodTypeMissing() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                SubmitPairingFeedbackRequest seeded = seedFeedbackRequest();
+                SubmitPairingFeedbackRequest request =
+                        new SubmitPairingFeedbackRequest(
+                                seeded.drinkId(),
+                                seeded.anjuId(),
+                                seeded.relationshipType(),
+                                null,
+                                seeded.rating());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/pairings/feedback")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.moodType").value(nullValue()));
             }
 
             @Test

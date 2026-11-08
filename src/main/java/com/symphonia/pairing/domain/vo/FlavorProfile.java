@@ -13,6 +13,7 @@ public class FlavorProfile {
     private static final int MAX_AXIS_VALUE = 5;
     private static final int RICHNESS_CUTTING_THRESHOLD = 4;
     private static final int AXIS_COUNT = 4;
+    private static final int SPARKLING_CARBONATION = 4;
 
     private final int sweetness;
     private final int bitterness;
@@ -51,6 +52,10 @@ public class FlavorProfile {
         }
         return (double) (richness - LIGHT_RICHNESS_THRESHOLD)
                 / (MAX_RICHNESS - LIGHT_RICHNESS_THRESHOLD);
+    }
+
+    public boolean isSparkling() {
+        return carbonation >= SPARKLING_CARBONATION;
     }
 
     // 탄산이나 산미가 강하면 기름진 안주를 씻어 준다.

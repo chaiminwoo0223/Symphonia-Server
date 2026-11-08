@@ -55,6 +55,7 @@ public class PairingQueryService implements RecommendPairingUseCase {
         return PairingDrink.of(
                 drink.id(),
                 drink.drinkStyleId(),
+                drink.category(),
                 drink.name(),
                 drink.abv(),
                 drink.nonAlcoholic(),
@@ -78,6 +79,9 @@ public class PairingQueryService implements RecommendPairingUseCase {
                         anju.richness(),
                         anju.acidity()),
                 anju.allergyTypes(),
+                anju.base(),
+                anju.serving(),
+                anju.spicy(),
                 anju.harmonizeMask());
     }
 }

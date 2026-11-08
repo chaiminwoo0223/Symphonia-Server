@@ -1,5 +1,7 @@
 package com.symphonia.pairing.domain.vo;
 
+import com.symphonia.catalog.domain.vo.DrinkCategory;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,6 +15,7 @@ public class PairingDrink {
 
     private final Long id;
     private final Long drinkStyleId;
+    private final DrinkCategory category;
     private final String name;
     private final double abv;
     private final boolean nonAlcoholic;
@@ -24,13 +27,23 @@ public class PairingDrink {
     public static PairingDrink of(
             Long id,
             Long drinkStyleId,
+            DrinkCategory category,
             String name,
             double abv,
             boolean nonAlcoholic,
             FlavorProfile flavorProfile,
             long harmonizeMask) {
         return new PairingDrink(
-                id, drinkStyleId, name, abv, nonAlcoholic, flavorProfile, harmonizeMask);
+                id, drinkStyleId, category, name, abv, nonAlcoholic, flavorProfile, harmonizeMask);
+    }
+
+    // 종류를 모르는 음료는 어느 종류에도 속하지 않는다.
+    public boolean isCategoryOf(Set<DrinkCategory> categories) {
+        return category != null && categories.contains(category);
+    }
+
+    public boolean isSparkling() {
+        return flavorProfile.isSparkling();
     }
 
     public double flavorSimilarityTo(PairingAnju anju) {

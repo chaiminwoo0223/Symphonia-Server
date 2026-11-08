@@ -93,6 +93,28 @@ class DrinkStyleRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findAll 메서드는")
+    class FindAll {
+
+        @Test
+        @DisplayName("저장된 모든 DrinkStyle을 종류와 함께 반환한다")
+        void shouldReturnDrinkStylesWithCategory() {
+            // given
+            DrinkStyle saved = drinkStyleRepository.save(DrinkStyleFixture.ALE.create());
+
+            // when
+            List<DrinkStyle> result = drinkStyleRepository.findAll();
+
+            // then
+            assertThat(result)
+                    .filteredOn(drinkStyle -> drinkStyle.getId().equals(saved.getId()))
+                    .singleElement()
+                    .extracting(DrinkStyle::getCategory)
+                    .isEqualTo(DrinkStyleFixture.ALE.getCategory());
+        }
+    }
+
+    @Nested
     @DisplayName("findAllBySource 메서드는")
     class FindAllBySource {
 

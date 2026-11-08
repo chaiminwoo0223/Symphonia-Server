@@ -25,6 +25,8 @@ public class Pairing {
     private static final double HARMONIZE_BONUS = 0.1;
     private static final double RICHNESS_CUTTING_BONUS = 0.2;
     private static final double CARBONATION_ACIDITY_CUTTING_BONUS = 0.2;
+    private static final double MOOD_DRINK_BONUS = 0.05;
+    private static final double MOOD_ANJU_BONUS = 0.05;
     private static final double FEEDBACK_WEIGHT = 0.1;
     private static final int RECOMMENDATION_LIMIT = 5;
     private static final double TIE_TOLERANCE = 1e-9;
@@ -122,6 +124,7 @@ public class Pairing {
         return FLAVOR_WEIGHT * flavorSimilarity
                 + harmonizeBonus(drink, anju)
                 + richnessCuttingBonus(drink, anju)
+                + moodBonus(drink, anju, occasion)
                 - lightAnjuPenalty(anju, occasion)
                 - highAbvPenalty(drink);
     }
@@ -145,6 +148,12 @@ public class Pairing {
                 ? CARBONATION_ACIDITY_CUTTING_BONUS
                         * drink.getFlavorProfile().richnessCuttingStrength()
                 : 0;
+    }
+
+    // 분위기는 후보를 거르지 않고, 분위기에 어울리는 음료와 안주에 각각 가산점만 준다.
+    private static double moodBonus(PairingDrink drink, PairingAnju anju, Occasion occasion) {
+        return (occasion.moodPrefers(drink) ? MOOD_DRINK_BONUS : 0)
+                + (occasion.moodPrefers(anju) ? MOOD_ANJU_BONUS : 0);
     }
 
     private static double lightAnjuPenalty(PairingAnju anju, Occasion occasion) {

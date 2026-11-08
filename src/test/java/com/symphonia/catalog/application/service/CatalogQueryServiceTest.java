@@ -17,10 +17,12 @@ import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
+import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
+import com.symphonia.catalog.fixture.DrinkStyleFixture;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,6 +42,7 @@ class CatalogQueryServiceTest extends UnitTest {
     @InjectMocks private CatalogQueryService catalogQueryService;
 
     @Mock private DrinkRepository drinkRepository;
+    @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private AnjuRepository anjuRepository;
 
     @Nested
@@ -47,7 +50,7 @@ class CatalogQueryServiceTest extends UnitTest {
     class Get {
 
         @Test
-        @DisplayName("도수 상한 이하의 음료와 전체 안주를 CatalogResult로 반환한다")
+        @DisplayName("도수 상한 이하의 음료를 스타일의 종류와 함께, 전체 안주를 분류 값과 함께 CatalogResult로 반환한다")
         void shouldReturnCatalogResultWithinMaxAbv() {
             // given: 축마다 값이 달라 축 순서가 바뀌면 결과가 달라진다
             Drink beer =
@@ -57,6 +60,8 @@ class CatalogQueryServiceTest extends UnitTest {
                     AnjuFixture.DRIED_SNACK.createWithIdAndFlavorProfile(
                             ANJU_ID, FlavorProfile.of(5, 4, 0, 2, 1));
             given(drinkRepository.findAllByAbvLessThanEqual(MAX_ABV)).willReturn(List.of(beer));
+            given(drinkStyleRepository.findAll())
+                    .willReturn(List.of(DrinkStyleFixture.ALE.createWithId()));
             given(anjuRepository.findAll()).willReturn(List.of(anju));
 
             // when
@@ -68,6 +73,7 @@ class CatalogQueryServiceTest extends UnitTest {
                             new DrinkResult(
                                     DRINK_ID,
                                     beer.getDrinkStyleId(),
+                                    DrinkStyleFixture.ALE.getCategory(),
                                     DrinkFixture.BEER.getName(),
                                     DrinkFixture.BEER.getAbv(),
                                     DrinkFixture.BEER.isNonAlcoholic(),
@@ -88,7 +94,25 @@ class CatalogQueryServiceTest extends UnitTest {
                                     2,
                                     1,
                                     AnjuFixture.DRIED_SNACK.getAllergyTypes(),
+                                    AnjuFixture.DRIED_SNACK.getBase(),
+                                    AnjuFixture.DRIED_SNACK.getServing(),
+                                    AnjuFixture.DRIED_SNACK.isSpicy(),
                                     anju.getHarmonizeMask()));
+        }
+
+        @Test
+        @DisplayName("스타일을 찾지 못한 음료는 종류 없이 반환한다")
+        void shouldReturnDrinkWithoutCategoryWhenDrinkStyleNotFound() {
+            // given
+            given(drinkRepository.findAllByAbvLessThanEqual(MAX_ABV))
+                    .willReturn(List.of(DrinkFixture.BEER.createWithId(DRINK_ID)));
+            given(anjuRepository.findAll()).willReturn(List.of());
+
+            // when
+            CatalogResult result = catalogQueryService.get(CatalogQuery.of(MAX_ABV));
+
+            // then
+            assertThat(result.drinks()).singleElement().extracting(DrinkResult::category).isNull();
         }
 
         @Test

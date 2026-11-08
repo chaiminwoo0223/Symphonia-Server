@@ -3,6 +3,7 @@ package com.symphonia.pairing.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -13,11 +14,13 @@ import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
+import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
 import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
+import com.symphonia.catalog.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
@@ -43,6 +46,7 @@ class PairingQueryServiceTest extends UnitTest {
     private PairingQueryService pairingQueryService;
 
     @Mock private DrinkRepository drinkRepository;
+    @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private AnjuRepository anjuRepository;
     @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
 
@@ -51,7 +55,8 @@ class PairingQueryServiceTest extends UnitTest {
     void setUp() {
         pairingQueryService =
                 new PairingQueryService(
-                        new CatalogQueryService(drinkRepository, anjuRepository),
+                        new CatalogQueryService(
+                                drinkRepository, drinkStyleRepository, anjuRepository),
                         pairingRatingSummaryRepository);
     }
 
@@ -63,6 +68,17 @@ class PairingQueryServiceTest extends UnitTest {
         private static final Long SOJU_ID = 1L;
         private static final List<Long> TIED_ANJU_IDS = List.of(1L, 2L, 3L, 4L, 5L);
         private static final Long WEAKER_ANJU_ID = 6L;
+
+        // 음료 픽스처는 스타일 픽스처의 고정 id를 참조하므로, 그 스타일을 모두 두어 음료 종류를 채운다.
+        // 테스트가 정한 다른 스타일 id의 음료는 종류 없이 추천된다.
+        @BeforeEach
+        void setUp() {
+            given(drinkStyleRepository.findAll())
+                    .willReturn(
+                            Stream.of(DrinkStyleFixture.values())
+                                    .map(DrinkStyleFixture::createWithId)
+                                    .toList());
+        }
 
         @Test
         @DisplayName("조합 중 점수가 높은 순으로 PairingResult 목록을 반환한다")
@@ -87,7 +103,6 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(RelationshipType.BOSS)
-                            .moodType(MoodType.FORMAL)
                             .build();
 
             // when
@@ -148,13 +163,11 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("prefersLightAnju가 true면 richness가 임계값을 초과하는 안주의 점수가 낮아진다")
         void shouldPenalizeHeavyAnjuWhenPrefersLightAnju() {
             // given
-            RelationshipType relationshipType = RelationshipType.FRIEND;
-            MoodType moodType = MoodType.FORMAL;
-            // 산미가 없는 와인은 맛 유사도상 후라이드치킨(0.700)이 과일안주(0.576)보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
+            // 탄산과 산미가 없는 맥주는 맛 유사도상 후라이드치킨(0.700)이 과일안주(0.576)보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
                             List.of(
-                                    DrinkFixture.WINE.createWithFlavorProfile(
+                                    DrinkFixture.BEER.createWithFlavorProfile(
                                             FlavorProfile.of(3, 2, 0, 3, 0))));
             given(anjuRepository.findAll())
                     .willReturn(
@@ -163,8 +176,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
-                            .relationshipType(relationshipType)
-                            .moodType(moodType)
+                            .relationshipType(RelationshipType.BOSS)
                             .build();
 
             // when
@@ -223,21 +235,22 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("감점으로 점수가 0 아래로 내려가면 덜 나쁜 조합을 먼저 두고 점수는 0으로 반환한다")
         void shouldRankByRawScoreAndReturnZeroWhenScoresFallBelowZero() {
             // given
-            // 맛이 먼 위스키는 고도수 감점, 두 안주는 FORMAL 자리의 무거운 안주 감점을 받는다.
+            // 맛이 먼 위스키는 고도수 감점, 두 조합은 싫어요 20개의 피드백 감점을 받는다.
             // 무게감 4 안주가 받는 도수 대비 점수를 더해도 둘 다 0 아래로 내려간다.
             // 수육이 위스키와 맛이 조금 더 가깝지만, 0으로 자른 뒤 순위를 매기면 id가 작은 새우튀김이 먼저 온다.
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
                             List.of(
-                                    DrinkFixture.WHISKEY.createWithFlavorProfile(
-                                            FlavorProfile.of(0, 5, 5, 0, 5))));
+                                    DrinkFixture.WHISKEY.createWithIdAndFlavorProfile(
+                                            1L, FlavorProfile.of(0, 5, 5, 0, 5))));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
-                                    AnjuFixture.FRIED_SHRIMP.createWithId(),
-                                    AnjuFixture.BOILED_PORK.createWithId()));
-            RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
+                                    AnjuFixture.FRIED_SHRIMP.createWithId(1L),
+                                    AnjuFixture.BOILED_PORK.createWithId(2L)));
+            givenRatingSummaries(
+                    PairingRatingSummary.of(1L, 1L, 0, 20), PairingRatingSummary.of(1L, 2L, 0, 20));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -664,11 +677,13 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldIncludeLightAnjuReasonWhenAnjuRichnessWithinThreshold() {
             // given
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId()));
             RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -682,11 +697,13 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldNotIncludeLightAnjuReasonWhenAnjuRichnessExceedsThreshold() {
             // given
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
 
             // when
             List<PairingResult> results = pairingQueryService.recommend(query);
@@ -1170,6 +1187,133 @@ class PairingQueryServiceTest extends UnitTest {
                     .doesNotContain(PairingReason.CARBONATION_ACIDITY_CUTTING.message());
         }
 
+        // 수육(PORK, MAIN)과 감자튀김(VEGETABLE, SNACK)은 맛이 같아 분위기 가산점이 없으면 동점이다.
+        // 축하 자리는 나눠 먹는 요리(MAIN)를 우대하므로 수육만 안주 가산점(0.05)을 받는다.
+        @Test
+        @DisplayName("분위기에 어울리는 Anju는 가산점과 MOOD_ANJU_MATCH를 받아 맛이 같은 Anju보다 앞에 둔다")
+        void shouldGiveMoodAnjuBonusWhenAnjuSuitsMood() {
+            // given
+            givenBeerWithBoiledPorkAndFrenchFries();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.CELEBRATORY).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().anjuName()).isEqualTo(AnjuFixture.BOILED_PORK.getName());
+            assertThat(scoreOf(results, AnjuFixture.BOILED_PORK))
+                    .isCloseTo(scoreOf(results, AnjuFixture.FRENCH_FRIES) + 0.05, within(1e-9));
+            assertThat(results.getFirst().reasons())
+                    .contains(PairingReason.MOOD_ANJU_MATCH.message());
+            assertThat(results.getLast().reasons())
+                    .doesNotContain(PairingReason.MOOD_ANJU_MATCH.message());
+        }
+
+        // 와인과 소주의 맛을 같게 두고 가벼운 안주와만 짝지어, 두 음료의 점수 차이가 분위기 가산점에서만 생기게 한다.
+        @Test
+        @DisplayName("분위기에 어울리는 Drink는 가산점과 MOOD_DRINK_MATCH를 받아 맛이 같은 Drink보다 앞에 둔다")
+        void shouldGiveMoodDrinkBonusWhenDrinkSuitsMood() {
+            // given
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithId(1L),
+                                    DrinkFixture.WINE.createWithIdAndFlavorProfile(
+                                            2L, DrinkFixture.SOJU.getFlavorProfile())));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkName)
+                    .containsExactly(DrinkFixture.WINE.getName(), DrinkFixture.SOJU.getName());
+            assertThat(results.getFirst().score())
+                    .isCloseTo(results.getLast().score() + 0.05, within(1e-9));
+            assertThat(results.getFirst().reasons())
+                    .contains(PairingReason.MOOD_DRINK_MATCH.message());
+            assertThat(results.getLast().reasons())
+                    .doesNotContain(PairingReason.MOOD_DRINK_MATCH.message());
+        }
+
+        @Test
+        @DisplayName("분위기를 고르지 않으면 분위기 가산점과 사유 없이 맛 궁합만으로 추천한다")
+        void shouldIgnoreMoodWhenMoodNotSelected() {
+            // given
+            givenBeerWithBoiledPorkAndFrenchFries();
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.get(0).score()).isEqualTo(results.get(1).score());
+            assertThat(results)
+                    .flatExtracting(PairingResult::reasons)
+                    .doesNotContain(
+                            PairingReason.MOOD_DRINK_MATCH.message(),
+                            PairingReason.MOOD_ANJU_MATCH.message());
+        }
+
+        // 소주는 격식 자리의 술(WINE, WHISKY)이 아니고, 마른안주는 격식 자리의 안주(APPETIZER, 치즈)가 아니다.
+        @Test
+        @DisplayName("분위기에 어울리는 Drink와 Anju가 없어도 결과를 비우지 않고 맛 궁합으로 추천한다")
+        void shouldRecommendByFlavorWhenNothingSuitsMood() {
+            // given
+            givenSojuAndDriedSnack();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .singleElement()
+                    .satisfies(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .contains(PairingReason.FLAVOR_MATCH.message())
+                                            .doesNotContain(
+                                                    PairingReason.MOOD_DRINK_MATCH.message(),
+                                                    PairingReason.MOOD_ANJU_MATCH.message()));
+        }
+
+        // 탄산과 산미가 없는 맥주는 맛 유사도상 후라이드치킨(0.700)이 과일안주(0.576)보다 가깝다.
+        // 두 안주 모두 격식 자리의 안주가 아니라서 분위기 가산점도 순위를 바꾸지 않는다.
+        @Test
+        @DisplayName("격식 자리여도 관계 유형이 가벼운 안주를 선호하지 않으면 무거운 Anju를 감점하지 않는다")
+        void shouldNotPenalizeHeavyAnjuWhenOnlyMoodIsFormal() {
+            // given
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.BEER.createWithFlavorProfile(
+                                            FlavorProfile.of(3, 2, 0, 3, 0))));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.FRUIT_PLATTER.createWithId(),
+                                    AnjuFixture.FRIED_CHICKEN.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.FRIEND)
+                            .moodType(MoodType.FORMAL)
+                            .build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.getFirst().anjuName())
+                    .isEqualTo(AnjuFixture.FRIED_CHICKEN.getName());
+        }
+
         // 삼겹살구이, 대창구이, 소막창구이처럼 맛 값이 같은 안주는 순서가 id로만 갈리므로, 안주 하나가 아니라 상위 3위의 성질을 본다.
         // 소주에 음식 계열이 없으면 맛 값이 같은 고다치즈, 팝콘 같은 안주도 고기 요리와 동점이 된다.
         // 기름진 고기 요리라는 성질은 도수 대비와 Harmonize가 함께 만들므로 두 사유를 같이 본다. 둘 중 하나를 되돌려도 실패한다.
@@ -1253,6 +1397,112 @@ class PairingQueryServiceTest extends UnitTest {
                                             .contains(PairingReason.HARMONIZE_MATCH.message()));
             assertThat(topRanked.getFirst().reasons())
                     .contains(PairingReason.CARBONATION_ACIDITY_CUTTING.message());
+        }
+
+        // 분위기 가산점은 후보를 거르지 않으므로, 분위기를 골라도 맛 궁합의 상위 성질은 그대로 남아야 한다.
+        // 레드 와인은 격식 자리와 연인 자리의 술이라 모든 조합이 술 가산점을 받는다.
+        @Test
+        @DisplayName("레드 와인은 격식 자리에서 분위기 사유를 받고 상위 3위는 Harmonize와 산미 대비를 유지한다")
+        void shouldKeepHarmonizingAnjusWithinTopThreeWhenRedWineIsFormal() {
+            // given
+            givenGoldenCatalog(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.createWithId());
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+                    .extracting(PairingResult::reasons)
+                    .allSatisfy(
+                            reasons ->
+                                    assertThat(reasons)
+                                            .contains(
+                                                    PairingReason.MOOD_DRINK_MATCH.message(),
+                                                    PairingReason.HARMONIZE_MATCH.message(),
+                                                    PairingReason.CARBONATION_ACIDITY_CUTTING
+                                                            .message()));
+        }
+
+        @Test
+        @DisplayName("레드 와인은 연인 자리에서 분위기 사유를 받고 상위 3위는 Harmonize와 산미 대비를 유지한다")
+        void shouldKeepHarmonizingAnjusWithinTopThreeWhenRedWineIsRomantic() {
+            // given
+            givenGoldenCatalog(DrinkFixture.LOUIS_JADOT_BEAUJOLAIS.createWithId());
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.ROMANTIC).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+                    .extracting(PairingResult::reasons)
+                    .allSatisfy(
+                            reasons ->
+                                    assertThat(reasons)
+                                            .contains(
+                                                    PairingReason.MOOD_DRINK_MATCH.message(),
+                                                    PairingReason.HARMONIZE_MATCH.message(),
+                                                    PairingReason.CARBONATION_ACIDITY_CUTTING
+                                                            .message()));
+        }
+
+        // 편한 자리는 돼지고기와 닭고기 요리를 우대하므로, 소주의 상위 3위는 돼지고기 요리가 술과 안주 가산점을 모두 받는다.
+        @Test
+        @DisplayName("소주는 편한 자리에서 분위기에 어울리는 기름진 고기 요리를 상위 3위로 추천한다")
+        void shouldRankMoodSuitingMeatDishesWithinTopThreeWhenSojuIsCasual() {
+            // given
+            givenGoldenCatalog(
+                    DrinkFixture.SOJU.createWithHarmonizes(Set.of(Harmonize.PORK, Harmonize.BEEF)));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.CASUAL).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results.subList(0, GOLDEN_TOP_RANK))
+                    .extracting(PairingResult::reasons)
+                    .allSatisfy(
+                            reasons ->
+                                    assertThat(reasons)
+                                            .contains(
+                                                    PairingReason.MOOD_DRINK_MATCH.message(),
+                                                    PairingReason.MOOD_ANJU_MATCH.message(),
+                                                    PairingReason.RICHNESS_CUTTING.message(),
+                                                    PairingReason.HARMONIZE_MATCH.message()));
+        }
+
+        // 라거는 탄산이 4 이상이라 축하 자리의 술이다. 나눠 먹는 요리가 안주 가산점을 받아도 지방 함량만 높은 스낵은 상위 3위에 오르지 않는다.
+        @Test
+        @DisplayName("라거는 축하 자리에서 분위기 사유를 받고 상위 3위에 지방 함량만 높은 스낵을 두지 않는다")
+        void shouldExcludeHighFatSnacksFromTopThreeWhenLagerIsCelebratory() {
+            // given
+            givenGoldenCatalog(DrinkFixture.CASS_FRESH.createWithId());
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().moodType(MoodType.CELEBRATORY).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            List<PairingResult> topRanked = results.subList(0, GOLDEN_TOP_RANK);
+            assertThat(topRanked)
+                    .extracting(PairingResult::anjuName)
+                    .doesNotContain(
+                            AnjuFixture.CATALOG_POPCORN.getName(),
+                            AnjuFixture.CATALOG_ROASTED_PEANUTS.getName(),
+                            AnjuFixture.CATALOG_MIXED_NUTS.getName());
+            assertThat(topRanked)
+                    .extracting(PairingResult::reasons)
+                    .allSatisfy(
+                            reasons ->
+                                    assertThat(reasons)
+                                            .contains(
+                                                    PairingReason.MOOD_DRINK_MATCH.message(),
+                                                    PairingReason.HARMONIZE_MATCH.message()));
         }
 
         // 형태 보정(#117) 전에는 감자튀김이 무게감 4로 후라이드치킨과 동점이었다.
@@ -1455,6 +1705,17 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+        }
+
+        // 맥주는 탄산이 4라 무게감 4인 두 안주 모두 탄산 대비를 받는다. 두 안주는 맛이 같아 분위기 가산점이 없으면 동점이다.
+        private void givenBeerWithBoiledPorkAndFrenchFries() {
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.BOILED_PORK.createWithId(1L),
+                                    AnjuFixture.FRENCH_FRIES.createWithId(2L)));
         }
 
         private double scoreOfDrink(List<PairingResult> results, String drinkName) {

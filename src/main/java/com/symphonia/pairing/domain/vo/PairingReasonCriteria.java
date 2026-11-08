@@ -34,4 +34,12 @@ final class PairingReasonCriteria {
     public static boolean carbonationAcidityCutting(PairingReasonContext context) {
         return context.drink().cutsRichnessWithCarbonationOrAcidityOf(context.anju());
     }
+
+    public static boolean moodDrinkMatch(PairingReasonContext context) {
+        return context.occasion().moodPrefers(context.drink());
+    }
+
+    public static boolean moodAnjuMatch(PairingReasonContext context) {
+        return context.occasion().moodPrefers(context.anju());
+    }
 }

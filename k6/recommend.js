@@ -9,7 +9,8 @@ import { Rate } from 'k6/metrics';
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
 const RELATIONSHIP_TYPES = ['BOSS', 'FRIEND', 'COLLEAGUE', 'LOVER'];
-const MOOD_TYPES = ['FORMAL', 'CASUAL', 'ROMANTIC', 'CELEBRATORY'];
+// 분위기는 선택 입력이라 null을 넣어 고르지 않은 요청도 섞는다.
+const MOOD_TYPES = [null, 'FORMAL', 'CASUAL', 'ROMANTIC', 'CELEBRATORY'];
 const ATTENDEE_CONSTRAINTS = ['DRIVER', 'PREGNANT', 'NON_DRINKER'];
 const ALLERGY_TYPES = [
     'EGG',
@@ -74,7 +75,10 @@ function pickSome(values, maxCount) {
 function buildQueryString() {
     const params = [];
     params.push(`relationshipType=${pickOne(RELATIONSHIP_TYPES)}`);
-    params.push(`moodType=${pickOne(MOOD_TYPES)}`);
+    const moodType = pickOne(MOOD_TYPES);
+    if (moodType !== null) {
+        params.push(`moodType=${moodType}`);
+    }
     params.push('isAdultConfirmed=true');
     pickSome(ATTENDEE_CONSTRAINTS, 2).forEach((value) =>
         params.push(`attendeeConstraints=${value}`),

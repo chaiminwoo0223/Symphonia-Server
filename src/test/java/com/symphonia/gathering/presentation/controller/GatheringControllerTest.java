@@ -264,6 +264,29 @@ class GatheringControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.ok").value(true));
                 assertThat(countPairingsOf(request)).isOne();
             }
+
+            @Test
+            @DisplayName("분위기 없이 받은 추천의 페어링도 저장하고 200을 반환한다")
+            void shouldChoosePairingWhenMoodTypeMissing() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+                GatheringPairingRequest seeded = seedPairingRequest();
+                GatheringPairingRequest request =
+                        new GatheringPairingRequest(
+                                seeded.drinkId(), seeded.anjuId(), seeded.relationshipType(), null);
+
+                // when & then
+                mockMvc.perform(
+                                put("/api/v1/gatherings/{gatheringId}/pairing", gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isOk());
+                assertThat(countPairingsOf(request)).isOne();
+            }
         }
 
         @Nested

@@ -41,8 +41,8 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private RelationshipType relationshipType;
 
+    // 분위기 없이 추천받은 조합이면 null이다(#184).
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private MoodType moodType;
 
     @Enumerated(EnumType.STRING)

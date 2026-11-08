@@ -27,6 +27,13 @@ public class DrinkStyleRepositoryImpl implements DrinkStyleRepository {
     }
 
     @Override
+    public List<DrinkStyle> findAll() {
+        return drinkStyleJpaRepository.findAll().stream()
+                .map(DrinkStyleJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<DrinkStyle> findAllBySource(DrinkStyleSource source) {
         return drinkStyleJpaRepository.findAllBySource(source).stream()
                 .map(DrinkStyleJpaEntity::toDomain)

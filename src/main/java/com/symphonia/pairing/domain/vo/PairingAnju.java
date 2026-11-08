@@ -1,6 +1,8 @@
 package com.symphonia.pairing.domain.vo;
 
 import com.symphonia.catalog.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.AnjuBase;
+import com.symphonia.catalog.domain.vo.ServingStyle;
 import java.util.Collections;
 import java.util.Set;
 import lombok.AccessLevel;
@@ -15,6 +17,9 @@ public class PairingAnju {
     private final String name;
     private final FlavorProfile flavorProfile;
     private final Set<AllergyType> allergyTypes;
+    private final AnjuBase base;
+    private final ServingStyle serving;
+    private final boolean spicy;
 
     @Getter(AccessLevel.PACKAGE)
     private final long harmonizeMask;
@@ -24,16 +29,30 @@ public class PairingAnju {
             String name,
             FlavorProfile flavorProfile,
             Set<AllergyType> allergyTypes,
+            AnjuBase base,
+            ServingStyle serving,
+            boolean spicy,
             long harmonizeMask) {
         return new PairingAnju(
                 id,
                 name,
                 flavorProfile,
                 allergyTypes == null ? Set.of() : Set.copyOf(allergyTypes),
+                base,
+                serving,
+                spicy,
                 harmonizeMask);
     }
 
     public boolean conflictsWith(Set<AllergyType> attendeeAllergies) {
         return !Collections.disjoint(allergyTypes, attendeeAllergies);
+    }
+
+    public boolean isServedAs(ServingStyle servingStyle) {
+        return serving == servingStyle;
+    }
+
+    public boolean isBasedOnAnyOf(Set<AnjuBase> bases) {
+        return bases.contains(base);
     }
 }
