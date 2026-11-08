@@ -103,7 +103,9 @@ public class Pairing {
                 DrinkAnjuScores.of(
                         allowedDrinks,
                         allowedAnjus,
-                        (drink, anju) -> drinkAnjuScore(drink, anju, occasion));
+                        (drink, anju) -> pairScore(drink, anju, occasion),
+                        drink -> drinkMoodBonus(drink, occasion),
+                        anju -> anjuMoodBonus(anju, occasion));
         SelectionThresholds thresholds =
                 SelectionThresholds.of(
                         scores,
@@ -118,13 +120,19 @@ public class Pairing {
                 .toList();
     }
 
+    // DrinkAnjuScores와 같은 순서로 더해, 경계 밖 조합의 점수도 배열에 담긴 점수와 비트 단위로 같게 한다.
     private static double drinkAnjuScore(PairingDrink drink, PairingAnju anju, Occasion occasion) {
+        return pairScore(drink, anju, occasion)
+                + drinkMoodBonus(drink, occasion)
+                + anjuMoodBonus(anju, occasion);
+    }
+
+    private static double pairScore(PairingDrink drink, PairingAnju anju, Occasion occasion) {
         double flavorSimilarity = drink.flavorSimilarityTo(anju);
 
         return FLAVOR_WEIGHT * flavorSimilarity
                 + harmonizeBonus(drink, anju)
                 + richnessCuttingBonus(drink, anju)
-                + moodBonus(drink, anju, occasion)
                 - lightAnjuPenalty(anju, occasion)
                 - highAbvPenalty(drink);
     }
@@ -150,12 +158,6 @@ public class Pairing {
                 : 0;
     }
 
-    // 분위기는 후보를 거르지 않고, 분위기에 어울리는 음료와 안주에 각각 가산점만 준다.
-    private static double moodBonus(PairingDrink drink, PairingAnju anju, Occasion occasion) {
-        return (occasion.moodPrefers(drink) ? MOOD_DRINK_BONUS : 0)
-                + (occasion.moodPrefers(anju) ? MOOD_ANJU_BONUS : 0);
-    }
-
     private static double lightAnjuPenalty(PairingAnju anju, Occasion occasion) {
         boolean heavyAnjuDespitePreference =
                 occasion.prefersLightAnju() && !anju.getFlavorProfile().isLight();
@@ -165,6 +167,15 @@ public class Pairing {
 
     private static double highAbvPenalty(PairingDrink drink) {
         return drink.getAbv() > HIGH_ABV_THRESHOLD ? HIGH_ABV_PENALTY : 0;
+    }
+
+    // 분위기는 후보를 거르지 않고, 분위기에 어울리는 음료와 안주에 각각 가산점만 준다.
+    private static double drinkMoodBonus(PairingDrink drink, Occasion occasion) {
+        return occasion.moodPrefers(drink) ? MOOD_DRINK_BONUS : 0;
+    }
+
+    private static double anjuMoodBonus(PairingAnju anju, Occasion occasion) {
+        return occasion.moodPrefers(anju) ? MOOD_ANJU_BONUS : 0;
     }
 
     private static Stream<Combination> ratedCombinationsOutside(
