@@ -56,7 +56,7 @@
 - 개인 링크는 `GATHERING_LINK_BASE_URL` 뒤에 토큰을 fragment(`#토큰`)로 붙인다. query string이나 경로에 두지 않는다.
 - 알림톡을 보류하는 동안 쓰는 `LoggingNotificationSender`는 휴대폰을 마스킹하고, 이름은 남기지 않고, 링크의 토큰도 가린다.
 - 메시지 내용(`NotificationMessage`)은 domain이 정하고, 문구와 링크 주소는 `NotificationSender` 구현체가 정한다.
-- `notification`은 마스킹만 하는 자기 `PhoneNumber` 값 객체를 갖는다. 형식 검증은 `gathering`의 `PhoneNumber`만 한다. 휴대폰을 `String`으로 다루지 않는다.
+- `notification`은 마스킹만 하는 자기 `PhoneNumber` 값 객체를 갖는다. 형식 검증은 `gathering`의 `PhoneNumber`만 한다. 휴대폰은 `PhoneNumber`로 전달하고, sender가 `String`을 받아 마스킹하지 않는다.
 - 알림 에러 코드는 `NotificationErrorCode`에 둔다.
 
 ## 패키지와 용어
