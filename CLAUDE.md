@@ -9,66 +9,45 @@
 - 요구사항이 애매하거나 기존 설계와 안 맞는 부분이 보이면 임의로 판단해서 진행하지 말고 **반드시 먼저 질문**한다.
 - 설계가 여러 갈래로 갈리는 지점은 **DDD, 클린코드 원칙에 부합하는 방향**으로 제안하고 근거를 설명한다.
 - 구현 전에 관련 스킬(`.claude/skills/<name>/SKILL.md`)을 먼저 확인한다.
-
-## 하네스 설계 철학 (Agent Harness Design)
-
-`.claude/` 설정은 단순 문서가 아니라 에이전트 행동을 프로그래밍하는 `실행 가능한 단일 진실 소스(harness)`다. 소스 코드처럼 계층화·단일 책임·리뷰 대상으로 다룬다. **CLAUDE.md 자신도 예외가 아니다. 이 파일은 라우팅 정보만 갖고, 판단 규칙의 본문은 전부 스킬에 둔다.**
-
-**컴포넌트 → 계층형 아키텍처 매핑**
-
-| 하네스 아티팩트 | 대응 | 책임 |
-|---|---|---|
-| `CLAUDE.md` | 매니페스트 | 뭐가 있고 언제 로드하는지만 담는다. 디테일은 절대 넣지 않는 작고 안정적인 라우터다 |
-| `settings.json` | 보안/거버넌스 게이트 | 위험 명령 차단·승인 조건을 `permissions.deny` 규칙으로 강제 (LLM 판단에 맡기지 않음). 차단 대상은 `commit-push` 스킬 참고 |
-| `.claude/hooks/*` | 인터셉터 | 도구 호출 전후를 가로채 팀 컨벤션대로 행동을 교정. 훅별 역할은 각 스크립트의 머리 주석이, 커밋과 push 게이트 동작은 `commit-push` 스킬이, PR 생성 게이트는 `create-pr` 스킬이 단일 소스다 |
-| 사용자 호출 전용 스킬 (`/new-domain`, `/new-feature`, `/run-checks`) | Controller | 사용자가 트리거하는 절차의 진입점. `disable-model-invocation: true`로 Claude가 스스로 로드하지 않는다 |
-| 서브에이전트 (`domain-scaffolder`, `code-reviewer`, `test-*`) | Service | 격리된 컨텍스트에서 여러 단계를 조율 |
-| `.claude/skills/<name>/SKILL.md` | SRP 컴포넌트 | 하나의 지식 영역 = 그 규칙의 단일 소스 |
-| `.claude/scripts/*` (`check-all.sh`, `check-test-conventions.sh`) | 결정론적 코어 | 절대 흔들리면 안 되는 컨벤션/검증을 담당한다. LLM 판단이 아니라 코드로 실행한다 |
-
-**운영 원칙**
-
-- **필요성 원칙 (progressive disclosure)**: 현재 작업에 필요한 컨텍스트만 로드한다. 아래 "작업별 로딩" 표가 그 구체적 시행 장치.
-- **결정론적인 것은 스크립트, 판단이 필요한 것은 LLM**: 코드 스타일·EOF 개행처럼 완전히 결정론적인 것만 스크립트로 강제한다. 계층 의존 방향처럼 판단이 섞이는 규칙은 `code-reviewer` 에이전트가 체크리스트 기반으로 검토한다. (정적분석 도구 미도입 사유는 `architecture` 스킬 참고)
-- **"예외 상황 → 질문"**: 되돌리기 어렵거나 대외적인 행동(삭제, 배포, force-push, 게시)은 확인 없이 임의로 진행하지 않는다.
-- **하네스 아티팩트도 리뷰 대상**: 스킬·훅·에이전트도 소스코드처럼 피드백을 받아 고도화한다. 특정 스킬이 토큰을 과도하게 쓰거나 체크리스트를 잘못 적용하는 게 확인되면, 그 스킬 문서 자체가 수정 대상이다.
+- 되돌리기 어렵거나 대외적인 행동(삭제, 배포, force-push, 게시)은 확인 없이 진행하지 않는다.
+- 이 파일은 라우팅 정보만 갖는다. 규칙의 본문은 스킬에, 근거와 이력은 `docs/decisions/`에 둔다.
 
 ## 작업별 로딩 (Pre-Task)
 
-상세 규칙과 절차는 모두 **스킬**(`.claude/skills/<name>/SKILL.md`)에 있다. 아래 작업이 감지되면 규칙 스킬이 자동 로드된다 (수동 호출: `/<name>`). `/`로 표기한 절차 스킬은 사용자만 호출할 수 있다.
+아래 작업이 감지되면 해당 스킬을 로드한다(수동 호출: `/<name>`). `/`로 표기한 절차 스킬은 사용자만 호출할 수 있다.
 
 | 작업 유형 | 로드 |
 |---|---|
-| 계층 설계, UseCase/Service/Api/Controller 분리, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조 | `architecture` |
+| 계층 설계, UseCase/Service/Api/Controller 분리, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 인증, 영속성, 도메인별 규칙 | `architecture` |
 | 네이밍, 포맷, 멤버 선언 순서, 클린코드 스타일 | `code-style` |
 | 테스트 작성 (JUnit5/Mockito/Testcontainers) | `testing` |
 | 예외/에러 처리 | `error-handling` |
-| Branch 전략, 전체 흐름 개요 | `git-workflow` |
-| 커밋 전 검증, 커밋 단위, 커밋 메시지 포맷, push 규칙과 게이트 훅 동작 | `commit-push` |
+| Branch 전략, 전체 흐름 개요, CodeRabbit 역할 분담 | `git-workflow` |
+| 커밋 전 검증, 커밋 단위, 커밋 메시지 포맷, push 규칙과 게이트 훅 | `commit-push` |
 | GitHub 이슈 생성 | `create-issue` |
 | Pull Request 생성 | `create-pr` |
-| 설계 논의에서 여러 대안 중 하나로 결론이 났을 때, 그 결정을 어디에/어떻게 기록할지 | `design-decision` |
+| 설계 논의가 하나로 결론 났을 때 기록 위치와 형식 | `design-decision` |
+| `CLAUDE.md`, `settings.json`, 훅, 스크립트, 에이전트, 스킬 수정 | `harness` |
 | 새 도메인 스캐폴딩 | `/new-domain` |
 | 기존 도메인에 기능 추가 | `/new-feature` |
 | PR 전 전체 검증 | `/run-checks` |
 
-> `develop` 대상 PR에는 CodeRabbit이 일반 버그와 보안 리뷰를 자동으로 남긴다. 설정은 `.coderabbit.yaml`, `code-reviewer`와의 역할 분담은 `git-workflow` 스킬 참고.
 > 도메인 스캐폴딩은 `domain-scaffolder`, 코드 리뷰는 `code-reviewer`, 테스트 작성은 `test-writer`, 실패 테스트 원인 진단(수정 제외)은 `test-validator` 에이전트에 위임한다.
 
 ## 핵심 제약 (Critical Constraints)
 
-아래는 항상 적용되는 최소 체크리스트다. 근거와 상세 규칙은 괄호 안 스킬을 참고.
+항상 적용되는 최소 체크리스트다. 괄호는 상세 규칙이 있는 스킬이다. ✂ 표시는 `check-architecture.sh`가 검사한다.
 
 ### ❌ 금지
 
-- 코틀린 사용 (자바로만 개발하며 마이그레이션 계획 없음)
-- 헥사고날 포트/어댑터 명칭, 멀티모듈 구조 (`architecture`)
+- 코틀린 사용 ✂
+- 헥사고날 포트/어댑터 명칭 ✂, 멀티모듈 구조 (`architecture`)
 - 도메인 로직을 Controller/Service에 절차적으로 나열 (`architecture`)
-- `RuntimeException` 직접 throw (`error-handling`)
-- `domain`이 `infrastructure` 패키지 참조 (`architecture`)
-- `application`에서 `*Request`/`*Response` DTO 임포트 (`architecture`)
-- 다른 도메인의 구현체·infrastructure·Repository 직접 참조 (`architecture`)
-- 다른 도메인의 `domain` 패키지에서 enum 외의 타입 참조, 다른 도메인 enum이 선언한 메서드 호출 (`architecture`)
+- `RuntimeException` 직접 throw ✂ (`error-handling`)
+- `domain`이 `infrastructure` 패키지 참조 ✂ (`architecture`)
+- `application`에서 `*Request`/`*Response` DTO 임포트 ✂ (`architecture`)
+- 다른 도메인의 구현체·infrastructure·Repository 직접 참조 ✂ (`architecture`)
+- 다른 도메인의 `domain` 패키지에서 enum 외의 타입 참조 ✂, 다른 도메인 enum이 선언한 메서드 호출 (`architecture`)
 - `*Result`가 도메인 엔티티를 직접 감싸거나 그대로 노출 (`architecture`)
 
 ### ✅ 필수
@@ -76,7 +55,7 @@
 - `*Service`는 `*UseCase` 구현체, `*Controller`는 `*Api` 구현체 (`architecture`)
 - Repository·외부 연동도 인터페이스+구현체 분리 (`architecture`)
 - 1 `*UseCase` = 1 `*Service` 기본 원칙, 크로스 도메인 조율은 대상 `*UseCase` 직접 의존 (Facade 없음) (`architecture`)
-- 트랜잭션 경계는 `@CommandService`/`@QueryService` 클래스 단위 선언 (`architecture`)
+- 트랜잭션 경계는 `@CommandService`/`@QueryService` 클래스 단위 선언 ✂ (`architecture`)
 - 테스트는 given-when-then, 메서드명 `should[기대동작]When[조건]` (`testing`)
 - 커스텀 예외는 공통 베이스 예외 하위 + 에러코드로 관리 (`error-handling`)
 - 커밋 메시지 `[#이슈번호] type: 설명` (`commit-push`)
@@ -88,54 +67,30 @@
 | 언어/프레임워크 | Java / Spring Boot / Spring Security |
 | 인증 | JWT 액세스 토큰(jjwt 0.12+, 응답 바디) + UUID 리프레시 토큰(Redis 저장, RTR 적용, httpOnly 쿠키 전달) |
 | DB / Cache | PostgreSQL 17 (`pgvector/pgvector:pg17` 이미지) + JPA (Hibernate) / Redis |
-| 메시지 큐 | RabbitMQ 4.3 (정산 메시지 발송, 이슈 #126) |
+| 메시지 큐 | RabbitMQ 4.3 (정산 메시지 발송) |
 | 테스트 | JUnit 5 / Mockito / Testcontainers |
 
 ## 프로젝트 구조 (단일 모듈, 도메인별 패키지)
 
-```
-com.symphonia
-├── member/     {domain, application, presentation, infrastructure}
-├── auth/       {domain, application, presentation, infrastructure}
-├── catalog/    {domain, application, presentation, infrastructure} (음료, 안주, 음악 무드 카탈로그와 적재, 이슈 #139)
-├── pairing/    {domain, application, presentation, infrastructure} (술, 안주, 음악 페어링 추천, 이슈 #45)
-├── gathering/  {domain, application, presentation, infrastructure} (술자리 정산, 이슈 #122)
-├── notification/ {domain, application, presentation, infrastructure} (정산 메시지 발송 예약, 발송 기록, 큐 발행, 이슈 #159)
-├── common/     공통 예외, 응답 포맷, BaseTimeEntity, CQRS 트랜잭션 애노테이션 (공유 커널: domain/application도 참조)
-└── global/     Security, JPA/Redis/Swagger 설정 등 기술 부트스트랩 (domain/application은 참조하지 않음)
-```
-
-> 계층 역할, 계층별 타입 어휘, 크로스 도메인 규칙 등 상세는 `architecture` 스킬 참고.
+`com.symphonia` 아래 도메인 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`이 각각 `domain`, `application`, `presentation`, `infrastructure`를 갖는다. `common`은 공유 커널(공통 예외, 응답 포맷, `BaseTimeEntity`, CQRS 트랜잭션 애노테이션)이고, `global`은 기술 부트스트랩(Security, JPA/Redis/Swagger 설정)이다. 도메인별 책임은 `architecture` 스킬에 있다.
 
 ## Profiles
 
-`local`/`dev`/`prod` 3개 환경별 프로파일. 공통 설정은 `application.yaml`, 환경별 값은 `application-{profile}.yaml`로 분리.
-
-| 속성 성격 | 위치 |
-|---|---|
-| 환경 무관 동일 값 (`jpa.open-in-view`, `ddl-auto: validate`, 기본 프로파일) | `application.yaml` |
-| 환경별 값 (`datasource`, `data.redis`, SQL 로그, `logging.level`) | `application-{profile}.yaml` |
-
-> 속성별 배치, dev/prod 연결 변수, 테스트 프로파일 동작은 `architecture` 스킬의 `persistence.md`(#96 결정) 참고.
-
-> 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 변경한다. 규칙은 `architecture` 스킬의 `persistence.md` 참고.
-
-- 활성 프로파일: `--spring.profiles.active={profile}` 또는 `SPRING_PROFILES_ACTIVE`. 지정하지 않으면 `local`로 실행하고, dev, prod는 반드시 지정한다
-- **DB/Redis 연결 정보는 값이 같아도 프로파일별로 각각 명시** (환경 간 독립적 분기). 비밀값은 하드코딩 금지, `${ENV_VAR}` 주입 (`.env` 커밋 금지)
+- `local`/`dev`/`prod` 3개 프로파일이다. 공통 설정은 `application.yaml`, 환경별 값은 `application-{profile}.yaml`에 둔다. 지정하지 않으면 `local`이고, dev와 prod는 `SPRING_PROFILES_ACTIVE`로 반드시 지정한다.
+- DB/Redis 연결 정보는 값이 같아도 프로파일별로 각각 명시한다. 비밀값은 `${ENV_VAR}`로 주입하고 `.env`는 커밋하지 않는다.
+- 스키마와 시드 데이터는 Flyway 마이그레이션(`src/main/resources/db/migration`)으로만 바꾼다. 상세는 `architecture` 스킬의 `persistence.md`에 있다.
 
 ## 명령어
 
 ```bash
 ./gradlew test                     # 전체 테스트 (빠른 반복 확인용)
-./gradlew build                    # 빌드 (컴파일+테스트+패키징, 로컬 검증용)
-./.claude/scripts/check-all.sh     # PR 전 전체 검증 (포맷 검증 포함)
+./.claude/scripts/check-all.sh     # PR 전 전체 검증. 성공하면 한 줄만 출력하고, 전체 로그는 .git/check-all.log에 남긴다
+./.claude/scripts/check-architecture.sh      # import와 선언으로 판정하는 계층 규칙 검사
 ./.claude/scripts/check-test-conventions.sh  # 바뀐 테스트의 given-when-then 블록과 should 접두어 검사 (--all: 전체)
+./.claude/scripts/check-harness-budget.sh    # 스킬과 CLAUDE.md의 분량 예산 검사
 ./scripts/import/fetch-bjcp.sh     # BJCP 원본 JSON 다운로드 (적재 전 1회, 원본은 커밋하지 않음)
-./gradlew importCatalog            # BJCP 스타일, 국내 유통 맥주, X-Wines 와인, 안주를 drink_style, drink, anju에 적재 (배포와 분리한 수동 실행)
+./gradlew importCatalog            # 음료, 안주 카탈로그 적재 (배포와 분리한 수동 실행)
 ```
 
-> `check-all.sh`는 `check-test-conventions.sh`를 먼저 실행한 뒤 `./gradlew clean build`를 실행한다. `clean`을 붙이는 이유는 증분 캐시로 인한 "로컬 통과, CI 실패" stale 상태를 놓치지 않기 위해서다.
-> `develop`, `main` 대상 PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 같은 `check-all.sh`를 실행한다(`commit-push` 스킬 참고).
-> 포맷터는 Spotless + Google Java Format으로 확정했다(2026-09-05, `code-style` 스킬 참고). `spotlessCheck`가 `check` 태스크에 연결되어 있어 `clean build`에 자동으로 포함된다. `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 그 파일에 자동으로 포맷을 적용한다.
-> 아키텍처 규칙 자동검증(ArchUnit 등) 미도입 사유는 위 "운영 원칙" 참고.
-> 카탈로그(음료, 안주) 적재는 배포와 분리한 수동 작업이다. 적재 러너 구조와 근거는 `architecture` 스킬의 `persistence.md` 참고.
+> `check-all.sh`는 테스트 컨벤션, 계층 규칙, 분량 예산 검사 뒤 `./gradlew clean build`를 실행한다. `clean`은 증분 캐시로 인한 "로컬 통과, CI 실패"를 막는다. CI(`.github/workflows/ci.yml`)도 같은 스크립트를 실행한다.
+> 포맷터는 Spotless + Google Java Format이고, `post-edit-format.sh` 훅이 Java 파일을 편집할 때마다 포맷을 적용한다(`code-style` 스킬).
