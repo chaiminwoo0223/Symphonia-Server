@@ -36,10 +36,12 @@ public class ParticipantPairingFeedbackService implements SubmitParticipantPairi
                 gatheringPairingRepository
                         .findByParticipantId(participantId)
                         .orElseThrow(GatheringPairingNotFoundException::new);
-        GatheringPolicy.validatePairingFeedbackNotSubmitted(
-                participantPairingFeedbackRepository.existsByParticipantId(participantId));
+        // 다시 내는 요청과 동시에 내는 요청 모두 표시를 넣지 못하므로, 표시를 넣은 결과 하나로 중복 제출을 막는다.
+        boolean marked =
+                participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                        participantId, LocalDateTime.now(clock));
+        GatheringPolicy.validatePairingFeedbackNotSubmitted(!marked);
 
-        participantPairingFeedbackRepository.markSubmitted(participantId, LocalDateTime.now(clock));
         submitAnonymousPairingFeedbackUseCase.submitAnonymous(
                 command.toSubmitAnonymousPairingFeedbackCommand(gatheringPairing));
     }

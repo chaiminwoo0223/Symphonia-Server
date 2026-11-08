@@ -1,13 +1,9 @@
 package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.SubmitParticipantPairingFeedbackCommand;
@@ -107,43 +103,20 @@ class ParticipantPairingFeedbackServiceTest extends UnitTest {
             }
         }
 
+        // 다시 낸 요청과 동시에 낸 요청 중 나중 요청이 모두 이 경우다. 동시 제출에서 한 요청만 표시를 넣는지는 Repository 테스트가 검증한다.
         @Nested
         @DisplayName("이미 피드백을 낸 참여자인 경우")
         class WhenFeedbackAlreadySubmitted {
 
             @Test
-            @DisplayName("예외를 던지고 제출 표시와 피드백을 다시 저장하지 않는다")
+            @DisplayName("예외를 던지고 피드백을 다시 저장하지 않는다")
             void shouldThrowPairingFeedbackAlreadySubmittedException() {
                 // given
                 givenGatheringPairing();
-                given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
-                        .willReturn(true);
-
-                // when & then
-                assertThatThrownBy(() -> participantPairingFeedbackService.submit(command()))
-                        .isInstanceOf(PairingFeedbackAlreadySubmittedException.class);
-                then(participantPairingFeedbackRepository)
-                        .should(never())
-                        .markSubmitted(anyLong(), any(LocalDateTime.class));
-                then(submitAnonymousPairingFeedbackUseCase).shouldHaveNoInteractions();
-            }
-        }
-
-        // 같은 참여자가 동시에 내서 둘 다 중복 검사를 통과한 경우다. 기본 키 위반 판별은 Repository 테스트가 검증한다.
-        @Nested
-        @DisplayName("제출 표시를 남기다 다른 요청이 먼저 남긴 것을 안 경우")
-        class WhenFeedbackSubmittedConcurrently {
-
-            @Test
-            @DisplayName("예외를 그대로 던지고 피드백을 저장하지 않는다")
-            void shouldThrowPairingFeedbackAlreadySubmittedException() {
-                // given
-                givenGatheringPairing();
-                given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
+                given(
+                                participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                                        PARTICIPANT_ID, NOW))
                         .willReturn(false);
-                willThrow(new PairingFeedbackAlreadySubmittedException())
-                        .given(participantPairingFeedbackRepository)
-                        .markSubmitted(PARTICIPANT_ID, NOW);
 
                 // when & then
                 assertThatThrownBy(() -> participantPairingFeedbackService.submit(command()))
@@ -161,8 +134,10 @@ class ParticipantPairingFeedbackServiceTest extends UnitTest {
             void shouldMarkSubmittedAndSubmitAnonymousFeedback() {
                 // given
                 givenGatheringPairing();
-                given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
-                        .willReturn(false);
+                given(
+                                participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                                        PARTICIPANT_ID, NOW))
+                        .willReturn(true);
 
                 // when
                 participantPairingFeedbackService.submit(command());
@@ -173,7 +148,7 @@ class ParticipantPairingFeedbackServiceTest extends UnitTest {
                                 participantPairingFeedbackRepository,
                                 submitAnonymousPairingFeedbackUseCase);
                 inOrder.verify(participantPairingFeedbackRepository)
-                        .markSubmitted(PARTICIPANT_ID, NOW);
+                        .markSubmittedIfAbsent(PARTICIPANT_ID, NOW);
                 inOrder.verify(submitAnonymousPairingFeedbackUseCase)
                         .submitAnonymous(
                                 SubmitAnonymousPairingFeedbackCommand.of(

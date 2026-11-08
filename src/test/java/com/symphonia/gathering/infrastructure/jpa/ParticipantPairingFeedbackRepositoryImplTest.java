@@ -3,12 +3,10 @@ package com.symphonia.gathering.infrastructure.jpa;
 import static com.symphonia.common.helper.ConcurrencyHelper.await;
 import static com.symphonia.common.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
-import com.symphonia.gathering.domain.exception.PairingFeedbackAlreadySubmittedException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
@@ -18,6 +16,8 @@ import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfi
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,20 +80,23 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("markSubmitted 메서드는")
-    class MarkSubmitted {
+    @DisplayName("markSubmittedIfAbsent 메서드는")
+    class MarkSubmittedIfAbsent {
 
         @Nested
         @DisplayName("처음 피드백을 낸 참여자인 경우")
         class WhenNotSubmitted {
 
             @Test
-            @DisplayName("제출 시각과 함께 제출 표시를 저장한다")
-            void shouldSaveSubmittedMark() {
+            @DisplayName("제출 시각과 함께 제출 표시를 저장하고 true를 반환한다")
+            void shouldSaveSubmittedMarkAndReturnTrue() {
                 // when
-                participantPairingFeedbackRepository.markSubmitted(participantId, SUBMITTED_AT);
+                boolean marked =
+                        participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                                participantId, SUBMITTED_AT);
 
                 // then
+                assertThat(marked).isTrue();
                 entityManager.clear();
                 assertThat(participantPairingFeedbackJpaRepository.findById(participantId))
                         .map(ParticipantPairingFeedbackJpaEntity::getSubmittedAt)
@@ -102,22 +105,27 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
         }
 
         @Nested
-        @DisplayName("같은 참여자의 제출 표시를 다시 남기는 경우")
+        @DisplayName("같은 참여자의 제출 표시가 이미 있는 경우")
         class WhenAlreadySubmitted {
 
             @Test
-            @DisplayName("PairingFeedbackAlreadySubmittedException이 발생한다")
-            void shouldThrowPairingFeedbackAlreadySubmittedException() {
-                // given: 동시 제출로 Service의 중복 검사를 둘 다 통과한 상태
-                participantPairingFeedbackRepository.markSubmitted(participantId, SUBMITTED_AT);
-                entityManager.clear();
+            @DisplayName("기존 제출 시각을 바꾸지 않고 false를 반환한다")
+            void shouldKeepSubmittedMarkAndReturnFalse() {
+                // given
+                participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                        participantId, SUBMITTED_AT);
 
-                // when & then
-                assertThatThrownBy(
-                                () ->
-                                        participantPairingFeedbackRepository.markSubmitted(
-                                                participantId, SUBMITTED_AT.plusMinutes(1)))
-                        .isInstanceOf(PairingFeedbackAlreadySubmittedException.class);
+                // when
+                boolean marked =
+                        participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                                participantId, SUBMITTED_AT.plusMinutes(1));
+
+                // then
+                assertThat(marked).isFalse();
+                entityManager.clear();
+                assertThat(participantPairingFeedbackJpaRepository.findById(participantId))
+                        .map(ParticipantPairingFeedbackJpaEntity::getSubmittedAt)
+                        .hasValue(SUBMITTED_AT);
             }
         }
 
@@ -134,20 +142,21 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
-            @DisplayName("한 요청만 저장되고 다른 요청은 PairingFeedbackAlreadySubmittedException이 발생한다")
+            @DisplayName("예외 없이 한 요청만 저장해 true를 반환하고 다른 요청은 false를 반환한다")
             void shouldSaveOnlyOne() {
                 // given
                 CountDownLatch ready = new CountDownLatch(2);
+                Queue<Boolean> results = new ConcurrentLinkedQueue<>();
 
                 // when
                 List<Throwable> failures =
                         runConcurrently(
-                                () -> markAfterBothReady(ready), () -> markAfterBothReady(ready));
+                                () -> markAfterBothReady(ready, results),
+                                () -> markAfterBothReady(ready, results));
 
                 // then
-                assertThat(failures)
-                        .singleElement()
-                        .isInstanceOf(PairingFeedbackAlreadySubmittedException.class);
+                assertThat(failures).isEmpty();
+                assertThat(results).containsExactlyInAnyOrder(true, false);
                 assertThat(
                                 jdbcTemplate.queryForObject(
                                         "SELECT COUNT(*) FROM participant_pairing_feedback WHERE participant_id = ?",
@@ -156,14 +165,15 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
                         .isEqualTo(1L);
             }
 
-            // 두 요청이 모두 Service의 중복 검사를 통과한 뒤 함께 저장하도록 맞춘다.
-            private void markAfterBothReady(CountDownLatch ready) {
+            // 두 요청이 같은 시점에 표시를 넣도록 맞춘다.
+            private void markAfterBothReady(CountDownLatch ready, Queue<Boolean> results) {
                 transactionTemplate.executeWithoutResult(
                         _ -> {
                             ready.countDown();
                             await(ready);
-                            participantPairingFeedbackRepository.markSubmitted(
-                                    participantId, SUBMITTED_AT);
+                            results.add(
+                                    participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                                            participantId, SUBMITTED_AT));
                         });
             }
         }
@@ -177,7 +187,7 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
         @DisplayName("피드백을 낸 참여자면 true를 반환한다")
         void shouldReturnTrueWhenSubmitted() {
             // given
-            participantPairingFeedbackRepository.markSubmitted(participantId, SUBMITTED_AT);
+            participantPairingFeedbackRepository.markSubmittedIfAbsent(participantId, SUBMITTED_AT);
 
             // when
             boolean result =
@@ -207,9 +217,10 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
         @DisplayName("모임 참여자들의 제출 표시를 모두 지우고 다른 모임 참여자의 제출 표시는 남긴다")
         void shouldDeleteSubmittedMarksOfGatheringOnly() {
             // given
-            participantPairingFeedbackRepository.markSubmitted(participantId, SUBMITTED_AT);
-            participantPairingFeedbackRepository.markSubmitted(leeId, SUBMITTED_AT);
-            participantPairingFeedbackRepository.markSubmitted(otherParticipantId, SUBMITTED_AT);
+            participantPairingFeedbackRepository.markSubmittedIfAbsent(participantId, SUBMITTED_AT);
+            participantPairingFeedbackRepository.markSubmittedIfAbsent(leeId, SUBMITTED_AT);
+            participantPairingFeedbackRepository.markSubmittedIfAbsent(
+                    otherParticipantId, SUBMITTED_AT);
 
             // when
             participantPairingFeedbackRepository.deleteAllByGatheringId(gatheringId);
