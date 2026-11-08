@@ -3,8 +3,9 @@
 # 실행: ./.claude/scripts/check-architecture.sh
 #
 # 대상은 src/main의 Java 파일 전체다. 위반마다 위치와 고치는 방법을 출력하고 하나라도 있으면 실패한다.
-# 완전 수식 이름 참조, 다른 도메인 enum의 메서드 호출, 절차적 도메인 로직처럼 판단이 필요한 규칙은
-# code-reviewer가 검토한다. 주석 줄(//, /*, *로 시작하는 줄)은 검사하지 않는다.
+# 다른 도메인 타입의 완전 수식 이름 참조, 다른 도메인 enum의 메서드 호출, 절차적 도메인 로직처럼 판단이 필요한
+# 규칙은 code-reviewer가 검토한다. RuntimeException과 @Transactional 검사는 완전 수식 이름으로 쓴 표기도 잡고,
+# 주석(줄 끝 주석 포함)과 문자열, 문자 리터럴, 텍스트 블록 안의 표기는 보지 않는다.
 
 set -euo pipefail
 
@@ -28,9 +29,9 @@ search() {
     grep "$@" || true
 }
 
-# grep 결과(파일:줄:내용)에서 내용이 주석으로 시작하는 줄을 뺀다.
-skip_comments() {
-    search -vE '^[^:]+:[0-9]+:[[:space:]]*(//|/?\*)'
+# 디렉터리 아래 Java 파일에서 주석과 문자열 리터럴을 지운 줄을 grep 결과와 같은 형식(파일:줄:내용)으로 낸다.
+java_code_lines() {
+    find "$1" -name '*.java' -type f -exec awk -f "$ROOT/.claude/scripts/strip-java-comments-and-literals.awk" {} +
 }
 
 # grep 결과(파일:줄:내용)를 한 줄씩 받아 report로 넘긴다. 파이프로 넘기면 서브셸에서 세어 건수가 사라지므로
@@ -56,12 +57,12 @@ done <<<"$hexagonal"
 report_matches \
     "RuntimeException을 직접 던진다" \
     "도메인 *ErrorCode를 추가하고 BusinessException 하위 예외를 던진다(error-handling 스킬)." \
-    < <(search -rn --include='*.java' -E 'new (java\.lang\.)?RuntimeException\(' "$MAIN" | skip_comments)
+    < <(java_code_lines "$MAIN" | search -E '^[^:]+:[0-9]+:.*new (java\.lang\.)?RuntimeException\(' | sort -t: -k1,1 -k2,2n)
 
 report_matches \
     "@Transactional을 직접 붙였다" \
     "애노테이션을 지우고 클래스에 @CommandService 또는 @QueryService를 붙인다. 성격이 둘이면 Service를 나눈다." \
-    < <(search -rn --include='*.java' -E '@Transactional\b' "$MAIN" | search -v "^$MAIN/common/annotation/" | skip_comments)
+    < <(java_code_lines "$MAIN" | search -E '^[^:]+:[0-9]+:.*@([a-z][a-z0-9_]*\.)*Transactional\b' | search -v "^$MAIN/common/annotation/" | sort -t: -k1,1 -k2,2n)
 
 for domain in $DOMAINS; do
     layer_dir="$MAIN/$domain/domain"
