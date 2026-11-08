@@ -14,7 +14,7 @@ public abstract class RedisRepositoryTest {
 
     @Autowired private StringRedisTemplate redisTemplate;
 
-    // Redis 컨테이너는 테스트 JVM 하나에서 IntegrationTest와 함께 쓰므로(TestcontainersConfiguration),
+    // Redis 컨테이너는 테스트 JVM 하나에서 IntegrationTest와 함께 쓴다(TestcontainersConfiguration).
     // 테스트마다 비워야 남은 토큰이 다른 테스트에 보이지 않는다.
     @AfterEach
     void flushRedis() {
