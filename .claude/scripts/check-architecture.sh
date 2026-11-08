@@ -12,7 +12,8 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 MAIN="src/main/java/com/symphonia"
-DOMAINS="member auth catalog pairing gathering notification"
+# 새 도메인이 검사에서 빠지지 않도록 공유 커널(common)과 기술 부트스트랩(global)을 뺀 패키지를 모두 도메인으로 본다.
+DOMAINS="$(find "$MAIN" -mindepth 1 -maxdepth 1 -type d ! -name common ! -name global -exec basename {} \; | sort | tr '\n' ' ')"
 violations=0
 
 report() {
@@ -50,7 +51,7 @@ done <<<"$hexagonal"
 report_matches \
     "RuntimeException을 직접 던진다" \
     "도메인 *ErrorCode를 추가하고 BusinessException 하위 예외를 던진다(error-handling 스킬)." \
-    < <(search -rn --include='*.java' 'new RuntimeException(' "$MAIN")
+    < <(search -rn --include='*.java' -E 'new (java\.lang\.)?RuntimeException\(' "$MAIN")
 
 report_matches \
     "@Transactional을 직접 붙였다" \
