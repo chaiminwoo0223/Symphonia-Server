@@ -30,12 +30,6 @@ public class Occasion {
                 .build();
     }
 
-    public MoodProfile toMoodProfile() {
-        return moodType.baseMoodProfile()
-                .withFormality(relationshipType.formalityBoost())
-                .withRomance(relationshipType.romanceBoost());
-    }
-
     public double maxAbv() {
         return relationshipType.maxAbv();
     }

@@ -11,23 +11,18 @@ import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.service.CatalogQueryService;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
-import com.symphonia.catalog.domain.repository.MusicMoodRepository;
 import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
-import com.symphonia.catalog.domain.vo.MoodProfile;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
 import com.symphonia.pairing.domain.vo.MoodType;
-import com.symphonia.pairing.domain.vo.Occasion;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.PairingReason;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -35,7 +30,6 @@ import com.symphonia.pairing.fixture.RecommendPairingQueryFixture;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +44,6 @@ class PairingQueryServiceTest extends UnitTest {
 
     @Mock private DrinkRepository drinkRepository;
     @Mock private AnjuRepository anjuRepository;
-    @Mock private MusicMoodRepository musicMoodRepository;
     @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
 
     // 카탈로그 조회는 실제 CatalogQueryService에 맡긴다. 그래서 Repository 스텁만으로 카탈로그 상태를 준비한다.
@@ -58,8 +51,7 @@ class PairingQueryServiceTest extends UnitTest {
     void setUp() {
         pairingQueryService =
                 new PairingQueryService(
-                        new CatalogQueryService(
-                                drinkRepository, anjuRepository, musicMoodRepository),
+                        new CatalogQueryService(drinkRepository, anjuRepository),
                         pairingRatingSummaryRepository);
     }
 
@@ -69,7 +61,6 @@ class PairingQueryServiceTest extends UnitTest {
         // 골든 세트 조합의 안주가 들어야 하는 순위다. 추천 결과가 최대 5개라 그보다 좁게 잡는다.
         private static final int GOLDEN_TOP_RANK = 3;
         private static final Long SOJU_ID = 1L;
-        private static final Long CASUAL_ACOUSTIC_ID = 1L;
         private static final List<Long> TIED_ANJU_IDS = List.of(1L, 2L, 3L, 4L, 5L);
         private static final Long WEAKER_ANJU_ID = 6L;
 
@@ -117,8 +108,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(RelationshipType.BOSS)
@@ -141,8 +130,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(RelationshipType.BOSS)
@@ -163,10 +150,6 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             RelationshipType relationshipType = RelationshipType.FRIEND;
             MoodType moodType = MoodType.FORMAL;
-            Occasion occasion = Occasion.of(relationshipType, moodType, Set.of(), Set.of());
-            MusicMood musicMood =
-                    MusicMoodFixture.FORMAL_JAZZ.createWithMoodProfile(
-                            catalogMoodProfileOf(occasion));
             // 산미가 없는 와인은 맛 유사도상 후라이드치킨(0.700)이 과일안주(0.576)보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
@@ -178,7 +161,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.FRUIT_PLATTER.createWithId(),
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
-            given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(relationshipType)
@@ -217,7 +199,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.WHISKEY.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -243,7 +224,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldRankByRawScoreAndReturnZeroWhenScoresFallBelowZero() {
             // given
             // 맛이 먼 위스키는 고도수 감점, 두 안주는 FORMAL 자리의 무거운 안주 감점을 받는다.
-            // 무게감 4 안주가 받는 도수 대비 점수와 자리와 먼 음악의 점수를 더해도 둘 다 0 아래로 내려간다.
+            // 무게감 4 안주가 받는 도수 대비 점수를 더해도 둘 다 0 아래로 내려간다.
             // 수육이 위스키와 맛이 조금 더 가깝지만, 0으로 자른 뒤 순위를 매기면 id가 작은 새우튀김이 먼저 온다.
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(
@@ -255,11 +236,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.FRIED_SHRIMP.createWithId(),
                                     AnjuFixture.BOILED_PORK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithMoodProfile(
-                                            MoodProfile.of(0, 5, 5, 5))));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
@@ -325,7 +301,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.FRUIT_JUICE.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -358,7 +333,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.BOILED_PORK.createWithId(),
                                     AnjuFixture.CHEESE_PLATTER.createWithId(),
                                     AnjuFixture.GOLBAENGI_MUCHIM.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -399,7 +373,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     soda));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeConstraints(AttendeeConstraint.DRIVER)
@@ -424,7 +397,7 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     DrinkFixture.SOJU.createWithId(),
                                     DrinkFixture.FRUIT_JUICE.createWithId()));
-            givenSingleAnjuAndCasualAcousticMusicMood();
+            givenSingleAnju();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeConstraints(AttendeeConstraint.PREGNANT)
@@ -446,7 +419,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
-            givenSingleAnjuAndCasualAcousticMusicMood();
+            givenSingleAnju();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeConstraints(AttendeeConstraint.NON_DRINKER)
@@ -472,7 +445,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.GOLBAENGI_MUCHIM.createWithId(),
                                     AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeAllergies(AllergyType.PEANUT)
@@ -501,7 +473,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.BOILED_PORK.createWithId(),
                                     AnjuFixture.FRENCH_FRIES.createWithId(),
                                     AnjuFixture.FRUIT_PLATTER.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeAllergies(AllergyType.PORK, AllergyType.SHRIMP)
@@ -530,7 +501,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.GOLBAENGI_MUCHIM.createWithId(),
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
 
@@ -549,7 +519,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.create()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when & then
@@ -565,7 +534,6 @@ class PairingQueryServiceTest extends UnitTest {
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.DRIED_SNACK.create()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when & then
@@ -575,28 +543,10 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("MusicMood의 id가 null이면 예외를 던진다")
-        void shouldThrowNullPointerExceptionWhenMusicMoodIdIsNull() {
-            // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.create()));
-            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
-
-            // when & then
-            assertThatThrownBy(() -> pairingQueryService.recommend(query))
-                    .isInstanceOf(NullPointerException.class)
-                    .hasMessageContaining("MusicMood");
-        }
-
-        @Test
         @DisplayName("동점 조합이 있어도 Repository 조회 순서가 바뀌면 추천 결과가 같다")
         void shouldReturnSameResultsWhenRepositoryOrderChanges() {
             // given
-            // 수육과 감자튀김은 flavorProfile이 같아 같은 Drink, MusicMood와 항상 같은 점수가 나온다
+            // 수육과 감자튀김은 flavorProfile이 같아 같은 Drink와 항상 같은 점수가 나온다
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
@@ -608,17 +558,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.FRENCH_FRIES.createWithId(),
                                     AnjuFixture.BOILED_PORK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.FORMAL_JAZZ.createWithId(),
-                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(),
-                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithId()))
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithId(),
-                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(),
-                                    MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -626,7 +565,7 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> resultsInReversedOrder = pairingQueryService.recommend(query);
 
             // then
-            assertThat(resultsInOriginalOrder).hasSize(5);
+            assertThat(resultsInOriginalOrder).hasSize(2);
             assertThat(resultsInReversedOrder).isEqualTo(resultsInOriginalOrder);
         }
 
@@ -641,7 +580,7 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.BEER.createWithFlavorProfile(
                                             DrinkFixture.SOJU.getFlavorProfile()),
                                     DrinkFixture.SOJU.createWithId(1L)));
-            givenSingleAnjuAndCasualAcousticMusicMood();
+            givenSingleAnju();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -666,7 +605,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.FRENCH_FRIES.createWithId(2L),
                                     AnjuFixture.BOILED_PORK.createWithId(1L)));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -681,35 +619,6 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("MusicMood 점수가 같으면 id가 작은 순서로 반환한다")
-        void shouldOrderByMusicMoodIdAscendingWhenScoresTie() {
-            // given
-            // 파티 댄스에 재즈의 moodProfile을 주어 두 MusicMood의 점수를 같게 만든다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.TOFU_KIMCHI.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithMoodProfile(
-                                            MusicMoodFixture.FORMAL_JAZZ.getMoodProfile()),
-                                    MusicMoodFixture.FORMAL_JAZZ.createWithId(1L)));
-            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
-
-            // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
-
-            // then
-            assertThat(results.get(0).score()).isEqualTo(results.get(1).score());
-            assertThat(results)
-                    .extracting(PairingResult::musicMoodTitle)
-                    .containsExactly(
-                            MusicMoodFixture.FORMAL_JAZZ.getTitle(),
-                            MusicMoodFixture.CELEBRATORY_DANCE.getTitle());
-        }
-
-        @Test
         @DisplayName("Occasion에 도수 제한이 있으면 reasons에 ABV_LIMIT을 포함한다")
         void shouldIncludeAbvLimitReasonWhenOccasionHasAbvLimit() {
             // given
@@ -717,7 +626,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(RelationshipType.BOSS)
@@ -738,7 +646,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(RelationshipType.FRIEND)
@@ -760,8 +667,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
@@ -780,8 +685,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
@@ -801,7 +704,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SODA.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeConstraints(AttendeeConstraint.DRIVER)
@@ -819,7 +721,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("무알코올 옵션이 필요해도 Drink가 무알코올이 아니면 reasons에 NON_ALCOHOLIC_OPTION을 포함하지 않는다")
         void shouldNotIncludeNonAlcoholicOptionReasonWhenDrinkIsAlcoholic() {
             // given
-            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            givenSojuAndDriedSnack();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .attendeeConstraints(AttendeeConstraint.DRIVER)
@@ -837,7 +739,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("attendeeAllergies가 있으면 살아남은 결과의 reasons에 ALLERGY_EXCLUDED를 포함한다")
         void shouldIncludeAllergyExcludedReasonWhenAttendeeAllergiesPresent() {
             // given
-            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            givenSojuAndDriedSnack();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
 
@@ -853,7 +755,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("attendeeAllergies가 없으면 reasons에 ALLERGY_EXCLUDED를 포함하지 않는다")
         void shouldNotIncludeAllergyExcludedReasonWhenNoAttendeeAllergies() {
             // given
-            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            givenSojuAndDriedSnack();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -869,7 +771,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldIncludeFlavorMatchReasonWhenFlavorSimilarityAboveThreshold() {
             // given
             // 소주와 마른안주는 맛 유사도가 임계값(0.7)을 넘는다
-            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            givenSojuAndDriedSnack();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -888,7 +790,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -911,7 +812,6 @@ class PairingQueryServiceTest extends UnitTest {
                                             FlavorProfile.of(1, 1, 0, 1, 5))));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -934,7 +834,6 @@ class PairingQueryServiceTest extends UnitTest {
                                             FlavorProfile.of(1, 1, 5, 1, 0))));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -942,44 +841,6 @@ class PairingQueryServiceTest extends UnitTest {
 
             // then
             assertThat(results.getFirst().reasons()).contains(PairingReason.FLAVOR_MATCH.message());
-        }
-
-        @Test
-        @DisplayName("moodFitness가 임계값 이상이면 reasons에 MOOD_MATCH를 포함한다")
-        void shouldIncludeMoodMatchReasonWhenMoodFitnessAboveThreshold() {
-            // given
-            // 편안한 어쿠스틱은 CASUAL Occasion의 moodProfile과 적합도가 임계값(0.7)을 넘는다
-            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
-            RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture().moodType(MoodType.CASUAL).build();
-
-            // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
-
-            // then
-            assertThat(results.getFirst().reasons()).contains(PairingReason.MOOD_MATCH.message());
-        }
-
-        @Test
-        @DisplayName("moodFitness가 임계값 미만이면 reasons에 MOOD_MATCH를 포함하지 않는다")
-        void shouldNotIncludeMoodMatchReasonWhenMoodFitnessBelowThreshold() {
-            // given
-            // 잔잔한 재즈는 CASUAL Occasion의 moodProfile과 적합도가 임계값(0.7)에 못 미친다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.FORMAL_JAZZ.createWithId()));
-            RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture().moodType(MoodType.CASUAL).build();
-
-            // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
-
-            // then
-            assertThat(results.getFirst().reasons())
-                    .doesNotContain(PairingReason.MOOD_MATCH.message());
         }
 
         @Test
@@ -997,7 +858,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.BOILED_PORK.createWithId(),
                                     AnjuFixture.FRENCH_FRIES.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1020,7 +880,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.DRIED_SNACK.createWithId(),
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1044,7 +903,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.FRIED_SHRIMP.createWithId(),
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1068,7 +926,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.DRIED_SNACK.createWithId(),
                                     AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1092,7 +949,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.CASS_FRESH.createWithHarmonizes(Set.of())));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1116,7 +972,6 @@ class PairingQueryServiceTest extends UnitTest {
                                             2L, FlavorProfile.of(2, 2, 5, 1, 1))));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1139,7 +994,6 @@ class PairingQueryServiceTest extends UnitTest {
                                             Set.of(Harmonize.PORK))));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.BOILED_PORK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1161,7 +1015,6 @@ class PairingQueryServiceTest extends UnitTest {
                                             Set.of(Harmonize.PORK))));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRENCH_FRIES.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1180,7 +1033,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1195,7 +1047,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("도수가 15% 이상이어도 Anju가 가벼우면 reasons에 RICHNESS_CUTTING을 포함하지 않는다")
         void shouldNotIncludeRichnessCuttingReasonWhenAnjuIsLight() {
             // given
-            givenSojuAndDriedSnackWithCasualAcousticMusicMood();
+            givenSojuAndDriedSnack();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1214,7 +1066,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1233,7 +1084,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.CASS_FRESH.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1252,7 +1102,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.WINE.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1274,7 +1123,6 @@ class PairingQueryServiceTest extends UnitTest {
                                             FlavorProfile.of(2, 2, 5, 1, 1))));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1294,7 +1142,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.CASS_FRESH.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1313,7 +1160,6 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1422,7 +1268,6 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.CATALOG_FRIED_CHICKEN.createWithId(1L),
                                     AnjuFixture.CATALOG_FRENCH_FRIES.createWithId(2L)));
-            givenCasualAcousticMusicMood();
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1450,8 +1295,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldRankLikedCombinationAheadOfSlightlyBetterCombinations() {
             // given
             givenDriedSnacksWithWeakerLast();
-            givenRatingSummaries(
-                    PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, CASUAL_ACOUSTIC_ID, 20, 0));
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 20, 0));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1471,9 +1315,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldReplaceDislikedCombinationWithNextCombination() {
             // given
             givenDriedSnacksWithWeakerLast();
-            givenRatingSummaries(
-                    PairingRatingSummary.of(
-                            SOJU_ID, TIED_ANJU_IDS.getFirst(), CASUAL_ACOUSTIC_ID, 0, 20));
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 0, 20));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1504,12 +1346,7 @@ class PairingQueryServiceTest extends UnitTest {
                             List.of(
                                     AnjuFixture.DRIED_SNACK.createWithId(1L),
                                     weakerDriedSnack(WEAKER_ANJU_ID)));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(
-                                            CASUAL_ACOUSTIC_ID)));
-            givenRatingSummaries(PairingRatingSummary.of(21L, 1L, CASUAL_ACOUSTIC_ID, 0, 20));
+            givenRatingSummaries(PairingRatingSummary.of(21L, 1L, 0, 20));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1527,65 +1364,13 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("싫어요로 밀려난 조합의 자리는 상위 음악 수 밖이던 음악이 채운다")
-        void shouldReplaceDislikedCombinationWithNextMusicMood() {
-            // given
-            // 음악 1~5번은 자리 분위기와 같고, 6번은 한 축만 1 달라 음악 점수가 0.04 낮다.
-            Occasion occasion =
-                    Occasion.of(RelationshipType.FRIEND, MoodType.CASUAL, Set.of(), Set.of());
-            MoodProfile matching = catalogMoodProfileOf(occasion);
-            MoodProfile weaker =
-                    MoodProfile.of(
-                            matching.getFormality(),
-                            matching.getRomance(),
-                            matching.getCelebration(),
-                            matching.getComfort() == 5 ? 4 : matching.getComfort() + 1);
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId(1L)));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            Stream.concat(
-                                            LongStream.rangeClosed(1, 5)
-                                                    .mapToObj(
-                                                            id ->
-                                                                    MusicMoodFixture.CASUAL_ACOUSTIC
-                                                                            .createWithIdAndMoodProfile(
-                                                                                    id, matching)),
-                                            Stream.of(
-                                                    MusicMoodFixture.CASUAL_ACOUSTIC
-                                                            .createWithIdAndMoodProfile(
-                                                                    6L, weaker)))
-                                    .toList());
-            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, 1L, 1L, 0, 20));
-            RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture()
-                            .relationshipType(RelationshipType.FRIEND)
-                            .moodType(MoodType.CASUAL)
-                            .build();
-
-            // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
-
-            // then
-            assertThat(results)
-                    .extracting(PairingResult::musicMoodId)
-                    .containsExactly(2L, 3L, 4L, 5L, 6L);
-        }
-
-        @Test
         @DisplayName("표본이 최소 표본 수보다 적은 집계는 추천 점수에 반영하지 않는다")
         void shouldIgnoreRatingSummaryWithoutEnoughSample() {
             // given
             givenDriedSnacksWithWeakerLast();
             givenRatingSummaries(
                     PairingRatingSummary.of(
-                            SOJU_ID,
-                            WEAKER_ANJU_ID,
-                            CASUAL_ACOUSTIC_ID,
-                            PairingRatingSummary.MINIMUM_SAMPLE - 1,
-                            0));
+                            SOJU_ID, WEAKER_ANJU_ID, PairingRatingSummary.MINIMUM_SAMPLE - 1, 0));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1609,11 +1394,6 @@ class PairingQueryServiceTest extends UnitTest {
                                                     .map(AnjuFixture.DRIED_SNACK::createWithId),
                                             Stream.of(weakerDriedSnack(WEAKER_ANJU_ID)))
                                     .toList());
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(
-                                            CASUAL_ACOUSTIC_ID)));
         }
 
         // 마른안주에서 단맛만 1 낮춰 소주와의 점수가 약 0.043 낮은 안주다.
@@ -1646,12 +1426,6 @@ class PairingQueryServiceTest extends UnitTest {
                                     AnjuFixture.TOFU_KIMCHI.createWithId(),
                                     AnjuFixture.CHEESE_PLATTER.createWithId(),
                                     AnjuFixture.FRUIT_PLATTER.createWithId()));
-            given(musicMoodRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    MusicMoodFixture.FORMAL_JAZZ.createWithId(),
-                                    MusicMoodFixture.CASUAL_ACOUSTIC.createWithId(),
-                                    MusicMoodFixture.CELEBRATORY_DANCE.createWithId()));
         }
 
         // 스타일이 서로 다른 소주 5개가 탄산음료보다 점수가 높아, 스타일당 하나를 골라도 상위 5개가 모두 알코올이다.
@@ -1667,28 +1441,20 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.SODA.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
         }
 
-        private void givenSingleAnjuAndCasualAcousticMusicMood() {
+        private void givenSingleAnju() {
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.TOFU_KIMCHI.createWithId()));
-            givenCasualAcousticMusicMood();
-        }
-
-        private void givenCasualAcousticMusicMood() {
-            given(musicMoodRepository.findAll())
-                    .willReturn(List.of(MusicMoodFixture.CASUAL_ACOUSTIC.createWithId()));
         }
 
         // 소주와 마른안주는 도수 제한·light anju·무알코올 조건과 무관하다.
-        // 맛 유사도와 편안한 어쿠스틱과의 무드 적합도만 임계값(0.7)을 넘는 조합이다.
-        private void givenSojuAndDriedSnackWithCasualAcousticMusicMood() {
+        // 맛 유사도만 임계값(0.7)을 넘는 조합이다.
+        private void givenSojuAndDriedSnack() {
             given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            givenCasualAcousticMusicMood();
         }
 
         private double scoreOfDrink(List<PairingResult> results, String drinkName) {
@@ -1707,7 +1473,7 @@ class PairingQueryServiceTest extends UnitTest {
                     .score();
         }
 
-        // 음료와 음악을 하나씩만 두어 결과 순위가 곧 그 음료의 안주 순위가 되게 한다.
+        // 음료를 하나만 두어 결과 순위가 곧 그 음료의 안주 순위가 되게 한다.
         // 안주 풀에는 골든 세트 음료별로 현재 규칙의 카탈로그 상위 안주(동점 포함)를 넣어 풀의 순위가 카탈로그 순위와 같게 한다.
         // 기대 성질에 맞지 않는 함정 안주(성질에 맞지 않는 안주 중 가장 높은 안주, 이전 규칙의 상위 안주)도 넣어 규칙이 되돌아가면 실패하게 한다.
         // 함정 안주를 앞에 두고 순서대로 id를 매겨, 동점이면 함정 안주가 먼저 오는 가장 불리한 경우를 검증한다.
@@ -1751,16 +1517,6 @@ class PairingQueryServiceTest extends UnitTest {
                             IntStream.range(0, pool.size())
                                     .mapToObj(index -> pool.get(index).createWithId(index + 1L))
                                     .toList());
-            givenCasualAcousticMusicMood();
         }
-    }
-
-    // 자리의 분위기와 같은 값을 가진 카탈로그 음악 무드를 만들 때 쓴다.
-    private static MoodProfile catalogMoodProfileOf(Occasion occasion) {
-        return MoodProfile.of(
-                occasion.toMoodProfile().getFormality(),
-                occasion.toMoodProfile().getRomance(),
-                occasion.toMoodProfile().getCelebration(),
-                occasion.toMoodProfile().getComfort());
     }
 }

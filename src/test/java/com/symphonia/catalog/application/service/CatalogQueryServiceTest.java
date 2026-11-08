@@ -11,22 +11,16 @@ import com.symphonia.catalog.application.dto.result.CatalogReferencesResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.AnjuResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.DrinkResult;
-import com.symphonia.catalog.application.dto.result.CatalogResult.MusicMoodResult;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
-import com.symphonia.catalog.domain.exception.MusicMoodNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
-import com.symphonia.catalog.domain.repository.MusicMoodRepository;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
-import com.symphonia.catalog.domain.vo.MoodProfile;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -42,20 +36,18 @@ class CatalogQueryServiceTest extends UnitTest {
     private static final double MAX_ABV = 12.0;
     private static final Long DRINK_ID = 1L;
     private static final Long ANJU_ID = 2L;
-    private static final Long MUSIC_MOOD_ID = 3L;
 
     @InjectMocks private CatalogQueryService catalogQueryService;
 
     @Mock private DrinkRepository drinkRepository;
     @Mock private AnjuRepository anjuRepository;
-    @Mock private MusicMoodRepository musicMoodRepository;
 
     @Nested
     @DisplayName("get 메서드는")
     class Get {
 
         @Test
-        @DisplayName("도수 상한 이하의 음료와 전체 안주, 음악 무드를 CatalogResult로 반환한다")
+        @DisplayName("도수 상한 이하의 음료와 전체 안주를 CatalogResult로 반환한다")
         void shouldReturnCatalogResultWithinMaxAbv() {
             // given: 축마다 값이 달라 축 순서가 바뀌면 결과가 달라진다
             Drink beer =
@@ -64,12 +56,8 @@ class CatalogQueryServiceTest extends UnitTest {
             Anju anju =
                     AnjuFixture.DRIED_SNACK.createWithIdAndFlavorProfile(
                             ANJU_ID, FlavorProfile.of(5, 4, 0, 2, 1));
-            MusicMood musicMood =
-                    MusicMoodFixture.FORMAL_JAZZ.createWithIdAndMoodProfile(
-                            MUSIC_MOOD_ID, MoodProfile.of(1, 2, 3, 4));
             given(drinkRepository.findAllByAbvLessThanEqual(MAX_ABV)).willReturn(List.of(beer));
             given(anjuRepository.findAll()).willReturn(List.of(anju));
-            given(musicMoodRepository.findAll()).willReturn(List.of(musicMood));
 
             // when
             CatalogResult result = catalogQueryService.get(CatalogQuery.of(MAX_ABV));
@@ -101,16 +89,6 @@ class CatalogQueryServiceTest extends UnitTest {
                                     1,
                                     AnjuFixture.DRIED_SNACK.getAllergyTypes(),
                                     anju.getHarmonizeMask()));
-            assertThat(result.musicMoods())
-                    .containsExactly(
-                            new MusicMoodResult(
-                                    MUSIC_MOOD_ID,
-                                    MusicMoodFixture.FORMAL_JAZZ.getTitle(),
-                                    MusicMoodFixture.FORMAL_JAZZ.getStreamingUrl(),
-                                    1,
-                                    2,
-                                    3,
-                                    4));
         }
 
         @Test
@@ -121,7 +99,6 @@ class CatalogQueryServiceTest extends UnitTest {
             Anju anju = AnjuFixture.TOFU_KIMCHI.createWithId();
             given(drinkRepository.findAllByAbvLessThanEqual(MAX_ABV)).willReturn(List.of(drink));
             given(anjuRepository.findAll()).willReturn(List.of(anju));
-            given(musicMoodRepository.findAll()).willReturn(List.of());
 
             // when
             CatalogResult result = catalogQueryService.get(CatalogQuery.of(MAX_ABV));
@@ -172,28 +149,8 @@ class CatalogQueryServiceTest extends UnitTest {
             }
         }
 
-        @Nested
-        @DisplayName("MusicMood가 존재하지 않는 경우")
-        class WhenMusicMoodNotFound {
-
-            @Test
-            @DisplayName("MusicMoodNotFoundException을 던진다")
-            void shouldThrowMusicMoodNotFoundException() {
-                // given
-                given(drinkRepository.findById(DRINK_ID))
-                        .willReturn(Optional.of(DrinkFixture.SOJU.create()));
-                given(anjuRepository.findById(ANJU_ID))
-                        .willReturn(Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.create()));
-                given(musicMoodRepository.findById(MUSIC_MOOD_ID)).willReturn(Optional.empty());
-
-                // when & then
-                assertThatThrownBy(() -> catalogQueryService.verify(query()))
-                        .isInstanceOf(MusicMoodNotFoundException.class);
-            }
-        }
-
         private CatalogReferencesQuery query() {
-            return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
+            return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID);
         }
     }
 
@@ -236,32 +193,11 @@ class CatalogQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("MusicMood가 존재하지 않는 경우")
-        class WhenMusicMoodNotFound {
-
-            @Test
-            @DisplayName("MusicMoodNotFoundException을 던진다")
-            void shouldThrowMusicMoodNotFoundException() {
-                // given
-                given(drinkRepository.findById(DRINK_ID))
-                        .willReturn(Optional.of(DrinkFixture.SOJU.createWithId(DRINK_ID)));
-                given(anjuRepository.findById(ANJU_ID))
-                        .willReturn(
-                                Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
-                given(musicMoodRepository.findById(MUSIC_MOOD_ID)).willReturn(Optional.empty());
-
-                // when & then
-                assertThatThrownBy(() -> catalogQueryService.getReferences(query()))
-                        .isInstanceOf(MusicMoodNotFoundException.class);
-            }
-        }
-
-        @Nested
         @DisplayName("모든 대상이 존재하는 경우")
         class WhenReferencesExist {
 
             @Test
-            @DisplayName("음료와 안주 이름, 음악 무드 제목과 스트리밍 URL을 CatalogReferencesResult로 반환한다")
+            @DisplayName("음료와 안주 이름을 CatalogReferencesResult로 반환한다")
             void shouldReturnCatalogReferencesResult() {
                 // given
                 given(drinkRepository.findById(DRINK_ID))
@@ -269,10 +205,6 @@ class CatalogQueryServiceTest extends UnitTest {
                 given(anjuRepository.findById(ANJU_ID))
                         .willReturn(
                                 Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
-                given(musicMoodRepository.findById(MUSIC_MOOD_ID))
-                        .willReturn(
-                                Optional.of(
-                                        MusicMoodFixture.FORMAL_JAZZ.createWithId(MUSIC_MOOD_ID)));
 
                 // when
                 CatalogReferencesResult result = catalogQueryService.getReferences(query());
@@ -282,14 +214,12 @@ class CatalogQueryServiceTest extends UnitTest {
                         .isEqualTo(
                                 new CatalogReferencesResult(
                                         DrinkFixture.SOJU.getName(),
-                                        AnjuFixture.GOLBAENGI_MUCHIM.getName(),
-                                        MusicMoodFixture.FORMAL_JAZZ.getTitle(),
-                                        MusicMoodFixture.FORMAL_JAZZ.getStreamingUrl()));
+                                        AnjuFixture.GOLBAENGI_MUCHIM.getName()));
             }
         }
 
         private CatalogReferencesQuery query() {
-            return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID);
+            return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID);
         }
     }
 }

@@ -188,9 +188,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         .should()
                         .verify(
                                 CatalogReferencesQuery.of(
-                                        pairing.getDrinkId(),
-                                        pairing.getAnjuId(),
-                                        pairing.getMusicMoodId()));
+                                        pairing.getDrinkId(), pairing.getAnjuId()));
                 then(gatheringPairingRepository).should().save(GATHERING_ID, pairing.create());
                 assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
                 assertThat(result.joinToken()).isEqualTo(JOIN_TOKEN);
@@ -684,9 +682,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         .should()
                         .verify(
                                 CatalogReferencesQuery.of(
-                                        pairing.getDrinkId(),
-                                        pairing.getAnjuId(),
-                                        pairing.getMusicMoodId()));
+                                        pairing.getDrinkId(), pairing.getAnjuId()));
                 then(gatheringPairingRepository).should().save(GATHERING_ID, pairing.create());
             }
         }

@@ -9,10 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.symphonia.IntegrationTest;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.catalog.helper.CatalogHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.gathering.domain.entity.Gathering;
@@ -261,7 +259,7 @@ class ParticipantControllerTest extends IntegrationTest {
         class WhenPairingChosen {
 
             @Test
-            @DisplayName("인증 없이도 술, 안주, 음악 무드 이름과 피드백을 내지 않았다는 값을 담아 200을 반환한다")
+            @DisplayName("인증 없이도 술, 안주 이름과 피드백을 내지 않았다는 값을 담아 200을 반환한다")
             void shouldReturnPairing() throws Exception {
                 // given
                 choosePairing(gathering);
@@ -275,12 +273,6 @@ class ParticipantControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.anjuName")
                                         .value(AnjuFixture.GOLBAENGI_MUCHIM.getName()))
-                        .andExpect(
-                                jsonPath("$.data.musicMoodTitle")
-                                        .value(MusicMoodFixture.FORMAL_JAZZ.getTitle()))
-                        .andExpect(
-                                jsonPath("$.data.streamingUrl")
-                                        .value(MusicMoodFixture.FORMAL_JAZZ.getStreamingUrl()))
                         .andExpect(jsonPath("$.data.feedbackSubmitted").value(false));
             }
 
@@ -359,12 +351,11 @@ class ParticipantControllerTest extends IntegrationTest {
                 assertThat(
                                 jdbcTemplate.queryForObject(
                                         "SELECT COUNT(*) FROM pairing_feedback WHERE member_id IS NULL"
-                                                + " AND drink_id = ? AND anju_id = ? AND music_mood_id = ?"
+                                                + " AND drink_id = ? AND anju_id = ?"
                                                 + " AND relationship_type = ? AND mood_type = ? AND rating = ?",
                                         Long.class,
                                         pairing.drinkId(),
                                         pairing.anjuId(),
-                                        pairing.musicMoodId(),
                                         pairing.relationshipType().name(),
                                         pairing.moodType().name(),
                                         PairingRating.LIKE.name()))
@@ -445,10 +436,9 @@ class ParticipantControllerTest extends IntegrationTest {
     private GatheringPairing choosePairing(Gathering gathering) {
         Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
         Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        MusicMood musicMood = catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
         GatheringPairing pairing =
                 GatheringPairingFixture.FRIEND_CASUAL.createWithReferences(
-                        drink.getId(), anju.getId(), musicMood.getId());
+                        drink.getId(), anju.getId());
         gatheringHelper.choosePairing(gathering, pairing);
 
         return pairing;

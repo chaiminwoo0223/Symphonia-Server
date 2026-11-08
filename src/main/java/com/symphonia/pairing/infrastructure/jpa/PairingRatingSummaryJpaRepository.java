@@ -18,10 +18,9 @@ public interface PairingRatingSummaryJpaRepository
             value =
                     """
                     INSERT INTO pairing_rating_summary
-                        (drink_id, anju_id, music_mood_id, like_count, dislike_count)
-                    VALUES (:drinkId, :anjuId, :musicMoodId,
-                            GREATEST(:likeDelta, 0), GREATEST(:dislikeDelta, 0))
-                    ON CONFLICT (drink_id, anju_id, music_mood_id) DO UPDATE
+                        (drink_id, anju_id, like_count, dislike_count)
+                    VALUES (:drinkId, :anjuId, GREATEST(:likeDelta, 0), GREATEST(:dislikeDelta, 0))
+                    ON CONFLICT (drink_id, anju_id) DO UPDATE
                     SET like_count = pairing_rating_summary.like_count + :likeDelta,
                         dislike_count = pairing_rating_summary.dislike_count + :dislikeDelta
                     """,
@@ -29,7 +28,6 @@ public interface PairingRatingSummaryJpaRepository
     void accumulate(
             @Param("drinkId") Long drinkId,
             @Param("anjuId") Long anjuId,
-            @Param("musicMoodId") Long musicMoodId,
             @Param("likeDelta") int likeDelta,
             @Param("dislikeDelta") int dislikeDelta);
 

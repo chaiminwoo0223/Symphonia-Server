@@ -29,7 +29,6 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
                         pairingFeedback.getMemberId(),
                         pairingFeedback.getDrinkId(),
                         pairingFeedback.getAnjuId(),
-                        pairingFeedback.getMusicMoodId(),
                         pairingFeedback.getRelationshipType().name(),
                         pairingFeedback.getMoodType().name(),
                         pairingFeedback.getRating().name(),
@@ -39,9 +38,9 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
 
     @Override
     public Optional<PairingFeedback> findByMemberIdAndCombinationForUpdate(
-            Long memberId, Long drinkId, Long anjuId, Long musicMoodId) {
+            Long memberId, Long drinkId, Long anjuId) {
         return pairingFeedbackJpaRepository
-                .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId, musicMoodId)
+                .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId)
                 .map(PairingFeedbackJpaEntity::toDomain);
     }
 }

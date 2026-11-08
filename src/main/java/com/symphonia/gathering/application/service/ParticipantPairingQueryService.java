@@ -34,9 +34,7 @@ public class ParticipantPairingQueryService implements GetParticipantPairingUseC
         CatalogReferencesResult catalogReferences =
                 getCatalogReferencesUseCase.getReferences(
                         CatalogReferencesQuery.of(
-                                gatheringPairing.drinkId(),
-                                gatheringPairing.anjuId(),
-                                gatheringPairing.musicMoodId()));
+                                gatheringPairing.drinkId(), gatheringPairing.anjuId()));
 
         return ParticipantPairingResult.of(
                 catalogReferences,

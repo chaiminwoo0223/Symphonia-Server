@@ -7,15 +7,12 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.DrinkStyleFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.catalog.infrastructure.jpa.AnjuJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.AnjuJpaRepository;
 import com.symphonia.catalog.infrastructure.jpa.DrinkJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkJpaRepository;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
-import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaEntity;
-import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.PairingRatingChange;
@@ -46,7 +43,6 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
-    @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
     @Autowired private TransactionTemplate transactionTemplate;
     @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -64,24 +60,17 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
             void shouldCreateSummaryWithChange() {
                 // given
                 CombinationId combination =
-                        savedCombinations(MusicMoodFixture.FORMAL_JAZZ).getFirst();
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
 
                 // when
                 pairingRatingSummaryRepository.accumulate(
-                        combination.drinkId(),
-                        combination.anjuId(),
-                        combination.musicMoodId(),
-                        LIKE_ADDED);
+                        combination.drinkId(), combination.anjuId(), LIKE_ADDED);
 
                 // then
                 assertThat(summaryOf(combination))
                         .isEqualTo(
                                 PairingRatingSummary.of(
-                                        combination.drinkId(),
-                                        combination.anjuId(),
-                                        combination.musicMoodId(),
-                                        1,
-                                        0));
+                                        combination.drinkId(), combination.anjuId(), 1, 0));
             }
         }
 
@@ -95,25 +84,20 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
             void shouldAddChangeToSummary() {
                 // given
                 CombinationId combination =
-                        savedCombinations(MusicMoodFixture.FORMAL_JAZZ).getFirst();
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
                 accumulate(combination, LIKE_ADDED, 2);
 
                 // when
                 pairingRatingSummaryRepository.accumulate(
                         combination.drinkId(),
                         combination.anjuId(),
-                        combination.musicMoodId(),
                         new PairingRatingChange(-1, 1));
 
                 // then
                 assertThat(summaryOf(combination))
                         .isEqualTo(
                                 PairingRatingSummary.of(
-                                        combination.drinkId(),
-                                        combination.anjuId(),
-                                        combination.musicMoodId(),
-                                        1,
-                                        1));
+                                        combination.drinkId(), combination.anjuId(), 1, 1));
             }
         }
 
@@ -134,9 +118,8 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
                         new CombinationId(
                                 jdbcTemplate.queryForObject(
                                         "SELECT MIN(id) FROM drink", Long.class),
-                                jdbcTemplate.queryForObject("SELECT MIN(id) FROM anju", Long.class),
                                 jdbcTemplate.queryForObject(
-                                        "SELECT MIN(id) FROM music_mood", Long.class));
+                                        "SELECT MIN(id) FROM anju", Long.class));
                 deleteSummary();
             }
 
@@ -168,10 +151,9 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
 
             private void deleteSummary() {
                 jdbcTemplate.update(
-                        "DELETE FROM pairing_rating_summary WHERE drink_id = ? AND anju_id = ? AND music_mood_id = ?",
+                        "DELETE FROM pairing_rating_summary WHERE drink_id = ? AND anju_id = ?",
                         combination.drinkId(),
-                        combination.anjuId(),
-                        combination.musicMoodId());
+                        combination.anjuId());
             }
         }
     }
@@ -186,8 +168,7 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
         void shouldReturnSummariesWithEnoughSample() {
             // given
             List<CombinationId> combinations =
-                    savedCombinations(
-                            MusicMoodFixture.FORMAL_JAZZ, MusicMoodFixture.CASUAL_ACOUSTIC);
+                    savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM, AnjuFixture.DRIED_SNACK);
             CombinationId belowMinimum = combinations.get(0);
             CombinationId atMinimum = combinations.get(1);
             accumulate(belowMinimum, new PairingRatingChange(2, 2), 1);
@@ -200,18 +181,13 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(summaries)
                     .containsExactly(
-                            PairingRatingSummary.of(
-                                    atMinimum.drinkId(),
-                                    atMinimum.anjuId(),
-                                    atMinimum.musicMoodId(),
-                                    2,
-                                    3));
+                            PairingRatingSummary.of(atMinimum.drinkId(), atMinimum.anjuId(), 2, 3));
         }
     }
 
-    // 음료와 안주는 하나씩 저장하고 음악만 다르게 해 조합을 만든다. 안주와 스타일 이름에 unique 제약이 있기 때문이다.
+    // 음료는 하나만 저장하고 안주만 다르게 해 조합을 만든다. 스타일 이름에 unique 제약이 있기 때문이다.
     // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
-    private List<CombinationId> savedCombinations(MusicMoodFixture... musicMoods) {
+    private List<CombinationId> savedCombinations(AnjuFixture... anjus) {
         Long drinkStyleId =
                 drinkStyleJpaRepository
                         .save(DrinkStyleJpaEntity.from(DrinkStyleFixture.DISTILLED_SOJU.create()))
@@ -220,17 +196,10 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
                 drinkJpaRepository
                         .save(DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
                         .getId();
-        Long anjuId =
-                anjuJpaRepository
-                        .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
-                        .getId();
 
-        return Stream.of(musicMoods)
-                .map(
-                        musicMood ->
-                                musicMoodJpaRepository.save(
-                                        MusicMoodJpaEntity.from(musicMood.create())))
-                .map(saved -> new CombinationId(drinkId, anjuId, saved.getId()))
+        return Stream.of(anjus)
+                .map(anju -> anjuJpaRepository.save(AnjuJpaEntity.from(anju.create())))
+                .map(saved -> new CombinationId(drinkId, saved.getId()))
                 .toList();
     }
 
@@ -239,19 +208,14 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
                 .forEach(
                         _ ->
                                 pairingRatingSummaryRepository.accumulate(
-                                        combination.drinkId(),
-                                        combination.anjuId(),
-                                        combination.musicMoodId(),
-                                        change));
+                                        combination.drinkId(), combination.anjuId(), change));
     }
 
     private PairingRatingSummary summaryOf(CombinationId combination) {
         return pairingRatingSummaryJpaRepository
                 .findById(
                         new PairingRatingSummaryJpaEntity.Combination(
-                                combination.drinkId(),
-                                combination.anjuId(),
-                                combination.musicMoodId()))
+                                combination.drinkId(), combination.anjuId()))
                 .orElseThrow()
                 .toDomain();
     }

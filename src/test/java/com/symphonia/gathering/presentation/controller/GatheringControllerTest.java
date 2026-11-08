@@ -12,11 +12,9 @@ import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.domain.error.CatalogErrorCode;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.catalog.helper.CatalogHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.gathering.domain.entity.Gathering;
@@ -120,7 +118,6 @@ class GatheringControllerTest extends IntegrationTest {
                                 new GatheringPairingRequest(
                                         null,
                                         pairing.getAnjuId(),
-                                        pairing.getMusicMoodId(),
                                         pairing.getRelationshipType(),
                                         pairing.getMoodType()));
 
@@ -314,7 +311,6 @@ class GatheringControllerTest extends IntegrationTest {
                         new GatheringPairingRequest(
                                 Long.MAX_VALUE,
                                 seeded.anjuId(),
-                                seeded.musicMoodId(),
                                 seeded.relationshipType(),
                                 seeded.moodType());
 
@@ -387,23 +383,17 @@ class GatheringControllerTest extends IntegrationTest {
     private GatheringPairingRequest seedPairingRequest() {
         Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
         Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        MusicMood musicMood = catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
         GatheringPairingFixture pairing = GatheringPairingFixture.FRIEND_CASUAL;
 
         return new GatheringPairingRequest(
-                drink.getId(),
-                anju.getId(),
-                musicMood.getId(),
-                pairing.getRelationshipType(),
-                pairing.getMoodType());
+                drink.getId(), anju.getId(), pairing.getRelationshipType(), pairing.getMoodType());
     }
 
     private long countPairingsOf(GatheringPairingRequest pairing) {
         return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM gathering_pairing WHERE drink_id = ? AND anju_id = ? AND music_mood_id = ?",
+                "SELECT COUNT(*) FROM gathering_pairing WHERE drink_id = ? AND anju_id = ?",
                 Long.class,
                 pairing.drinkId(),
-                pairing.anjuId(),
-                pairing.musicMoodId());
+                pairing.anjuId());
     }
 }

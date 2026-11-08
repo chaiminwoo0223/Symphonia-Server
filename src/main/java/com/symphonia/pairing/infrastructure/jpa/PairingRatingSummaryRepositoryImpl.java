@@ -13,10 +13,9 @@ public class PairingRatingSummaryRepositoryImpl implements PairingRatingSummaryR
     private final PairingRatingSummaryJpaRepository pairingRatingSummaryJpaRepository;
 
     @Override
-    public void accumulate(
-            Long drinkId, Long anjuId, Long musicMoodId, PairingRatingChange change) {
+    public void accumulate(Long drinkId, Long anjuId, PairingRatingChange change) {
         pairingRatingSummaryJpaRepository.accumulate(
-                drinkId, anjuId, musicMoodId, change.likeDelta(), change.dislikeDelta());
+                drinkId, anjuId, change.likeDelta(), change.dislikeDelta());
     }
 
     @Override

@@ -18,18 +18,17 @@ public interface PairingFeedbackJpaRepository
             value =
                     """
                     INSERT INTO pairing_feedback
-                        (member_id, drink_id, anju_id, music_mood_id,
+                        (member_id, drink_id, anju_id,
                          relationship_type, mood_type, rating, created_at, updated_at)
-                    VALUES (:memberId, :drinkId, :anjuId, :musicMoodId,
+                    VALUES (:memberId, :drinkId, :anjuId,
                             :relationshipType, :moodType, :rating, :now, :now)
-                    ON CONFLICT (member_id, drink_id, anju_id, music_mood_id) DO NOTHING
+                    ON CONFLICT (member_id, drink_id, anju_id) DO NOTHING
                     """,
             nativeQuery = true)
     int insertIfAbsent(
             @Param("memberId") Long memberId,
             @Param("drinkId") Long drinkId,
             @Param("anjuId") Long anjuId,
-            @Param("musicMoodId") Long musicMoodId,
             @Param("relationshipType") String relationshipType,
             @Param("moodType") String moodType,
             @Param("rating") String rating,
@@ -42,11 +41,9 @@ public interface PairingFeedbackJpaRepository
             WHERE feedback.memberId = :memberId
               AND feedback.drinkId = :drinkId
               AND feedback.anjuId = :anjuId
-              AND feedback.musicMoodId = :musicMoodId
             """)
     Optional<PairingFeedbackJpaEntity> findByMemberIdAndCombinationForUpdate(
             @Param("memberId") Long memberId,
             @Param("drinkId") Long drinkId,
-            @Param("anjuId") Long anjuId,
-            @Param("musicMoodId") Long musicMoodId);
+            @Param("anjuId") Long anjuId);
 }

@@ -10,10 +10,8 @@ import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
-import com.symphonia.catalog.domain.entity.MusicMood;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.catalog.helper.CatalogHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.domain.entity.Member;
@@ -87,7 +85,6 @@ class PairingControllerTest extends IntegrationTest {
             catalogHelper.saveDrink(DrinkFixture.SOJU);
             catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
             catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
-            catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
 
             // when & then
             mockMvc.perform(
@@ -112,7 +109,6 @@ class PairingControllerTest extends IntegrationTest {
             catalogHelper.saveDrink(DrinkFixture.SOJU);
             catalogHelper.saveDrink(DrinkFixture.SODA);
             catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
 
             // when & then
             mockMvc.perform(
@@ -192,7 +188,6 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.drinkId").value(request.drinkId()))
                         .andExpect(jsonPath("$.data.anjuId").value(request.anjuId()))
-                        .andExpect(jsonPath("$.data.musicMoodId").value(request.musicMoodId()))
                         .andExpect(jsonPath("$.data.rating").value(request.rating().name()));
             }
 
@@ -206,14 +201,10 @@ class PairingControllerTest extends IntegrationTest {
                 PairingFeedback submitted =
                         pairingFeedbackRepository.save(
                                 PairingFeedbackFixture.FRIEND_FORMAL.createWithMemberAndReferences(
-                                        member.getId(),
-                                        request.drinkId(),
-                                        request.anjuId(),
-                                        request.musicMoodId()));
+                                        member.getId(), request.drinkId(), request.anjuId()));
                 pairingRatingSummaryRepository.accumulate(
                         request.drinkId(),
                         request.anjuId(),
-                        request.musicMoodId(),
                         PairingRatingChange.added(
                                 PairingFeedbackFixture.FRIEND_FORMAL.getRating()));
 
@@ -228,12 +219,7 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.rating").value(PairingRating.DISLIKE.name()));
                 assertThat(pairingRatingSummaryRepository.findAllWithSampleAtLeast(1))
                         .containsExactly(
-                                PairingRatingSummary.of(
-                                        request.drinkId(),
-                                        request.anjuId(),
-                                        request.musicMoodId(),
-                                        0,
-                                        1));
+                                PairingRatingSummary.of(request.drinkId(), request.anjuId(), 0, 1));
             }
 
             @Test
@@ -279,10 +265,10 @@ class PairingControllerTest extends IntegrationTest {
         }
     }
 
+    // 소주와 마른안주는 맛이 가까워 추천 사유가 하나 이상 붙는다.
     private void seedCatalog() {
         catalogHelper.saveDrink(DrinkFixture.SOJU);
-        catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        catalogHelper.saveMusicMood(MusicMoodFixture.CASUAL_ACOUSTIC);
+        catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest() {
@@ -292,13 +278,7 @@ class PairingControllerTest extends IntegrationTest {
     private SubmitPairingFeedbackRequest seedFeedbackRequest(PairingRating rating) {
         Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
         Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-        MusicMood musicMood = catalogHelper.saveMusicMood(MusicMoodFixture.FORMAL_JAZZ);
         return new SubmitPairingFeedbackRequest(
-                drink.getId(),
-                anju.getId(),
-                musicMood.getId(),
-                RelationshipType.FRIEND,
-                MoodType.CASUAL,
-                rating);
+                drink.getId(), anju.getId(), RelationshipType.FRIEND, MoodType.CASUAL, rating);
     }
 }

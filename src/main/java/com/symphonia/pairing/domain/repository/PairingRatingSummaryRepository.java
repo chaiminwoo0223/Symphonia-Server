@@ -5,7 +5,7 @@ import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import java.util.List;
 
 public interface PairingRatingSummaryRepository {
-    void accumulate(Long drinkId, Long anjuId, Long musicMoodId, PairingRatingChange change);
+    void accumulate(Long drinkId, Long anjuId, PairingRatingChange change);
 
     List<PairingRatingSummary> findAllWithSampleAtLeast(int minimumSample);
 }

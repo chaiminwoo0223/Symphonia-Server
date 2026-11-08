@@ -37,9 +37,6 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private Long anjuId;
 
-    @Column(nullable = false)
-    private Long musicMoodId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RelationshipType relationshipType;
@@ -58,7 +55,6 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .memberId(pairingFeedback.getMemberId())
                 .drinkId(pairingFeedback.getDrinkId())
                 .anjuId(pairingFeedback.getAnjuId())
-                .musicMoodId(pairingFeedback.getMusicMoodId())
                 .relationshipType(pairingFeedback.getRelationshipType())
                 .moodType(pairingFeedback.getMoodType())
                 .rating(pairingFeedback.getRating())
@@ -71,7 +67,6 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .memberId(memberId)
                 .drinkId(drinkId)
                 .anjuId(anjuId)
-                .musicMoodId(musicMoodId)
                 .relationshipType(relationshipType)
                 .moodType(moodType)
                 .rating(rating)

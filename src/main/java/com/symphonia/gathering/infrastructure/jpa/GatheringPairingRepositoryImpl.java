@@ -17,7 +17,6 @@ public class GatheringPairingRepositoryImpl implements GatheringPairingRepositor
                 gatheringId,
                 gatheringPairing.drinkId(),
                 gatheringPairing.anjuId(),
-                gatheringPairing.musicMoodId(),
                 gatheringPairing.relationshipType().name(),
                 gatheringPairing.moodType().name());
     }

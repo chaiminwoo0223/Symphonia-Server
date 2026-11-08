@@ -1,16 +1,15 @@
 package com.symphonia.pairing.domain.vo;
 
-// 음료, 안주, 음악 조합 하나에 쌓인 피드백 평점 수다.
-public record PairingRatingSummary(
-        Long drinkId, Long anjuId, Long musicMoodId, int likeCount, int dislikeCount) {
+// 음료×안주 조합 하나에 쌓인 피드백 평점 수다.
+public record PairingRatingSummary(Long drinkId, Long anjuId, int likeCount, int dislikeCount) {
     // 표본이 이보다 적은 조합은 추천 점수에 반영하지 않는다.
     public static final int MINIMUM_SAMPLE = 5;
     // 좋아요와 싫어요를 반씩 이만큼 미리 센 것처럼 계산해, 표본이 적을수록 좋아요 비율을 0.5 쪽으로 당긴다.
     private static final int PRIOR_SAMPLE = 10;
 
     public static PairingRatingSummary of(
-            Long drinkId, Long anjuId, Long musicMoodId, int likeCount, int dislikeCount) {
-        return new PairingRatingSummary(drinkId, anjuId, musicMoodId, likeCount, dislikeCount);
+            Long drinkId, Long anjuId, int likeCount, int dislikeCount) {
+        return new PairingRatingSummary(drinkId, anjuId, likeCount, dislikeCount);
     }
 
     public boolean hasEnoughSample() {

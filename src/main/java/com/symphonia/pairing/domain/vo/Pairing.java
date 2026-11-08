@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -20,7 +19,6 @@ import lombok.Getter;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Pairing {
     private static final double FLAVOR_WEIGHT = 0.6;
-    private static final double MOOD_WEIGHT = 0.4;
     private static final double LIGHT_ANJU_PENALTY = 0.1;
     private static final double HIGH_ABV_THRESHOLD = 20.0;
     private static final double HIGH_ABV_PENALTY = 0.15;
@@ -34,22 +32,19 @@ public class Pairing {
             Comparator.comparingDouble(Combination::rawScore)
                     .reversed()
                     .thenComparing(combination -> combination.drink().getId())
-                    .thenComparing(combination -> combination.anju().getId())
-                    .thenComparing(combination -> combination.musicMood().getId());
+                    .thenComparing(combination -> combination.anju().getId());
 
     private final PairingDrink drink;
     private final PairingAnju anju;
-    private final PairingMusicMood musicMood;
     private final double score;
     private final List<PairingReason> reasons;
 
-    // 선정 규칙에 들 수 있는 음료×안주 쌍과 상위 음악만 결합하고, 피드백이 있는 조합은 경계 밖이어도 함께 결합한다.
-    // 감점받은 조합이 밀려난 자리를 채울 수 있도록 상위 경계와 음악 수는 감점받은 조합 수만큼 넓힌다.
+    // 선정 규칙에 들 수 있는 음료×안주 쌍만 조합으로 만들고, 피드백이 있는 조합은 경계 밖이어도 함께 만든다.
+    // 감점받은 조합이 밀려난 자리를 채울 수 있도록 상위 경계는 감점받은 조합 수만큼 넓힌다.
     // 스타일별 최고와 무알코올 최고는 그 경계에 속한 음료의 감점 조합 수만큼만 넓힌다.
     public static List<Pairing> recommend(
             List<PairingDrink> drinks,
             List<PairingAnju> anjus,
-            List<PairingMusicMood> musicMoods,
             List<PairingRatingSummary> ratingSummaries,
             Occasion occasion) {
         List<PairingDrink> allowedDrinks =
@@ -58,36 +53,28 @@ public class Pairing {
                 anjus.stream().filter(anju -> !occasion.hasAllergyConflict(anju)).toList();
         Map<Long, PairingDrink> drinkById = byId(allowedDrinks, PairingDrink::getId);
         Map<Long, PairingAnju> anjuById = byId(allowedAnjus, PairingAnju::getId);
-        Map<Long, ScoredMusicMood> musicMoodById =
-                byId(scoreMusicMoods(musicMoods, occasion), scored -> scored.musicMood().getId());
         FeedbackScores feedbackScores =
                 FeedbackScores.of(
                         ratingSummaries,
                         drinkById.keySet(),
                         anjuById.keySet(),
-                        musicMoodById.keySet(),
                         Pairing::feedbackScore);
-        int displaceable = feedbackScores.penalizedCount();
 
-        List<ScoredDrinkAnju> drinkAnjus =
-                selectableDrinkAnjus(allowedDrinks, allowedAnjus, occasion, feedbackScores);
-        List<ScoredMusicMood> topMusicMoods =
-                nearTop(
-                        musicMoodById.values(),
-                        ScoredMusicMood::score,
-                        RECOMMENDATION_LIMIT + displaceable);
-
-        List<Combination> combined = combine(drinkAnjus, topMusicMoods, feedbackScores);
+        List<Combination> combined =
+                selectableDrinkAnjus(allowedDrinks, allowedAnjus, occasion, feedbackScores).stream()
+                        .map(
+                                drinkAnju ->
+                                        Combination.of(
+                                                drinkAnju.drink(),
+                                                drinkAnju.anju(),
+                                                drinkAnju.score(),
+                                                feedbackScores))
+                        .toList();
         List<Combination> ranked =
                 Stream.concat(
                                 combined.stream(),
                                 ratedCombinationsOutside(
-                                        combined,
-                                        feedbackScores,
-                                        drinkById,
-                                        anjuById,
-                                        musicMoodById,
-                                        occasion))
+                                        combined, feedbackScores, drinkById, anjuById, occasion))
                         .sorted(RANKING)
                         .toList();
 
@@ -99,19 +86,6 @@ public class Pairing {
 
     private static <T> Map<Long, T> byId(Collection<T> items, Function<T, Long> id) {
         return items.stream().collect(Collectors.toMap(id, Function.identity()));
-    }
-
-    private static List<ScoredMusicMood> scoreMusicMoods(
-            List<PairingMusicMood> musicMoods, Occasion occasion) {
-        MoodProfile occasionMoodProfile = occasion.toMoodProfile();
-
-        return musicMoods.stream()
-                .map(
-                        musicMood ->
-                                new ScoredMusicMood(
-                                        musicMood,
-                                        MOOD_WEIGHT * musicMood.fitnessFor(occasionMoodProfile)))
-                .toList();
     }
 
     private static double feedbackScore(PairingRatingSummary ratingSummary) {
@@ -184,46 +158,11 @@ public class Pairing {
         return drink.getAbv() > HIGH_ABV_THRESHOLD ? HIGH_ABV_PENALTY : 0;
     }
 
-    // 점수가 limit번째로 높은 값 이상인 항목을 오차까지 포함해 모두 고르고, limit개 이하면 모두 고른다.
-    private static <T> List<T> nearTop(Collection<T> items, ToDoubleFunction<T> score, int limit) {
-        double threshold =
-                items.stream()
-                        .map(score::applyAsDouble)
-                        .sorted(Comparator.reverseOrder())
-                        .skip(limit - 1L)
-                        .findFirst()
-                        .orElse(Double.NEGATIVE_INFINITY);
-
-        return items.stream()
-                .filter(item -> score.applyAsDouble(item) >= threshold - TIE_TOLERANCE)
-                .toList();
-    }
-
-    private static List<Combination> combine(
-            List<ScoredDrinkAnju> drinkAnjus,
-            List<ScoredMusicMood> musicMoods,
-            FeedbackScores feedbackScores) {
-        return drinkAnjus.stream()
-                .flatMap(
-                        drinkAnju ->
-                                musicMoods.stream()
-                                        .map(
-                                                musicMood ->
-                                                        Combination.of(
-                                                                drinkAnju.drink(),
-                                                                drinkAnju.anju(),
-                                                                musicMood,
-                                                                drinkAnju.score(),
-                                                                feedbackScores)))
-                .toList();
-    }
-
     private static Stream<Combination> ratedCombinationsOutside(
             List<Combination> combinations,
             FeedbackScores feedbackScores,
             Map<Long, PairingDrink> drinkById,
             Map<Long, PairingAnju> anjuById,
-            Map<Long, ScoredMusicMood> musicMoodById,
             Occasion occasion) {
         Set<CombinationId> combined =
                 combinations.stream().map(Combination::id).collect(Collectors.toSet());
@@ -237,7 +176,6 @@ public class Pairing {
                             return Combination.of(
                                     drink,
                                     anju,
-                                    musicMoodById.get(id.musicMoodId()),
                                     drinkAnjuScore(drink, anju, occasion),
                                     feedbackScores);
                         });
@@ -279,28 +217,22 @@ public class Pairing {
         return Stream.concat(top.stream().limit(top.size() - 1L), Stream.of(replacement)).toList();
     }
 
-    private record ScoredMusicMood(PairingMusicMood musicMood, double score) {}
-
-    private record Combination(
-            PairingDrink drink, PairingAnju anju, PairingMusicMood musicMood, double rawScore) {
+    private record Combination(PairingDrink drink, PairingAnju anju, double rawScore) {
         private static Combination of(
                 PairingDrink drink,
                 PairingAnju anju,
-                ScoredMusicMood musicMood,
                 double drinkAnjuScore,
                 FeedbackScores feedbackScores) {
-            CombinationId id =
-                    new CombinationId(drink.getId(), anju.getId(), musicMood.musicMood().getId());
-
             return new Combination(
                     drink,
                     anju,
-                    musicMood.musicMood(),
-                    drinkAnjuScore + musicMood.score() + feedbackScores.scoreOf(id));
+                    drinkAnjuScore
+                            + feedbackScores.scoreOf(
+                                    new CombinationId(drink.getId(), anju.getId())));
         }
 
         private CombinationId id() {
-            return new CombinationId(drink.getId(), anju.getId(), musicMood.getId());
+            return new CombinationId(drink.getId(), anju.getId());
         }
 
         private boolean isNonAlcoholic() {
@@ -308,15 +240,10 @@ public class Pairing {
         }
 
         private Pairing toPairing(Occasion occasion) {
-            PairingReasonContext context =
-                    PairingReasonContext.of(drink, anju, musicMood, occasion);
+            PairingReasonContext context = PairingReasonContext.of(drink, anju, occasion);
 
             return new Pairing(
-                    drink,
-                    anju,
-                    musicMood,
-                    Math.max(0, rawScore),
-                    PairingReason.allApplicableTo(context));
+                    drink, anju, Math.max(0, rawScore), PairingReason.allApplicableTo(context));
         }
     }
 }

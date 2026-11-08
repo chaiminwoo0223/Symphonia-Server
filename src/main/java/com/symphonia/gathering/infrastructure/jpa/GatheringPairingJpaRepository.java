@@ -15,12 +15,11 @@ public interface GatheringPairingJpaRepository
             value =
                     """
                     INSERT INTO gathering_pairing
-                        (gathering_id, drink_id, anju_id, music_mood_id, relationship_type, mood_type)
-                    VALUES (:gatheringId, :drinkId, :anjuId, :musicMoodId, :relationshipType, :moodType)
+                        (gathering_id, drink_id, anju_id, relationship_type, mood_type)
+                    VALUES (:gatheringId, :drinkId, :anjuId, :relationshipType, :moodType)
                     ON CONFLICT (gathering_id) DO UPDATE
                     SET drink_id = EXCLUDED.drink_id,
                         anju_id = EXCLUDED.anju_id,
-                        music_mood_id = EXCLUDED.music_mood_id,
                         relationship_type = EXCLUDED.relationship_type,
                         mood_type = EXCLUDED.mood_type
                     """,
@@ -29,7 +28,6 @@ public interface GatheringPairingJpaRepository
             @Param("gatheringId") Long gatheringId,
             @Param("drinkId") Long drinkId,
             @Param("anjuId") Long anjuId,
-            @Param("musicMoodId") Long musicMoodId,
             @Param("relationshipType") String relationshipType,
             @Param("moodType") String moodType);
 

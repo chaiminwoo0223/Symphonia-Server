@@ -13,9 +13,6 @@ public record PairingResult(
         Long anjuId,
         String anjuName,
         Set<AllergyType> anjuAllergyTypes,
-        Long musicMoodId,
-        String musicMoodTitle,
-        String streamingUrl,
         double score,
         List<String> reasons) {
     public static PairingResult from(Pairing pairing) {
@@ -26,9 +23,6 @@ public record PairingResult(
                 pairing.getAnju().getId(),
                 pairing.getAnju().getName(),
                 pairing.getAnju().getAllergyTypes(),
-                pairing.getMusicMood().getId(),
-                pairing.getMusicMood().getTitle(),
-                pairing.getMusicMood().getStreamingUrl(),
                 pairing.getScore(),
                 pairing.getReasons().stream().map(PairingReason::message).toList());
     }

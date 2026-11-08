@@ -32,10 +32,7 @@ public class PairingCommandService
         PairingFeedback pairingFeedback =
                 pairingFeedbackRepository
                         .findByMemberIdAndCombinationForUpdate(
-                                command.memberId(),
-                                command.drinkId(),
-                                command.anjuId(),
-                                command.musicMoodId())
+                                command.memberId(), command.drinkId(), command.anjuId())
                         .orElseThrow();
 
         return created ? submitFirst(pairingFeedback) : resubmit(pairingFeedback, command);
@@ -50,7 +47,6 @@ public class PairingCommandService
                         PairingFeedback.anonymous(
                                 command.drinkId(),
                                 command.anjuId(),
-                                command.musicMoodId(),
                                 command.relationshipType(),
                                 command.moodType(),
                                 command.rating()));
@@ -63,7 +59,6 @@ public class PairingCommandService
                 command.memberId(),
                 command.drinkId(),
                 command.anjuId(),
-                command.musicMoodId(),
                 command.relationshipType(),
                 command.moodType(),
                 command.rating());
@@ -77,10 +72,7 @@ public class PairingCommandService
 
     private void accumulate(PairingFeedback pairingFeedback, PairingRatingChange change) {
         pairingRatingSummaryRepository.accumulate(
-                pairingFeedback.getDrinkId(),
-                pairingFeedback.getAnjuId(),
-                pairingFeedback.getMusicMoodId(),
-                change);
+                pairingFeedback.getDrinkId(), pairingFeedback.getAnjuId(), change);
     }
 
     private PairingFeedbackResult resubmit(
