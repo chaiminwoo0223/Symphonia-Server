@@ -150,6 +150,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"`를 넣는다. `GlobalExceptionHandler`의 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다.
 - 앱 단 rate limit은 두지 않는다. 대량 요청 방어는 LB/WAF가 맡는다.
 - 클라이언트 IP는 감사 로그(`AuditLogRecorder`)에만 쓴다. `server.forward-headers-strategy: native`와 `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES`)로 신뢰 프록시의 `X-Forwarded-For`만 반영하고, 어디서든 `HttpServletRequest.getRemoteAddr()`로 구한다. 별도 IP 추출 유틸과 테스트는 두지 않는다.
+- 운영 환경의 `TRUSTED_PROXIES`에는 실제 LB 대역만 넣고, 앱 포트에는 LB만 접근할 수 있게 한다.
 
 ## 응답 포맷
 
