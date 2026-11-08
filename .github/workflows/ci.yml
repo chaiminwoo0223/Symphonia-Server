@@ -3,12 +3,15 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  # setup-gradle은 기본 브랜치 실행에서만 Gradle 캐시를 저장하고 PR 실행은 그 캐시를 읽기만 한다.
+  push:
+    branches: [develop]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
