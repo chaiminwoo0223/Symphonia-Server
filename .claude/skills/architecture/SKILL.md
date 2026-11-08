@@ -1,50 +1,34 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), notification 발송 규칙(notification.md), 메시지 큐(RabbitMQ) 사용 범위.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), notification 발송 규칙(notification.md), 메시지 큐(RabbitMQ) 사용 범위.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
 
 # Architecture Rules
 
-Symphonia는 **단일 Gradle 모듈 + 도메인별 계층형 패키지** 구조다. 헥사고날 포트/어댑터 명칭, 멀티모듈 구조는 사용하지 않는다. `*Repository` 구현체를 `*RepositoryAdapter`로 명명하는 것도 금지된 포트/어댑터 명칭이다. 반드시 `*RepositoryImpl`을 쓴다 (예: `MemberRepositoryImpl implements MemberRepository`).
+이 문서는 현재 규칙만 담는다. 근거, 택하지 않은 안, 변경 이력은 `docs/decisions/`의 `architecture.md`, `auth.md`, `catalog.md`, `notification.md`에 있다. 규칙을 바꾸면 같은 커밋에서 두 곳을 함께 고친다(`design-decision` 스킬).
+
+- 단일 Gradle 모듈에 도메인별 계층형 패키지를 둔다. 헥사고날 포트/어댑터 명칭과 멀티모듈 구조는 쓰지 않는다.
+- `*Repository` 구현체는 `*RepositoryImpl`로 쓴다(예: `MemberRepositoryImpl implements MemberRepository`). `*RepositoryAdapter`는 금지한다.
 
 ## 프로젝트 구조
 
-```
-com.symphonia
-├── member/
-│   ├── domain/            # 순수 도메인 모델(Member), 도메인 서비스, MemberRepository 인터페이스
-│   ├── application/       # *UseCase 인터페이스 + *Service 구현체, Command (예: MemberQueryService, MemberCommandService, Query/Command 레벨), event(도메인 이벤트, 예: MemberDeletedEvent)
-│   ├── presentation/      # Controller, *Api 인터페이스, Request/Response DTO
-│   └── infrastructure/    # MemberRepository 구현체, MemberJpaEntity(Domain↔JPA 변환은 from()/toDomain() 정적 팩토리 메서드)
-├── auth/
-│   ├── domain/
-│   ├── application/       # *UseCase 인터페이스 + *Service 구현체, 1 UseCase = 1 Service (예: RefreshUseCase/RefreshService, LogoutUseCase/LogoutService), listener(다른 도메인 이벤트 구독, 예: MemberDeletedEventListener)
-│   ├── presentation/
-│   └── infrastructure/    # Redis 기반 RefreshToken/BlacklistAccessToken 구현, JPA 엔티티
-├── catalog/               # 음료, 안주, 음악 무드 카탈로그와 적재 (이슈 #139, 코드 이동은 #140)
-│   ├── domain/            # 순수 도메인 모델(Drink, DrinkStyle, Anju, MusicMood), 값만 담는 FlavorProfile/MoodProfile, 음식 계열 Harmonize, 규칙표로 맛을 계산하는 FlavorRule/WineFlavorRule/AnjuRule, *Repository 인터페이스, 적재 원본을 읽는 *Reader 인터페이스(reader)
-│   ├── application/       # GetCatalogUseCase/VerifyCatalogReferencesUseCase/GetCatalogReferencesUseCase를 함께 구현하는 CatalogQueryService(Query 레벨). 파일을 읽는 적재는 UseCase 단위로 분리: ImportDrinkStyleService, ImportCuratedDrinkService, ImportXWineService, ImportAnjuService
-│   ├── presentation/      # 수동 적재 진입점 ImportCatalogRunner(runner)
-│   └── infrastructure/    # DrinkRepository/AnjuRepository/DrinkStyleRepository/MusicMoodRepository 구현체, JPA 엔티티, *Reader 구현체(reader: JsonBjcpStyleReader, CsvFlavorRuleReader, CsvCuratedDrinkReader, CsvXWineReader, CsvWineFlavorRuleReader, CsvBeerHarmonizeRuleReader, CsvCuratedAnjuReader, CsvAnjuNutritionReader, CsvAnjuRuleReader)
-├── pairing/               # 술, 안주, 음악 페어링 추천 (이슈 #45)
-│   ├── domain/            # 순수 도메인 모델(Pairing, PairingFeedback), 추천이 점수를 매기는 PairingDrink/PairingAnju/PairingMusicMood, 점수 계산 메서드를 가진 FlavorProfile/MoodProfile, Occasion 값 객체, 선정 규칙의 경계를 계산하는 DrinkAnjuScores/SelectionThresholds, 조합별 평점 집계 PairingRatingSummary와 이를 추천 점수로 바꾸는 FeedbackScores, PairingFeedbackRepository/PairingRatingSummaryRepository 인터페이스
-│   ├── application/       # *UseCase 인터페이스 + *Service 구현체 (예: PairingQueryService, PairingCommandService, Query/Command 레벨)
-│   ├── presentation/      # Controller, *Api
-│   └── infrastructure/    # PairingFeedbackRepository/PairingRatingSummaryRepository 구현체, JPA 엔티티
-├── gathering/             # 술자리 정산 (이슈 #122, 구현은 #123~#131)
-├── notification/          # 정산 메시지 발송 예약, 발송 기록, 큐 발행, 발송 구현체 (이슈 #159에서 gathering에서 분리)
-├── common/                # 공유 커널: 공통 예외(BusinessException 등, common.exception), 응답 포맷(StandardResponse), BaseTimeEntity, CQRS 트랜잭션 애노테이션(@CommandService/@QueryService, common.annotation)
-└── global/                # 기술 부트스트랩: Security/JPA/Redis/Swagger 설정 (config), 인증 필터·핸들러 (security)
-```
+도메인은 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification` 6개이고, 각각 `domain`, `application`, `presentation`, `infrastructure` 패키지를 가진다.
 
-> 도메인 모델과 JPA 엔티티는 완전히 분리한다. `domain`은 영속성 기술을 전혀 알지 못한다. Domain↔JPA 변환은 `*JpaEntity`의 정적 팩토리 메서드(`from(도메인객체)`)와 `toDomain()`으로 처리한다. 변환에 암호화 키처럼 다른 값이 필요하면 인자로 받는다(예: `ParticipantJpaEntity.from(participant, gatheringId, dataKey)`). 별도 `*Mapper` 클래스는 두지 않는다(#123에서 변경). 변환 코드가 `*JpaEntity`에 모여 있어야 JPA 엔티티의 필드와 함께 읽히기 때문이다.
-> 도메인은 총 6개(`member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`)다(#159에서 변경). 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 어느 도메인이든(#122에서 변경) 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다. 4번째 도메인 `gathering`을 추가하면서 이 조건을 다시 확인했다(2026-10-25, 이슈 #122). 현재 설계(#123~#131) 기준으로 `gathering`은 `pairing`의 UseCase로는 `SubmitAnonymousPairingFeedbackUseCase` 하나만(#131에서 변경) 의존하므로 재검토 조건에 해당하지 않는다. #131 구현 기준으로 피드백을 받는 `ParticipantPairingFeedbackService`는 이 UseCase 하나에, 페어링을 조회하는 `ParticipantPairingQueryService`와 페어링을 고르는 `GatheringCommandService`는 `catalog`의 UseCase 하나에 의존한다. 5번째 도메인 `catalog`를 분리하면서 이 조건을 다시 확인했다(2026-10-27, 이슈 #139). #140 설계 기준으로 `PairingQueryService`는 `catalog`의 `GetCatalogUseCase` 하나만, `PairingCommandService`는 `VerifyCatalogReferencesUseCase` 하나만 의존하므로 재검토 조건에 해당하지 않는다. 6번째 도메인 `notification`을 분리하면서 이 조건을 다시 확인했다(2026-11-01, 이슈 #159). `SettlementCommandService`와 `ShareCommandService`가 각각 `notification`의 UseCase 두 개에 의존하지만(#168에서 변경) 더 나누지 않으며, 근거는 크로스 도메인 참조 절의 #159 결정에 있다.
+| 도메인 | 책임 |
+|---|---|
+| `member` | 회원. 탈퇴 시 `application.event`의 `MemberDeletedEvent` 발행 |
+| `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰과 액세스 토큰 블랙리스트 |
+| `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`), 음악 무드(`MusicMood`)와 그 맛, 분위기 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
+| `pairing` | 자리(`Occasion`)에 맞는 술, 안주, 음악 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
+| `gathering` | 모임, 참여, 정산 건과 분담금 상태 |
+| `notification` | 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체 |
+| `common` | 공유 커널. 공통 예외(`common.exception`), `StandardResponse`, `BaseTimeEntity`, `@CommandService`/`@QueryService`(`common.annotation`) |
+| `global` | 기술 부트스트랩. Security, JPA, Redis, Swagger 설정(`config`), 인증 필터와 핸들러(`security`) |
 
-**(2026-10-27 결정, 이슈 #139)**: `pairing`에서 카탈로그를 `catalog` 도메인으로 분리한다. `catalog`는 음료, 안주, 음악 무드가 무엇이고 맛과 분위기 값이 얼마인지를 책임진다. `Drink`, `DrinkStyle`, `Anju`, `MusicMood`, 적재 규칙표, `*Reader`, 적재 러너가 여기에 속한다. `pairing`은 자리에 맞는 조합을 고르는 일을 책임진다. `Occasion`, 점수 계산, `Pairing`, `PairingFeedback`이 여기에 속한다. 근거는 두 가지다. 첫째, 적재 코드는 출처 데이터가 바뀔 때 바뀌고, 추천 코드는 점수 규칙이 바뀔 때 바뀐다. 분리 전 `pairing/domain` 파일 75개 중 34개가 적재용이었다. 둘째, 추천은 서비스의 핵심 도메인이고 카탈로그는 이를 받쳐 주는 지원 도메인이다. `pairing` 안에서 패키지만 나누는 안은 택하지 않았다. 크로스 도메인 규칙이 적용되지 않아 경계가 이름뿐이기 때문이다. 의존 방향은 `pairing → catalog` 한 방향이다. `FlavorProfile`과 `MoodProfile`은 두 도메인이 각자 가진다. `catalog`의 것은 적재 규칙이 계산한 값을 담는다. `pairing`의 것은 유사도, 무게감, 분위기 적합도 같은 점수 계산 메서드를 가진다. 하나를 `common`에 두는 안은 택하지 않았다. `common`은 기술 공통 요소만 두는 곳이다. 또 점수 계산 메서드를 공유하면 `catalog`가 추천 규칙에 묶인다. `Drink.cutsRichnessOf`처럼 엔티티에 있던 점수 계산 메서드와 `Anju.conflictsWith` 같은 추천 필터는 `pairing`의 `PairingDrink`, `PairingAnju`, `PairingMusicMood`로 옮긴다(#140에서 변경). 음식 계열(`Harmonize`) 판정은 안주 속성으로 정해지는 분류라서 `catalog`에 둔다. `catalog`는 UseCase 세 개를 연다(#131에서 변경). `GetCatalogUseCase`는 `CatalogQuery`의 도수 상한 조건에 맞는 음료, 안주, 음악 무드를 `CatalogResult`로 일괄 조회한다. `VerifyCatalogReferencesUseCase`는 피드백이 id로 참조하는 음료, 안주, 음악 무드가 모두 있는지 한 번에 확인한다. `GetCatalogReferencesUseCase`는 id로 가리킨 음료, 안주, 음악 무드의 이름을 화면에 보여 줄 값으로 조회한다(#131에서 변경). 셋 다 부수효과 없는 단순 조회라서 Query 레벨 `CatalogQueryService` 하나가 함께 구현한다. 이름에 `Candidates`와 `Items`는 쓰지 않았다. `Items`는 무엇을 돌려주는지 알려 주지 않기 때문이다. `Candidate`도 같은 이유로 pairing 안의 이름에도 쓰지 않는다(#140에서 변경). `CatalogResult`에는 식별자, 표시 정보, 스타일 id, 맛과 분위기 축, 도수, 알레르기 유형, 음식 계열 판정 결과 등 추천에 필요한 값을 원시 값과 enum으로 담는다. `pairing`은 이를 `PairingDrink`, `PairingAnju`, `PairingMusicMood`로 바꾼다. 테이블과 FK는 바꾸지 않는다. 결정 문서의 위치는 design-decision 스킬의 #134 기준을 따른다. `catalog`에 적재 외의 실행 중 규칙이 생기면 그때 `catalog.md`를 만든다.
-
-**(2026-10-27 결정, 이슈 #140)**: `VerifyCatalogReferencesUseCase.verify`는 `CatalogReferencesQuery`(음료, 안주, 음악 무드 id, #131에서 `VerifyCatalogReferencesQuery`의 이름 변경)를 받고 반환값이 없다. 없는 대상이 있으면 catalog의 `DrinkNotFoundException`, `AnjuNotFoundException`, `MusicMoodNotFoundException`을 던진다. 그래서 피드백 API의 404 응답과 에러 코드가 분리 전과 같다. `*Result`로 돌려주는 안은 택하지 않았다. pairing이 어느 대상이 없는지 다시 해석해 예외로 바꿔야 해서 분기만 늘어나기 때문이다. `CatalogResult`를 `PairingDrink`, `PairingAnju`, `PairingMusicMood`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다. pairing의 domain은 catalog의 DTO를 참조할 수 없고, catalog의 DTO가 pairing 모델을 만들면 의존 방향이 거꾸로 된다. 호출하는 곳이 하나라서 `*Mapper`는 두지 않는다. 음식 계열 판정 결과는 `CatalogResult`에 계열마다 비트 하나를 둔 `harmonizeMask`로 담고, pairing은 두 값의 비트 AND만 본다. 쌍마다 판정 결과를 넘기는 안은 쌍이 약 18만 개라 택하지 않았다. 적재에서 빠진 안주를 지울 때는 catalog의 `AnjuRepository.findReferencedIds`가 `pairing_feedback`이 참조하는 안주를 걸러 낸다. 구현은 `pairing_feedback` 테이블을 네이티브 쿼리로 직접 조회한다. FK가 걸린 행을 지울 수 없다는 것은 `anju` 테이블의 영속성 제약이다. 또 #139에서 테이블과 FK를 그대로 두기로 해 테이블 결합은 이미 받아들였다. pairing이 UseCase를 열고 catalog가 이를 의존하는 안은 두 도메인이 서로를 의존하게 되어 택하지 않았다. catalog에 인터페이스를 두고 pairing이 구현하는 안은 pairing이 catalog의 enum이 아닌 타입을 참조하게 되어 택하지 않았다. 타입 이름에는 `Candidate`와 `Item`을 쓰지 않는다. 무엇인지 알려 주지 않기 때문이다. 같은 기준으로 `PairingCandidate`를 `PairingReasonContext`로, `CandidateThresholds`를 `SelectionThresholds`로 바꿨다.
+- 도메인 모델과 JPA 엔티티를 분리한다. Domain↔JPA 변환은 `*JpaEntity`의 `from(도메인객체)`와 `toDomain()`에 둔다. 변환에 암호화 키 같은 다른 값이 필요하면 인자로 받는다(예: `ParticipantJpaEntity.from(participant, gatheringId, dataKey)`). 별도 `*Mapper`는 두지 않는다.
+- `shared` 패키지는 두지 않는다. 크로스 도메인 조율은 대상 도메인의 `*UseCase`를 직접 의존한다.
 
 ## 계층 의존 방향
 
@@ -53,114 +37,126 @@ presentation   ──→  application  ──→  domain
 infrastructure ──→  application  ──→  domain   (infrastructure는 domain의 Repository 인터페이스를 구현)
 ```
 
-`domain`은 다른 어떤 계층에도 의존하지 않는다. Spring, JPA를 포함한 프레임워크 임포트를 전면 금지한다. `domain → infrastructure` 참조는 금지된 방향이다.
-
-`domain`/`application` 계층은 공유 커널인 `common`만 참조하고, 기술 부트스트랩인 `global`(config/security)은 참조하지 않는다. `global`은 오직 Spring 설정·필터 wiring 목적으로만 `common`을 참조할 수 있다.
-
-`global`은 같은 이유로 도메인의 `presentation` 계층에 있는 `*Endpoints`(비즈니스 로직·프레임워크 의존 없이 URL 경로 문자열만 담은 상수 클래스, 예: `auth.presentation.AuthEndpoints`)도 참조할 수 있다. 이는 `SecurityConfig`의 permitAll 매처처럼 순수 wiring 목적에 한한다. `*Request`/`*Response`/`*Api`/`*Controller`처럼 실제 프레젠테이션 로직이 담긴 타입은 여전히 참조 대상이 아니다. URL 경로는 그 경로를 실제로 노출하는 `*Api`와 동기화돼야 하는 도메인 고유의 사실이므로, `global`이 별도 상수로 다시 소유하기보다 도메인 쪽 단일 소스를 참조하는 쪽이 응집도가 높다.
-
-**(2026-09-20 결정, 이슈 #47)**: `*Endpoints`가 경로의 단일 소스이고, `*Api` 자신도 `@GetMapping`/`@PostMapping` 등에 리터럴 경로 문자열 대신 같은 도메인의 `*Endpoints` 상수를 그대로 참조한다(예: `AuthApi`의 `@PostMapping(AuthEndpoints.LOGIN)`, `MemberApi`의 `@GetMapping(MemberEndpoints.ME)`). `*Api`가 리터럴 문자열을 따로 갖고 `*Endpoints`가 그걸 베끼는 구조가 아니다. 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 이미 완성해 둔 전체 경로를 각 메서드의 매핑 애노테이션에 직접 넣는다.
-
-**(2026-10-29 결정, 이슈 #147)**: `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 타입을 참조할 수 있다. 필터는 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`)를, 핸들러는 에러 코드(`AuthErrorCode`)를 참조한다. 요청의 토큰을 검증해 인증 정보를 채우고 인증 실패를 응답하는 것은 보안 wiring 목적이기 때문이다. 구현체(`JwtAccessTokenProvider` 등)와 `infrastructure` 패키지는 참조하지 않는다. 토큰 Provider도 Repository처럼 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. gathering의 `GatheringTokenProvider`와 같은 구조다. 인터페이스가 기본 이름을 갖고, 구현체 이름에는 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
+- `domain`은 다른 계층에 의존하지 않는다. Spring, JPA를 포함한 프레임워크를 import하지 않는다. 예외는 에러 코드 enum의 `HttpStatus` 하나다.
+- `domain`과 `application`은 `common`만 참조하고 `global`은 참조하지 않는다. `global`은 Spring 설정과 필터 wiring 목적으로만 `common`을 참조한다.
+- `global`은 wiring 목적으로 도메인 `presentation`의 `*Endpoints`(URL 경로 문자열 상수 클래스)를 참조할 수 있다. `*Request`, `*Response`, `*Api`, `*Controller`는 참조하지 않는다.
+- `*Endpoints`가 경로의 단일 소스다. `*Api`는 매핑 애노테이션에 같은 도메인의 `*Endpoints` 상수를 넣는다(예: `@PostMapping(AuthEndpoints.LOGIN)`). 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 완성한 전체 경로를 쓴다.
+- `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`)와 에러 코드(`AuthErrorCode`)를 참조할 수 있다. 구현체와 `infrastructure`는 참조하지 않는다.
+- 토큰 Provider도 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. 인터페이스가 기본 이름을 갖고, 구현체 이름에 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
 
 ## 계층별 역할
 
 | 계층 | 역할 |
 |---|---|
-| `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository`·`*Reader` 인터페이스. 비즈니스 로직이 실제로 사는 곳 |
+| `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository`·`*Reader` 인터페이스. 비즈니스 로직이 사는 곳 |
 | `application` | `*UseCase` 인터페이스 + `*Service` 구현체(`@CommandService`/`@QueryService`). 오케스트레이션만 담당 |
-| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response` DTO, 수동 실행 진입점 `*Runner`(`ApplicationRunner`), 메시지 큐 리스너(`listener`)와 스케줄러(`scheduler`) 진입점(#126에서 변경) |
-| `infrastructure` | `*RepositoryImpl`(`*Repository` 구현체), `*JpaEntity`(Domain↔JPA 변환용 `from()`/`toDomain()` 포함), Redis 등 외부 연동, 파일 원본을 읽는 `*Reader` 구현체 |
+| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response`, 수동 실행 진입점 `*Runner`, 큐 리스너(`listener`), 스케줄러(`scheduler`) |
+| `infrastructure` | `*RepositoryImpl`, `*JpaEntity`, Redis 등 외부 연동, 파일 원본을 읽는 `*Reader` 구현체 |
 
-## 계층별 타입 어휘 (Layer Type Vocabulary)
+## 계층별 타입 어휘
 
-각 계층은 자기 타입만 다루고, 계층 경계를 넘을 땐 반드시 명시적 변환을 거친다. Service가 `*Request`를 직접 받거나 도메인 엔티티·`*JpaEntity`를 그대로 반환하는 일은 없다.
+각 계층은 자기 타입만 다루고, 경계를 넘을 때 명시적으로 변환한다. Service는 `*Request`를 받지 않고 도메인 엔티티나 `*JpaEntity`를 반환하지 않는다.
 
 | 계층 | 입력 | 출력 | 변환 지점 |
 |---|---|---|---|
 | Presentation | `*Request` | `*Response` | `Request.toCommand()`/`toQuery()`, `*Response.from(Result)` |
-| Application (조회) | 단일 식별자면 원시값, 그 외엔 `*Query` | `*Result` 또는 `void`(존재 검증처럼 결과를 예외로만 알리는 조회, #140에서 변경) | `*UseCase` 인터페이스 시그니처 |
-| Application (쓰기) | `*Command`, 내부 트리거가 단일 식별자만 넘기면 원시값(#126에서 변경) | `*Result` 또는 `void`(반환값이 불필요한 경우, 예: 삭제) | `*UseCase` 인터페이스 시그니처 |
+| Application (조회) | 단일 식별자면 원시값, 그 외 `*Query` | `*Result`, 결과를 예외로만 알리는 조회는 `void` | `*UseCase` 시그니처 |
+| Application (쓰기) | `*Command`, 내부 트리거가 식별자 하나만 넘기면 원시값 | `*Result`, 반환값이 필요 없으면 `void` | `*UseCase` 시그니처 |
 | Domain | 원시값 | 도메인 객체 | 도메인 팩토리 메서드/생성자 |
-| Infrastructure | 도메인 객체 | `*JpaEntity` | `*JpaEntity.from()`/`toDomain()` (별도 `*Mapper` 없음, #123에서 변경) |
+| Infrastructure | 도메인 객체 | `*JpaEntity` | `*JpaEntity.from()`/`toDomain()` |
 
-- `*Result`는 도메인 엔티티를 감싸지 않는다. 도메인 필드를 평탄화한 별도 DTO로 만들어 도메인 객체가 Application 계층 밖으로 새어나가지 않게 한다. **크로스 도메인으로 주고받을 때도 이 `*Result`가 그대로 계약 역할을 한다.** 예를 들어 `RefreshService`가 `member.GetMemberUseCase`를 호출해 받는 것도 `MemberResult`다.
-- **DTO(`*Command`/`*Result`/`*Request`/`*Response`)는 자기 자신에게 정적 팩토리(`from`/`of`)나 변환 메서드(`to*`)를 두고 그 안에서 필드를 채운다.** Service/Controller 같은 호출부가 `new`로 필드를 나열해 직접 조립하지 않는다 (예: `MemberResult.from(Member)`, `TokenResult.of(...)`). 변환 대상이 다른 도메인 소속이면, 이미 그 도메인을 의존하고 있는 쪽이 변환 메서드를 소유해 크로스 도메인 의존 방향을 거스르지 않는다 (예: `auth.OAuthMemberResult.toMemberCreateCommand()`는 `auth → member` 기존 의존 방향과 같은 쪽에 둔 것이지, `member.MemberCreateCommand`에 `from(OAuthMemberResult)`를 두어 역방향 의존을 만들지 않는다).
-- 조회(Query) 파라미터가 단일 식별자(ID, code 등 원시값 하나)면 감싸지 않고 그대로 받는다. 파라미터가 2개 이상이거나 필터·정렬·페이징처럼 확장 가능성이 있는 조건이면 `*Query`로 감싼다 (단일 식별자까지 감싸는 건 계층 응집도보다 보일러플레이트 비용이 더 크다).
-- 반환값이 필요 없는 Command(삭제 등)는 `void`를 허용한다. 빈 `*Result`를 억지로 만들지 않는다.
-- 스케줄러, 큐 리스너, 이벤트 리스너처럼 내부에서 시작하는 쓰기는 Request DTO가 없어 `toCommand()`를 거치지 않는다. 이때 넘길 값이 식별자 하나뿐이면 `*Command`로 감싸지 않고 원시값을 받는다(예: `forceRevoke(String memberId)`, `dispatch(Long gatheringId)`). 의도는 UseCase와 메서드 이름이 이미 드러내기 때문이다. 넘길 값이 2개 이상이면 `*Command`로 감싼다(예: `SendNotificationCommand`).
+- `*Result`는 도메인 엔티티를 감싸지 않고 필드를 평탄화한다. 크로스 도메인 계약도 `*Result`다(예: `RefreshService`가 `member.GetMemberUseCase`에서 받는 `MemberResult`).
+- DTO(`*Command`/`*Result`/`*Request`/`*Response`)는 자기 정적 팩토리(`from`/`of`)나 변환 메서드(`to*`)에서 필드를 채운다. 호출부가 `new`로 필드를 나열해 조립하지 않는다.
+- 변환 대상이 다른 도메인 소속이면 이미 그 도메인을 의존하는 쪽이 변환 메서드를 갖는다(예: `auth.OAuthMemberResult.toMemberCreateCommand()`).
+- 조회 파라미터가 2개 이상이거나 필터, 정렬, 페이징처럼 늘어날 조건이면 `*Query`로 감싼다.
+- 스케줄러, 큐 리스너, 이벤트 리스너처럼 내부에서 시작하는 쓰기는 넘길 값이 식별자 하나면 원시값으로 받고(예: `dispatch(Long gatheringId)`), 2개 이상이면 `*Command`로 감싼다.
 
-## 크로스 도메인 참조 예시
+## 크로스 도메인 참조
 
-- 크로스 도메인 조율이 필요한 `*Service`는 별도 Facade 없이, 대상 도메인의 `*UseCase` 인터페이스(및 `*Result`)를 직접 의존한다. Repository·구현체 직접 참조는 금지.
-- 예: `auth/application/RefreshService`는 Member 역할 조회를 위해 `member.GetMemberUseCase`를 직접 의존한다.
-- **가드레일**: 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존해야 하는 상황이 오면, Facade를 다시 두는 대신 그 UseCase 자체가 너무 커진 신호로 보고 쪼갤 수 있는지부터 검토한다.
-- **(2026-10-27 결정, 이슈 #139)**: `src/main` 코드는 다른 도메인의 `domain` 패키지에서 enum만 참조하고, 그 enum이 직접 선언한 메서드는 호출하지 않는다. `name()`, `valueOf()`, `values()` 같은 `java.lang.Enum` 기본 메서드는 도메인 규칙이 없어서 호출할 수 있다. 엔티티와 값 객체는 참조하지 않는다. enum을 값으로 넘기기만 하면 상대 도메인의 규칙에 의존하지 않는다. `auth`가 `member`의 `SocialProvider`를 `*Result`와 외부 연동 응답에 담는 것과, `gathering`이 `pairing`의 `RelationshipType`, `MoodType`을 피드백 Command에 담는 것이 그 예다. enum이 선언한 메서드를 호출하면 상대 도메인의 규칙을 직접 쓰게 된다. 그래서 `pairing`은 `catalog`의 `Harmonize.matches()`를 호출하지 않고, `catalog`가 넘긴 판정 결과를 쓴다. 엔티티와 값 객체까지 막는 이유는 `catalog`와 `pairing`이 같은 이름의 `FlavorProfile`을 각자 가지기 때문이다. 이 규칙이 없으면 잘못 import해도 컴파일과 리뷰를 모두 통과한다. 메서드가 있는 enum의 참조까지 막는 안은 택하지 않았다. 상대 도메인의 UseCase가 받는 enum을 쓸 수 없게 되고, enum의 메서드를 다른 곳으로 옮기면 `switch` 분기만 늘어나기 때문이다. enum을 모두 막는 안도 택하지 않았다. 같은 값 목록을 도메인마다 복제하고 변환 코드만 늘어나기 때문이다. 테스트 코드에는 이 규칙을 적용하지 않는다. 테스트는 다른 도메인의 상태를 준비하거나 검증하려고 그 도메인의 타입을 참조할 수 있다.
-- **(2026-11-01 결정, 이슈 #159)**: 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체를 `gathering`에서 `notification` 도메인으로 분리한다. `gathering`은 모임, 참여, 정산 건과 분담금 상태를 책임지고, `notification`은 언제, 누구에게, 몇 번 보낼지를 책임진다. 정산 규칙과 발송 규칙(시간대, 재시도, 큐)은 바뀌는 이유가 다르고, 한 도메인에 있으면 기능 하나를 고칠 때 봐야 하는 범위가 넓기 때문이다. 의존 방향은 `gathering → notification` 한 방향이다. 정산 건 기록과 수정은 정산 건을 바꾸기 전에 `notification`의 예약 UseCase를 같은 트랜잭션에서 부른다. 예약을 먼저 잠그고 정산 건을 잠그는 #126의 순서를 지켜 교착 상태를 막기 위해서다. 취소 알림도 같은 트랜잭션에서 부른다. 취소와 함께 커밋돼야 취소 알림이 빠지지 않기 때문이다. `notification`이 `gathering`의 데이터를 써야 하는 곳은 `notification.application.provider`에 인터페이스로 선언하고, `gathering.application.provider`의 `*ProviderImpl`이 구현한다. 발송을 시작할 때 정산 건에 발송 시각을 남기고 수신자를 고르는 일과, 보내기 직전에 메시지 내용과 링크 토큰을 만드는 일이 여기에 해당한다. 주고받는 값은 `notification`의 `*Result`다. 다른 도메인이 선언한 인터페이스를 구현할 때도 Port, Adapter라는 이름은 쓰지 않는다. 메시지에 담을 금액을 고르는 규칙(미입금 분담금, 취소된 정산 건)은 정산 건 상태로 판단하므로 `gathering`에 둔다. `notification`이 `gathering`의 UseCase를 부르고 `gathering`은 이벤트만 보내는 안은 택하지 않았다. 기록과 예약을 같은 트랜잭션에 두려면 커밋 전에 도는 이벤트가 필요하고, 예약을 `gathering`으로 옮기면 발송 시간대 규칙이 두 도메인으로 갈리기 때문이다. 커밋 뒤 이벤트(`AFTER_COMMIT`)로 나누는 안도 택하지 않았다. 이벤트 처리에 실패하면 커밋된 정산 건이 발송되지 않기 때문이다. 정산 건을 바꾸는 `SettlementCommandService`는 `notification`의 UseCase 두 개(예약 갱신, 취소 알림)에, 분담금 상태를 바꾸는 `ShareCommandService`는 두 개(예약 시각 조회, 리마인드 예약)에 의존해(#168에서 변경) 가드레일에 해당한다. 각 Service의 두 UseCase는 그 흐름의 변경이 발송에 미치는 영향이라는 한 관심사이고, 흐름마다 트랜잭션이 하나라서 더 쪼개면 같은 트랜잭션 보장이 흩어지므로 나누지 않는다. 설정 키와 큐 이름의 접두사는 `notification.*`이다. 링크 주소 환경 변수 `GATHERING_LINK_BASE_URL`은 모임 웹 페이지를 가리키므로 이름을 바꾸지 않는다. 테이블 이름과 FK도 바꾸지 않는다.
+- 크로스 도메인 조율은 Facade 없이 대상 도메인의 `*UseCase`와 `*Result`를 직접 의존한다. 다른 도메인의 Repository와 구현체는 참조하지 않는다.
+- 다른 도메인에서 참조할 수 있는 것은 `application`의 `usecase`, `dto`, `event`, `provider`와 `domain`의 enum뿐이다. enum이 직접 선언한 메서드는 호출하지 않는다. `name()`, `valueOf()`, `values()` 같은 `java.lang.Enum` 기본 메서드는 호출할 수 있다. 테스트 코드에는 이 규칙을 적용하지 않는다.
+- 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되면 그 UseCase를 쪼갤 수 있는지부터 검토한다. `SettlementCommandService`와 `ShareCommandService`가 `notification`의 UseCase 두 개씩에 의존하는 것은 검토를 마친 예외다.
+- 다른 도메인이 선언한 인터페이스를 구현할 때도 Port, Adapter라는 이름은 쓰지 않는다.
 
-## 크로스 도메인 부수효과: Controller 직접 호출 vs 도메인 이벤트
+### catalog와 pairing
 
-크로스 도메인 부수효과(예: 회원 삭제 시 로그아웃 처리)를 어디서 조율할지는 **부수효과 실패가 원래 트랜잭션을 되돌려야 하는지**로 판단한다.
+- 의존 방향은 `pairing → catalog` 한 방향이다. 테이블과 FK는 도메인 분리 전 그대로다.
+- `FlavorProfile`, `MoodProfile`은 두 도메인이 각자 가진다. `catalog`의 것은 적재 규칙이 계산한 값만, `pairing`의 것은 점수 계산 메서드를 가진다.
+- 점수 계산 메서드와 추천 필터는 `pairing`의 `PairingDrink`, `PairingAnju`, `PairingMusicMood`에 둔다. 음식 계열(`Harmonize`) 판정은 `catalog`에 둔다.
+- `catalog`의 UseCase는 `GetCatalogUseCase`(`CatalogQuery`의 도수 상한 조건으로 일괄 조회), `VerifyCatalogReferencesUseCase`(id로 참조한 대상이 모두 있는지 확인), `GetCatalogReferencesUseCase`(id로 가리킨 대상의 표시 이름 조회) 세 개이고, `CatalogQueryService` 하나가 함께 구현한다.
+- `VerifyCatalogReferencesUseCase.verify`는 `CatalogReferencesQuery`를 받고 반환값이 없다. 없는 대상은 `DrinkNotFoundException`, `AnjuNotFoundException`, `MusicMoodNotFoundException`으로 알린다.
+- `CatalogResult`는 추천에 필요한 값을 원시값과 enum으로 담는다. 음식 계열 판정은 계열마다 비트 하나인 `harmonizeMask`로 담고, `pairing`은 두 값의 비트 AND만 본다.
+- `CatalogResult`를 `PairingDrink`, `PairingAnju`, `PairingMusicMood`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다.
+- 적재에서 빠진 안주를 지울 때 `AnjuRepository.findReferencedIds`가 `pairing_feedback`이 참조하는 안주를 네이티브 쿼리로 걸러 낸다.
+- 타입 이름에 `Candidate`, `Item(s)`를 쓰지 않는다.
 
-- **Controller에서 각 도메인 `*UseCase`를 직접 순차 호출**: 부수효과가 실패했을 때 원본 작업도 함께 실패(롤백)해야 정합성이 유지되는 경우. 크로스 도메인 `*UseCase` 의존이 1개뿐이고 트리거·부수효과가 단순하면 이 방식으로 충분하며, 굳이 이벤트 인프라를 먼저 두지 않는다.
-- **도메인 이벤트(`@TransactionalEventListener(phase = AFTER_COMMIT)`)**: 원본 트랜잭션이 커밋된 뒤에만 의미가 있고, 부수효과가 실패해도 원본 작업을 되돌릴 이유가 없는 후속 정리(cleanup) 성격일 때. 예를 들어 회원 삭제는 그 자체로 완결된 사실이며, 뒤이은 로그아웃 처리(리프레시 토큰 삭제·액세스 토큰 블랙리스트 등록)가 일시적으로 실패하더라도 이미 삭제된 회원을 되살릴 이유는 없다 — 그래서 `MemberDeletedEvent` 기반으로 분리한다.
+### gathering과 notification
 
-**이벤트 컨벤션**:
-- 네이밍: `<Entity><과거분사>Event` (예: `MemberDeletedEvent`). 순수 도메인 개념(ID 등)뿐 아니라 구독 측이 필요로 하는 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다 — 이벤트는 "구독자에게 필요한 계약"이지, 발행 도메인의 순수 도메인 모델 그 자체는 아니다. 다만 그 컨텍스트가 여러 필드로 늘어나 이벤트의 성격이 모호해지면 그 시점에 페이로드 축소를 재검토한다.
-- 정의 위치: 발행하는 도메인의 `application.event` 패키지 (`domain`이 아니다 — `domain`은 프레임워크는 물론, accessToken처럼 다른 도메인/기술 맥락에 속하는 개념도 알지 못해야 한다).
-- 발행 위치: 트랜잭션 경계를 가진 `@CommandService` 구현체 내부에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다 (필드 주입). 트랜잭션 밖(Controller 등)에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
-- 구독 위치: 구독하는 도메인의 `application.listener` 패키지에 `@Component` 클래스를 두고 `@TransactionalEventListener(phase = AFTER_COMMIT)` 메서드로 구독한다. 리스너는 대상 도메인의 `*UseCase`를 직접 의존해 위임만 하고, 그 안에 비즈니스 로직을 직접 작성하지 않는다 (`@Component`는 기술적 wiring 전용이라는 기존 원칙과 동일).
-- 공유 마커 인터페이스나 베이스 클래스(`common.event` 등)는 두지 않는다. Spring의 `ApplicationEventPublisher`/`@TransactionalEventListener`는 특정 타입을 요구하지 않고, 이벤트가 아직 소수라 공유 추상화를 선제적으로 둘 근거가 없다 (YAGNI). 이벤트 종류가 늘어 정말 공통 로직(로깅, 재시도 등)이 필요해지는 시점에 재검토한다.
+- 의존 방향은 `gathering → notification` 한 방향이다.
+- 정산 건 기록과 수정은 정산 건을 바꾸기 전에 `notification`의 예약 UseCase를 같은 트랜잭션에서 부른다. 취소 알림도 같은 트랜잭션에서 부른다.
+- `notification`이 `gathering`의 데이터를 써야 하는 곳은 `notification.application.provider`에 인터페이스로 선언하고, `gathering.application.provider`의 `*ProviderImpl`이 구현한다. 주고받는 값은 `notification`의 `*Result`다.
+- 메시지에 담을 금액을 고르는 규칙(미입금 분담금, 취소된 정산 건)은 `gathering`에 둔다.
+- 설정 키와 큐 이름의 접두사는 `notification.*`이다. 링크 주소 환경 변수 `GATHERING_LINK_BASE_URL`과 테이블 이름, FK는 바꾸지 않는다.
+
+## 크로스 도메인 부수효과
+
+- 부수효과가 실패했을 때 원본 작업도 롤백돼야 하면 각 도메인 `*UseCase`를 같은 흐름에서 직접 호출한다.
+- 원본이 커밋된 뒤에만 의미가 있고 실패해도 원본을 되돌릴 이유가 없는 후속 정리라면 `@TransactionalEventListener(phase = AFTER_COMMIT)` 도메인 이벤트로 분리한다(예: 회원 삭제 뒤 로그아웃 처리).
+- 이벤트 이름은 `<Entity><과거분사>Event`(예: `MemberDeletedEvent`)다. 구독자에게 필요한 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다.
+- 이벤트는 발행하는 도메인의 `application.event`에 정의하고, `@CommandService` 구현체 안에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다. 트랜잭션 밖에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
+- 구독은 구독하는 도메인의 `application.listener`에 `@Component` 클래스로 두고, 대상 도메인의 `*UseCase`에 위임만 한다.
+- 공유 마커 인터페이스나 베이스 클래스(`common.event` 등)는 두지 않는다.
 
 ## 트랜잭션 / CQRS
 
-`@CommandService`(`@Service` + `@Transactional`), `@QueryService`(`@Service` + `@Transactional(readOnly = true)`) 메타 애노테이션을 `common.annotation`에 두고 모든 `*Service`에 부착한다.
+- 모든 `*Service`에 `@CommandService`(`@Service` + `@Transactional`) 또는 `@QueryService`(`@Service` + `@Transactional(readOnly = true)`)를 붙인다.
+- 메서드 단위 `@Transactional`은 붙이지 않는다. 한 클래스는 한 가지 트랜잭션 성격만 갖는다. 성격이 섞이면 UseCase를 나눈다.
+- `spring.jpa.open-in-view=false`다. Controller에서 지연 로딩을 쓰지 않는다.
 
-- 메서드 단위 `@Transactional`은 개별 부착하지 않는다. 클래스 하나 = 트랜잭션 성격 하나가 원칙이다. 이게 지켜지지 않으면 그 자체로 UseCase가 여러 책임을 겸하고 있다는 신호다.
-- `spring.jpa.open-in-view=false` (OSIV 비활성화). Controller에서 지연 로딩 사용 금지.
+## 하위 문서
 
-## 영속성 (PostgreSQL / pgvector)
-
-DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설정, 카탈로그 적재 러너에 관한 결정은 [`persistence.md`](persistence.md)에 있다. 엔티티와 `*JpaEntity` 매핑, `db/migration`의 마이그레이션 파일, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때 읽는다. 다만 적재 규칙표라도 추천 점수 때문에 정한 Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`)와 `drink.harmonizes` 컬럼(#105), 안주 무게감 보정 규칙표(`anju-serving-richness.csv`, #117)에 관한 결정은 `pairing.md`에 있다. 적재 코드가 `catalog` 도메인으로 옮겨져도(#139) 이 위치는 바뀌지 않는다.
-
-## pairing 추천 규칙
-
-`Pairing.recommend`의 점수 규칙(맛 유사도, 감점, 대비 점수, Harmonize), 후보 선정과 스타일 다양성, 추천 성능, 피드백 집계에 관한 결정은 [`pairing.md`](pairing.md)에 있다. `pairing` 도메인의 추천 로직이나 점수에 쓰는 값을 바꿀 때 읽는다. Harmonize 규칙표, `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표를 바꿀 때도 읽는다. 점수에 쓰는 맛 값 자체를 계산하는 규칙표(`FlavorRule`, `WineFlavorRule`, `AnjuRule`, #76~#78, #107. `AnjuRule`의 형태 보정(#117)은 빼고)와 `Drink`, `DrinkStyle` 애그리거트 분리(#75)는 `persistence.md`에 있다.
-
-## gathering 정산 규칙
-
-`gathering` 도메인의 애그리거트 경계(`Gathering`, `Settlement`), 분담 방식, 분담금 상태 변경, 리마인드, 개인정보 암호화와 단계적 파기, 익명 페어링 피드백에 관한 결정은 [`gathering.md`](gathering.md)에 있다. `gathering` 도메인의 모델, 정산 흐름, 개인정보 처리를 바꿀 때 읽는다. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 쪽 규칙을 다룰 때도 읽는다. 큐를 쓰는 범위는 메시지 큐 절에 있다. 정산 메시지의 발송 예약, 발송 기록, 발송 시간대 결정은 `notification.md`로 옮겼다(#159에서 변경).
-
-## notification 발송 규칙
-
-`notification` 도메인의 발송 예약, 발송 기록, 최소 한 번 발송과 재시도, 발송 시간대, 개인 링크, 발송 구현체에 관한 결정은 [`notification.md`](notification.md)에 있다(#159). 알림 발송 흐름, 큐 발행과 컨슈머, 폴러를 바꿀 때 읽는다. 정산 건을 기록, 수정, 취소할 때 발송 예약과 취소 알림이 어떻게 바뀌는지는 `gathering`이 부르는 쪽이라 함께 읽는다. 두 도메인의 의존 방향과 provider 인터페이스는 크로스 도메인 참조 절의 #159 결정에 있다.
+| 문서 | 읽는 때 |
+|---|---|
+| [`persistence.md`](persistence.md) | 엔티티와 `*JpaEntity` 매핑, `db/migration`, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때. 맛 값을 계산하는 규칙표(`FlavorRule`, `WineFlavorRule`, `AnjuRule`)와 `Drink`, `DrinkStyle` 분리도 여기 있다 |
+| [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`), `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표(`anju-serving-richness.csv`)도 여기 있다 |
+| [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, 익명 페어링 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
+| [`notification.md`](notification.md) | 발송 예약, 발송 기록, 재시도, 발송 시간대, 개인 링크, 큐 발행과 컨슈머, 폴러를 바꿀 때. 정산 건 변경이 예약과 취소 알림에 미치는 영향도 함께 읽는다 |
 
 ## 메시지 큐 (RabbitMQ)
 
-**(2026-10-25 결정, 이슈 #122)**: 메시지 큐는 RabbitMQ를 쓴다. 쓰기로 한 곳은 정산 메시지와 리마인드 지연 발송(#126, #127)뿐이고, 발송은 `notification`이 맡는다(#159에서 변경). 도입은 #126에서 한다. 도입 근거는 세 가지다. 첫째, 발송 시각이 모임과 참여자마다 달라 예약이 시각별로 흩어진다. 둘째, 서버가 재시작돼도 예약이 유실되면 안 된다. 셋째, 외부 발송 장애가 API 서버로 번지지 않아야 하고 재시도와 DLQ가 필요하다. 발송 예정 시각은 DB의 예약이 갖고, 큐는 수신자별 발송과 재시도, DLQ, 외부 장애 격리를 맡는다(#126에서 변경). 지연까지 큐에 맡기는 안은 택하지 않았다. 메시지별 TTL은 앞 메시지가 뒤 메시지를 막는 head-of-line 문제가 있고, 지연 플러그인은 기본 이미지에 없으며 지연 메시지를 한 노드에만 저장한다. 또 커밋 뒤 발행 실패에 대비하려면 어차피 예약을 DB에 두고 주기적으로 다시 발행해야 해서, 큐가 지연을 맡아도 DB 조회가 없어지지 않는다. Redis를 함께 두는 안도 택하지 않았다. Redis는 정산 건과 같은 트랜잭션으로 묶을 수 없어 유실 틈이 그대로 남고, PostgreSQL이 내려가면 정산 건도 커밋되지 않으며, 발송에 필요한 휴대폰과 데이터 키도 PostgreSQL에 있기 때문이다. 상세 결정은 `notification.md`에 있다(#159에서 변경). Redis를 지연 큐로 쓰는 안도 택하지 않았다. 지금 Redis는 토큰 저장소라서, 지연 큐로 쓰려면 영속성 설정, 재시도, DLQ를 모두 직접 구현해야 한다. 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다. 큐에 개인정보가 남지 않게 하고, 그사이 입금되거나 파기된 건을 보내지 않기 위해서다. 리마인드 횟수와 간격 같은 발송 규칙은 큐 설정이 아니라 `NotificationPolicy`가 정한다(#127에서 변경). 큐를 쓸 근거가 없는 곳에는 쓰지 않는다. 개인정보 파기(#128)는 주기적 스윕으로 처리한다. 지연 메시지가 유실되면 데이터가 영구히 남고, 파기는 한 시간 늦어도 문제가 없기 때문이다. 페어링 피드백 집계(#130)도 큐를 쓰지 않는다. 근거는 `pairing.md`에 있다. 다른 곳에 큐를 새로 쓰려면 위 세 근거 중 하나에 해당하는지 먼저 따진다.
+- 큐는 정산 메시지와 리마인드 발송에만 쓰고, 발송은 `notification`이 맡는다.
+- 발송 예정 시각은 DB의 예약이 갖는다. 큐는 수신자별 발송, 재시도, DLQ, 외부 장애 격리를 맡는다. 지연을 큐에 맡기지 않는다.
+- 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다.
+- 리마인드 횟수와 간격은 큐 설정이 아니라 `NotificationPolicy`가 정한다.
+- 개인정보 파기는 주기적 스윕으로, 페어링 피드백 집계는 큐 없이 처리한다.
+- 다른 곳에 큐를 쓰려면 다음 중 하나에 해당해야 한다. 예약이 시각별로 흩어진다. 재시작해도 예약이 유실되면 안 된다. 외부 장애를 격리하고 재시도와 DLQ가 필요하다.
 
 ## DDD 핵심 원칙
 
-- **DDD 기반**: 도메인 로직은 도메인 객체 메서드에 위치 (Service는 오케스트레이션만).
-- **`@Service` vs `@Component`**: `@Service`는 `*UseCase` 구현체(비즈니스 로직 실행자)에 붙인다. `@Component`는 스케줄러·이벤트 리스너 같은 기술적 wiring에만 쓴다. 여러 도메인을 조율하는 비즈니스 오케스트레이터 용도로는 쓰지 않는다.
-- **UseCase 단위 분리 (Facade 대체)**: 1 `*UseCase` 인터페이스 = 1 `*Service` 구현체가 기본. 로그인/재발급/로그아웃처럼 트리거·부수효과가 다른 흐름을 하나의 Service가 묶어 처리하지 않는다.
-  - **판단 기준**: 메서드들이 부수효과·외부 연동 없이 유사한 단순 조회/CRUD라면 Query/Command 레벨 유지 가능 (예: `MemberQueryService`/`MemberCommandService`). 트리거·부수효과·외부 연동이 서로 다른 별개의 흐름이라면 UseCase 단위로 반드시 분리 (예: `RefreshUseCase`/`RefreshService`, `LogoutUseCase`/`LogoutService`).
-- **Presentation → Application 변환**: Request DTO의 `toCommand()`로 Command 객체 생성, 도메인은 원시값만 받음.
-- **인증 식별자 추출**: `@AuthenticationPrincipal String memberId`.
-- **RTR(Refresh Token Rotation)**: 토큰 탈취 감지, 누락 시 단순 거부(Tombstone 없음). 리프레시 토큰은 httpOnly+Secure+SameSite 쿠키로 전달, 액세스 토큰은 응답 바디.
-- **쿠키 기반 인증 제약**: CORS `Access-Control-Allow-Credentials: true` 필요 → Origin 와일드카드(`*`) 사용 불가, 허용 오리진 명시 필수. CSRF는 리프레시 토큰 쿠키에 `SameSite=Strict` 적용으로 방어(별도 CSRF 토큰 없음). 쿠키 `Path`는 인증 엔드포인트 공통 경로(`AuthEndpoints.BASE`)로 제한한다(#156에서 변경).
-- **로그아웃 (2026-11-01 결정, 이슈 #156)**: 로그아웃은 이 기기의 세션만 끊고, 토큰이 없거나 만료돼도 204를 반환한다. 그래서 `LOGOUT`은 인증 없이 호출할 수 있고, 쿠키의 리프레시 토큰 하나를 `consume`으로 지운다. 액세스 토큰은 필터가 인증한 유효한 토큰일 때만 블랙리스트에 올린다. 이전에는 로그아웃에 인증이 필요해서, 액세스 토큰이 만료되면 401이 나고 리프레시 토큰이 남았다. 쿠키 `Path`도 재발급 엔드포인트라 로그아웃 요청에 쿠키가 실리지 않았다. 사용자가 로그아웃을 눌렀을 때 오류를 보여 주지 않고, 누른 기기만 끊는 것이 일반적인 기대이기 때문이다. 만료된 액세스 토큰을 로그아웃에서만 허용하는 안은 택하지 않았다. `AccessTokenProvider`에 만료를 무시하는 파싱이 생기고, 오래전에 유출된 토큰으로도 세션을 끊을 수 있기 때문이다. 회원 탈퇴는 모든 기기를 끊어야 하므로 `MemberDeletedEventListener`가 `ForceRevokeUseCase`로 회원의 리프레시 토큰을 모두 지우고 `LogoutUseCase`로 액세스 토큰을 블랙리스트에 올린다. 이미 발급된 옛 `Path` 쿠키는 처리하지 않았다. 결정 시점에 운영 배포가 없었기 때문이다.
-- **401 응답 헤더 (2026-11-01 결정, 이슈 #156)**: `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"` 헤더를 넣는다. RFC 9110과 RFC 6750이 401 응답에 인증 방식을 알리도록 요구하기 때문이다. RFC 6750은 `Bearer` 뒤에 인증 매개변수를 하나 이상 요구해서 `realm`을 붙인다. `GlobalExceptionHandler`가 응답하는 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다. 재발급은 Bearer가 아니라 쿠키로 인증하고, 헤더를 넣으면 `common`이 인증 방식을 알아야 하기 때문이다.
-- **Rate Limiting 미적용 (2026-10-08 결정, 이슈 #83)**: 앱 단 IP별 rate limit(`RateLimitFilter`)을 제거했다. signup·login은 일회용 OAuth 인가 코드를, refresh는 추측할 수 없는 UUID 리프레시 토큰을 받으므로 무차별 대입이 성립하지 않는다. 대량 요청 방어는 요청이 앱에 닿기 전에 막는 LB/WAF(예: Cloud Armor)가 맡는 편이 낫다. 필터를 유지하려면 프록시 뒤 IP 식별과 `INCR`/`EXPIRE` 원자화(Lua)를 함께 고쳐야 했는데, 그 비용에 비해 실익이 작아 택하지 않았다. 잘못된 인가 코드로 반복 호출해 카카오·구글 API 호출 한도를 소모시키는 공격이 관측되거나, 비밀번호 로그인처럼 대입 가능한 입력을 받는 엔드포인트가 생기면 재검토한다.
-- **클라이언트 IP 식별 (2026-10-08 결정, 이슈 #83)**: 클라이언트 IP는 감사 로그(`AuditLogRecorder`)의 `ip` 필드에만 쓰인다. `server.forward-headers-strategy: native`로 Tomcat `RemoteIpValve`를 켜고, `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES` 환경변수, 기본값은 Spring Boot의 사설 IP 대역)에 든 프록시가 보낸 `X-Forwarded-For`만 반영한다. 그래서 IP는 어디서든 `HttpServletRequest.getRemoteAddr()`로 구하고, 별도 IP 추출 유틸을 두지 않는다. `framework` 전략(`ForwardedHeaderFilter`)은 헤더를 무조건 신뢰해 위조에 열려 있어 택하지 않았다. 신뢰 프록시 목록이 실제 LB 대역과 어긋나면 헤더가 무시되어 LB IP가 남을 뿐 위조에 열리지는 않으므로, 동작 검증은 테스트가 아니라 배포 시 `TRUSTED_PROXIES`를 넣고 감사 로그를 확인하는 것으로 한다. MockMvc는 Tomcat을 거치지 않아 이 동작을 검증할 수 없고, 실제 포트를 띄우는 테스트는 우리 코드가 아니라 Tomcat 구현을 검증하게 되어 두지 않았다. IP를 인가·차단 판단에 쓰기 시작하면 테스트 추가를 재검토한다.
-- **YAGNI**: 안 쓰는 에러 코드·검증기·추상화는 주저 없이 제거.
+- 도메인 로직은 도메인 객체 메서드에 둔다. Service는 오케스트레이션만 한다.
+- `@Service`는 `*UseCase` 구현체에만 붙인다. `@Component`는 스케줄러, 이벤트 리스너 같은 기술 wiring에만 쓰고, 여러 도메인을 조율하는 용도로 쓰지 않는다.
+- 1 `*UseCase` = 1 `*Service`가 기본이다. 부수효과, 외부 연동 없는 유사한 단순 조회와 CRUD는 Query/Command 레벨로 묶을 수 있다(예: `MemberQueryService`, `MemberCommandService`). 트리거, 부수효과, 외부 연동이 다른 흐름은 UseCase 단위로 나눈다(예: `RefreshService`, `LogoutService`).
+- Request DTO의 `toCommand()`로 Command를 만들고, 도메인은 원시값만 받는다.
+- 인증 식별자는 `@AuthenticationPrincipal String memberId`로 받는다.
+- 안 쓰는 에러 코드, 검증기, 추상화는 제거한다(YAGNI).
+
+## 인증
+
+- 리프레시 토큰은 RTR로 회전한다. 탈취를 감지하고, 누락되면 거부한다(Tombstone 없음).
+- 리프레시 토큰은 httpOnly, Secure, `SameSite=Strict` 쿠키로, 액세스 토큰은 응답 바디로 전달한다. 쿠키 `Path`는 `AuthEndpoints.BASE`다.
+- CORS는 `Access-Control-Allow-Credentials: true`라서 허용 오리진을 명시한다. 와일드카드(`*`)는 쓰지 않는다. CSRF는 `SameSite=Strict`로 막고 별도 CSRF 토큰은 두지 않는다.
+- 로그아웃은 인증 없이 호출할 수 있고, 토큰이 없거나 만료돼도 204를 반환한다. 쿠키의 리프레시 토큰 하나를 `consume`으로 지우고, 필터가 인증한 유효한 액세스 토큰만 블랙리스트에 올린다.
+- 회원 탈퇴는 `MemberDeletedEventListener`가 `ForceRevokeUseCase`로 리프레시 토큰을 모두 지우고 `LogoutUseCase`로 액세스 토큰을 블랙리스트에 올린다.
+- `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"`를 넣는다. `GlobalExceptionHandler`의 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다.
+- 앱 단 rate limit은 두지 않는다. 대량 요청 방어는 LB/WAF가 맡는다.
+- 클라이언트 IP는 감사 로그(`AuditLogRecorder`)에만 쓴다. `server.forward-headers-strategy: native`와 `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES`)로 신뢰 프록시의 `X-Forwarded-For`만 반영하고, 어디서든 `HttpServletRequest.getRemoteAddr()`로 구한다. 별도 IP 추출 유틸과 테스트는 두지 않는다.
 
 ## 응답 포맷
 
-`StandardResponse<T>`(`common.response`)가 모든 응답을 감싼다. 필드는 `boolean ok`, `int status`(HTTP 상태 코드), `T data`로 확정되어 있다. 성공 응답은 `StandardResponse.success(status, data)`(반환값 없는 성공은 `data` 없는 오버로드), 에러 응답은 `StandardResponse.fail(status, ErrorResponse)` 정적 팩토리로 생성한다.
+`StandardResponse<T>`(`common.response`)가 모든 응답을 감싼다. 필드는 `boolean ok`, `int status`, `T data`다. 성공은 `StandardResponse.success(status, data)`(반환값 없으면 `data` 없는 오버로드), 에러는 `StandardResponse.fail(status, ErrorResponse)`로 만든다.
 
 ## 계층 규칙 검증 범위
 
-- import와 선언만 보고 판정할 수 있는 계층 규칙은 `.claude/scripts/check-architecture.sh`가 grep으로 검사한다. `check-all.sh`가 이 스크립트를 실행한다. 검사 항목은 스크립트 머리 주석과 본문이 단일 소스다.
-- 판단이 필요한 규칙(절차적 도메인 로직, 다른 도메인 enum의 메서드 호출, DTO 직접 조립, `*Result`의 엔티티 노출 등)은 `code-reviewer` 에이전트가 체크리스트로 검토한다.
+- import와 선언만 보고 판정할 수 있는 계층 규칙은 `.claude/scripts/check-architecture.sh`가 grep으로 검사한다. `check-all.sh`가 이 스크립트를 실행한다. 검사 항목은 스크립트가 단일 소스다.
+- 판단이 필요한 규칙(절차적 도메인 로직, 다른 도메인 enum의 메서드 호출, DTO 직접 조립, `*Result`의 엔티티 노출 등)은 `code-reviewer` 에이전트가 검토한다.
 - Konsist, ArchUnit 같은 아키텍처 검증 도구는 도입하지 않는다.
