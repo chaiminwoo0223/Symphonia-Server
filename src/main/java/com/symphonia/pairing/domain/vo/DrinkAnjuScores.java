@@ -3,25 +3,35 @@ package com.symphonia.pairing.domain.vo;
 import java.util.List;
 import java.util.function.DoubleConsumer;
 import java.util.function.ToDoubleBiFunction;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 // 허용된 음료×안주 쌍의 점수를 1차원 배열로 들고 있다.
 // index번째 쌍은 (index / 안주 수)번째 음료와 (index % 안주 수)번째 안주라서, 한 음료의 쌍은 배열에서 연속한다.
 // 쌍마다 점수를 어떻게 매기는지는 모르고, 받은 점수 함수를 그대로 적용한다.
+// 쌍 점수에 음료에만 달린 점수와 안주에만 달린 점수를 그 순서로 더한다.
 // scores는 요청마다 쌍 수만큼 커서 복사하지 않는다. 이 값은 비교하지 않고 선정 계산에만 쓰므로 배열의 참조 비교가 문제 되지 않는다.
 public record DrinkAnjuScores(List<PairingDrink> drinks, List<PairingAnju> anjus, double[] scores) {
     // 요청마다 쌍 수만큼 도는 가장 뜨거운 반복이라 이중 반복문으로 둔다.
     // flatMapToDouble로 바꾸면 음료마다 안쪽 스트림이 생겨 추천 계산 시간이 약 2배가 된다(#107 측정).
+    // 음료에만 달린 점수와 안주에만 달린 점수는 쌍마다 다시 판정하지 않도록 반복 밖에서 한 번씩만 계산한다.
     public static DrinkAnjuScores of(
             List<PairingDrink> drinks,
             List<PairingAnju> anjus,
-            ToDoubleBiFunction<PairingDrink, PairingAnju> scoring) {
+            ToDoubleBiFunction<PairingDrink, PairingAnju> pairScoring,
+            ToDoubleFunction<PairingDrink> drinkScoring,
+            ToDoubleFunction<PairingAnju> anjuScoring) {
+        double[] anjuScores = anjus.stream().mapToDouble(anjuScoring).toArray();
         double[] scores = new double[drinks.size() * anjus.size()];
         int index = 0;
         for (PairingDrink drink : drinks) {
-            for (PairingAnju anju : anjus) {
-                scores[index++] = scoring.applyAsDouble(drink, anju);
+            double drinkScore = drinkScoring.applyAsDouble(drink);
+            for (int anjuIndex = 0; anjuIndex < anjus.size(); anjuIndex++) {
+                scores[index++] =
+                        pairScoring.applyAsDouble(drink, anjus.get(anjuIndex))
+                                + drinkScore
+                                + anjuScores[anjuIndex];
             }
         }
 
