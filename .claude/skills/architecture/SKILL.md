@@ -153,7 +153,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 응답 포맷
 
-`StandardResponse<T>`(`common.response`)가 모든 응답을 감싼다. 필드는 `boolean ok`, `int status`, `T data`다. 성공은 `StandardResponse.success(status, data)`(반환값 없으면 `data` 없는 오버로드), 에러는 `StandardResponse.fail(status, ErrorResponse)`로 만든다.
+`StandardResponse<T>`(`common.response`)가 본문이 있는 모든 응답을 감싼다. 204 응답에는 본문이 없다. 필드는 `boolean ok`, `int status`, `T data`다. 성공은 `StandardResponse.success(status, data)`(반환값 없으면 `data` 없는 오버로드), 에러는 `StandardResponse.fail(status, ErrorResponse)`로 만든다.
 
 ## 계층 규칙 검증 범위
 
