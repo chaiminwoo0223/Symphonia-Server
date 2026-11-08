@@ -14,7 +14,7 @@ disable-model-invocation: true
 
 ## Work Order
 
-1. **UseCase 정의** (application): `architecture` 스킬의 "판단 기준"(단순 조회/CRUD면 기존 Query/Command Service 유지, 트리거·부수효과가 다른 흐름이면 별도 `*UseCase`/`*Service` 분리)으로 신규 UseCase 필요 여부를 먼저 판단한다.
+1. **UseCase 정의** (application): `architecture` 스킬의 DDD 핵심 원칙 절(단순 조회/CRUD면 기존 Query/Command Service 유지, 트리거·부수효과가 다른 흐름이면 별도 `*UseCase`/`*Service` 분리)으로 신규 UseCase 필요 여부를 먼저 판단한다.
 2. **Service 구현**: `architecture` 스킬의 트랜잭션 / CQRS 절에 따라 `@CommandService`(쓰기)/`@QueryService`(조회)를 부착한다.
 3. **Api 인터페이스 + Controller** (presentation): `*Request.toCommand()`/`toQuery()`로 변환, `*Response.from(Result)`로 응답 생성.
 4. **DTO 작성** (presentation): 필요한 `*Request`/`*Response` 추가.
