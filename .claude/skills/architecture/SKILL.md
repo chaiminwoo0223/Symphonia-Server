@@ -100,7 +100,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 크로스 도메인 부수효과
 
-- 부수효과가 실패했을 때 원본 작업도 함께 실패해야 하면 Controller에서 각 도메인 `*UseCase`를 직접 순차 호출한다. 크로스 도메인 `*UseCase` 의존이 하나뿐이고 흐름이 단순하면 이벤트 인프라를 먼저 두지 않는다.
+- 부수효과가 실패했을 때 원본 작업도 함께 실패해야 하면 원본 도메인의 `@CommandService` 안에서 대상 도메인의 `*UseCase`를 부른다. 두 작업이 한 트랜잭션에서 함께 커밋되거나 함께 롤백된다(예: 정산 건 기록과 발송 예약). Controller에서 UseCase를 차례로 부르면 앞 UseCase가 먼저 커밋되므로 이렇게 조율하지 않는다.
 - 원본이 커밋된 뒤에만 의미가 있고 실패해도 원본을 되돌릴 이유가 없는 후속 정리라면 `@TransactionalEventListener(phase = AFTER_COMMIT)` 도메인 이벤트로 분리한다(예: 회원 삭제 뒤 로그아웃 처리).
 - 이벤트 이름은 `<Entity><과거분사>Event`(예: `MemberDeletedEvent`)다. 구독자에게 필요한 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다.
 - 이벤트는 발행하는 도메인의 `application.event`에 정의하고, `@CommandService` 구현체 안에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다. 트랜잭션 밖에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
