@@ -3,7 +3,7 @@
 # 실행: ./.claude/scripts/check-all.sh
 #
 # 로컬에서는 성공하면 한 줄만 출력하고, 실패하면 실패한 단계, 실패한 테스트, 로그 끝부분만 출력한다.
-# 전체 로그는 .git/check-all.log에 남긴다. build는 clean이 지우므로 쓰지 않는다.
+# 전체 로그는 Git 디렉터리(git rev-parse --absolute-git-dir)의 check-all.log에 남긴다. build는 clean이 지우므로 쓰지 않는다.
 # CI 환경변수가 있으면 사람이 Actions 화면에서 원인을 찾을 수 있게 전체 로그를 그대로 출력한다.
 # 작업 트리가 깨끗한 상태로 통과하면 HEAD를 기록한다. push 게이트는 기록과 HEAD가 같으면 검증을 건너뛴다.
 
