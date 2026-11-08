@@ -8,22 +8,20 @@ import com.symphonia.pairing.domain.vo.RelationshipType;
 public record SubmitAnonymousPairingFeedbackCommand(
         Long drinkId,
         Long anjuId,
-        Long musicMoodId,
         RelationshipType relationshipType,
         MoodType moodType,
         PairingRating rating) {
     public static SubmitAnonymousPairingFeedbackCommand of(
             Long drinkId,
             Long anjuId,
-            Long musicMoodId,
             RelationshipType relationshipType,
             MoodType moodType,
             PairingRating rating) {
         return new SubmitAnonymousPairingFeedbackCommand(
-                drinkId, anjuId, musicMoodId, relationshipType, moodType, rating);
+                drinkId, anjuId, relationshipType, moodType, rating);
     }
 
     public CatalogReferencesQuery toCatalogReferencesQuery() {
-        return CatalogReferencesQuery.of(drinkId, anjuId, musicMoodId);
+        return CatalogReferencesQuery.of(drinkId, anjuId);
     }
 }

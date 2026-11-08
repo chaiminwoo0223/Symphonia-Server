@@ -10,7 +10,6 @@ import com.symphonia.catalog.domain.vo.AnjuSource;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.DrinkStyleFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import com.symphonia.pairing.infrastructure.jpa.PairingFeedbackJpaEntity;
 import com.symphonia.pairing.infrastructure.jpa.PairingFeedbackJpaRepository;
@@ -35,7 +34,6 @@ class AnjuRepositoryImplTest extends RepositoryTest {
     @Autowired private AnjuJpaRepository anjuJpaRepository;
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
-    @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
     @Autowired private PairingFeedbackJpaRepository pairingFeedbackJpaRepository;
     @Autowired private EntityManager entityManager;
 
@@ -356,14 +354,10 @@ class AnjuRepositoryImplTest extends RepositoryTest {
                 drinkJpaRepository
                         .save(DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyleId)))
                         .getId();
-        Long musicMoodId =
-                musicMoodJpaRepository
-                        .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
-                        .getId();
         pairingFeedbackJpaRepository.save(
                 PairingFeedbackJpaEntity.from(
                         PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                                drinkId, anjuId, musicMoodId)));
+                                drinkId, anjuId)));
     }
 
     private long countAllergyTypeRowsOf(Long anjuId) {

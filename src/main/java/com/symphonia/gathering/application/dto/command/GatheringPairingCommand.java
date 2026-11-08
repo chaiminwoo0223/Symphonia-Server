@@ -7,16 +7,12 @@ import com.symphonia.pairing.domain.vo.RelationshipType;
 
 // 모임 열기와 페어링 고르기가 함께 받는 페어링 값이다.
 public record GatheringPairingCommand(
-        Long drinkId,
-        Long anjuId,
-        Long musicMoodId,
-        RelationshipType relationshipType,
-        MoodType moodType) {
+        Long drinkId, Long anjuId, RelationshipType relationshipType, MoodType moodType) {
     public CatalogReferencesQuery toCatalogReferencesQuery() {
-        return CatalogReferencesQuery.of(drinkId, anjuId, musicMoodId);
+        return CatalogReferencesQuery.of(drinkId, anjuId);
     }
 
     public GatheringPairing toGatheringPairing() {
-        return GatheringPairing.of(drinkId, anjuId, musicMoodId, relationshipType, moodType);
+        return GatheringPairing.of(drinkId, anjuId, relationshipType, moodType);
     }
 }

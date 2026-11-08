@@ -15,7 +15,6 @@ public record FeedbackScores(Map<CombinationId, Double> scoreByCombination) {
             Collection<PairingRatingSummary> ratingSummaries,
             Set<Long> drinkIds,
             Set<Long> anjuIds,
-            Set<Long> musicMoodIds,
             ToDoubleFunction<PairingRatingSummary> scoring) {
         Map<CombinationId, Double> scoreByCombination =
                 ratingSummaries.stream()
@@ -23,15 +22,12 @@ public record FeedbackScores(Map<CombinationId, Double> scoreByCombination) {
                         .filter(
                                 summary ->
                                         drinkIds.contains(summary.drinkId())
-                                                && anjuIds.contains(summary.anjuId())
-                                                && musicMoodIds.contains(summary.musicMoodId()))
+                                                && anjuIds.contains(summary.anjuId()))
                         .collect(
                                 Collectors.toMap(
                                         summary ->
                                                 new CombinationId(
-                                                        summary.drinkId(),
-                                                        summary.anjuId(),
-                                                        summary.musicMoodId()),
+                                                        summary.drinkId(), summary.anjuId()),
                                         scoring::applyAsDouble));
 
         return new FeedbackScores(Map.copyOf(scoreByCombination));

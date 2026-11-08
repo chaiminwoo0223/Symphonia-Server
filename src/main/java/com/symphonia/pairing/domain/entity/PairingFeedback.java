@@ -19,7 +19,6 @@ public class PairingFeedback {
     private Long memberId;
     private Long drinkId;
     private Long anjuId;
-    private Long musicMoodId;
     private RelationshipType relationshipType;
     private MoodType moodType;
     private PairingRating rating;
@@ -28,7 +27,6 @@ public class PairingFeedback {
             Long memberId,
             Long drinkId,
             Long anjuId,
-            Long musicMoodId,
             RelationshipType relationshipType,
             MoodType moodType,
             PairingRating rating) {
@@ -36,7 +34,6 @@ public class PairingFeedback {
                 .memberId(memberId)
                 .drinkId(drinkId)
                 .anjuId(anjuId)
-                .musicMoodId(musicMoodId)
                 .relationshipType(relationshipType)
                 .moodType(moodType)
                 .rating(rating)
@@ -47,11 +44,10 @@ public class PairingFeedback {
     public static PairingFeedback anonymous(
             Long drinkId,
             Long anjuId,
-            Long musicMoodId,
             RelationshipType relationshipType,
             MoodType moodType,
             PairingRating rating) {
-        return of(null, drinkId, anjuId, musicMoodId, relationshipType, moodType, rating);
+        return of(null, drinkId, anjuId, relationshipType, moodType, rating);
     }
 
     // 같은 조합에 다시 낸 피드백으로 바꾸고, 조합별 집계가 바뀌는 수를 돌려준다.

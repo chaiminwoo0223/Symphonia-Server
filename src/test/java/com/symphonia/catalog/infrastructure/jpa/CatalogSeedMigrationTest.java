@@ -13,7 +13,6 @@ import com.symphonia.catalog.domain.vo.ServingStyle;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.DrinkStyleFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.catalog.fixture.XWineFixture;
 import java.util.List;
 import java.util.Optional;
@@ -27,7 +26,6 @@ class CatalogSeedMigrationTest extends RepositoryTest {
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
-    @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
 
     // 시드 마이그레이션에서 setval 보정이 빠지면 IDENTITY가 시드 id를 다시 발급해 save()가 중복 키로 실패한다.
     @Test
@@ -44,15 +42,11 @@ class CatalogSeedMigrationTest extends RepositoryTest {
                         DrinkJpaEntity.from(DrinkFixture.SOJU.createWithStyle(drinkStyle.getId())));
         AnjuJpaEntity anju =
                 anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.BOILED_PORK.create()));
-        MusicMoodJpaEntity musicMood =
-                musicMoodJpaRepository.save(
-                        MusicMoodJpaEntity.from(MusicMoodFixture.CASUAL_LOFI.create()));
 
         // then
         assertThat(drinkStyle.getId()).isNotNull();
         assertThat(drink.getId()).isNotNull();
         assertThat(anju.getId()).isNotNull();
-        assertThat(musicMood.getId()).isNotNull();
     }
 
     // V6가 레드 와인 시드를 지우고 다시 넣으면 id가 바뀌어 pairing_feedback의 FK가 끊긴다.

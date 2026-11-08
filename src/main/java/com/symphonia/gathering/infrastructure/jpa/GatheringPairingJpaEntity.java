@@ -27,9 +27,6 @@ public class GatheringPairingJpaEntity {
     @Column(nullable = false)
     private Long anjuId;
 
-    @Column(nullable = false)
-    private Long musicMoodId;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RelationshipType relationshipType;
@@ -39,6 +36,6 @@ public class GatheringPairingJpaEntity {
     private MoodType moodType;
 
     public GatheringPairing toDomain() {
-        return GatheringPairing.of(drinkId, anjuId, musicMoodId, relationshipType, moodType);
+        return GatheringPairing.of(drinkId, anjuId, relationshipType, moodType);
     }
 }

@@ -6,15 +6,12 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.DrinkStyleFixture;
-import com.symphonia.catalog.fixture.MusicMoodFixture;
 import com.symphonia.catalog.infrastructure.jpa.AnjuJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.AnjuJpaRepository;
 import com.symphonia.catalog.infrastructure.jpa.DrinkJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkJpaRepository;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
-import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaEntity;
-import com.symphonia.catalog.infrastructure.jpa.MusicMoodJpaRepository;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.vo.MoodType;
@@ -43,12 +40,10 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
     @Autowired private DrinkStyleJpaRepository drinkStyleJpaRepository;
     @Autowired private DrinkJpaRepository drinkJpaRepository;
     @Autowired private AnjuJpaRepository anjuJpaRepository;
-    @Autowired private MusicMoodJpaRepository musicMoodJpaRepository;
     @Autowired private EntityManager entityManager;
 
     private Long drinkId;
     private Long anjuId;
-    private Long musicMoodId;
 
     // drink는 drink style FK를 가지므로 스타일을 먼저 저장한다.
     @BeforeEach
@@ -64,10 +59,6 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         anjuId =
                 anjuJpaRepository
                         .save(AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()))
-                        .getId();
-        musicMoodId =
-                musicMoodJpaRepository
-                        .save(MusicMoodJpaEntity.from(MusicMoodFixture.FORMAL_JAZZ.create()))
                         .getId();
     }
 
@@ -94,7 +85,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 entityManager.clear();
                 assertThat(
                                 pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                                        saved.getMemberId(), drinkId, anjuId, musicMoodId))
+                                        saved.getMemberId(), drinkId, anjuId))
                         .hasValueSatisfying(
                                 feedback -> {
                                     assertThat(feedback.getId()).isEqualTo(saved.getId());
@@ -117,7 +108,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 // given
                 PairingFeedback anonymous =
                         PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
-                                drinkId, anjuId, musicMoodId);
+                                drinkId, anjuId);
 
                 // when
                 PairingFeedback saved = pairingFeedbackRepository.save(anonymous);
@@ -138,12 +129,12 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 // given
                 PairingFeedback first =
                         PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
-                                drinkId, anjuId, musicMoodId);
+                                drinkId, anjuId);
                 pairingFeedbackRepository.save(first);
                 entityManager.flush();
                 PairingFeedback second =
                         PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
-                                drinkId, anjuId, musicMoodId);
+                                drinkId, anjuId);
 
                 // when
                 pairingFeedbackRepository.save(second);
@@ -172,8 +163,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
             void shouldInsertFeedbackAndReturnTrue() {
                 // given
                 PairingFeedback pairingFeedback =
-                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                                drinkId, anjuId, musicMoodId);
+                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(drinkId, anjuId);
 
                 // when
                 boolean inserted = pairingFeedbackRepository.saveIfAbsent(pairingFeedback);
@@ -203,8 +193,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 // given
                 PairingFeedback existing = savedFeedback();
                 PairingFeedback another =
-                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                                drinkId, anjuId, musicMoodId);
+                        PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(drinkId, anjuId);
                 another.resubmit(RelationshipType.LOVER, MoodType.ROMANTIC, PairingRating.DISLIKE);
 
                 // when
@@ -236,7 +225,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 // when
                 Optional<PairingFeedback> found =
                         pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                                saved.getMemberId(), drinkId, anjuId, musicMoodId);
+                                saved.getMemberId(), drinkId, anjuId);
 
                 // then
                 assertThat(found).map(PairingFeedback::getId).hasValue(saved.getId());
@@ -256,7 +245,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 // when
                 Optional<PairingFeedback> found =
                         pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                                OTHER_MEMBER_ID, drinkId, anjuId, musicMoodId);
+                                OTHER_MEMBER_ID, drinkId, anjuId);
 
                 // then
                 assertThat(found).isEmpty();
@@ -266,13 +255,12 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
 
     private PairingFeedback savedFeedback() {
         PairingFeedback pairingFeedback =
-                PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(
-                        drinkId, anjuId, musicMoodId);
+                PairingFeedbackFixture.FRIEND_FORMAL.createWithReferences(drinkId, anjuId);
         pairingFeedbackRepository.saveIfAbsent(pairingFeedback);
 
         return pairingFeedbackRepository
                 .findByMemberIdAndCombinationForUpdate(
-                        pairingFeedback.getMemberId(), drinkId, anjuId, musicMoodId)
+                        pairingFeedback.getMemberId(), drinkId, anjuId)
                 .orElseThrow();
     }
 
@@ -281,7 +269,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         entityManager.clear();
 
         return pairingFeedbackJpaRepository
-                .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId, musicMoodId)
+                .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId)
                 .orElseThrow();
     }
 }

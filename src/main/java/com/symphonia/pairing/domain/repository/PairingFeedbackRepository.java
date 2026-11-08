@@ -10,5 +10,5 @@ public interface PairingFeedbackRepository {
     boolean saveIfAbsent(PairingFeedback pairingFeedback);
 
     Optional<PairingFeedback> findByMemberIdAndCombinationForUpdate(
-            Long memberId, Long drinkId, Long anjuId, Long musicMoodId);
+            Long memberId, Long drinkId, Long anjuId);
 }

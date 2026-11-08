@@ -37,7 +37,6 @@ class PairingCommandServiceTest extends UnitTest {
     private static final Long MEMBER_ID = 1L;
     private static final Long DRINK_ID = 1L;
     private static final Long ANJU_ID = 2L;
-    private static final Long MUSIC_MOOD_ID = 3L;
     private static final Long FEEDBACK_ID = 4L;
 
     @InjectMocks private PairingCommandService pairingCommandService;
@@ -60,7 +59,7 @@ class PairingCommandServiceTest extends UnitTest {
                 // given
                 willThrow(new DrinkNotFoundException())
                         .given(verifyCatalogReferencesUseCase)
-                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID));
 
                 // when & then
                 assertThatThrownBy(() -> pairingCommandService.submit(command()))
@@ -88,7 +87,7 @@ class PairingCommandServiceTest extends UnitTest {
                 // then
                 then(verifyCatalogReferencesUseCase)
                         .should()
-                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID));
                 ArgumentCaptor<PairingFeedback> inserted =
                         ArgumentCaptor.forClass(PairingFeedback.class);
                 then(pairingFeedbackRepository).should().saveIfAbsent(inserted.capture());
@@ -97,13 +96,11 @@ class PairingCommandServiceTest extends UnitTest {
                 then(pairingFeedbackRepository).should(never()).save(any(PairingFeedback.class));
                 then(pairingRatingSummaryRepository)
                         .should()
-                        .accumulate(
-                                DRINK_ID, ANJU_ID, MUSIC_MOOD_ID, new PairingRatingChange(1, 0));
+                        .accumulate(DRINK_ID, ANJU_ID, new PairingRatingChange(1, 0));
                 assertThat(result.id()).isEqualTo(FEEDBACK_ID);
                 assertThat(result.memberId()).isEqualTo(MEMBER_ID);
                 assertThat(result.drinkId()).isEqualTo(DRINK_ID);
                 assertThat(result.anjuId()).isEqualTo(ANJU_ID);
-                assertThat(result.musicMoodId()).isEqualTo(MUSIC_MOOD_ID);
                 assertThat(result.rating()).isEqualTo(PairingRating.LIKE);
                 assertThat(result.created()).isTrue();
             }
@@ -136,8 +133,7 @@ class PairingCommandServiceTest extends UnitTest {
                 assertThat(saved.getValue().getRating()).isEqualTo(PairingRating.DISLIKE);
                 then(pairingRatingSummaryRepository)
                         .should()
-                        .accumulate(
-                                DRINK_ID, ANJU_ID, MUSIC_MOOD_ID, new PairingRatingChange(-1, 1));
+                        .accumulate(DRINK_ID, ANJU_ID, new PairingRatingChange(-1, 1));
                 assertThat(result.rating()).isEqualTo(PairingRating.DISLIKE);
                 assertThat(result.created()).isFalse();
             }
@@ -178,11 +174,11 @@ class PairingCommandServiceTest extends UnitTest {
         private void givenLockedFeedback() {
             given(
                             pairingFeedbackRepository.findByMemberIdAndCombinationForUpdate(
-                                    MEMBER_ID, DRINK_ID, ANJU_ID, MUSIC_MOOD_ID))
+                                    MEMBER_ID, DRINK_ID, ANJU_ID))
                     .willReturn(
                             Optional.of(
                                     PairingFeedbackFixture.FRIEND_FORMAL.createWithIdAndReferences(
-                                            FEEDBACK_ID, DRINK_ID, ANJU_ID, MUSIC_MOOD_ID)));
+                                            FEEDBACK_ID, DRINK_ID, ANJU_ID)));
         }
 
         private SubmitPairingFeedbackCommand command() {
@@ -192,13 +188,7 @@ class PairingCommandServiceTest extends UnitTest {
         private SubmitPairingFeedbackCommand command(
                 RelationshipType relationshipType, MoodType moodType, PairingRating rating) {
             return new SubmitPairingFeedbackCommand(
-                    MEMBER_ID,
-                    DRINK_ID,
-                    ANJU_ID,
-                    MUSIC_MOOD_ID,
-                    relationshipType,
-                    moodType,
-                    rating);
+                    MEMBER_ID, DRINK_ID, ANJU_ID, relationshipType, moodType, rating);
         }
     }
 
@@ -216,7 +206,7 @@ class PairingCommandServiceTest extends UnitTest {
                 // given
                 willThrow(new DrinkNotFoundException())
                         .given(verifyCatalogReferencesUseCase)
-                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID));
 
                 // when & then
                 assertThatThrownBy(() -> pairingCommandService.submitAnonymous(command()))
@@ -243,14 +233,13 @@ class PairingCommandServiceTest extends UnitTest {
                 // then
                 then(verifyCatalogReferencesUseCase)
                         .should()
-                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID, MUSIC_MOOD_ID));
+                        .verify(CatalogReferencesQuery.of(DRINK_ID, ANJU_ID));
                 ArgumentCaptor<PairingFeedback> saved =
                         ArgumentCaptor.forClass(PairingFeedback.class);
                 then(pairingFeedbackRepository).should().save(saved.capture());
                 assertThat(saved.getValue().getMemberId()).isNull();
                 assertThat(saved.getValue().getDrinkId()).isEqualTo(DRINK_ID);
                 assertThat(saved.getValue().getAnjuId()).isEqualTo(ANJU_ID);
-                assertThat(saved.getValue().getMusicMoodId()).isEqualTo(MUSIC_MOOD_ID);
                 assertThat(saved.getValue().getRelationshipType())
                         .isEqualTo(RelationshipType.COLLEAGUE);
                 assertThat(saved.getValue().getMoodType()).isEqualTo(MoodType.CASUAL);
@@ -258,8 +247,7 @@ class PairingCommandServiceTest extends UnitTest {
                 then(pairingFeedbackRepository).should(never()).saveIfAbsent(any());
                 then(pairingRatingSummaryRepository)
                         .should()
-                        .accumulate(
-                                DRINK_ID, ANJU_ID, MUSIC_MOOD_ID, new PairingRatingChange(0, 1));
+                        .accumulate(DRINK_ID, ANJU_ID, new PairingRatingChange(0, 1));
                 assertThat(result.memberId()).isNull();
                 assertThat(result.rating()).isEqualTo(PairingRating.DISLIKE);
                 assertThat(result.created()).isTrue();
@@ -270,7 +258,6 @@ class PairingCommandServiceTest extends UnitTest {
             return SubmitAnonymousPairingFeedbackCommand.of(
                     DRINK_ID,
                     ANJU_ID,
-                    MUSIC_MOOD_ID,
                     RelationshipType.COLLEAGUE,
                     MoodType.CASUAL,
                     PairingRating.DISLIKE);

@@ -13,9 +13,6 @@ public record PairingResponse(
         @Schema(description = "안주 ID") Long anjuId,
         @Schema(description = "안주 이름") String anjuName,
         @Schema(description = "안주에 포함된 알레르기 유발 성분") Set<AllergyType> anjuAllergyTypes,
-        @Schema(description = "음악 무드 ID") Long musicMoodId,
-        @Schema(description = "음악 무드 제목") String musicMoodTitle,
-        @Schema(description = "스트리밍 링크") String streamingUrl,
         @Schema(description = "추천 점수") double score,
         @Schema(description = "추천 이유") List<String> reasons) {
     public static PairingResponse from(PairingResult result) {
@@ -26,9 +23,6 @@ public record PairingResponse(
                 result.anjuId(),
                 result.anjuName(),
                 result.anjuAllergyTypes(),
-                result.musicMoodId(),
-                result.musicMoodTitle(),
-                result.streamingUrl(),
                 result.score(),
                 result.reasons());
     }

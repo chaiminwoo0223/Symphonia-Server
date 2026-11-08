@@ -29,14 +29,9 @@ public class PairingRatingSummaryJpaEntity {
 
     public PairingRatingSummary toDomain() {
         return PairingRatingSummary.of(
-                combination.drinkId(),
-                combination.anjuId(),
-                combination.musicMoodId(),
-                likeCount,
-                dislikeCount);
+                combination.drinkId(), combination.anjuId(), likeCount, dislikeCount);
     }
 
     @Embeddable
-    public record Combination(Long drinkId, Long anjuId, Long musicMoodId)
-            implements Serializable {}
+    public record Combination(Long drinkId, Long anjuId) implements Serializable {}
 }

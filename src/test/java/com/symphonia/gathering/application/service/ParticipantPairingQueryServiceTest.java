@@ -34,8 +34,7 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
     private static final LocalDateTime DELETES_AT = LocalDateTime.of(2026, 11, 5, 18, 0);
     private static final GatheringPairingFixture PAIRING = GatheringPairingFixture.FRIEND_CASUAL;
     private static final CatalogReferencesResult CATALOG_REFERENCES =
-            new CatalogReferencesResult(
-                    "소주", "골뱅이무침", "잔잔한 재즈", "https://open.spotify.com/playlist/formal-jazz");
+            new CatalogReferencesResult("소주", "골뱅이무침");
 
     @InjectMocks private ParticipantPairingQueryService participantPairingQueryService;
 
@@ -152,14 +151,11 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
             return new ParticipantPairingResult(
                     CATALOG_REFERENCES.drinkName(),
                     CATALOG_REFERENCES.anjuName(),
-                    CATALOG_REFERENCES.musicMoodTitle(),
-                    CATALOG_REFERENCES.streamingUrl(),
                     feedbackSubmitted);
         }
 
         private CatalogReferencesQuery catalogReferencesQuery() {
-            return CatalogReferencesQuery.of(
-                    PAIRING.getDrinkId(), PAIRING.getAnjuId(), PAIRING.getMusicMoodId());
+            return CatalogReferencesQuery.of(PAIRING.getDrinkId(), PAIRING.getAnjuId());
         }
 
         private void givenCatalogReferences() {

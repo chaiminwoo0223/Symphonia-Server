@@ -154,7 +154,6 @@ class ParticipantPairingFeedbackServiceTest extends UnitTest {
                                 SubmitAnonymousPairingFeedbackCommand.of(
                                         PAIRING.getDrinkId(),
                                         PAIRING.getAnjuId(),
-                                        PAIRING.getMusicMoodId(),
                                         PAIRING.getRelationshipType(),
                                         PAIRING.getMoodType(),
                                         PairingRating.DISLIKE));

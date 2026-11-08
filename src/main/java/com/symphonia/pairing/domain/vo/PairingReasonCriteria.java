@@ -34,8 +34,4 @@ final class PairingReasonCriteria {
     public static boolean carbonationAcidityCutting(PairingReasonContext context) {
         return context.drink().cutsRichnessWithCarbonationOrAcidityOf(context.anju());
     }
-
-    public static boolean moodMatch(PairingReasonContext context) {
-        return context.musicMood().fitsFor(context.occasion().toMoodProfile());
-    }
 }

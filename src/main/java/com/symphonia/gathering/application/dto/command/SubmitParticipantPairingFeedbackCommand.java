@@ -11,7 +11,6 @@ public record SubmitParticipantPairingFeedbackCommand(String linkToken, PairingR
         return SubmitAnonymousPairingFeedbackCommand.of(
                 gatheringPairing.drinkId(),
                 gatheringPairing.anjuId(),
-                gatheringPairing.musicMoodId(),
                 gatheringPairing.relationshipType(),
                 gatheringPairing.moodType(),
                 rating);

@@ -9,11 +9,10 @@ public record SubmitPairingFeedbackCommand(
         Long memberId,
         Long drinkId,
         Long anjuId,
-        Long musicMoodId,
         RelationshipType relationshipType,
         MoodType moodType,
         PairingRating rating) {
     public CatalogReferencesQuery toCatalogReferencesQuery() {
-        return CatalogReferencesQuery.of(drinkId, anjuId, musicMoodId);
+        return CatalogReferencesQuery.of(drinkId, anjuId);
     }
 }
