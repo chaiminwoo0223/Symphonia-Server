@@ -10,21 +10,16 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 
 ## 리뷰 전 필수
 
-- `architecture`, `error-handling`, `testing`, `code-style` 스킬을 로드한다. 정적분석 도구(Konsist/ArchUnit)를 도입하지 않은 이유가 "판단이 섞이는 규칙은 이 에이전트의 체크리스트 기반 수동 검토로 잡는다"이므로, 아래 체크리스트를 기계적으로가 아니라 맥락에 맞게 판단한다.
+- 스킬은 diff에 해당하는 것만 로드한다. `src/main`이 바뀌면 `architecture`, 예외나 에러 코드가 바뀌면 `error-handling`, `src/test`가 바뀌면 `testing`을 읽는다. `code-style`은 멤버 순서나 주석 판단이 필요할 때 해당 절만 읽는다.
+- import와 선언만 보고 판정할 수 있는 계층 규칙(Kotlin 파일, Adapter와 Port 이름, `RuntimeException` 직접 throw, 메서드 단위 `@Transactional`, domain의 프레임워크, global, infrastructure import, application의 global, presentation import, 다른 도메인의 infrastructure, application 구현, domain의 enum 외 타입 import)은 `check-architecture.sh`가 검사한다. 이 에이전트는 그 규칙을 다시 보지 않고 아래 판단형 항목만 본다.
 - 리뷰 입력은 호출자가 붙여 준 `git diff origin/develop...HEAD` 전체다. 이 에이전트는 Bash가 없어 diff를 직접 만들 수 없다. 입력이 요약이거나 일부 파일만 담고 있으면 리뷰를 시작하지 말고, 브랜치 전체 diff를 다시 달라고 보고한다.
 - 변경 사항에 테스트 파일이 포함되어 있으면 `testing` 체크리스트도 함께 적용한다. `test-writer` 에이전트를 거치지 않고 직접 작성된 테스트(사람이 짰거나 인라인으로 짠 테스트)의 컨벤션 위반을 잡아내는 유일한 지점이 이 리뷰다.
 
 ## Review Checklist
 
-### ❌ 금지 (CLAUDE.md 핵심 제약)
-- [ ] 코틀린 사용 여부
-- [ ] 헥사고날 포트/어댑터 명칭(`*Adapter` 등), 멀티모듈 구조 사용 여부 (infrastructure 구현체는 `*RepositoryImpl`이어야 한다)
+### ❌ 금지 (판단이 필요한 항목)
 - [ ] 도메인 로직이 Controller/Service에 절차적으로 나열되어 있는지
-- [ ] `RuntimeException` 직접 throw 여부
-- [ ] `domain`이 `infrastructure` 패키지를 참조하는지
-- [ ] `application`에서 `*Request`/`*Response` DTO를 임포트하는지
-- [ ] 다른 도메인의 구현체·infrastructure·Repository를 직접 참조하는지
-- [ ] `src/main` 코드가 다른 도메인의 `domain` 패키지에서 enum 외의 타입을 import하거나 완전 수식 이름으로 참조하는지, 다른 도메인 enum이 직접 선언한 메서드를 호출하는지 (`name()`, `valueOf()` 같은 `java.lang.Enum` 기본 메서드는 허용한다. 테스트 코드는 제외한다. 두 도메인에 같은 이름의 타입이 있으면 참조 경로까지 확인한다)
+- [ ] 다른 도메인의 `domain` 타입을 완전 수식 이름으로 참조하는지, 다른 도메인 enum이 직접 선언한 메서드를 호출하는지 (`name()`, `valueOf()` 같은 `java.lang.Enum` 기본 메서드는 허용한다. 테스트 코드는 제외한다)
 - [ ] `*Result`가 도메인 엔티티를 직접 감싸거나 그대로 노출하는지
 - [ ] Service/Controller 등 호출부가 DTO(`*Command`/`*Result`/`*Request`/`*Response`)를 `new`로 필드 나열해 직접 조립하는지 (DTO 자신의 `from`/`of`/`to*` 팩토리 메서드로 대체되어야 함), 크로스 도메인 변환이면 그 팩토리가 기존 의존 방향과 같은 쪽에 있는지
 
@@ -32,7 +27,7 @@ Symphonia 프로젝트의 코드 리뷰 전담 에이전트다. 읽기 전용이
 - [ ] `*Service`가 `*UseCase` 구현체인지, `*Controller`가 `*Api` 구현체인지
 - [ ] Repository·외부 연동이 인터페이스+구현체로 분리되어 있는지
 - [ ] 1 `*UseCase` = 1 `*Service` 원칙, 크로스 도메인 조율이 대상 `*UseCase` 직접 의존으로 되어 있는지 (Facade 없이)
-- [ ] 트랜잭션 경계가 `@CommandService`/`@QueryService` 클래스 단위로 선언되어 있는지 (메서드 단위 `@Transactional` 없는지)
+- [ ] 모든 `*Service`에 `@CommandService` 또는 `@QueryService`가 붙어 있고, 한 클래스의 메서드가 같은 트랜잭션 성격인지
 - [ ] 커스텀 예외가 공통 베이스 예외(`BusinessException`) 하위 + 에러코드(`*ErrorCode`)로 관리되는지
 - [ ] `GlobalExceptionHandler`가 `BusinessException`만 캐치하고 `errorCode.getStatus()`로 HTTP status를 결정하는지
 
