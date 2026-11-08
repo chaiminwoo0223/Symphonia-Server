@@ -70,7 +70,7 @@ public class GatheringHelper {
 
     // 참여자가 페어링 피드백을 이미 낸 상태를 만든다.
     public void markPairingFeedbackSubmitted(Participant participant) {
-        participantPairingFeedbackRepository.markSubmitted(
+        participantPairingFeedbackRepository.markSubmittedIfAbsent(
                 participant.getId(), LocalDateTime.now());
     }
 }
