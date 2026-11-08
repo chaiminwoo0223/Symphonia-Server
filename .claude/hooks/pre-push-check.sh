@@ -24,4 +24,4 @@ if output="$(./.claude/scripts/check-all.sh 2>&1)"; then
 fi
 
 deny "git push 전 전체 검증(check-all.sh)이 실패했다. 문제를 해결한 뒤 다시 push해라.
-$(tail -60 <<<"$output")"
+$(tail -100 <<<"$output")"
