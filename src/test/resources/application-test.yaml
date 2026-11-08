@@ -1,3 +1,11 @@
+# 캐시된 스프링 컨텍스트마다 커넥션 풀이 하나씩 생기고 모두 같은 Postgres 컨테이너에 붙는다(TestcontainersConfiguration).
+# 동시성 테스트의 두 요청과 테스트 스레드가 쓸 만큼만 열어 컨테이너의 연결 수 상한을 넘지 않게 한다.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 1
+
 access-token:
   secret: test-only-fixed-jwt-secret-for-symphonia-integration-tests-do-not-use-in-prod
 
