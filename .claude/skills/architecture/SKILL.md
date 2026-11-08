@@ -159,6 +159,8 @@ DB 선택, Flyway 마이그레이션, 인덱스와 제약, 프로파일별 설�
 
 `StandardResponse<T>`(`common.response`)가 모든 응답을 감싼다. 필드는 `boolean ok`, `int status`(HTTP 상태 코드), `T data`로 확정되어 있다. 성공 응답은 `StandardResponse.success(status, data)`(반환값 없는 성공은 `data` 없는 오버로드), 에러 응답은 `StandardResponse.fail(status, ErrorResponse)` 정적 팩토리로 생성한다.
 
-## 정적분석 도구 미도입 사유
+## 계층 규칙 검증 범위
 
-Konsist/ArchUnit 같은 아키텍처 자동검증 도구는 도입하지 않기로 했다. 단일 모듈 구조라 패키지 규칙 위반을 코드리뷰(`code-reviewer` 에이전트의 체크리스트 기반 수동 검토)로 잡는 게 더 실용적이라고 판단했기 때문이다. 계층 의존 방향처럼 판단이 섞이는 규칙은 이 방식으로 검증하고, EOF 개행·코드 스타일처럼 완전히 결정론적인 것만 스크립트/포맷터로 강제한다.
+- import와 선언만 보고 판정할 수 있는 계층 규칙은 `.claude/scripts/check-architecture.sh`가 grep으로 검사한다. `check-all.sh`가 이 스크립트를 실행한다. 검사 항목은 스크립트 머리 주석과 본문이 단일 소스다.
+- 판단이 필요한 규칙(절차적 도메인 로직, 다른 도메인 enum의 메서드 호출, DTO 직접 조립, `*Result`의 엔티티 노출 등)은 `code-reviewer` 에이전트가 체크리스트로 검토한다.
+- Konsist, ArchUnit 같은 아키텍처 검증 도구는 도입하지 않는다.
