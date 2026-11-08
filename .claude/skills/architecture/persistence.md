@@ -26,7 +26,7 @@
 - `@Enumerated(STRING)` 컬럼은 `varchar(255)`와 허용 값 `check` 제약으로 만든다. enum 값을 추가하면 새 마이그레이션에서 `check` 제약을 고친다.
 - 값이 늘어날 enum의 `check` 제약에는 `ck_<테이블>_<컬럼>` 이름을 붙여 후속 마이그레이션이 이름으로 DROP한 뒤 다시 ADD한다.
 - 레포에 두는 단독 `.sql` 파일은 Flyway 마이그레이션과 테스트 픽스처(`src/test/resources/sql`)뿐이다.
-- 테스트 DB에도 시드가 들어가므로, 카탈로그 내용에 기대는 테스트는 `@Sql("/sql/clear-pairing-catalog.sql")`로 카탈로그를 비우고 시작한다.
+- 테스트 DB에도 시드가 들어가므로, 카탈로그 내용에 기대는 테스트는 `@Sql("/sql/clear-catalog.sql")`로 카탈로그를 비우고 시작한다.
 
 ## 인덱스와 제약
 
