@@ -11,7 +11,7 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 
 ## 커밋 전 검증
 
-- `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`check-test-conventions.sh` + `check-architecture.sh` + `./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
+- `./gradlew test`로 관련 테스트를 먼저 돌려본다. PR 직전 전체 검증은 `./.claude/scripts/check-all.sh`(`check-test-conventions.sh` + `check-architecture.sh` + `check-harness-budget.sh` + `./gradlew clean build`)다. 커밋마다 강제하진 않되 PR 생성 전에는 반드시 통과시킨다.
 - `git status`로 `.env`가 스테이징에 포함되지 않았는지 확인한다 (`.env` 커밋 금지는 Profiles 규칙과 동일).
 - `settings.json`의 `permissions.deny`가 모든 디렉터리의 `.env`와 `.env.*`에 대한 Read, Edit 도구 사용을 막는다(이슈 #133). 이 규칙은 `cat .env` 같은 Bash 명령까지 막지는 못하므로, Bash로도 `.env`를 읽지 않는다.
 - 포맷은 `.claude/hooks/post-edit-format.sh`(PostToolUse)가 Java 파일 편집 시마다 자동으로 적용한다(Spotless + Google Java Format, `code-style` 스킬 참고). 수동으로 신경 쓸 필요는 없다.
@@ -67,6 +67,6 @@ description: Load when committing or pushing. 커밋 전 검증 절차, 커밋 �
 - **사용자가 명시적으로 요청하기 전까지는 push하지 않는다.**
 - **`git push --force`는 사용하지 않는다.** `settings.json`의 `permissions.deny`가 `--force`, `-f`, `--force-with-lease`, `+<refspec>`, `--mirror` 형태의 push를 막는다(이슈 #133). `--mirror`는 원격 ref를 강제로 덮어쓰고 로컬에 없는 ref를 원격에서 지우므로 force push와 같이 다룬다. 이 규칙은 명령 접두어 매칭이라 `git push -uf`처럼 짧은 옵션을 묶은 형태와 `git -C <경로> push --force`는 막지 못한다. 그래서 이런 형태로도 force push하지 않는다.
 - `main`/`develop`에 직접 push하지 않는다. 예외는 admin이 `develop`에 `[HotFix]`를 직접 push하는 경우 하나뿐이다(`git-workflow` 스킬의 Branch 보호 참고).
-- `git push` 직전에 `.claude/hooks/pre-push-check.sh`(PreToolUse)가 `check-all.sh`(`check-test-conventions.sh` + `check-architecture.sh` + `./gradlew clean build`)를 자동으로 돌려 실패 시 push 자체를 막는다. `spotlessCheck`가 Gradle `check` 태스크에 연결되어 있어 이 `clean build`에 포맷 검증도 자동으로 포함된다. 작업 트리가 깨끗하고 `check-all.sh`가 기록한 통과 커밋(`.git/check-all-passed`)이 HEAD와 같으면 다시 검증하지 않는다.
+- `git push` 직전에 `.claude/hooks/pre-push-check.sh`(PreToolUse)가 `check-all.sh`(`check-test-conventions.sh` + `check-architecture.sh` + `check-harness-budget.sh` + `./gradlew clean build`)를 자동으로 돌려 실패 시 push 자체를 막는다. `spotlessCheck`가 Gradle `check` 태스크에 연결되어 있어 이 `clean build`에 포맷 검증도 자동으로 포함된다. 작업 트리가 깨끗하고 `check-all.sh`가 기록한 통과 커밋(`.git/check-all-passed`)이 HEAD와 같으면 다시 검증하지 않는다.
 - `pre-push-check.sh`는 Claude Code 훅이라 세션 밖에서 push하면 실행되지 않는다. 그래서 `develop`, `main` 대상 PR마다 GitHub Actions(`.github/workflows/ci.yml`)가 같은 `check-all.sh`를 한 번 더 실행한다. 로컬 게이트와 CI가 같은 스크립트를 쓰므로 검증 기준은 하나다(2026-10-20, 이슈 #112).
 - CI 실패가 머지를 막는지는 `git-workflow` 스킬의 Branch 보호 표를 참고한다.

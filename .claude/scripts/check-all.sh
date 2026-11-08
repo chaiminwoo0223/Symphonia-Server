@@ -57,10 +57,11 @@ run_step() {
 
 run_step "테스트 컨벤션 검사" ./.claude/scripts/check-test-conventions.sh
 run_step "계층 규칙 검사" ./.claude/scripts/check-architecture.sh
+run_step "분량 예산 검사" ./.claude/scripts/check-harness-budget.sh
 run_step "빌드와 전체 테스트" ./gradlew clean build
 
 if [[ -z "$start_status" && -z "$(git status --porcelain)" && "$(git rev-parse HEAD)" == "$start_head" ]]; then
     echo "$start_head" >"$STAMP"
 fi
 
-echo "✓ 전체 검증 통과 (테스트 컨벤션, 계층 규칙, 빌드와 전체 테스트)"
+echo "✓ 전체 검증 통과 (테스트 컨벤션, 계층 규칙, 분량 예산, 빌드와 전체 테스트)"
