@@ -8,13 +8,15 @@
 - 참여자는 `Member`가 아니라 `Participant`로 모델링하고 `Gathering`에 둔다. 모임을 만든 회원도 참여자로 들어간다. `Participant`는 `Member`를 참조하지 않고, `Gathering`만 모임을 만든 회원의 id를 갖는다. 회원도 참여 화면에서 이름과 휴대폰을 따로 입력한다.
 - 모임은 회원이 입력한 이름을 갖는다.
 - application은 흐름 단위로 나눈다. 정산 건 기록, 수정, 취소는 `SettlementCommandService`, 분담금 상태 변경은 `ShareCommandService`, 결제자 계좌 등록은 `RegisterBankAccountService`가 맡는다.
-- 개인 링크 토큰으로 참여자를 찾는 경로는 `GetLinkedParticipantUseCase` 하나로 모은다. 링크 토큰 Repository를 Service에서 직접 부르지 않는다.
+- 개인 링크 토큰으로 참여자를 찾는 경로는 `GetLinkedParticipantUseCase` 하나로 모은다. `GetLinkedParticipantUseCase` 구현 밖의 Service는 링크 토큰 Repository를 직접 부르지 않는다.
 - 참여 기간, 휴대폰 중복, 모임을 만든 회원 여부, 동의 검증은 `GatheringPolicy`에 두고, Service가 `Gathering`의 상태를 바꾸기 전에 호출한다. `Gathering`은 검증을 통과한 값으로 상태만 바꾼다. Service 테스트가 검증 실패 경우를 하나씩 확인한다.
+- 48시간 기록 기간 판정은 `GatheringPolicy`에 두고 `Settlement`도 같이 쓴다.
 - 48시간 기록 기간의 시작 시각은 `Gathering.openedAt`이다. `Gathering.open`이 Service가 `Clock`으로 구한 현재 시각을 받아 담는다. 감사용 `created_at`과 별도인 `opened_at` 컬럼이다.
 
 ## 참여와 동의
 
 - 참여자는 이름과 휴대폰을 필수로 입력한다. 술을 마시는지는 받지 않는다.
+- 결제자가 받는 수단은 계좌 하나다. 송금 링크와 휴대폰 송금은 두지 않는다. 현금은 직접 받음(`confirm`)으로 처리한다.
 - 계좌는 참여할 때 받지 않고, 참여자가 처음 정산 건의 결제자가 될 때 받는다.
 - 참여 화면에서는 수집 항목, 목적, 보유 기간(최대 30일), 동의를 거부할 권리와 불이익을 안내하고 필수 동의를 받는다. 결제자가 계좌를 입력할 때는 그 계좌를 정산 건의 참여자에게 보여 준다는 목적을 안내하고 따로 동의를 받는다.
 - 참여자는 동의 시각과 안내문 버전(`consent_version`)을 남긴다. 버전의 단일 소스는 `GatheringPolicy.CONSENT_VERSION`이고, 참여 화면 조회 응답에 담는다. 안내 문구를 바꾸면 이 상수도 바꾼다.
@@ -116,4 +118,4 @@
 ## 에러 코드
 
 - 토큰을 찾지 못하면 참여자나 모임이 아니라 토큰을 찾지 못했다고 알린다(`LINK_TOKEN_NOT_FOUND`, `JOIN_TOKEN_NOT_FOUND`). 토큰은 찾았지만 모임이 없으면 `GATHERING_NOT_FOUND`다.
-- 상황마다 예외를 둔다(예: `SETTLEMENT_ALREADY_CANCELLED`). 404 코드는 `*_NOT_FOUND`로 짓는다.
+- 사용자가 겪는 상황마다 예외를 따로 둔다(예: `SETTLEMENT_ALREADY_CANCELLED`). 화면이 막을 수 있는 클라이언트 버그는 하나로 묶는다(예: `INVALID_SETTLEMENT_PARTICIPANTS`). 404 코드는 `*_NOT_FOUND`로 짓는다.

@@ -55,7 +55,7 @@
 - `*Service`는 `*UseCase` 구현체, `*Controller`는 `*Api` 구현체 (`architecture`)
 - Repository·외부 연동도 인터페이스+구현체 분리 (`architecture`)
 - 1 `*UseCase` = 1 `*Service` 기본 원칙, 크로스 도메인 조율은 대상 `*UseCase` 직접 의존 (Facade 없음) (`architecture`)
-- 트랜잭션 경계는 `@CommandService`/`@QueryService` 클래스 단위 선언 ✂ (`architecture`)
+- 트랜잭션 경계는 `@CommandService`/`@QueryService` 클래스 단위 선언, 메서드 단위 `@Transactional` 금지 ✂ (`architecture`)
 - 테스트는 given-when-then, 메서드명 `should[기대동작]When[조건]` (`testing`)
 - 커스텀 예외는 공통 베이스 예외 하위 + 에러코드로 관리 (`error-handling`)
 - 커밋 메시지 `[#이슈번호] type: 설명` (`commit-push`)

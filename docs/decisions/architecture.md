@@ -4,7 +4,7 @@
 
 ## 도메인 수와 shared 패키지
 
-도메인은 총 6개(`member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`)다(#159에서 변경). 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 어느 도메인이든(#122에서 변경) 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다. 4번째 도메인 `gathering`을 추가하면서 이 조건을 다시 확인했다(2026-10-25, 이슈 #122). 현재 설계(#123~#131) 기준으로 `gathering`은 `pairing`의 UseCase로는 `SubmitAnonymousPairingFeedbackUseCase` 하나만(#131에서 변경) 의존하므로 재검토 조건에 해당하지 않는다. #131 구현 기준으로 피드백을 받는 `ParticipantPairingFeedbackService`는 이 UseCase 하나에, 페어링을 조회하는 `ParticipantPairingQueryService`와 페어링을 고르는 `GatheringCommandService`는 `catalog`의 UseCase 하나에 의존한다. 5번째 도메인 `catalog`를 분리하면서 이 조건을 다시 확인했다(2026-10-27, 이슈 #139). #140 설계 기준으로 `PairingQueryService`는 `catalog`의 `GetCatalogUseCase` 하나만, `PairingCommandService`는 `VerifyCatalogReferencesUseCase` 하나만 의존하므로 재검토 조건에 해당하지 않는다. 6번째 도메인 `notification`을 분리하면서 이 조건을 다시 확인했다(2026-11-01, 이슈 #159). `SettlementCommandService`와 `ShareCommandService`가 각각 `notification`의 UseCase 두 개에 의존하지만(#168에서 변경) 더 나누지 않으며, 근거는 크로스 도메인 참조 절의 #159 결정에 있다.
+도메인은 총 6개(`member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`)다(#159에서 변경). 3번째 도메인이 늘어난 시점에 `shared` 패키지 도입 여부를 재검토했다. `pairing`은 아직 `member`나 `auth`의 `*UseCase`에 의존하지 않아 별도 `shared` 패키지를 두지 않기로 했다. 크로스 도메인 조율은 대상 도메인의 `*UseCase` 인터페이스를 직접 의존하는 것으로 충분하다. 앞으로 어느 도메인이든(#122에서 변경) 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되는 시점에 다시 재검토한다. 4번째 도메인 `gathering`을 추가하면서 이 조건을 다시 확인했다(2026-10-25, 이슈 #122). 현재 설계(#123~#131) 기준으로 `gathering`은 `pairing`의 UseCase로는 `SubmitAnonymousPairingFeedbackUseCase` 하나만(#131에서 변경) 의존하므로 재검토 조건에 해당하지 않는다. #131 구현 기준으로 피드백을 받는 `ParticipantPairingFeedbackService`는 이 UseCase 하나에, 페어링을 조회하는 `ParticipantPairingQueryService`와 페어링을 고르는 `GatheringCommandService`는 `catalog`의 UseCase 하나에 의존한다. 5번째 도메인 `catalog`를 분리하면서 이 조건을 다시 확인했다(2026-10-27, 이슈 #139). #140 설계 기준으로 `PairingQueryService`는 `catalog`의 `GetCatalogUseCase` 하나만, `PairingCommandService`는 `VerifyCatalogReferencesUseCase` 하나만 의존하므로 재검토 조건에 해당하지 않는다. 6번째 도메인 `notification`을 분리하면서 이 조건을 다시 확인했다(2026-11-01, 이슈 #159). `SettlementCommandService`와 `ShareCommandService`가 각각 `notification`의 UseCase 두 개에 의존하지만(#168에서 변경) 더 나누지 않으며, 근거는 크로스 도메인 참조 절의 #159 결정에 있다(이 결정은 `docs/decisions/notification.md`로 옮김, #178에서 변경).
 
 ## 도메인 모델과 JPA 엔티티 분리
 
@@ -12,6 +12,8 @@
 
 
 ## 경로 상수 *Endpoints
+
+`domain`/`application` 계층은 공유 커널인 `common`만 참조하고, 기술 부트스트랩인 `global`(config/security)은 참조하지 않는다. `global`은 오직 Spring 설정·필터 wiring 목적으로만 `common`을 참조할 수 있다.
 
 `global`은 같은 이유로 도메인의 `presentation` 계층에 있는 `*Endpoints`(비즈니스 로직·프레임워크 의존 없이 URL 경로 문자열만 담은 상수 클래스, 예: `auth.presentation.AuthEndpoints`)도 참조할 수 있다. 이는 `SecurityConfig`의 permitAll 매처처럼 순수 wiring 목적에 한한다. `*Request`/`*Response`/`*Api`/`*Controller`처럼 실제 프레젠테이션 로직이 담긴 타입은 여전히 참조 대상이 아니다. URL 경로는 그 경로를 실제로 노출하는 `*Api`와 동기화돼야 하는 도메인 고유의 사실이므로, `global`이 별도 상수로 다시 소유하기보다 도메인 쪽 단일 소스를 참조하는 쪽이 응집도가 높다.
 
@@ -37,6 +39,6 @@
 
 ## 계층 규칙 검증 도구
 
-Konsist/ArchUnit 같은 아키텍처 자동검증 도구는 도입하지 않기로 했다. 단일 모듈 구조라 패키지 규칙 위반을 코드리뷰(`code-reviewer` 에이전트의 체크리스트 기반 수동 검토)로 잡는 게 더 실용적이라고 판단했기 때문이다. 계층 의존 방향처럼 판단이 섞이는 규칙은 이 방식으로 검증하고, EOF 개행·코드 스타일처럼 완전히 결정론적인 것만 스크립트/포맷터로 강제한다.
+Konsist/ArchUnit 같은 아키텍처 자동검증 도구는 도입하지 않기로 했다. 단일 모듈 구조라 패키지 규칙 위반을 코드리뷰(`code-reviewer` 에이전트의 체크리스트 기반 수동 검토)로 잡는 게 더 실용적이라고 판단했기 때문이다. 계층 의존 방향처럼 판단이 섞이는 규칙은 이 방식으로 검증하고(import로 판정할 수 있는 규칙은 `check-architecture.sh`로 옮김, #178에서 변경), EOF 개행·코드 스타일처럼 완전히 결정론적인 것만 스크립트/포맷터로 강제한다.
 
-**(2026-11-08 결정, 이슈 #178)**: import와 선언만 보고 판정할 수 있는 계층 규칙은 `check-architecture.sh`가 grep으로 검사한다. 위반했을 때만 고치는 방법이 컨텍스트에 들어오고, `code-reviewer`는 판단이 필요한 항목만 보게 되어 리뷰 입력이 줄기 때문이다. ArchUnit은 여전히 도입하지 않는다. grep으로 잡히는 규칙에는 테스트 의존성과 테스트 클래스를 추가할 만큼의 이득이 없다.
+**(2026-11-08 결정, 이슈 #178)**: import와 선언만 보고 판정할 수 있는 계층 규칙은 `check-architecture.sh`가 grep으로 검사한다. 위반했을 때만 고치는 방법이 컨텍스트에 들어오고, `code-reviewer`는 판단이 필요한 항목만 보게 되어 리뷰 입력이 줄기 때문이다. ArchUnit은 여전히 도입하지 않는다. grep으로 잡히는 규칙에는 테스트 의존성과 테스트 클래스를 추가할 만큼의 이득이 없다. 스크립트의 판정 기준을 스킬에도 규칙으로 올렸다. 다른 도메인에서는 `application`의 `usecase`, `dto`, `event`, `provider`와 `domain`의 enum만 참조한다. event는 도메인 이벤트 구독(#42), provider는 다른 도메인이 선언한 인터페이스 구현(#159)에 필요하다. domain의 프레임워크 import 금지에는 에러 코드 enum의 `HttpStatus`만 예외로 둔다. `ErrorCode` 계약이 `getStatus()`로 `HttpStatus`를 돌려주고, 도메인 에러 코드 enum이 domain에 있기 때문이다.
