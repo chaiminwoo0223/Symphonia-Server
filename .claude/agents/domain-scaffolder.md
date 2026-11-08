@@ -2,6 +2,7 @@
 name: domain-scaffolder
 description: Symphonia 프로젝트에 새 도메인의 4계층(domain/application/presentation/infrastructure) 패키지와 기본 골격을 생성한다.
 tools: Read, Write, Edit, Glob, Grep, Bash
+model: sonnet
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
