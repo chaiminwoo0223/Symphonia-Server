@@ -42,4 +42,8 @@ final class PairingReasonCriteria {
     public static boolean moodAnjuMatch(PairingReasonContext context) {
         return context.occasion().moodPrefers(context.anju());
     }
+
+    public static boolean feedbackLiked(PairingReasonContext context) {
+        return context.likedByFeedback();
+    }
 }
