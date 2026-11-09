@@ -20,8 +20,8 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 |---|---|
 | `member` | 회원. 탈퇴 시 `application.event`의 `MemberDeletedEvent` 발행 |
 | `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰과 액세스 토큰 블랙리스트 |
-| `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`), 음악 무드(`MusicMood`)와 그 맛, 분위기 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
-| `pairing` | 자리(`Occasion`)에 맞는 술, 안주, 음악 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
+| `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`)와 그 맛, 분류 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
+| `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
 | `gathering` | 모임, 참여, 정산 건과 분담금 상태 |
 | `notification` | 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체 |
 | `common` | 공유 커널. 공통 예외(`common.exception`), `StandardResponse`, `BaseTimeEntity`, `@CommandService`/`@QueryService`(`common.annotation`) |
@@ -81,12 +81,13 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 ### catalog와 pairing
 
 - 의존 방향은 `pairing → catalog` 한 방향이다. 테이블과 FK는 도메인 분리 전 그대로다.
-- `FlavorProfile`, `MoodProfile`은 두 도메인이 각자 가진다. `catalog`의 것은 적재 규칙이 계산한 값만, `pairing`의 것은 점수 계산 메서드를 가진다.
-- 점수 계산 메서드와 추천 필터는 `pairing`의 `PairingDrink`, `PairingAnju`, `PairingMusicMood`에 둔다. 음식 계열(`Harmonize`) 판정은 `catalog`에 둔다.
+- `FlavorProfile`은 두 도메인이 각자 가진다. `catalog`의 것은 적재 규칙이 계산한 값만, `pairing`의 것은 점수 계산 메서드를 가진다.
+- 점수 계산 메서드와 추천 필터는 `pairing`의 `PairingDrink`, `PairingAnju`에 둔다. 음식 계열(`Harmonize`) 판정은 `catalog`에 둔다.
 - `catalog`의 UseCase는 `GetCatalogUseCase`(`CatalogQuery`의 도수 상한 조건으로 일괄 조회), `VerifyCatalogReferencesUseCase`(id로 참조한 대상이 모두 있는지 확인), `GetCatalogReferencesUseCase`(id로 가리킨 대상의 표시 이름 조회) 세 개이고, `CatalogQueryService` 하나가 함께 구현한다.
-- `VerifyCatalogReferencesUseCase.verify`는 `CatalogReferencesQuery`를 받고 반환값이 없다. 없는 대상은 `DrinkNotFoundException`, `AnjuNotFoundException`, `MusicMoodNotFoundException`으로 알린다.
+- `VerifyCatalogReferencesUseCase.verify`는 `CatalogReferencesQuery`를 받고 반환값이 없다. 없는 대상은 `DrinkNotFoundException`, `AnjuNotFoundException`으로 알린다.
 - `CatalogResult`는 추천에 필요한 값을 원시값과 enum으로 담는다. 음식 계열 판정은 계열마다 비트 하나인 `harmonizeMask`로 담고, `pairing`은 두 값의 비트 AND만 본다.
-- `CatalogResult`를 `PairingDrink`, `PairingAnju`, `PairingMusicMood`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다.
+- `CatalogResult`는 음료 종류(스타일의 `DrinkCategory`)와 안주의 주재료 계열, 형태, 매운맛 여부도 enum과 원시값으로 담는다.
+- `CatalogResult`를 `PairingDrink`, `PairingAnju`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다.
 - 적재에서 빠진 안주를 지울 때 `AnjuRepository.findReferencedIds`가 `pairing_feedback`이 참조하는 안주를 네이티브 쿼리로 걸러 낸다.
 - 타입 이름에 `Candidate`, `Item(s)`를 쓰지 않는다.
 
