@@ -11,7 +11,7 @@ import java.util.stream.Stream;
 // 이번 추천에 쓸 수 있는 조합 중 피드백 집계가 있는 조합과 그 피드백 점수다.
 // 도수 상한이나 알레르기로 빠진 음료와 안주의 집계는 담지 않는다.
 // 집계마다 점수를 어떻게 매기는지는 모르고, 받은 점수 함수를 그대로 적용한다.
-// 좋아한 조합(liked)은 점수를 반영한 조합 중 집계가 좋아한 조합으로 판정한 것이라, 점수와 추천 사유가 같은 판정을 쓴다.
+// 좋아한 조합(likedCombinations)은 점수를 반영한 조합 중 집계가 좋아한 조합으로 판정한 것이라, 점수와 추천 사유가 같은 판정을 쓴다.
 public record FeedbackScores(
         Map<CombinationId, Double> scoreByCombination, Set<CombinationId> likedCombinations) {
     public static FeedbackScores of(

@@ -1756,7 +1756,7 @@ class PairingQueryServiceTest extends UnitTest {
 
         @Test
         @DisplayName("좋아요가 많아 경계 밖에서 올라온 조합에는 FEEDBACK_LIKED 사유를 붙이고, 피드백이 없는 조합에는 붙이지 않는다")
-        void shouldIncludeFeedbackLikedReasonOnlyForLikedCombination() {
+        void shouldIncludeFeedbackLikedReasonOnlyWhenCombinationIsLiked() {
             // given
             givenDriedSnacksWithWeakerLast();
             givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 20, 0));
@@ -1820,6 +1820,7 @@ class PairingQueryServiceTest extends UnitTest {
                     .extracting(PairingResult::anjuId)
                     .containsExactly(1L, 2L, 3L, 4L, 5L);
             assertThat(results)
+                    .isNotEmpty()
                     .allSatisfy(
                             result ->
                                     assertThat(result.reasons())
@@ -1840,6 +1841,7 @@ class PairingQueryServiceTest extends UnitTest {
 
             // then
             assertThat(results)
+                    .isNotEmpty()
                     .allSatisfy(
                             result ->
                                     assertThat(result.reasons())
@@ -1848,11 +1850,17 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("싫어요가 많아 감점받은 조합에는 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        @DisplayName("싫어요가 많아 감점받은 조합이 결과에 남아도 FEEDBACK_LIKED 사유를 붙이지 않는다")
         void shouldNotIncludeFeedbackLikedReasonWhenCombinationIsPenalized() {
             // given
-            givenDriedSnacksWithWeakerLast();
-            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 0, 20));
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.DRIED_SNACK.createWithId(TIED_ANJU_IDS.getFirst()),
+                                    weakerDriedSnack(WEAKER_ANJU_ID)));
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 0, 20));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
@@ -1860,7 +1868,9 @@ class PairingQueryServiceTest extends UnitTest {
 
             // then
             assertThat(results)
-                    .allSatisfy(
+                    .filteredOn(result -> result.anjuId().equals(TIED_ANJU_IDS.getFirst()))
+                    .singleElement()
+                    .satisfies(
                             result ->
                                     assertThat(result.reasons())
                                             .doesNotContain(
@@ -1884,6 +1894,67 @@ class PairingQueryServiceTest extends UnitTest {
             List<PairingResult> results = pairingQueryService.recommend(query);
 
             // then
+            assertThat(results)
+                    .isNotEmpty()
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("알레르기로 걸러진 안주의 집계에 좋아요가 많아도 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenAnjuIsExcludedByAllergy() {
+            // given
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.DRIED_SNACK.createWithId(1L),
+                                    AnjuFixture.FRUIT_PLATTER.createWithId(2L)));
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, 1L, 20, 0));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .attendeeAllergies(AllergyType.PEANUT)
+                            .build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results).extracting(PairingResult::anjuId).containsExactly(2L);
+            assertThat(results)
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("도수 상한을 넘어 걸러진 음료의 집계에 좋아요가 많아도 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenDrinkExceedsMaxAbv() {
+            // given
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithId(SOJU_ID),
+                                    DrinkFixture.BEER.createWithId(2L)));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId(1L)));
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, 1L, 20, 0));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results).extracting(PairingResult::drinkId).containsExactly(2L);
             assertThat(results)
                     .allSatisfy(
                             result ->
