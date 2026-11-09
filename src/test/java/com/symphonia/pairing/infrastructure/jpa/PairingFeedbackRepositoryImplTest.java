@@ -14,6 +14,7 @@ import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
+import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -21,6 +22,7 @@ import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,6 +35,7 @@ import org.springframework.test.context.jdbc.Sql;
 @Sql("/sql/clear-catalog.sql")
 class PairingFeedbackRepositoryImplTest extends RepositoryTest {
 
+    private static final Long MEMBER_ID = 1L;
     private static final Long OTHER_MEMBER_ID = 99L;
 
     @Autowired private PairingFeedbackRepository pairingFeedbackRepository;
@@ -251,6 +254,63 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 assertThat(found).isEmpty();
             }
         }
+    }
+
+    @Nested
+    @DisplayName("findDislikedCombinationsByMemberId 메서드는")
+    class FindDislikedCombinationsByMemberId {
+
+        @Test
+        @DisplayName("회원이 싫어요를 남긴 조합만 반환한다")
+        void shouldReturnOnlyCombinationsDislikedByMember() {
+            // given
+            Long likedAnjuId = savedAnjuId(AnjuFixture.DRIED_SNACK);
+            Long otherMemberDislikedAnjuId = savedAnjuId(AnjuFixture.TOFU_KIMCHI);
+            saveFeedback(MEMBER_ID, drinkId, anjuId, PairingRating.DISLIKE);
+            saveFeedback(MEMBER_ID, drinkId, likedAnjuId, PairingRating.LIKE);
+            saveFeedback(
+                    OTHER_MEMBER_ID, drinkId, otherMemberDislikedAnjuId, PairingRating.DISLIKE);
+            pairingFeedbackJpaRepository.save(
+                    PairingFeedbackJpaEntity.from(
+                            PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
+                                    drinkId, otherMemberDislikedAnjuId)));
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            Set<CombinationId> disliked =
+                    pairingFeedbackRepository.findDislikedCombinationsByMemberId(MEMBER_ID);
+
+            // then
+            assertThat(disliked).containsExactly(new CombinationId(drinkId, anjuId));
+        }
+
+        @Test
+        @DisplayName("싫어요를 남긴 조합이 없으면 빈 집합을 반환한다")
+        void shouldReturnEmptyWhenMemberHasNoDislike() {
+            // given
+            saveFeedback(MEMBER_ID, drinkId, anjuId, PairingRating.LIKE);
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            Set<CombinationId> disliked =
+                    pairingFeedbackRepository.findDislikedCombinationsByMemberId(MEMBER_ID);
+
+            // then
+            assertThat(disliked).isEmpty();
+        }
+    }
+
+    private Long savedAnjuId(AnjuFixture anju) {
+        return anjuJpaRepository.save(AnjuJpaEntity.from(anju.create())).getId();
+    }
+
+    private void saveFeedback(Long memberId, Long drinkId, Long anjuId, PairingRating rating) {
+        pairingFeedbackJpaRepository.save(
+                PairingFeedbackJpaEntity.from(
+                        PairingFeedback.of(
+                                memberId, drinkId, anjuId, RelationshipType.FRIEND, null, rating)));
     }
 
     private PairingFeedback savedFeedback() {
