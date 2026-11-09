@@ -1754,6 +1754,144 @@ class PairingQueryServiceTest extends UnitTest {
                     .containsExactly(1L, 2L, 3L, 4L, 5L);
         }
 
+        @Test
+        @DisplayName("좋아요가 많아 경계 밖에서 올라온 조합에는 FEEDBACK_LIKED 사유를 붙이고, 피드백이 없는 조합에는 붙이지 않는다")
+        void shouldIncludeFeedbackLikedReasonOnlyForLikedCombination() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 20, 0));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .filteredOn(result -> result.anjuId().equals(WEAKER_ANJU_ID))
+                    .singleElement()
+                    .satisfies(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .contains(PairingReason.FEEDBACK_LIKED.message()));
+            assertThat(results)
+                    .filteredOn(result -> !result.anjuId().equals(WEAKER_ANJU_ID))
+                    .isNotEmpty()
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("보정한 좋아요 비율이 문턱 0.6이면 FEEDBACK_LIKED 사유를 붙인다")
+        void shouldIncludeFeedbackLikedReasonWhenSmoothedLikeRatioIsAtThreshold() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 4, 1));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .filteredOn(result -> result.anjuId().equals(TIED_ANJU_IDS.getFirst()))
+                    .singleElement()
+                    .satisfies(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .contains(PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("점수는 올랐어도 보정한 좋아요 비율이 문턱 0.6 미만이면 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenSmoothedLikeRatioIsBelowThreshold() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 3, 2));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(1L, 2L, 3L, 4L, 5L);
+            assertThat(results)
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("피드백 점수가 0이면 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenFeedbackScoreIsZero() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 5, 5));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("싫어요가 많아 감점받은 조합에는 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenCombinationIsPenalized() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 0, 20));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("표본이 최소 표본 수보다 적으면 좋아요가 전부여도 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenSampleIsInsufficient() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(
+                    PairingRatingSummary.of(
+                            SOJU_ID,
+                            TIED_ANJU_IDS.getFirst(),
+                            PairingRatingSummary.MINIMUM_SAMPLE - 1,
+                            0));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
+        }
+
         // 마른안주 1~5번은 맛이 같아 동점이고, 6번은 단맛만 1 낮아 소주와의 점수가 약 0.043 낮다.
         // 피드백이 없으면 1~5번이 추천된다. 좋아요나 싫어요 20개의 피드백 점수(약 ±0.067)는 이 차이를 뒤집는다.
         private void givenDriedSnacksWithWeakerLast() {

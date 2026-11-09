@@ -18,6 +18,7 @@ public enum PairingReason {
             "탄산이나 산미가 안주의 기름진 맛을 씻어줘요", PairingReasonCriteria::carbonationAcidityCutting),
     MOOD_DRINK_MATCH("분위기에 어울리는 술이에요", PairingReasonCriteria::moodDrinkMatch),
     MOOD_ANJU_MATCH("분위기에 어울리는 안주예요", PairingReasonCriteria::moodAnjuMatch),
+    FEEDBACK_LIKED("다른 사람들이 좋아한 조합이에요", PairingReasonCriteria::feedbackLiked),
     ;
 
     private final String message;

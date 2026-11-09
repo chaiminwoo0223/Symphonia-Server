@@ -94,7 +94,7 @@ public class Pairing {
 
         return withNonAlcoholicOption(diversifiedTop(ranked), ranked, occasion).stream()
                 .sorted(RANKING)
-                .map(combination -> combination.toPairing(occasion))
+                .map(combination -> combination.toPairing(occasion, feedbackScores))
                 .toList();
     }
 
@@ -279,8 +279,9 @@ public class Pairing {
             return drink.isNonAlcoholic();
         }
 
-        private Pairing toPairing(Occasion occasion) {
-            PairingReasonContext context = PairingReasonContext.of(drink, anju, occasion);
+        private Pairing toPairing(Occasion occasion, FeedbackScores feedbackScores) {
+            PairingReasonContext context =
+                    PairingReasonContext.of(drink, anju, occasion, feedbackScores.isLiked(id()));
 
             return new Pairing(
                     drink, anju, Math.max(0, rawScore), PairingReason.allApplicableTo(context));

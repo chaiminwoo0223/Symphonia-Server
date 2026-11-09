@@ -1,6 +1,7 @@
 package com.symphonia.pairing.domain.vo;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
@@ -10,31 +11,42 @@ import java.util.stream.Stream;
 // 이번 추천에 쓸 수 있는 조합 중 피드백 집계가 있는 조합과 그 피드백 점수다.
 // 도수 상한이나 알레르기로 빠진 음료와 안주의 집계는 담지 않는다.
 // 집계마다 점수를 어떻게 매기는지는 모르고, 받은 점수 함수를 그대로 적용한다.
-public record FeedbackScores(Map<CombinationId, Double> scoreByCombination) {
+// 좋아한 조합(liked)은 점수를 반영한 조합 중 집계가 좋아한 조합으로 판정한 것이라, 점수와 추천 사유가 같은 판정을 쓴다.
+public record FeedbackScores(
+        Map<CombinationId, Double> scoreByCombination, Set<CombinationId> likedCombinations) {
     public static FeedbackScores of(
             Collection<PairingRatingSummary> ratingSummaries,
             Set<Long> drinkIds,
             Set<Long> anjuIds,
             ToDoubleFunction<PairingRatingSummary> scoring) {
-        Map<CombinationId, Double> scoreByCombination =
+        List<PairingRatingSummary> applicable =
                 ratingSummaries.stream()
                         .filter(PairingRatingSummary::hasEnoughSample)
                         .filter(
                                 summary ->
                                         drinkIds.contains(summary.drinkId())
                                                 && anjuIds.contains(summary.anjuId()))
+                        .toList();
+        Map<CombinationId, Double> scoreByCombination =
+                applicable.stream()
                         .collect(
                                 Collectors.toMap(
-                                        summary ->
-                                                new CombinationId(
-                                                        summary.drinkId(), summary.anjuId()),
-                                        scoring::applyAsDouble));
+                                        FeedbackScores::combinationOf, scoring::applyAsDouble));
+        Set<CombinationId> likedCombinations =
+                applicable.stream()
+                        .filter(PairingRatingSummary::isLiked)
+                        .map(FeedbackScores::combinationOf)
+                        .collect(Collectors.toUnmodifiableSet());
 
-        return new FeedbackScores(Map.copyOf(scoreByCombination));
+        return new FeedbackScores(Map.copyOf(scoreByCombination), likedCombinations);
     }
 
     public double scoreOf(CombinationId combination) {
         return scoreByCombination.getOrDefault(combination, 0.0);
+    }
+
+    public boolean isLiked(CombinationId combination) {
+        return likedCombinations.contains(combination);
     }
 
     // 감점받은 조합은 피드백이 없을 때의 순위보다 밀려날 수 있고, 제외할 조합은 순위에서 빠진다(#175).
@@ -50,6 +62,10 @@ public record FeedbackScores(Map<CombinationId, Double> scoreByCombination) {
                 .collect(
                         Collectors.groupingBy(
                                 CombinationId::drinkId, Collectors.summingInt(_ -> 1)));
+    }
+
+    private static CombinationId combinationOf(PairingRatingSummary summary) {
+        return new CombinationId(summary.drinkId(), summary.anjuId());
     }
 
     private Stream<CombinationId> displaced(Set<CombinationId> excluded) {
