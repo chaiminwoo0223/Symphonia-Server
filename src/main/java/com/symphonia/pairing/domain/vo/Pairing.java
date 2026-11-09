@@ -45,6 +45,7 @@ public class Pairing {
     // 감점받은 조합이 밀려나거나 제외한 조합이 빠진 자리를 채울 수 있도록 상위 경계는 그 조합 수만큼 넓힌다.
     // 스타일별 최고와 무알코올 최고는 그 경계에 속한 음료의 감점 조합과 제외 조합 수만큼만 넓힌다.
     // 제외 조합은 회원이 싫어요를 남긴 조합이고, 순위를 매긴 뒤 결과에서 뺀다(#175).
+    // 도수 상한이나 알레르기로 이미 빠진 음료와 안주의 제외 조합은 경계를 넓히지 않도록 미리 걸러 낸다.
     public static List<Pairing> recommend(
             List<PairingDrink> drinks,
             List<PairingAnju> anjus,
@@ -57,6 +58,8 @@ public class Pairing {
                 anjus.stream().filter(anju -> !occasion.hasAllergyConflict(anju)).toList();
         Map<Long, PairingDrink> drinkById = byId(allowedDrinks, PairingDrink::getId);
         Map<Long, PairingAnju> anjuById = byId(allowedAnjus, PairingAnju::getId);
+        Set<CombinationId> excludedAmongAllowed =
+                excludedAmong(excluded, drinkById.keySet(), anjuById.keySet());
         FeedbackScores feedbackScores =
                 FeedbackScores.of(
                         ratingSummaries,
@@ -66,7 +69,11 @@ public class Pairing {
 
         List<Combination> combined =
                 selectableDrinkAnjus(
-                                allowedDrinks, allowedAnjus, occasion, feedbackScores, excluded)
+                                allowedDrinks,
+                                allowedAnjus,
+                                occasion,
+                                feedbackScores,
+                                excludedAmongAllowed)
                         .stream()
                         .map(
                                 drinkAnju ->
@@ -81,7 +88,7 @@ public class Pairing {
                                 combined.stream(),
                                 ratedCombinationsOutside(
                                         combined, feedbackScores, drinkById, anjuById, occasion))
-                        .filter(combination -> !excluded.contains(combination.id()))
+                        .filter(combination -> !excludedAmongAllowed.contains(combination.id()))
                         .sorted(RANKING)
                         .toList();
 
@@ -93,6 +100,13 @@ public class Pairing {
 
     private static <T> Map<Long, T> byId(Collection<T> items, Function<T, Long> id) {
         return items.stream().collect(Collectors.toMap(id, Function.identity()));
+    }
+
+    private static Set<CombinationId> excludedAmong(
+            Set<CombinationId> excluded, Set<Long> drinkIds, Set<Long> anjuIds) {
+        return excluded.stream()
+                .filter(id -> drinkIds.contains(id.drinkId()) && anjuIds.contains(id.anjuId()))
+                .collect(Collectors.toSet());
     }
 
     private static double feedbackScore(PairingRatingSummary ratingSummary) {
