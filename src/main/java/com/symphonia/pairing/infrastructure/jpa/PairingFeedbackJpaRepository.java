@@ -1,7 +1,10 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
+import com.symphonia.pairing.domain.vo.CombinationId;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -46,4 +49,15 @@ public interface PairingFeedbackJpaRepository
             @Param("memberId") Long memberId,
             @Param("drinkId") Long drinkId,
             @Param("anjuId") Long anjuId);
+
+    // (member_id, drink_id, anju_id) 유니크 인덱스가 member_id로 시작해 그 인덱스로 읽는다.
+    @Query(
+            """
+            SELECT new com.symphonia.pairing.domain.vo.CombinationId(feedback.drinkId, feedback.anjuId)
+            FROM PairingFeedbackJpaEntity feedback
+            WHERE feedback.memberId = :memberId
+              AND feedback.rating = :rating
+            """)
+    List<CombinationId> findCombinationsByMemberIdAndRating(
+            @Param("memberId") Long memberId, @Param("rating") PairingRating rating);
 }

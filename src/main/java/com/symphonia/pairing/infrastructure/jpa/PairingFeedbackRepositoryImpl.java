@@ -2,8 +2,11 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
+import com.symphonia.pairing.domain.vo.CombinationId;
+import com.symphonia.pairing.domain.vo.PairingRating;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -44,5 +47,12 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
         return pairingFeedbackJpaRepository
                 .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId)
                 .map(PairingFeedbackJpaEntity::toDomain);
+    }
+
+    @Override
+    public Set<CombinationId> findDislikedCombinationsByMemberId(Long memberId) {
+        return Set.copyOf(
+                pairingFeedbackJpaRepository.findCombinationsByMemberIdAndRating(
+                        memberId, PairingRating.DISLIKE));
     }
 }

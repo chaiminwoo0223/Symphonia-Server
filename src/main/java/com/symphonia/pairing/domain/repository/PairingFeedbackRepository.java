@@ -1,7 +1,9 @@
 package com.symphonia.pairing.domain.repository;
 
 import com.symphonia.pairing.domain.entity.PairingFeedback;
+import com.symphonia.pairing.domain.vo.CombinationId;
 import java.util.Optional;
+import java.util.Set;
 
 public interface PairingFeedbackRepository {
     PairingFeedback save(PairingFeedback pairingFeedback);
@@ -11,4 +13,7 @@ public interface PairingFeedbackRepository {
 
     Optional<PairingFeedback> findByMemberIdAndCombinationForUpdate(
             Long memberId, Long drinkId, Long anjuId);
+
+    // 회원이 싫어요를 남긴 음료×안주 조합이다. 추천에서 제외할 조합을 구할 때 쓴다.
+    Set<CombinationId> findDislikedCombinationsByMemberId(Long memberId);
 }
