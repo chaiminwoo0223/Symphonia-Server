@@ -11,7 +11,7 @@
 
 ## 맛과 분위기 값의 저장
 
-- `FlavorProfile`(int 5컬럼)과 `MoodProfile`(int 4컬럼)은 int 컬럼 `*Embeddable`로 두고 vector 컬럼으로 바꾸지 않는다. 점수는 자바에서 계산한다.
+- `FlavorProfile`(int 5컬럼)은 int 컬럼 `*Embeddable`로 두고 vector 컬럼으로 바꾸지 않는다. 점수는 자바에서 계산한다.
 - ANN 인덱스(ivfflat/hnsw)는 두지 않는다.
 - vector 컬럼으로 전환하게 되면 도메인 VO는 그대로 두고 `*Embeddable`과 `*JpaEntity`에만 `@JdbcTypeCode(SqlTypes.VECTOR)`와 `@Array(length = 축 개수)`로 매핑한다.
 - 유사도 축을 바꾸면 카탈로그 전체의 `MATCH_THRESHOLD` 이상 매칭 비율을 다시 계산해 임계값을 확인한다.
@@ -31,7 +31,7 @@
 ## 인덱스와 제약
 
 - 인덱스와 제약은 마이그레이션 스크립트에 선언한다. PostgreSQL은 FK 컬럼을 자동으로 인덱싱하지 않는다.
-- FK 제약이나 새 조회 조건 컬럼이 생기면 인덱스가 필요한지 함께 검토한다. 조회 조건이 없는 FK 컬럼(`pairing_feedback`의 drink, anju, music mood, `drink.drink_style_id`)에는 인덱스를 두지 않는다.
+- FK 제약이나 새 조회 조건 컬럼이 생기면 인덱스가 필요한지 함께 검토한다. 조회 조건이 없는 FK 컬럼(`pairing_feedback`의 drink, anju, `drink.drink_style_id`)에는 인덱스를 두지 않는다.
 - `member`의 `(social_provider, social_id)`에 unique 제약 `uk_member_social_login`을 둔다.
 - `drink.name`에는 유니크 제약을 걸지 않는다. `pairing_feedback.member_id`처럼 도메인 간 참조에는 FK를 걸지 않는다.
 - 제약 위반은 `*RepositoryImpl`에서 제약 이름으로 구분해 도메인 예외로 바꾼다(예: `uk_member_social_login` → `MemberAlreadyExistsException`). 다른 무결성 위반은 바꾸지 않고 그대로 전파한다.
