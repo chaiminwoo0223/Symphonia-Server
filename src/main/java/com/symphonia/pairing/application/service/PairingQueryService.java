@@ -57,13 +57,6 @@ public class PairingQueryService implements RecommendPairingUseCase {
                 .toList();
     }
 
-    // 비로그인 요청은 제외할 조합이 없고 피드백도 조회하지 않는다.
-    private Set<CombinationId> dislikedCombinationsOf(RecommendPairingQuery query) {
-        return query.memberId() == null
-                ? Set.of()
-                : pairingFeedbackRepository.findDislikedCombinationsByMemberId(query.memberId());
-    }
-
     private static PairingDrink toPairingDrink(DrinkResult drink) {
         return PairingDrink.of(
                 drink.id(),
@@ -96,5 +89,12 @@ public class PairingQueryService implements RecommendPairingUseCase {
                 anju.serving(),
                 anju.spicy(),
                 anju.harmonizeMask());
+    }
+
+    // 비로그인 요청은 제외할 조합이 없고 피드백도 조회하지 않는다.
+    private Set<CombinationId> dislikedCombinationsOf(RecommendPairingQuery query) {
+        return query.memberId() == null
+                ? Set.of()
+                : pairingFeedbackRepository.findDislikedCombinationsByMemberId(query.memberId());
     }
 }
