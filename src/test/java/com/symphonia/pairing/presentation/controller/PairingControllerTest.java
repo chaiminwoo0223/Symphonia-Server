@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @Sql("/sql/clear-catalog.sql")
 class PairingControllerTest extends IntegrationTest {
@@ -148,6 +149,73 @@ class PairingControllerTest extends IntegrationTest {
                                     .param("isAdultConfirmed", "true")
                                     .param("attendeeAllergies", "NOT_AN_ALLERGY"))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Nested
+        @DisplayName("회원이 싫어요를 남긴 조합이 있는 경우")
+        class WhenMemberDislikedCombination {
+
+            @Test
+            @DisplayName("그 회원의 요청이면 싫어요를 남긴 조합을 제외한다")
+            void shouldExcludeDislikedCombinationWhenAuthenticated() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Anju disliked = seedCatalogWithDislikeOf(member.getId());
+
+                // when & then
+                mockMvc.perform(recommendRequest(authHelper.bearerTokenFor(member)))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data").isNotEmpty())
+                        .andExpect(
+                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                        .isEmpty());
+            }
+
+            @Test
+            @DisplayName("액세스 토큰이 없으면 제외하지 않고 그대로 추천한다")
+            void shouldKeepDislikedCombinationWhenUnauthenticated() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Anju disliked = seedCatalogWithDislikeOf(member.getId());
+
+                // when & then
+                mockMvc.perform(recommendRequest(null))
+                        .andExpect(status().isOk())
+                        .andExpect(
+                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                        .isNotEmpty());
+            }
+
+            @Test
+            @DisplayName("유효하지 않은 액세스 토큰이면 401이 아니라 비로그인 요청으로 추천한다")
+            void shouldRecommendAsAnonymousWhenAccessTokenInvalid() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Anju disliked = seedCatalogWithDislikeOf(member.getId());
+
+                // when & then
+                mockMvc.perform(recommendRequest("Bearer invalid-token"))
+                        .andExpect(status().isOk())
+                        .andExpect(
+                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                        .isNotEmpty());
+            }
+
+            @Test
+            @DisplayName("다른 회원의 요청이면 제외하지 않는다")
+            void shouldKeepDislikedCombinationWhenOtherMemberRequests() throws Exception {
+                // given
+                Member disliker = memberHelper.save(MemberFixture.KAKAO);
+                Member other = memberHelper.save(MemberFixture.GOOGLE);
+                Anju disliked = seedCatalogWithDislikeOf(disliker.getId());
+
+                // when & then
+                mockMvc.perform(recommendRequest(authHelper.bearerTokenFor(other)))
+                        .andExpect(status().isOk())
+                        .andExpect(
+                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                        .isNotEmpty());
+            }
         }
 
         @Nested
@@ -304,6 +372,34 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(status().isUnauthorized());
             }
         }
+    }
+
+    private MockHttpServletRequestBuilder recommendRequest(String authorization) {
+        MockHttpServletRequestBuilder request =
+                get("/api/v1/pairings/recommendations")
+                        .param("relationshipType", "FRIEND")
+                        .param("isAdultConfirmed", "true");
+
+        return authorization == null
+                ? request
+                : request.header(HttpHeaders.AUTHORIZATION, authorization);
+    }
+
+    // 소주에 마른안주와 골뱅이무침을 두고, 회원이 마른안주 조합에 싫어요를 남긴 상태로 만든다. 싫어요를 남긴 안주를 반환한다.
+    private Anju seedCatalogWithDislikeOf(Long memberId) {
+        Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
+        Anju disliked = catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+        catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+        pairingFeedbackRepository.save(
+                PairingFeedback.of(
+                        memberId,
+                        drink.getId(),
+                        disliked.getId(),
+                        RelationshipType.FRIEND,
+                        null,
+                        PairingRating.DISLIKE));
+
+        return disliked;
     }
 
     // 소주와 마른안주는 맛이 가까워 추천 사유가 하나 이상 붙는다.

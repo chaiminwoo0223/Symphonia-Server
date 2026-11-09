@@ -9,7 +9,9 @@ import com.symphonia.common.annotation.QueryService;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
 import com.symphonia.pairing.application.usecase.RecommendPairingUseCase;
+import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
+import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.FlavorProfile;
 import com.symphonia.pairing.domain.vo.Occasion;
 import com.symphonia.pairing.domain.vo.Pairing;
@@ -17,6 +19,7 @@ import com.symphonia.pairing.domain.vo.PairingAnju;
 import com.symphonia.pairing.domain.vo.PairingDrink;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 
 @QueryService
@@ -24,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class PairingQueryService implements RecommendPairingUseCase {
     private final GetCatalogUseCase getCatalogUseCase;
     private final PairingRatingSummaryRepository pairingRatingSummaryRepository;
+    private final PairingFeedbackRepository pairingFeedbackRepository;
 
     @Override
     public List<PairingResult> recommend(RecommendPairingQuery query) {
@@ -46,9 +50,18 @@ public class PairingQueryService implements RecommendPairingUseCase {
                 pairingRatingSummaryRepository.findAllWithSampleAtLeast(
                         PairingRatingSummary.MINIMUM_SAMPLE);
 
-        return Pairing.recommend(drinks, anjus, ratingSummaries, occasion).stream()
+        return Pairing.recommend(
+                        drinks, anjus, ratingSummaries, dislikedCombinationsOf(query), occasion)
+                .stream()
                 .map(PairingResult::from)
                 .toList();
+    }
+
+    // 비로그인 요청은 제외할 조합이 없고 피드백도 조회하지 않는다.
+    private Set<CombinationId> dislikedCombinationsOf(RecommendPairingQuery query) {
+        return query.memberId() == null
+                ? Set.of()
+                : pairingFeedbackRepository.findDislikedCombinationsByMemberId(query.memberId());
     }
 
     private static PairingDrink toPairingDrink(DrinkResult drink) {

@@ -42,12 +42,14 @@ public class Pairing {
     private final List<PairingReason> reasons;
 
     // 선정 규칙에 들 수 있는 음료×안주 쌍만 조합으로 만들고, 피드백이 있는 조합은 경계 밖이어도 함께 만든다.
-    // 감점받은 조합이 밀려난 자리를 채울 수 있도록 상위 경계는 감점받은 조합 수만큼 넓힌다.
-    // 스타일별 최고와 무알코올 최고는 그 경계에 속한 음료의 감점 조합 수만큼만 넓힌다.
+    // 감점받은 조합이 밀려나거나 제외한 조합이 빠진 자리를 채울 수 있도록 상위 경계는 그 조합 수만큼 넓힌다.
+    // 스타일별 최고와 무알코올 최고는 그 경계에 속한 음료의 감점 조합과 제외 조합 수만큼만 넓힌다.
+    // 제외 조합은 회원이 싫어요를 남긴 조합이고, 순위를 매긴 뒤 결과에서 뺀다(#175).
     public static List<Pairing> recommend(
             List<PairingDrink> drinks,
             List<PairingAnju> anjus,
             List<PairingRatingSummary> ratingSummaries,
+            Set<CombinationId> excluded,
             Occasion occasion) {
         List<PairingDrink> allowedDrinks =
                 drinks.stream().filter(drink -> drink.getAbv() <= occasion.maxAbv()).toList();
@@ -63,7 +65,9 @@ public class Pairing {
                         Pairing::feedbackScore);
 
         List<Combination> combined =
-                selectableDrinkAnjus(allowedDrinks, allowedAnjus, occasion, feedbackScores).stream()
+                selectableDrinkAnjus(
+                                allowedDrinks, allowedAnjus, occasion, feedbackScores, excluded)
+                        .stream()
                         .map(
                                 drinkAnju ->
                                         Combination.of(
@@ -77,6 +81,7 @@ public class Pairing {
                                 combined.stream(),
                                 ratedCombinationsOutside(
                                         combined, feedbackScores, drinkById, anjuById, occasion))
+                        .filter(combination -> !excluded.contains(combination.id()))
                         .sorted(RANKING)
                         .toList();
 
@@ -98,7 +103,8 @@ public class Pairing {
             List<PairingDrink> allowedDrinks,
             List<PairingAnju> allowedAnjus,
             Occasion occasion,
-            FeedbackScores feedbackScores) {
+            FeedbackScores feedbackScores,
+            Set<CombinationId> excluded) {
         DrinkAnjuScores scores =
                 DrinkAnjuScores.of(
                         allowedDrinks,
@@ -109,8 +115,8 @@ public class Pairing {
         SelectionThresholds thresholds =
                 SelectionThresholds.of(
                         scores,
-                        RECOMMENDATION_LIMIT + feedbackScores.penalizedCount(),
-                        feedbackScores.penalizedCountByDrink(),
+                        RECOMMENDATION_LIMIT + feedbackScores.displacedCount(excluded),
+                        feedbackScores.displacedCountByDrink(excluded),
                         occasion.requiresNonAlcoholicOption(),
                         TIE_TOLERANCE);
 

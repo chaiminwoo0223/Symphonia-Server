@@ -23,8 +23,10 @@ import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingResult;
+import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
+import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.PairingReason;
@@ -49,6 +51,7 @@ class PairingQueryServiceTest extends UnitTest {
     @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private AnjuRepository anjuRepository;
     @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
+    @Mock private PairingFeedbackRepository pairingFeedbackRepository;
 
     // 카탈로그 조회는 실제 CatalogQueryService에 맡긴다. 그래서 Repository 스텁만으로 카탈로그 상태를 준비한다.
     @BeforeEach
@@ -57,7 +60,8 @@ class PairingQueryServiceTest extends UnitTest {
                 new PairingQueryService(
                         new CatalogQueryService(
                                 drinkRepository, drinkStyleRepository, anjuRepository),
-                        pairingRatingSummaryRepository);
+                        pairingRatingSummaryRepository,
+                        pairingFeedbackRepository);
     }
 
     @Nested
@@ -65,6 +69,7 @@ class PairingQueryServiceTest extends UnitTest {
     class Recommend {
         // 골든 세트 조합의 안주가 들어야 하는 순위다. 추천 결과가 최대 5개라 그보다 좁게 잡는다.
         private static final int GOLDEN_TOP_RANK = 3;
+        private static final Long MEMBER_ID = 7L;
         private static final Long SOJU_ID = 1L;
         private static final List<Long> TIED_ANJU_IDS = List.of(1L, 2L, 3L, 4L, 5L);
         private static final Long WEAKER_ANJU_ID = 6L;
@@ -1581,21 +1586,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("스타일 최고 조합이 싫어요로 밀려나면 상위 경계 밖이던 같은 스타일의 다음 조합이 그 스타일을 대표한다")
         void shouldReplaceDislikedStyleBestWithNextPairOfSameStyle() {
             // given
-            // 스타일 101의 소주 5개와 스타일 102의 소주 하나는 맛이 같다. 상위 경계는 마른안주와의 쌍 6개가 차지하고, 약한 마른안주와의 쌍은 경계 밖이다.
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(
-                            List.of(
-                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
-                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 101L),
-                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 101L),
-                                    DrinkFixture.SOJU.createWithIdAndStyle(14L, 101L),
-                                    DrinkFixture.SOJU.createWithIdAndStyle(15L, 101L),
-                                    DrinkFixture.SOJU.createWithIdAndStyle(21L, 102L)));
-            given(anjuRepository.findAll())
-                    .willReturn(
-                            List.of(
-                                    AnjuFixture.DRIED_SNACK.createWithId(1L),
-                                    weakerDriedSnack(WEAKER_ANJU_ID)));
+            givenSojuStylesWithWeakerAnju();
             givenRatingSummaries(PairingRatingSummary.of(21L, 1L, 0, 20));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
@@ -1611,6 +1602,137 @@ class PairingQueryServiceTest extends UnitTest {
                             tuple(13L, 1L),
                             tuple(14L, 1L),
                             tuple(21L, WEAKER_ANJU_ID));
+        }
+
+        @Test
+        @DisplayName("로그인한 회원이 싫어요를 남긴 조합은 결과에서 빼고, 상위 경계 밖이던 조합이 그 자리를 채운다")
+        void shouldReplaceMemberDislikedCombinationWithNextCombination() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenDislikedCombinations(new CombinationId(SOJU_ID, TIED_ANJU_IDS.getFirst()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(2L, 3L, 4L, 5L, 6L);
+        }
+
+        @Test
+        @DisplayName("싫어요를 남긴 조합이 이미 집계로 감점받은 조합이어도 한 번만 세어 다음 조합이 그 자리를 채운다")
+        void shouldReplaceDislikedCombinationOnceWhenAlreadyPenalizedBySummary() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 0, 20));
+            givenDislikedCombinations(new CombinationId(SOJU_ID, TIED_ANJU_IDS.getFirst()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(2L, 3L, 4L, 5L, 6L);
+        }
+
+        @Test
+        @DisplayName("스타일 최고 조합에 싫어요를 남기면 상위 경계 밖이던 같은 스타일의 다음 조합이 그 스타일을 대표한다")
+        void shouldReplaceMemberDislikedStyleBestWithNextPairOfSameStyle() {
+            // given
+            givenSojuStylesWithWeakerAnju();
+            givenDislikedCombinations(new CombinationId(21L, 1L));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkId, PairingResult::anjuId)
+                    .containsExactly(
+                            tuple(11L, 1L),
+                            tuple(12L, 1L),
+                            tuple(13L, 1L),
+                            tuple(14L, 1L),
+                            tuple(21L, WEAKER_ANJU_ID));
+        }
+
+        @Test
+        @DisplayName("무알코올 최고 조합에 싫어요를 남기면 같은 무알코올 Drink의 다음 안주가 무알코올 자리를 채운다")
+        void shouldReplaceMemberDislikedNonAlcoholicBestWithNextPair() {
+            // given
+            Long sodaId = DrinkFixture.SODA.createWithId().getId();
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 102L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 103L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(14L, 104L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(15L, 105L),
+                                    DrinkFixture.SODA.createWithId(sodaId)));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.DRIED_SNACK.createWithId(1L),
+                                    weakerDriedSnack(WEAKER_ANJU_ID)));
+            givenDislikedCombinations(new CombinationId(sodaId, 1L));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .memberId(MEMBER_ID)
+                            .build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .filteredOn(PairingResult::drinkNonAlcoholic)
+                    .extracting(PairingResult::drinkId, PairingResult::anjuId)
+                    .containsExactly(tuple(sodaId, WEAKER_ANJU_ID));
+        }
+
+        @Test
+        @DisplayName("다른 조합에 남긴 싫어요는 결과를 바꾸지 않는다")
+        void shouldKeepResultsWhenDislikedCombinationIsNotRecommended() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenDislikedCombinations(new CombinationId(SOJU_ID, WEAKER_ANJU_ID));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(1L, 2L, 3L, 4L, 5L);
+        }
+
+        @Test
+        @DisplayName("회원 정보 없이 요청하면 싫어요 조합을 조회하지 않고 제외 없이 추천한다")
+        void shouldNotQueryDislikedCombinationsWhenMemberIdMissing() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            then(pairingFeedbackRepository).shouldHaveNoInteractions();
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(1L, 2L, 3L, 4L, 5L);
         }
 
         @Test
@@ -1646,10 +1768,33 @@ class PairingQueryServiceTest extends UnitTest {
                                     .toList());
         }
 
+        // 스타일 101의 소주 5개와 스타일 102의 소주 하나는 맛이 같다. 상위 경계는 마른안주와의 쌍 6개가 차지하고, 약한 마른안주와의 쌍은 경계 밖이다.
+        private void givenSojuStylesWithWeakerAnju() {
+            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+                    .willReturn(
+                            List.of(
+                                    DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(12L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(13L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(14L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(15L, 101L),
+                                    DrinkFixture.SOJU.createWithIdAndStyle(21L, 102L)));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.DRIED_SNACK.createWithId(1L),
+                                    weakerDriedSnack(WEAKER_ANJU_ID)));
+        }
+
         // 마른안주에서 단맛만 1 낮춰 소주와의 점수가 약 0.043 낮은 안주다.
         private Anju weakerDriedSnack(Long id) {
             return AnjuFixture.DRIED_SNACK.createWithIdAndFlavorProfile(
                     id, FlavorProfile.of(0, 1, 0, 1, 0));
+        }
+
+        private void givenDislikedCombinations(CombinationId... combinations) {
+            given(pairingFeedbackRepository.findDislikedCombinationsByMemberId(MEMBER_ID))
+                    .willReturn(Set.of(combinations));
         }
 
         private void givenRatingSummaries(PairingRatingSummary... ratingSummaries) {
