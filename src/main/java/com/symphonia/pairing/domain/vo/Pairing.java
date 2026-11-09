@@ -120,13 +120,6 @@ public class Pairing {
                 .toList();
     }
 
-    // DrinkAnjuScores와 같은 순서로 더해, 경계 밖 조합의 점수도 배열에 담긴 점수와 비트 단위로 같게 한다.
-    private static double drinkAnjuScore(PairingDrink drink, PairingAnju anju, Occasion occasion) {
-        return pairScore(drink, anju, occasion)
-                + drinkMoodBonus(drink, occasion)
-                + anjuMoodBonus(anju, occasion);
-    }
-
     private static double pairScore(PairingDrink drink, PairingAnju anju, Occasion occasion) {
         double flavorSimilarity = drink.flavorSimilarityTo(anju);
 
@@ -199,6 +192,13 @@ public class Pairing {
                                     drinkAnjuScore(drink, anju, occasion),
                                     feedbackScores);
                         });
+    }
+
+    // DrinkAnjuScores와 같은 순서로 더해, 경계 밖 조합의 점수도 배열에 담긴 점수와 비트 단위로 같게 한다.
+    private static double drinkAnjuScore(PairingDrink drink, PairingAnju anju, Occasion occasion) {
+        return pairScore(drink, anju, occasion)
+                + drinkMoodBonus(drink, occasion)
+                + anjuMoodBonus(anju, occasion);
     }
 
     // 스타일마다 최고점 조합을 하나씩 먼저 고르고, 스타일이 모자라면 남은 조합을 점수순으로 채운다.

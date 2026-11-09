@@ -2,7 +2,6 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
-import com.symphonia.pairing.domain.vo.MoodType;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -31,9 +30,9 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
                         pairingFeedback.getDrinkId(),
                         pairingFeedback.getAnjuId(),
                         pairingFeedback.getRelationshipType().name(),
-                        Optional.ofNullable(pairingFeedback.getMoodType())
-                                .map(MoodType::name)
-                                .orElse(null),
+                        pairingFeedback.getMoodType() == null
+                                ? null
+                                : pairingFeedback.getMoodType().name(),
                         pairingFeedback.getRating().name(),
                         now)
                 == 1;
