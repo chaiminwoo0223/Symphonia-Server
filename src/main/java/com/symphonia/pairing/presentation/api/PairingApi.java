@@ -22,8 +22,13 @@ public interface PairingApi {
     @GetMapping(PairingEndpoints.RECOMMEND)
     @Operation(
             summary = "페어링 추천",
-            description = "관계 유형과 분위기, 성인 인증 여부, 참석자 음주 제약과 알레르기 정보를 기반으로 술과 안주 조합을 추천합니다.")
+            description =
+                    "관계 유형과 분위기, 성인 인증 여부, 참석자 음주 제약과 알레르기 정보를 기반으로 술과 안주 조합을 추천합니다. "
+                            + "로그인한 회원이 요청하면 그 회원이 싫어요를 남긴 조합은 결과에서 제외합니다. "
+                            + "액세스 토큰이 없거나 유효하지 않으면 비로그인 요청으로 처리합니다.")
     ResponseEntity<StandardResponse<List<PairingResponse>>> recommend(
+            @AuthenticationPrincipal(expression = "#this == 'anonymousUser' ? null : #this")
+                    String memberId,
             @Valid @ModelAttribute RecommendPairingRequest request);
 
     @PostMapping(PairingEndpoints.FEEDBACK)

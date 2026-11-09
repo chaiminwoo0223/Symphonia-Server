@@ -9,20 +9,20 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 // 쌍이 선정 규칙(상위 topLimit개, 스타일별 최고, 무알코올 최고)에 들 수 있는 경계 점수를 음료마다 하나씩 들고 있다.
-// 스타일별 최고와 무알코올 최고는 기본으로 최고 점수가 경계이고, 그 경계에 속한 음료의 감점 조합 수만큼 순위를 넓힌다(#130).
+// 스타일별 최고와 무알코올 최고는 기본으로 최고 점수가 경계이고, 그 경계에 속한 음료의 감점 조합과 제외 조합 수만큼 순위를 넓힌다(#130, #175).
 // 음료의 경계는 그 음료에 해당하는 경계 중 가장 낮은 값에서 tolerance를 뺀 값이다.
 public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDrink) {
     public static SelectionThresholds of(
             DrinkAnjuScores scores,
             int topLimit,
-            Map<Long, Integer> penalizedCountByDrink,
+            Map<Long, Integer> displacedCountByDrink,
             boolean nonAlcoholicOption,
             double tolerance) {
         double top = rankedScore(scores, IntStream.range(0, scores.drinkCount()), topLimit);
-        Map<Long, Double> bestByStyle = bestByStyle(scores, penalizedCountByDrink);
+        Map<Long, Double> bestByStyle = bestByStyle(scores, displacedCountByDrink);
         double bestNonAlcoholic =
                 nonAlcoholicOption
-                        ? bestNonAlcoholic(scores, penalizedCountByDrink)
+                        ? bestNonAlcoholic(scores, displacedCountByDrink)
                         : Double.POSITIVE_INFINITY;
 
         double[] thresholdByDrink =
@@ -41,7 +41,7 @@ public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDr
     }
 
     private static Map<Long, Double> bestByStyle(
-            DrinkAnjuScores scores, Map<Long, Integer> penalizedCountByDrink) {
+            DrinkAnjuScores scores, Map<Long, Integer> displacedCountByDrink) {
         List<PairingDrink> drinks = scores.drinks();
 
         return IntStream.range(0, drinks.size())
@@ -56,31 +56,31 @@ public record SelectionThresholds(DrinkAnjuScores scores, double[] thresholdByDr
                                                         scores,
                                                         indexes.stream()
                                                                 .mapToInt(Integer::intValue),
-                                                        penalizedCountByDrink))));
+                                                        displacedCountByDrink))));
     }
 
     private static double bestNonAlcoholic(
-            DrinkAnjuScores scores, Map<Long, Integer> penalizedCountByDrink) {
+            DrinkAnjuScores scores, Map<Long, Integer> displacedCountByDrink) {
         List<PairingDrink> drinks = scores.drinks();
         IntStream nonAlcoholicIndexes =
                 IntStream.range(0, drinks.size())
                         .filter(index -> drinks.get(index).isNonAlcoholic());
 
-        return bestRankedScore(scores, nonAlcoholicIndexes, penalizedCountByDrink);
+        return bestRankedScore(scores, nonAlcoholicIndexes, displacedCountByDrink);
     }
 
-    // 최고 자리는 같은 경계에 속한 음료의 감점 조합만 밀어낼 수 있어, 그 수만큼만 순위를 넓힌다.
+    // 최고 자리는 같은 경계에 속한 음료의 감점 조합과 제외 조합만 밀어낼 수 있어, 그 수만큼만 순위를 넓힌다.
     private static double bestRankedScore(
             DrinkAnjuScores scores,
             IntStream drinkIndexes,
-            Map<Long, Integer> penalizedCountByDrink) {
+            Map<Long, Integer> displacedCountByDrink) {
         int[] indexes = drinkIndexes.toArray();
         int rank =
                 1
                         + Arrays.stream(indexes)
                                 .map(
                                         index ->
-                                                penalizedCountByDrink.getOrDefault(
+                                                displacedCountByDrink.getOrDefault(
                                                         scores.drinks().get(index).getId(), 0))
                                 .sum();
 

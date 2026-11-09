@@ -24,8 +24,8 @@ public class PairingController implements PairingApi {
 
     @Override
     public ResponseEntity<StandardResponse<List<PairingResponse>>> recommend(
-            RecommendPairingRequest request) {
-        List<PairingResult> results = recommendPairingUseCase.recommend(request.toQuery());
+            String memberId, RecommendPairingRequest request) {
+        List<PairingResult> results = recommendPairingUseCase.recommend(request.toQuery(memberId));
         List<PairingResponse> response = results.stream().map(PairingResponse::from).toList();
 
         return ResponseEntity.status(HttpStatus.OK)

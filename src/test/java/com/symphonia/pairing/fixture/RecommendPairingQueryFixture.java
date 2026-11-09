@@ -13,6 +13,8 @@ public class RecommendPairingQueryFixture {
     private MoodType moodType;
     private Set<AttendeeConstraint> attendeeConstraints = Set.of();
     private Set<AllergyType> attendeeAllergies = Set.of();
+    // 기본값은 로그인하지 않은 요청이다.
+    private Long memberId;
 
     public RecommendPairingQueryFixture relationshipType(RelationshipType relationshipType) {
         this.relationshipType = relationshipType;
@@ -35,8 +37,13 @@ public class RecommendPairingQueryFixture {
         return this;
     }
 
+    public RecommendPairingQueryFixture memberId(Long memberId) {
+        this.memberId = memberId;
+        return this;
+    }
+
     public RecommendPairingQuery build() {
         return new RecommendPairingQuery(
-                relationshipType, moodType, attendeeConstraints, attendeeAllergies);
+                relationshipType, moodType, attendeeConstraints, attendeeAllergies, memberId);
     }
 }

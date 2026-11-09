@@ -18,9 +18,13 @@ public record RecommendPairingRequest(
                 boolean isAdultConfirmed,
         @Schema(description = "참석자 음주 제약(운전, 임신 등)") List<AttendeeConstraint> attendeeConstraints,
         @Schema(description = "참석자 알레르기 정보") List<AllergyType> attendeeAllergies) {
-    public RecommendPairingQuery toQuery() {
+    public RecommendPairingQuery toQuery(String memberId) {
         return new RecommendPairingQuery(
-                relationshipType, moodType, toSet(attendeeConstraints), toSet(attendeeAllergies));
+                relationshipType,
+                moodType,
+                toSet(attendeeConstraints),
+                toSet(attendeeAllergies),
+                memberId == null ? null : Long.parseLong(memberId));
     }
 
     private static <T> Set<T> toSet(List<T> values) {
