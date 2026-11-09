@@ -152,28 +152,56 @@ class PairingControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("회원이 싫어요를 남긴 조합이 있는 경우")
-        class WhenMemberDislikedCombination {
+        @DisplayName("싫어요를 남긴 회원이 로그인해 요청한 경우")
+        class WhenRequestedByMemberWhoDisliked {
 
             @Test
-            @DisplayName("그 회원의 요청이면 싫어요를 남긴 조합을 제외한다")
-            void shouldExcludeDislikedCombinationWhenAuthenticated() throws Exception {
+            @DisplayName("싫어요를 남긴 조합을 제외한다")
+            void shouldExcludeDislikedCombination() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
                 Anju disliked = seedCatalogWithDislikeOf(member.getId());
 
                 // when & then
-                mockMvc.perform(recommendRequest(authHelper.bearerTokenFor(member)))
+                mockMvc.perform(recommendRequest(token))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data").isNotEmpty())
                         .andExpect(
                                 jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
                                         .isEmpty());
             }
+        }
+
+        @Nested
+        @DisplayName("다른 회원이 로그인해 요청한 경우")
+        class WhenRequestedByOtherMember {
 
             @Test
-            @DisplayName("액세스 토큰이 없으면 제외하지 않고 그대로 추천한다")
-            void shouldKeepDislikedCombinationWhenUnauthenticated() throws Exception {
+            @DisplayName("싫어요를 남긴 조합을 제외하지 않는다")
+            void shouldKeepDislikedCombination() throws Exception {
+                // given
+                Member disliker = memberHelper.save(MemberFixture.KAKAO);
+                Member other = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(other);
+                Anju disliked = seedCatalogWithDislikeOf(disliker.getId());
+
+                // when & then
+                mockMvc.perform(recommendRequest(token))
+                        .andExpect(status().isOk())
+                        .andExpect(
+                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                        .isNotEmpty());
+            }
+        }
+
+        @Nested
+        @DisplayName("유효한 액세스 토큰 없이 요청한 경우")
+        class WhenRequestedWithoutValidToken {
+
+            @Test
+            @DisplayName("토큰이 없으면 제외하지 않고 그대로 추천한다")
+            void shouldKeepDislikedCombinationWhenTokenMissing() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 Anju disliked = seedCatalogWithDislikeOf(member.getId());
@@ -187,30 +215,14 @@ class PairingControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("유효하지 않은 액세스 토큰이면 401이 아니라 비로그인 요청으로 추천한다")
-            void shouldRecommendAsAnonymousWhenAccessTokenInvalid() throws Exception {
+            @DisplayName("토큰이 유효하지 않으면 401이 아니라 비로그인 요청으로 추천한다")
+            void shouldKeepDislikedCombinationWhenTokenInvalid() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 Anju disliked = seedCatalogWithDislikeOf(member.getId());
 
                 // when & then
                 mockMvc.perform(recommendRequest("Bearer invalid-token"))
-                        .andExpect(status().isOk())
-                        .andExpect(
-                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
-                                        .isNotEmpty());
-            }
-
-            @Test
-            @DisplayName("다른 회원의 요청이면 제외하지 않는다")
-            void shouldKeepDislikedCombinationWhenOtherMemberRequests() throws Exception {
-                // given
-                Member disliker = memberHelper.save(MemberFixture.KAKAO);
-                Member other = memberHelper.save(MemberFixture.GOOGLE);
-                Anju disliked = seedCatalogWithDislikeOf(disliker.getId());
-
-                // when & then
-                mockMvc.perform(recommendRequest(authHelper.bearerTokenFor(other)))
                         .andExpect(status().isOk())
                         .andExpect(
                                 jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
@@ -374,15 +386,10 @@ class PairingControllerTest extends IntegrationTest {
         }
     }
 
-    private MockHttpServletRequestBuilder recommendRequest(String authorization) {
-        MockHttpServletRequestBuilder request =
-                get("/api/v1/pairings/recommendations")
-                        .param("relationshipType", "FRIEND")
-                        .param("isAdultConfirmed", "true");
-
-        return authorization == null
-                ? request
-                : request.header(HttpHeaders.AUTHORIZATION, authorization);
+    // 소주와 마른안주는 맛이 가까워 추천 사유가 하나 이상 붙는다.
+    private void seedCatalog() {
+        catalogHelper.saveDrink(DrinkFixture.SOJU);
+        catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
     }
 
     // 소주에 마른안주와 골뱅이무침을 두고, 회원이 마른안주 조합에 싫어요를 남긴 상태로 만든다. 싫어요를 남긴 안주를 반환한다.
@@ -402,10 +409,15 @@ class PairingControllerTest extends IntegrationTest {
         return disliked;
     }
 
-    // 소주와 마른안주는 맛이 가까워 추천 사유가 하나 이상 붙는다.
-    private void seedCatalog() {
-        catalogHelper.saveDrink(DrinkFixture.SOJU);
-        catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+    private MockHttpServletRequestBuilder recommendRequest(String authorization) {
+        MockHttpServletRequestBuilder request =
+                get("/api/v1/pairings/recommendations")
+                        .param("relationshipType", "FRIEND")
+                        .param("isAdultConfirmed", "true");
+
+        return authorization == null
+                ? request
+                : request.header(HttpHeaders.AUTHORIZATION, authorization);
     }
 
     private SubmitPairingFeedbackRequest seedFeedbackRequest() {
