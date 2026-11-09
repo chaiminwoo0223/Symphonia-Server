@@ -1,12 +1,21 @@
 -- 추천에서 음악을 빼고 조합을 음료×안주로 줄인다(#184).
--- 같은 회원이 같은 음료×안주에 음악만 다르게 낸 피드백은 마지막 의사인 id가 가장 큰 행만 남긴다.
+-- 같은 회원이 같은 음료×안주에 음악만 다르게 낸 피드백은 마지막으로 제출한 행만 남긴다.
+-- 재제출은 기존 행을 고치므로 id가 아니라 updated_at으로 마지막 의사를 가리고, 같으면 id가 큰 행을 남긴다.
 -- 익명 피드백은 member_id가 NULL이라 같은 사람인지 알 수 없으므로 모두 남긴다.
-DELETE FROM pairing_feedback older
-USING pairing_feedback newer
-WHERE older.member_id = newer.member_id
-  AND older.drink_id = newer.drink_id
-  AND older.anju_id = newer.anju_id
-  AND older.id < newer.id;
+DELETE FROM pairing_feedback
+WHERE id IN (
+    SELECT id
+    FROM (
+        SELECT id,
+               ROW_NUMBER() OVER (
+                   PARTITION BY member_id, drink_id, anju_id
+                   ORDER BY updated_at DESC NULLS LAST, id DESC
+               ) AS recency
+        FROM pairing_feedback
+        WHERE member_id IS NOT NULL
+    ) ranked
+    WHERE recency > 1
+);
 
 ALTER TABLE pairing_feedback
     DROP CONSTRAINT uk_pairing_feedback_member_combination,
