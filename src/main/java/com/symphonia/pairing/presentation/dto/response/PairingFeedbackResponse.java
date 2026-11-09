@@ -1,9 +1,7 @@
 package com.symphonia.pairing.presentation.dto.response;
 
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
-import com.symphonia.pairing.domain.vo.MoodType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.util.Optional;
 
 public record PairingFeedbackResponse(
         @Schema(description = "ID") Long id,
@@ -18,7 +16,7 @@ public record PairingFeedbackResponse(
                 result.drinkId(),
                 result.anjuId(),
                 result.relationshipType().name(),
-                Optional.ofNullable(result.moodType()).map(MoodType::name).orElse(null),
+                result.moodType() == null ? null : result.moodType().name(),
                 result.rating().name());
     }
 }
