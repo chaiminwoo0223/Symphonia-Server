@@ -22,19 +22,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
-@DisplayName("CatalogCacheImpl 테스트")
-class CatalogCacheImplTest extends RedisRepositoryTest {
+@DisplayName("RedisCatalogCache 테스트")
+class RedisCatalogCacheTest extends RedisRepositoryTest {
 
     private static final String KEY = "catalog:v1";
 
     @Autowired private StringRedisTemplate redisTemplate;
 
-    private CatalogCacheImpl catalogCache;
+    private RedisCatalogCache catalogCache;
 
     // 슬라이스 테스트에는 JsonMapper 빈이 없어 직접 만든다.
     @BeforeEach
     void setUp() {
-        catalogCache = new CatalogCacheImpl(redisTemplate, JsonMapper.builder().build());
+        catalogCache = new RedisCatalogCache(redisTemplate, JsonMapper.builder().build());
     }
 
     @Nested
