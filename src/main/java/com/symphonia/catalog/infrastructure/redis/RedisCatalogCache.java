@@ -27,15 +27,8 @@ public class RedisCatalogCache implements CatalogCache {
     @Override
     public Optional<CatalogResult> find() {
         try {
-            String json = redisTemplate.opsForValue().get(KEY);
-
-            if (json == null) {
-                return Optional.empty();
-            }
-
-            return Optional.ofNullable(jsonMapper.readValue(json, CatalogResult.class));
+            return Optional.ofNullable(redisTemplate.opsForValue().get(KEY)).map(this::toCatalog);
         } catch (DataAccessException | JacksonException e) {
-            // 장애 중에는 요청마다 호출되므로 스택트레이스 없이 원인만 남겨 로그가 쌓이지 않게 한다.
             log.warn("카탈로그 캐시를 읽지 못해 DB에서 조회합니다. 원인: {}", e.toString());
             return Optional.empty();
         }
@@ -48,5 +41,10 @@ public class RedisCatalogCache implements CatalogCache {
         } catch (DataAccessException | JacksonException e) {
             log.warn("카탈로그 캐시를 저장하지 못했습니다. 원인: {}", e.toString());
         }
+    }
+
+    // 값이 JSON null이면 null을 돌려주고, 이 경우 map이 빈 Optional로 만든다.
+    private CatalogResult toCatalog(String json) {
+        return jsonMapper.readValue(json, CatalogResult.class);
     }
 }
