@@ -17,7 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class CatalogCacheImpl implements CatalogCache {
+public class RedisCatalogCache implements CatalogCache {
     private static final String KEY = "catalog:v1";
     private static final Duration TTL = Duration.ofHours(24);
 
