@@ -89,6 +89,7 @@
 
 - 설정은 `application.yaml`과 `application-{local,dev,prod}.yaml`로 나눈다. `spring.profiles.default: local`이고, dev와 prod는 `SPRING_PROFILES_ACTIVE`로 반드시 지정한다.
 - local의 datasource와 Redis 값은 compose를 끄거나 jar로 실행할 때를 위해 명시한다. `bootRun`과 `importCatalog`에서는 `spring-boot-docker-compose`의 연결이 우선한다.
+- Redis 명령 타임아웃 `timeout`(300ms)과 `connect-timeout`(1s)은 세 프로파일에 각각 명시한다. 응답 없는 Redis가 카탈로그 캐시 대체(DB 조회)를 지연시키지 않게 하는 값이다.
 - dev와 prod는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`로 주입한다. 6개 모두 필수이고, 비밀번호가 없는 Redis라도 `REDIS_PASSWORD`는 빈 값으로 넣는다.
 - dev와 prod는 `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`로, local은 compose와 같은 `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`로 주입한다.
 - `GATHERING_LINK_BASE_URL`은 local에만 기본값을 두고, dev와 prod는 기본값 없이 주입한다.
