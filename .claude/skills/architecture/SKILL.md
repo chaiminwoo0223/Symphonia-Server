@@ -83,7 +83,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - 의존 방향은 `pairing → catalog` 한 방향이다. 테이블과 FK는 도메인 분리 전 그대로다.
 - `FlavorProfile`은 두 도메인이 각자 가진다. `catalog`의 것은 적재 규칙이 계산한 값만, `pairing`의 것은 점수 계산 메서드를 가진다.
 - 점수 계산 메서드와 추천 필터는 `pairing`의 `PairingDrink`, `PairingAnju`에 둔다. 음식 계열(`Harmonize`) 판정은 `catalog`에 둔다.
-- `catalog`의 UseCase는 `GetCatalogUseCase`(`CatalogQuery`의 도수 상한 조건으로 일괄 조회), `VerifyCatalogReferencesUseCase`(id로 참조한 대상이 모두 있는지 확인), `GetCatalogReferencesUseCase`(id로 가리킨 대상의 표시 이름 조회) 세 개이고, `CatalogQueryService` 하나가 함께 구현한다.
+- `catalog`의 UseCase는 `GetCatalogUseCase`(`CatalogQuery`의 도수 상한 조건으로 캐시에서 일괄 조회), `VerifyCatalogReferencesUseCase`(id로 참조한 대상이 모두 있는지 확인), `GetCatalogReferencesUseCase`(id로 가리킨 대상의 표시 이름 조회) 세 개이고, `CatalogQueryService` 하나가 함께 구현한다. 카탈로그 캐시는 `RefreshCatalogCacheUseCase`(DB에서 읽어 덮어쓰고 반환)와 `EvictCatalogCacheUseCase`(삭제)가 맡고, 각각 별도 `*Service`가 구현한다.
 - `VerifyCatalogReferencesUseCase.verify`는 `CatalogReferencesQuery`를 받고 반환값이 없다. 없는 대상은 `DrinkNotFoundException`, `AnjuNotFoundException`으로 알린다.
 - `CatalogResult`는 추천에 필요한 값을 원시값과 enum으로 담는다. 음식 계열 판정은 계열마다 비트 하나인 `harmonizeMask`로 담고, `pairing`은 두 값의 비트 AND만 본다.
 - `CatalogResult`는 음료 종류(스타일의 `DrinkCategory`)와 안주의 주재료 계열, 형태, 매운맛 여부도 enum과 원시값으로 담는다.
