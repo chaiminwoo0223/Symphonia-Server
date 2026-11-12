@@ -78,9 +78,9 @@
 
 ## 카탈로그 캐시
 
-- 카탈로그 전체(`CatalogResult`)를 Redis 키 `catalog:v1` 하나에 JSON으로 캐시하고, 만료 시간은 24시간이다. `CatalogResult` 필드를 바꾸면 키의 버전을 올린다. 모르는 필드와 빠진 필드는 오류 없이 넘어가므로 옛 값이 조용히 잘못 읽힌다.
+- 카탈로그 전체(`CatalogResult`)를 Redis 키 `catalog:v1` 하나에 JSON으로 캐시하고, 만료 시간은 24시간이다. `CatalogResult` 필드를 바꾸면 키의 버전을 올린다. 모르는 필드와 빠진 필드는 오류 없이 넘어가므로 옛 값이 조용히 잘못 읽힌다. 버전을 올리면 배포 중인 옛 서버는 옛 키를 읽으므로 서버를 모두 바꾼 뒤에 적재한다.
 - 읽기는 Cache-Aside다. `CatalogQueryService.get`이 캐시에서 읽고, 없으면 `RefreshCatalogCacheUseCase`로 DB에서 읽어 채운다. 도수 상한은 `CatalogResult.filterByMaxAbv`로 메모리에서 적용하고, 상한별로 키를 나누지 않는다.
-- 갱신은 Write-Through다. `ImportCatalogRunner`가 적재를 모두 마친 뒤 새 카탈로그로 덮어쓰고, 적재가 중간에 실패하면 `EvictCatalogCacheUseCase`로 키를 지운다.
+- 갱신은 Write-Through다. `ImportCatalogRunner`가 적재를 모두 마친 뒤 새 카탈로그로 덮어쓴다. 적재가 중간에 실패하면 갱신하지 않으므로 캐시는 적재 전 카탈로그로 남고, 다시 적재하거나 만료되면 갱신된다.
 - 캐시 인터페이스 `CatalogCache`는 `catalog.application.cache`에, 구현체 `CatalogCacheImpl`은 `catalog.infrastructure.redis`에 두고 `StringRedisTemplate`을 쓴다. Spring Cache와 Caffeine은 쓰지 않는다.
 - Redis 장애와 역직렬화 실패는 구현체가 경고 로그만 남기고 DB 조회로 대체한다. 역직렬화에 실패한 값은 미스로 보고 DB에서 읽은 값으로 다시 덮어쓴다.
 - 평점 집계(`PairingRatingSummary`)는 캐시하지 않는다. 피드백이 다음 추천에 바로 반영되어야 한다.
