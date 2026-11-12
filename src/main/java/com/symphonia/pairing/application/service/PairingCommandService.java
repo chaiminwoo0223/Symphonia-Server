@@ -10,8 +10,7 @@ import com.symphonia.pairing.application.usecase.SubmitPairingFeedbackUseCase;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
-import com.symphonia.pairing.domain.vo.PairingRatingChange;
-import java.util.Optional;
+import com.symphonia.pairing.domain.vo.PairingFeedbackChange;
 import lombok.RequiredArgsConstructor;
 
 @CommandService
@@ -65,25 +64,37 @@ public class PairingCommandService
     }
 
     private PairingFeedbackResult submitFirst(PairingFeedback pairingFeedback) {
-        accumulate(pairingFeedback, PairingRatingChange.added(pairingFeedback.getRating()));
+        accumulate(pairingFeedback, pairingFeedback.addedChange());
 
         return PairingFeedbackResult.submitted(pairingFeedback);
     }
 
-    private void accumulate(PairingFeedback pairingFeedback, PairingRatingChange change) {
-        pairingRatingSummaryRepository.accumulate(
-                pairingFeedback.getDrinkId(), pairingFeedback.getAnjuId(), change);
+    // 전역 집계를 먼저 갱신하고, 상황별 집계는 변화가 담긴 순서(상황 순서)대로 갱신한다.
+    private void accumulate(PairingFeedback pairingFeedback, PairingFeedbackChange change) {
+        change.globalChange()
+                .ifPresent(
+                        ratingChange ->
+                                pairingRatingSummaryRepository.accumulate(
+                                        pairingFeedback.getDrinkId(),
+                                        pairingFeedback.getAnjuId(),
+                                        ratingChange));
+        change.situationChanges()
+                .forEach(
+                        situationChange ->
+                                pairingRatingSummaryRepository.accumulateInSituation(
+                                        pairingFeedback.getDrinkId(),
+                                        pairingFeedback.getAnjuId(),
+                                        situationChange.situation(),
+                                        situationChange.change()));
     }
 
     private PairingFeedbackResult resubmit(
             PairingFeedback pairingFeedback, SubmitPairingFeedbackCommand command) {
-        PairingRatingChange change =
+        PairingFeedbackChange change =
                 pairingFeedback.resubmit(
                         command.relationshipType(), command.moodType(), command.rating());
         PairingFeedback savedPairingFeedback = pairingFeedbackRepository.save(pairingFeedback);
-        Optional.of(change)
-                .filter(PairingRatingChange::changesCount)
-                .ifPresent(countChange -> accumulate(savedPairingFeedback, countChange));
+        accumulate(savedPairingFeedback, change);
 
         return PairingFeedbackResult.resubmitted(savedPairingFeedback);
     }

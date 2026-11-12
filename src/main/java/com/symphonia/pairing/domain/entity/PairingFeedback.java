@@ -1,8 +1,9 @@
 package com.symphonia.pairing.domain.entity;
 
 import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.PairingFeedbackChange;
 import com.symphonia.pairing.domain.vo.PairingRating;
-import com.symphonia.pairing.domain.vo.PairingRatingChange;
+import com.symphonia.pairing.domain.vo.PairingSituation;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -50,14 +51,26 @@ public class PairingFeedback {
         return of(null, drinkId, anjuId, relationshipType, moodType, rating);
     }
 
-    // 같은 조합에 다시 낸 피드백으로 바꾸고, 조합별 집계가 바뀌는 수를 돌려준다.
-    public PairingRatingChange resubmit(
+    // 처음 낸 피드백이 조합별 집계에 더하는 수다.
+    public PairingFeedbackChange addedChange() {
+        return PairingFeedbackChange.added(situation(), rating);
+    }
+
+    // 같은 조합에 다시 낸 피드백으로 바꾸고, 전역 집계와 상황별 집계가 바뀌는 수를 돌려준다.
+    public PairingFeedbackChange resubmit(
             RelationshipType relationshipType, MoodType moodType, PairingRating rating) {
-        PairingRatingChange change = PairingRatingChange.between(this.rating, rating);
+        PairingSituation resubmittedSituation = PairingSituation.of(relationshipType, moodType);
+        PairingFeedbackChange change =
+                PairingFeedbackChange.between(
+                        situation(), this.rating, resubmittedSituation, rating);
         this.relationshipType = relationshipType;
         this.moodType = moodType;
         this.rating = rating;
 
         return change;
+    }
+
+    public PairingSituation situation() {
+        return PairingSituation.of(relationshipType, moodType);
     }
 }

@@ -25,6 +25,7 @@ import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.PairingRatingChange;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
+import com.symphonia.pairing.domain.vo.PairingSituation;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
@@ -313,7 +314,7 @@ class PairingControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("같은 조합에 다시 내면 기존 피드백을 바꾸고 집계를 고친 뒤 200을 반환한다")
+            @DisplayName("같은 조합에 다시 내면 기존 피드백을 바꾸고 전역 집계와 상황별 집계를 고친 뒤 200을 반환한다")
             void shouldUpdateFeedbackWhenResubmitted() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
@@ -328,6 +329,12 @@ class PairingControllerTest extends IntegrationTest {
                         request.anjuId(),
                         PairingRatingChange.added(
                                 PairingFeedbackFixture.FRIEND_FORMAL.getRating()));
+                pairingRatingSummaryRepository.accumulateInSituation(
+                        request.drinkId(),
+                        request.anjuId(),
+                        submitted.situation(),
+                        PairingRatingChange.added(
+                                PairingFeedbackFixture.FRIEND_FORMAL.getRating()));
 
                 // when & then
                 mockMvc.perform(
@@ -338,9 +345,14 @@ class PairingControllerTest extends IntegrationTest {
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.id").value(submitted.getId()))
                         .andExpect(jsonPath("$.data.rating").value(PairingRating.DISLIKE.name()));
-                assertThat(pairingRatingSummaryRepository.findAllWithSampleAtLeast(1))
+                assertThat(
+                                pairingRatingSummaryRepository.findAllWithSampleAtLeast(
+                                        1,
+                                        PairingSituation.of(
+                                                request.relationshipType(), request.moodType())))
                         .containsExactly(
-                                PairingRatingSummary.of(request.drinkId(), request.anjuId(), 0, 1));
+                                PairingRatingSummary.of(
+                                        request.drinkId(), request.anjuId(), 0, 1, 0, 1));
             }
 
             @Test

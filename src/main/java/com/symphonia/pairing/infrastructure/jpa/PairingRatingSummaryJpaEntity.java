@@ -1,6 +1,5 @@
 package com.symphonia.pairing.infrastructure.jpa;
 
-import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
@@ -26,11 +25,6 @@ public class PairingRatingSummaryJpaEntity {
 
     @Column(nullable = false)
     private int dislikeCount;
-
-    public PairingRatingSummary toDomain() {
-        return PairingRatingSummary.of(
-                combination.drinkId(), combination.anjuId(), likeCount, dislikeCount);
-    }
 
     @Embeddable
     public record Combination(Long drinkId, Long anjuId) implements Serializable {}

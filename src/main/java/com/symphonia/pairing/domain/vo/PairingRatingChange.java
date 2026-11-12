@@ -9,6 +9,11 @@ public record PairingRatingChange(int likeDelta, int dislikeDelta) {
         };
     }
 
+    // 상황이 바뀔 때 이전 상황의 집계에서 이전 평점을 뺀다.
+    public static PairingRatingChange removed(PairingRating rating) {
+        return new PairingRatingChange(0, 0).minus(added(rating));
+    }
+
     // 평점이 같으면 더한 수와 뺀 수가 같아 변화량이 0이다.
     public static PairingRatingChange between(PairingRating before, PairingRating after) {
         return added(after).minus(added(before));

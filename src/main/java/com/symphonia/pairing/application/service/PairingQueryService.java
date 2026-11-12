@@ -18,6 +18,7 @@ import com.symphonia.pairing.domain.vo.Pairing;
 import com.symphonia.pairing.domain.vo.PairingAnju;
 import com.symphonia.pairing.domain.vo.PairingDrink;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
+import com.symphonia.pairing.domain.vo.PairingSituation;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -45,10 +46,11 @@ public class PairingQueryService implements RecommendPairingUseCase {
         List<PairingAnju> anjus =
                 catalog.anjus().stream().map(PairingQueryService::toPairingAnju).toList();
 
-        // 조합마다 집계를 조회하지 않도록 표본이 충분한 집계를 요청마다 한 번에 읽는다.
+        // 조합마다 집계를 조회하지 않도록 표본이 충분한 집계를 요청한 상황의 집계와 함께 요청마다 한 번에 읽는다.
         List<PairingRatingSummary> ratingSummaries =
                 pairingRatingSummaryRepository.findAllWithSampleAtLeast(
-                        PairingRatingSummary.MINIMUM_SAMPLE);
+                        PairingRatingSummary.MINIMUM_SAMPLE,
+                        PairingSituation.of(query.relationshipType(), query.moodType()));
 
         return Pairing.recommend(
                         drinks, anjus, ratingSummaries, dislikedCombinationsOf(query), occasion)
