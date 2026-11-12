@@ -12,7 +12,6 @@ import com.symphonia.catalog.application.dto.result.ImportAnjuResult;
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult;
-import com.symphonia.catalog.application.usecase.EvictCatalogCacheUseCase;
 import com.symphonia.catalog.application.usecase.ImportAnjuUseCase;
 import com.symphonia.catalog.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.catalog.application.usecase.ImportDrinkStyleUseCase;
@@ -39,8 +38,6 @@ class ImportCatalogRunnerTest {
     private final ImportAnjuUseCase importAnjuUseCase = mock(ImportAnjuUseCase.class);
     private final RefreshCatalogCacheUseCase refreshCatalogCacheUseCase =
             mock(RefreshCatalogCacheUseCase.class);
-    private final EvictCatalogCacheUseCase evictCatalogCacheUseCase =
-            mock(EvictCatalogCacheUseCase.class);
 
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
@@ -49,7 +46,6 @@ class ImportCatalogRunnerTest {
                     .withBean(ImportXWineUseCase.class, () -> importXWineUseCase)
                     .withBean(ImportAnjuUseCase.class, () -> importAnjuUseCase)
                     .withBean(RefreshCatalogCacheUseCase.class, () -> refreshCatalogCacheUseCase)
-                    .withBean(EvictCatalogCacheUseCase.class, () -> evictCatalogCacheUseCase)
                     .withUserConfiguration(ImportCatalogRunner.class);
 
     @Nested
@@ -151,7 +147,6 @@ class ImportCatalogRunnerTest {
                 inOrder.verify(importXWineUseCase).importXWines();
                 inOrder.verify(importAnjuUseCase).importCuratedAnjus();
                 inOrder.verify(refreshCatalogCacheUseCase).refresh();
-                verify(evictCatalogCacheUseCase, never()).evict();
             }
         }
 
@@ -160,8 +155,8 @@ class ImportCatalogRunnerTest {
         class WhenImportFailed {
 
             @Test
-            @DisplayName("캐시를 갱신하지 않고 지운 뒤 원래 예외를 그대로 던진다")
-            void shouldEvictCacheAndRethrowWhenImportFailed() {
+            @DisplayName("캐시를 갱신하지 않고 원래 예외를 그대로 던진다")
+            void shouldNotRefreshCacheAndRethrowWhenImportFailed() {
                 // given
                 IllegalStateException failure = new IllegalStateException("적재 실패");
                 given(importDrinkStyleUseCase.importBjcpStyles())
@@ -171,7 +166,6 @@ class ImportCatalogRunnerTest {
                 // when & then
                 assertThatThrownBy(() -> runner().run(new DefaultApplicationArguments()))
                         .isSameAs(failure);
-                verify(evictCatalogCacheUseCase).evict();
                 verify(refreshCatalogCacheUseCase, never()).refresh();
             }
         }
@@ -193,8 +187,7 @@ class ImportCatalogRunnerTest {
                     importCuratedDrinkUseCase,
                     importXWineUseCase,
                     importAnjuUseCase,
-                    refreshCatalogCacheUseCase,
-                    evictCatalogCacheUseCase);
+                    refreshCatalogCacheUseCase);
         }
     }
 }

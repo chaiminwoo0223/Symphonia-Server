@@ -33,9 +33,10 @@ public class CatalogCacheImpl implements CatalogCache {
                 return Optional.empty();
             }
 
-            return Optional.of(jsonMapper.readValue(json, CatalogResult.class));
+            return Optional.ofNullable(jsonMapper.readValue(json, CatalogResult.class));
         } catch (DataAccessException | JacksonException e) {
-            log.warn("카탈로그 캐시를 읽지 못해 DB에서 조회합니다.", e);
+            // 장애 중에는 요청마다 호출되므로 스택트레이스 없이 원인만 남겨 로그가 쌓이지 않게 한다.
+            log.warn("카탈로그 캐시를 읽지 못해 DB에서 조회합니다. 원인: {}", e.toString());
             return Optional.empty();
         }
     }
@@ -45,16 +46,7 @@ public class CatalogCacheImpl implements CatalogCache {
         try {
             redisTemplate.opsForValue().set(KEY, jsonMapper.writeValueAsString(catalog), TTL);
         } catch (DataAccessException | JacksonException e) {
-            log.warn("카탈로그 캐시를 저장하지 못했습니다.", e);
-        }
-    }
-
-    @Override
-    public void evict() {
-        try {
-            redisTemplate.delete(KEY);
-        } catch (DataAccessException e) {
-            log.warn("카탈로그 캐시를 지우지 못했습니다.", e);
+            log.warn("카탈로그 캐시를 저장하지 못했습니다. 원인: {}", e.toString());
         }
     }
 }
