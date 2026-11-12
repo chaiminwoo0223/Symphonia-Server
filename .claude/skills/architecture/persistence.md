@@ -76,6 +76,15 @@
 - 한 식품코드를 두 안주에 쓰지 않는다.
 - 가공식품 안주의 알레르기는 운영 DB에 안주를 처음 적재하기 전에 HACCP 제품이미지 및 포장지표기정보(15033307)와 대조한다. 대조 결과는 `nutrition.csv`의 `raw_materials`와 같은 방식으로 적재에 더한다.
 
+## 카탈로그 캐시
+
+- 카탈로그 전체(`CatalogResult`)를 Redis 키 `catalog:v1` 하나에 JSON으로 캐시하고, 만료 시간은 24시간이다. `CatalogResult` 필드를 바꾸면 키의 버전을 올린다. 모르는 필드와 빠진 필드는 오류 없이 넘어가므로 옛 값이 조용히 잘못 읽힌다.
+- 읽기는 Cache-Aside다. `CatalogQueryService.get`이 캐시에서 읽고, 없으면 `RefreshCatalogCacheUseCase`로 DB에서 읽어 채운다. 도수 상한은 `CatalogResult.filterByMaxAbv`로 메모리에서 적용하고, 상한별로 키를 나누지 않는다.
+- 갱신은 Write-Through다. `ImportCatalogRunner`가 적재를 모두 마친 뒤 새 카탈로그로 덮어쓰고, 적재가 중간에 실패하면 `EvictCatalogCacheUseCase`로 키를 지운다.
+- 캐시 인터페이스 `CatalogCache`는 `catalog.application.cache`에, 구현체 `CatalogCacheImpl`은 `catalog.infrastructure.redis`에 두고 `StringRedisTemplate`을 쓴다. Spring Cache와 Caffeine은 쓰지 않는다.
+- Redis 장애와 역직렬화 실패는 구현체가 경고 로그만 남기고 DB 조회로 대체한다. 역직렬화에 실패한 값은 미스로 보고 DB에서 읽은 값으로 다시 덮어쓴다.
+- 평점 집계(`PairingRatingSummary`)는 캐시하지 않는다. 피드백이 다음 추천에 바로 반영되어야 한다.
+
 ## 프로파일 설정
 
 - 설정은 `application.yaml`과 `application-{local,dev,prod}.yaml`로 나눈다. `spring.profiles.default: local`이고, dev와 prod는 `SPRING_PROFILES_ACTIVE`로 반드시 지정한다.
