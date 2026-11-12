@@ -9,6 +9,8 @@ spring:
     redis:
       host: localhost
       port: 6379
+      timeout: 300ms
+      connect-timeout: 1s
   rabbitmq:
     host: localhost
     port: 5672
