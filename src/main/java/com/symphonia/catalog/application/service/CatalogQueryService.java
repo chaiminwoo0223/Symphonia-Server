@@ -15,7 +15,6 @@ import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
-import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
 import com.symphonia.common.annotation.QueryService;
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 public class CatalogQueryService
         implements GetCatalogUseCase, VerifyCatalogReferencesUseCase, GetCatalogReferencesUseCase {
     private final DrinkRepository drinkRepository;
-    private final DrinkStyleRepository drinkStyleRepository;
     private final AnjuRepository anjuRepository;
     private final CatalogCache catalogCache;
     private final RefreshCatalogCacheUseCase refreshCatalogCacheUseCase;

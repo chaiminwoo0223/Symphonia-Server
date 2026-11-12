@@ -10,7 +10,6 @@ import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult.Exclu
 import com.symphonia.catalog.application.dto.result.ImportXWineResult;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult.AbvExceededWine;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult.UndeterminedWine;
-import com.symphonia.catalog.application.usecase.EvictCatalogCacheUseCase;
 import com.symphonia.catalog.application.usecase.ImportAnjuUseCase;
 import com.symphonia.catalog.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.catalog.application.usecase.ImportDrinkStyleUseCase;
@@ -44,28 +43,18 @@ public class ImportCatalogRunner implements ApplicationRunner {
     private final ImportXWineUseCase importXWineUseCase;
     private final ImportAnjuUseCase importAnjuUseCase;
     private final RefreshCatalogCacheUseCase refreshCatalogCacheUseCase;
-    private final EvictCatalogCacheUseCase evictCatalogCacheUseCase;
 
     @Override
     public void run(@NonNull ApplicationArguments args) {
-        try {
-            importAll();
-        } catch (RuntimeException e) {
-            // 단계마다 따로 커밋하므로 실패해도 DB는 일부만 바뀐 채 남는다. 옛 캐시가 남지 않도록 지워 다음 읽기가 DB 기준으로 채우게 한다.
-            evictCatalogCacheUseCase.evict();
-            throw e;
-        }
-
-        // 적재가 모두 끝난 뒤에 새 카탈로그로 덮어쓴다(Write-Through).
-        refreshCatalogCacheUseCase.refresh();
-        log.info("[ImportCatalog] 카탈로그 캐시를 새 카탈로그로 갱신했습니다.");
-    }
-
-    private void importAll() {
         reportStyles(importDrinkStyleUseCase.importBjcpStyles());
         reportCuratedDrinks(importCuratedDrinkUseCase.importCuratedBeers());
         reportXWines(importXWineUseCase.importXWines());
         reportAnjus(importAnjuUseCase.importCuratedAnjus());
+
+        // 적재가 모두 끝난 뒤에 새 카탈로그로 덮어쓴다(Write-Through).
+        // 적재가 중간에 실패하면 여기까지 오지 않아 캐시는 적재 전 카탈로그로 남고, 다시 적재하거나 만료되면 갱신된다.
+        // 캐시에 쓰지 못하면 구현체가 경고 로그를 남기므로 여기서는 성공을 따로 알리지 않는다.
+        refreshCatalogCacheUseCase.refresh();
     }
 
     private static void reportStyles(ImportDrinkStyleResult result) {

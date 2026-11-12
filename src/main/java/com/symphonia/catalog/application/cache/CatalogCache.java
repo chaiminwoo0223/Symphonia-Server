@@ -9,6 +9,4 @@ public interface CatalogCache {
     Optional<CatalogResult> find();
 
     void put(CatalogResult catalog);
-
-    void evict();
 }

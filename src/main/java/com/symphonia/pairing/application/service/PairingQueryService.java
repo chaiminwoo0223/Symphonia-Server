@@ -39,7 +39,7 @@ public class PairingQueryService implements RecommendPairingUseCase {
                         query.attendeeConstraints(),
                         query.attendeeAllergies());
 
-        // 도수 상한을 넘는 음료는 카탈로그 조회 단계에서 먼저 걸러 읽는 행을 줄인다.
+        // 도수 상한을 넘는 음료는 카탈로그 조회가 캐시에서 읽은 뒤 메모리에서 거른다.
         CatalogResult catalog = getCatalogUseCase.get(CatalogQuery.of(occasion.maxAbv()));
         List<PairingDrink> drinks =
                 catalog.drinks().stream().map(PairingQueryService::toPairingDrink).toList();

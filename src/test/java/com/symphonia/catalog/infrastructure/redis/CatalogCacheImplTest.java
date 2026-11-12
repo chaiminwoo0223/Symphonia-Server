@@ -110,24 +110,6 @@ class CatalogCacheImplTest extends RedisRepositoryTest {
         }
     }
 
-    @Nested
-    @DisplayName("evict 메서드는")
-    class Evict {
-
-        @Test
-        @DisplayName("저장한 카탈로그를 지운다")
-        void shouldRemoveCatalog() {
-            // given
-            catalogCache.put(catalog());
-
-            // when
-            catalogCache.evict();
-
-            // then
-            assertThat(catalogCache.find()).isEmpty();
-        }
-    }
-
     private CatalogResult catalog() {
         return new CatalogResult(
                 List.of(

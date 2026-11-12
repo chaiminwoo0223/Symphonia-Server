@@ -63,7 +63,6 @@ class PairingQueryServiceTest extends UnitTest {
                 new PairingQueryService(
                         new CatalogQueryService(
                                 drinkRepository,
-                                drinkStyleRepository,
                                 anjuRepository,
                                 catalogCache,
                                 new RefreshCatalogCacheService(

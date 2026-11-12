@@ -18,7 +18,6 @@ import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
-import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
 import com.symphonia.catalog.domain.vo.AnjuBase;
 import com.symphonia.catalog.domain.vo.DrinkCategory;
 import com.symphonia.catalog.domain.vo.ServingStyle;
@@ -46,7 +45,6 @@ class CatalogQueryServiceTest extends UnitTest {
     @InjectMocks private CatalogQueryService catalogQueryService;
 
     @Mock private DrinkRepository drinkRepository;
-    @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private AnjuRepository anjuRepository;
     @Mock private CatalogCache catalogCache;
     @Mock private RefreshCatalogCacheUseCase refreshCatalogCacheUseCase;
