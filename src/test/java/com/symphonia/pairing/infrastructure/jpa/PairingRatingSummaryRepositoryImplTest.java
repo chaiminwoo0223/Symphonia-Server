@@ -294,181 +294,218 @@ class PairingRatingSummaryRepositoryImplTest extends RepositoryTest {
     @Sql("/sql/clear-catalog.sql")
     class FindAllWithSampleAtLeast {
 
-        @Test
-        @DisplayName("좋아요와 싫어요를 합친 전역 표본 수가 기준 이상인 집계만 반환한다")
-        void shouldReturnSummariesWithEnoughSample() {
-            // given
-            List<CombinationId> combinations =
-                    savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM, AnjuFixture.DRIED_SNACK);
-            CombinationId belowMinimum = combinations.get(0);
-            CombinationId atMinimum = combinations.get(1);
-            accumulate(belowMinimum, new PairingRatingChange(2, 2), 1);
-            accumulate(atMinimum, new PairingRatingChange(2, 3), 1);
+        @Nested
+        @DisplayName("전역 표본이 기준에 못 미치는 조합이 있는 경우")
+        class WhenSampleBelowMinimum {
 
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+            @Test
+            @DisplayName("좋아요와 싫어요를 합친 전역 표본 수가 기준 이상인 집계만 반환한다")
+            void shouldReturnSummariesWithEnoughSample() {
+                // given
+                List<CombinationId> combinations =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM, AnjuFixture.DRIED_SNACK);
+                CombinationId belowMinimum = combinations.get(0);
+                CombinationId atMinimum = combinations.get(1);
+                accumulate(belowMinimum, new PairingRatingChange(2, 2), 1);
+                accumulate(atMinimum, new PairingRatingChange(2, 3), 1);
 
-            // then
-            assertThat(summaries)
-                    .containsExactly(
-                            PairingRatingSummary.of(atMinimum.drinkId(), atMinimum.anjuId(), 2, 3));
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+
+                // then
+                assertThat(summaries)
+                        .containsExactly(
+                                PairingRatingSummary.of(
+                                        atMinimum.drinkId(), atMinimum.anjuId(), 2, 3));
+            }
+
+            @Test
+            @DisplayName("전역 표본이 모자란 조합은 상황별 수가 많아도 담지 않는다")
+            void shouldNotReturnCombinationBelowMinimumGlobalSample() {
+                // given
+                CombinationId combination =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
+                accumulate(combination, new PairingRatingChange(1, 1), 1);
+                accumulateInSituation(
+                        combination, LOVER_ROMANTIC, new PairingRatingChange(10, 0), 1);
+
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+
+                // then
+                assertThat(summaries).isEmpty();
+            }
         }
 
-        @Test
-        @DisplayName("요청한 상황에서 받은 수를 전역 수와 함께 담고, 그 상황의 피드백이 없는 조합은 상황별 수를 0으로 담는다")
-        void shouldAttachSituationCounts() {
-            // given
-            List<CombinationId> combinations =
-                    savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM, AnjuFixture.DRIED_SNACK);
-            CombinationId withSituation = combinations.get(0);
-            CombinationId withoutSituation = combinations.get(1);
-            accumulate(withSituation, new PairingRatingChange(4, 1), 1);
-            accumulate(withoutSituation, new PairingRatingChange(1, 4), 1);
-            accumulateInSituation(withSituation, LOVER_ROMANTIC, new PairingRatingChange(1, 2), 1);
+        @Nested
+        @DisplayName("요청한 상황의 집계가 있는 경우")
+        class WhenSituationSummaryExists {
 
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+            @Test
+            @DisplayName("요청한 상황에서 받은 수를 전역 수와 함께 담고, 그 상황의 피드백이 없는 조합은 상황별 수를 0으로 담는다")
+            void shouldAttachSituationCounts() {
+                // given
+                List<CombinationId> combinations =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM, AnjuFixture.DRIED_SNACK);
+                CombinationId withSituation = combinations.get(0);
+                CombinationId withoutSituation = combinations.get(1);
+                accumulate(withSituation, new PairingRatingChange(4, 1), 1);
+                accumulate(withoutSituation, new PairingRatingChange(1, 4), 1);
+                accumulateInSituation(
+                        withSituation, LOVER_ROMANTIC, new PairingRatingChange(1, 2), 1);
 
-            // then
-            assertThat(summaries)
-                    .containsExactlyInAnyOrder(
-                            PairingRatingSummary.of(
-                                    withSituation.drinkId(), withSituation.anjuId(), 4, 1, 1, 2),
-                            PairingRatingSummary.of(
-                                    withoutSituation.drinkId(),
-                                    withoutSituation.anjuId(),
-                                    1,
-                                    4,
-                                    0,
-                                    0));
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+
+                // then
+                assertThat(summaries)
+                        .containsExactlyInAnyOrder(
+                                PairingRatingSummary.of(
+                                        withSituation.drinkId(),
+                                        withSituation.anjuId(),
+                                        4,
+                                        1,
+                                        1,
+                                        2),
+                                PairingRatingSummary.of(
+                                        withoutSituation.drinkId(),
+                                        withoutSituation.anjuId(),
+                                        1,
+                                        4,
+                                        0,
+                                        0));
+            }
         }
 
-        @Test
-        @DisplayName("다른 상황의 수는 담지 않는다")
-        void shouldNotAttachCountsOfOtherSituations() {
-            // given
-            CombinationId combination = savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
-            accumulate(combination, new PairingRatingChange(4, 1), 1);
-            accumulateInSituation(combination, LOVER_ROMANTIC, new PairingRatingChange(3, 0), 1);
-            accumulateInSituation(combination, BOSS_WITHOUT_MOOD, new PairingRatingChange(0, 3), 1);
+        @Nested
+        @DisplayName("요청한 상황에 분위기가 없는 경우")
+        class WhenMoodIsNull {
 
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(
-                            5, PairingSituation.of(RelationshipType.LOVER, null));
+            @Test
+            @DisplayName("분위기가 없는 상황이면 분위기가 없는 상황의 수를 담는다")
+            void shouldAttachCountsOfSituationWithoutMood() {
+                // given
+                CombinationId combination =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
+                accumulate(combination, new PairingRatingChange(4, 1), 1);
+                accumulateInSituation(
+                        combination, BOSS_WITHOUT_MOOD, new PairingRatingChange(0, 3), 1);
 
-            // then
-            assertThat(summaries)
-                    .containsExactly(
-                            PairingRatingSummary.of(
-                                    combination.drinkId(), combination.anjuId(), 4, 1, 0, 0));
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(
+                                5, BOSS_WITHOUT_MOOD);
+
+                // then
+                assertThat(summaries)
+                        .containsExactly(
+                                PairingRatingSummary.of(
+                                        combination.drinkId(), combination.anjuId(), 4, 1, 0, 3));
+            }
         }
 
-        @Test
-        @DisplayName("관계 유형이나 분위기 중 하나라도 다른 상황의 수는 담지 않는다")
-        void shouldNotAttachCountsOfSituationsDifferentInRelationshipOrMood() {
-            // given
-            CombinationId combination = savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
-            accumulate(combination, new PairingRatingChange(4, 1), 1);
-            accumulateInSituation(
-                    combination,
-                    PairingSituation.of(RelationshipType.LOVER, MoodType.CASUAL),
-                    new PairingRatingChange(3, 0),
-                    1);
-            accumulateInSituation(
-                    combination,
-                    PairingSituation.of(RelationshipType.FRIEND, MoodType.ROMANTIC),
-                    new PairingRatingChange(0, 3),
-                    1);
-            accumulateInSituation(
-                    combination,
-                    PairingSituation.of(RelationshipType.LOVER, null),
-                    new PairingRatingChange(2, 2),
-                    1);
+        @Nested
+        @DisplayName("다른 상황이나 다른 음료의 집계가 있는 경우")
+        class WhenOtherSummaryExists {
 
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+            @Test
+            @DisplayName("다른 상황의 수는 담지 않는다")
+            void shouldNotAttachCountsOfOtherSituations() {
+                // given
+                CombinationId combination =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
+                accumulate(combination, new PairingRatingChange(4, 1), 1);
+                accumulateInSituation(
+                        combination, LOVER_ROMANTIC, new PairingRatingChange(3, 0), 1);
+                accumulateInSituation(
+                        combination, BOSS_WITHOUT_MOOD, new PairingRatingChange(0, 3), 1);
 
-            // then
-            assertThat(summaries)
-                    .containsExactly(
-                            PairingRatingSummary.of(
-                                    combination.drinkId(), combination.anjuId(), 4, 1, 0, 0));
-        }
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(
+                                5, PairingSituation.of(RelationshipType.LOVER, null));
 
-        @Test
-        @DisplayName("같은 안주라도 다른 음료와의 조합에 쌓인 상황별 수는 담지 않는다")
-        void shouldNotAttachCountsOfCombinationWithOtherDrink() {
-            // given
-            CombinationId combination = savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
-            Long drinkStyleId = drinkStyleJpaRepository.findAll().getFirst().getId();
-            Long otherDrinkId =
-                    drinkJpaRepository
-                            .save(
-                                    DrinkJpaEntity.from(
-                                            DrinkFixture.BEER.createWithStyle(drinkStyleId)))
-                            .getId();
-            CombinationId otherDrinkCombination =
-                    new CombinationId(otherDrinkId, combination.anjuId());
-            accumulate(combination, new PairingRatingChange(4, 1), 1);
-            accumulate(otherDrinkCombination, new PairingRatingChange(4, 1), 1);
-            accumulateInSituation(
-                    otherDrinkCombination, LOVER_ROMANTIC, new PairingRatingChange(3, 0), 1);
+                // then
+                assertThat(summaries)
+                        .containsExactly(
+                                PairingRatingSummary.of(
+                                        combination.drinkId(), combination.anjuId(), 4, 1, 0, 0));
+            }
 
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
+            @Test
+            @DisplayName("관계 유형이나 분위기 중 하나라도 다른 상황의 수는 담지 않는다")
+            void shouldNotAttachCountsOfSituationsDifferentInRelationshipOrMood() {
+                // given
+                CombinationId combination =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
+                accumulate(combination, new PairingRatingChange(4, 1), 1);
+                accumulateInSituation(
+                        combination,
+                        PairingSituation.of(RelationshipType.LOVER, MoodType.CASUAL),
+                        new PairingRatingChange(3, 0),
+                        1);
+                accumulateInSituation(
+                        combination,
+                        PairingSituation.of(RelationshipType.FRIEND, MoodType.ROMANTIC),
+                        new PairingRatingChange(0, 3),
+                        1);
+                accumulateInSituation(
+                        combination,
+                        PairingSituation.of(RelationshipType.LOVER, null),
+                        new PairingRatingChange(2, 2),
+                        1);
 
-            // then
-            assertThat(summaries)
-                    .containsExactlyInAnyOrder(
-                            PairingRatingSummary.of(
-                                    combination.drinkId(), combination.anjuId(), 4, 1, 0, 0),
-                            PairingRatingSummary.of(
-                                    otherDrinkCombination.drinkId(),
-                                    otherDrinkCombination.anjuId(),
-                                    4,
-                                    1,
-                                    3,
-                                    0));
-        }
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
 
-        @Test
-        @DisplayName("분위기가 없는 상황이면 분위기가 없는 상황의 수를 담는다")
-        void shouldAttachCountsOfSituationWithoutMood() {
-            // given
-            CombinationId combination = savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
-            accumulate(combination, new PairingRatingChange(4, 1), 1);
-            accumulateInSituation(combination, BOSS_WITHOUT_MOOD, new PairingRatingChange(0, 3), 1);
+                // then
+                assertThat(summaries)
+                        .containsExactly(
+                                PairingRatingSummary.of(
+                                        combination.drinkId(), combination.anjuId(), 4, 1, 0, 0));
+            }
 
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, BOSS_WITHOUT_MOOD);
+            @Test
+            @DisplayName("같은 안주라도 다른 음료와의 조합에 쌓인 상황별 수는 담지 않는다")
+            void shouldNotAttachCountsOfCombinationWithOtherDrink() {
+                // given
+                CombinationId combination =
+                        savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
+                Long drinkStyleId = drinkStyleJpaRepository.findAll().getFirst().getId();
+                Long otherDrinkId =
+                        drinkJpaRepository
+                                .save(
+                                        DrinkJpaEntity.from(
+                                                DrinkFixture.BEER.createWithStyle(drinkStyleId)))
+                                .getId();
+                CombinationId otherDrinkCombination =
+                        new CombinationId(otherDrinkId, combination.anjuId());
+                accumulate(combination, new PairingRatingChange(4, 1), 1);
+                accumulate(otherDrinkCombination, new PairingRatingChange(4, 1), 1);
+                accumulateInSituation(
+                        otherDrinkCombination, LOVER_ROMANTIC, new PairingRatingChange(3, 0), 1);
 
-            // then
-            assertThat(summaries)
-                    .containsExactly(
-                            PairingRatingSummary.of(
-                                    combination.drinkId(), combination.anjuId(), 4, 1, 0, 3));
-        }
+                // when
+                List<PairingRatingSummary> summaries =
+                        pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
 
-        @Test
-        @DisplayName("전역 표본이 모자란 조합은 상황별 수가 많아도 담지 않는다")
-        void shouldNotReturnCombinationBelowMinimumGlobalSample() {
-            // given
-            CombinationId combination = savedCombinations(AnjuFixture.GOLBAENGI_MUCHIM).getFirst();
-            accumulate(combination, new PairingRatingChange(1, 1), 1);
-            accumulateInSituation(combination, LOVER_ROMANTIC, new PairingRatingChange(10, 0), 1);
-
-            // when
-            List<PairingRatingSummary> summaries =
-                    pairingRatingSummaryRepository.findAllWithSampleAtLeast(5, LOVER_ROMANTIC);
-
-            // then
-            assertThat(summaries).isEmpty();
+                // then
+                assertThat(summaries)
+                        .containsExactlyInAnyOrder(
+                                PairingRatingSummary.of(
+                                        combination.drinkId(), combination.anjuId(), 4, 1, 0, 0),
+                                PairingRatingSummary.of(
+                                        otherDrinkCombination.drinkId(),
+                                        otherDrinkCombination.anjuId(),
+                                        4,
+                                        1,
+                                        3,
+                                        0));
+            }
         }
     }
 

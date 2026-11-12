@@ -11,7 +11,8 @@ public record PairingRatingSummary(
         int situationDislikeCount) {
     // 전역 표본이 이보다 적은 조합은 추천 점수에 반영하지 않는다. 상황별 표본은 문턱으로 쓰지 않는다.
     public static final int MINIMUM_SAMPLE = 5;
-    // 좋아요와 싫어요를 반씩 이만큼 미리 센 것처럼 계산해, 표본이 적을수록 좋아요 비율을 사전 비율 쪽으로 당긴다.
+    // 상황별 비율은 전역 비율을, 전역 비율은 0.5를 사전 비율로 삼아 좋아요와 싫어요를 이만큼 미리 센 것처럼 계산한다.
+    // 그래서 표본이 적을수록 좋아요 비율이 사전 비율 쪽으로 당겨진다.
     private static final int PRIOR_SAMPLE = 10;
     // 보정한 좋아요 비율이 이 값 이상이어야 "다른 사람들이 좋아한 조합"으로 본다.
     private static final double LIKED_RATIO = 0.6;
