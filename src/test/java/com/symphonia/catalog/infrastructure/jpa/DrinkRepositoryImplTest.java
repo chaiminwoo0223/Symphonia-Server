@@ -101,8 +101,8 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findAllByAbvLessThanEqual 메서드는")
-    class FindAllByAbvLessThanEqual {
+    @DisplayName("findAll 메서드는")
+    class FindAll {
 
         @Test
         @DisplayName("Drink의 음식 계열을 함께 반환한다")
@@ -114,7 +114,7 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             entityManager.clear();
 
             // when
-            List<Drink> result = drinkRepository.findAllByAbvLessThanEqual(Double.MAX_VALUE);
+            List<Drink> result = drinkRepository.findAll();
 
             // then
             assertThat(result)
@@ -130,33 +130,14 @@ class DrinkRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
-        @DisplayName("도수가 상한 이하인 Drink만 반환하고 상한과 같은 도수도 포함한다")
-        void shouldReturnDrinksWithAbvAtMostMaxAbv() {
-            // given
-            DrinkJpaEntity beer = saveDrink(DrinkFixture.BEER);
-            DrinkJpaEntity wine = saveDrink(DrinkFixture.WINE);
-            saveDrink(DrinkFixture.SOJU);
-            saveDrink(DrinkFixture.WHISKEY);
-
-            // when
-            List<Drink> result =
-                    drinkRepository.findAllByAbvLessThanEqual(DrinkFixture.WINE.getAbv());
-
-            // then
-            assertThat(result)
-                    .extracting(Drink::getId)
-                    .containsExactlyInAnyOrder(beer.getId(), wine.getId());
-        }
-
-        @Test
-        @DisplayName("상한이 Double.MAX_VALUE면 모든 Drink를 반환한다")
-        void shouldReturnDrinksWhenMaxAbvIsUnlimited() {
+        @DisplayName("저장된 모든 Drink를 반환한다")
+        void shouldReturnAllDrinks() {
             // given
             DrinkJpaEntity soju = saveDrink(DrinkFixture.SOJU);
             DrinkJpaEntity whiskey = saveDrink(DrinkFixture.WHISKEY);
 
             // when
-            List<Drink> result = drinkRepository.findAllByAbvLessThanEqual(Double.MAX_VALUE);
+            List<Drink> result = drinkRepository.findAll();
 
             // then
             assertThat(result)

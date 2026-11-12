@@ -4,12 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
+import com.symphonia.catalog.application.cache.CatalogCache;
 import com.symphonia.catalog.application.service.CatalogQueryService;
+import com.symphonia.catalog.application.service.RefreshCatalogCacheService;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
@@ -51,6 +52,7 @@ class PairingQueryServiceTest extends UnitTest {
     @Mock private DrinkRepository drinkRepository;
     @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private AnjuRepository anjuRepository;
+    @Mock private CatalogCache catalogCache;
     @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
     @Mock private PairingFeedbackRepository pairingFeedbackRepository;
 
@@ -60,7 +62,15 @@ class PairingQueryServiceTest extends UnitTest {
         pairingQueryService =
                 new PairingQueryService(
                         new CatalogQueryService(
-                                drinkRepository, drinkStyleRepository, anjuRepository),
+                                drinkRepository,
+                                drinkStyleRepository,
+                                anjuRepository,
+                                catalogCache,
+                                new RefreshCatalogCacheService(
+                                        drinkRepository,
+                                        drinkStyleRepository,
+                                        anjuRepository,
+                                        catalogCache)),
                         pairingRatingSummaryRepository,
                         pairingFeedbackRepository);
     }
@@ -124,7 +134,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Occasion의 도수 상한을 초과하는 Drink는 추천에서 제외한다")
         void shouldExcludeDrinkExceedingMaxAbv() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.BEER.createWithId(),
@@ -146,33 +156,11 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
-        @DisplayName("Occasion의 도수 상한으로 Drink를 조회한다")
-        void shouldFindDrinksByOccasionMaxAbv() {
-            // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
-            given(anjuRepository.findAll())
-                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
-            RecommendPairingQuery query =
-                    new RecommendPairingQueryFixture()
-                            .relationshipType(RelationshipType.BOSS)
-                            .build();
-
-            // when
-            pairingQueryService.recommend(query);
-
-            // then
-            then(drinkRepository)
-                    .should()
-                    .findAllByAbvLessThanEqual(RelationshipType.BOSS.maxAbv());
-        }
-
-        @Test
         @DisplayName("prefersLightAnju가 true면 richness가 임계값을 초과하는 안주의 점수가 낮아진다")
         void shouldPenalizeHeavyAnjuWhenPrefersLightAnju() {
             // given
             // 탄산과 산미가 없는 맥주는 맛 유사도상 후라이드치킨(0.700)이 과일안주(0.576)보다 가까워서, 페널티가 없으면 치킨이 1위가 된다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.BEER.createWithFlavorProfile(
@@ -212,7 +200,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldScoreLowerWhenAbvExceedsModerateThreshold() {
             // given
             // 위스키는 후라이드치킨과 맛이 소주보다 더 가깝지만 고도수 페널티로 뒤집힌다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(),
@@ -246,7 +234,7 @@ class PairingQueryServiceTest extends UnitTest {
             // 맛이 먼 위스키는 고도수 감점, 두 조합은 싫어요 20개의 피드백 감점을 받는다.
             // 무게감 4 안주가 받는 도수 대비 점수를 더해도 둘 다 0 아래로 내려간다.
             // 수육이 위스키와 맛이 조금 더 가깝지만, 0으로 자른 뒤 순위를 매기면 id가 작은 새우튀김이 먼저 온다.
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.WHISKEY.createWithIdAndFlavorProfile(
@@ -310,7 +298,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 같은 스타일을 공유하는 소주 3개는 마른안주와의 맛 유사도가 가장 높아 나머지 Drink보다 점수가 높다
             List<Long> sameStyleSojuIds = List.of(11L, 12L, 13L);
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithIdAndStyle(11L, 100L),
@@ -340,7 +328,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldFillRemainingSlotsByScoreWhenDrinkStylesFewerThanLimit() {
             // given
             // 맛이 먼 위스키는 고도수 감점까지 받아 최고 조합도 소주의 5번째 조합(골뱅이무침)보다 점수가 낮다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(),
@@ -381,7 +369,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 소주 6개와 맥주가 모두 탄산음료보다 점수가 높고, 그중 소주 11~13은 같은 스타일을 공유한다
             Drink soda = DrinkFixture.SODA.createWithId();
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithIdAndStyle(11L, 100L),
@@ -413,7 +401,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("이미 상위에 무알코올 Drink가 있으면 결과를 그대로 유지한다")
         void shouldKeepResultsWhenNonAlcoholicPairingAlreadyIncluded() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(),
@@ -438,8 +426,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("무알코올 Drink가 없으면 기존 상위 결과를 그대로 반환한다")
         void shouldReturnTopResultsWhenNoNonAlcoholicDrinkExists() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             givenSingleAnju();
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
@@ -459,8 +446,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("attendeeAllergies와 겹치는 Anju는 추천 결과에서 제외한다")
         void shouldExcludeAnjuWhenAllergyConflicts() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -484,8 +470,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("attendeeAllergies 중 하나라도 겹치는 Anju는 모두 추천 결과에서 제외한다")
         void shouldExcludeAnjuWhenAnyOfMultipleAllergiesConflicts() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -515,8 +500,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("attendeeAllergies로 모든 Anju가 제외되면 예외 없이 빈 목록을 반환한다")
         void shouldReturnEmptyListWhenAnjusExcludedByAllergies() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -536,8 +520,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Drink의 id가 null이면 예외를 던진다")
         void shouldThrowNullPointerExceptionWhenDrinkIdIsNull() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.create()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.create()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -552,8 +535,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Anju의 id가 null이면 예외를 던진다")
         void shouldThrowNullPointerExceptionWhenAnjuIdIsNull() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll()).willReturn(List.of(AnjuFixture.DRIED_SNACK.create()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
@@ -568,8 +550,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldReturnSameResultsWhenRepositoryOrderChanges() {
             // given
             // 수육과 감자튀김은 flavorProfile이 같아 같은 Drink와 항상 같은 점수가 나온다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -595,7 +576,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldOrderByDrinkIdAscendingWhenScoresTie() {
             // given
             // 맥주에 소주의 flavorProfile을 주어 두 Drink의 점수를 같게 만든다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.BEER.createWithFlavorProfile(
@@ -619,8 +600,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldOrderByAnjuIdAscendingWhenScoresTie() {
             // given
             // 수육과 감자튀김은 flavorProfile이 같아 점수가 같다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -643,8 +623,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Occasion에 도수 제한이 있으면 reasons에 ABV_LIMIT을 포함한다")
         void shouldIncludeAbvLimitReasonWhenOccasionHasAbvLimit() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             RecommendPairingQuery query =
@@ -663,8 +642,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Occasion에 도수 제한이 없으면 reasons에 ABV_LIMIT을 포함하지 않는다")
         void shouldNotIncludeAbvLimitReasonWhenOccasionHasNoAbvLimit() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             RecommendPairingQuery query =
@@ -684,8 +662,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("prefersLightAnju가 true고 richness가 임계값 이하면 reasons에 LIGHT_ANJU를 포함한다")
         void shouldIncludeLightAnjuReasonWhenAnjuRichnessWithinThreshold() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId()));
             RecommendPairingQuery query =
@@ -704,8 +681,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("prefersLightAnju가 true여도 richness가 임계값을 초과하면 reasons에 LIGHT_ANJU를 포함하지 않는다")
         void shouldNotIncludeLightAnjuReasonWhenAnjuRichnessExceedsThreshold() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query =
@@ -725,8 +701,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("무알코올 옵션이 필요하고 Drink가 무알코올이면 reasons에 NON_ALCOHOLIC_OPTION을 포함한다")
         void shouldIncludeNonAlcoholicOptionReasonWhenDrinkIsNonAlcoholic() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SODA.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SODA.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
             RecommendPairingQuery query =
@@ -811,8 +786,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldNotIncludeFlavorMatchReasonWhenFlavorSimilarityBelowThreshold() {
             // given
             // 소주와 후라이드치킨은 맛 유사도가 임계값(0.7)에 못 미친다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -830,7 +804,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldNotIncludeFlavorMatchReasonWhenOnlyAcidityDiffers() {
             // given
             // 마른안주와 산미(0 vs 5)만 다른 Drink는 맛 유사도가 1 - sqrt(25 / 100) = 0.5로 임계값(0.7)에 못 미친다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithFlavorProfile(
@@ -852,7 +826,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldIncludeFlavorMatchReasonWhenOnlyCarbonationDiffers() {
             // given
             // 마른안주와 탄산(0 vs 5)만 다른 Drink다. 탄산은 맛 유사도에 들어가지 않아 맛 유사도가 1이다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithFlavorProfile(
@@ -873,7 +847,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldScoreHigherWhenAnjuMatchesDrinkHarmonize() {
             // given
             // 수육과 감자튀김은 맛이 같고, 음료의 음식 계열(PORK)에는 수육만 맞는다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.WINE.createWithHarmonizes(
@@ -898,8 +872,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldRankHeavyAnjuFirstWhenDrinkCutsRichness() {
             // given
             // 소주와 맛 유사도는 마른안주(0.827)가 후라이드치킨(0.542)보다 높지만, 무게감 5인 후라이드치킨이 도수 대비 점수를 받는다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -921,8 +894,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 소주와 맛 유사도는 새우튀김(무게감 4, 0.626)이 후라이드치킨(무게감 5, 0.542)보다 높다.
             // 무게감에 비례한 도수 대비 점수(0.1, 0.2)를 받아야 후라이드치킨이 앞선다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -944,7 +916,7 @@ class PairingQueryServiceTest extends UnitTest {
             // given
             // 카스 프레시와 맛 유사도는 마른안주(0.735)가 후라이드치킨(0.564)보다 높지만, 후라이드치킨이 탄산 대비 점수를 받는다.
             // 후라이드치킨에 맞는 음식 계열(POULTRY)을 비워 대비 점수만으로 뒤집히는지 본다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.CASS_FRESH.createWithHarmonizes(Set.of())));
             given(anjuRepository.findAll())
                     .willReturn(
@@ -966,7 +938,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldGiveLargerCarbonationAcidityCuttingBonusWhenCarbonationIsStronger() {
             // given
             // 두 음료는 탄산(4, 5)만 다르다. 탄산은 맛 유사도에 들어가지 않으므로 점수 차이는 대비 점수(0.16, 0.2)에서만 생긴다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.BEER.createWithFlavorProfile(
@@ -989,7 +961,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldNotAddCarbonationAcidityCuttingBonusWhenDrinkAlsoCutsRichnessByAbv() {
             // given
             // 두 소주는 탄산(0, 5)만 다르다. 도수 대비(0.2)와 탄산 대비(0.2)를 더하면 탄산 5인 소주의 점수가 0.2 더 높아진다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(1L),
@@ -1012,7 +984,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Anju가 Drink의 Harmonize에 맞으면 reasons에 HARMONIZE_MATCH를 포함한다")
         void shouldIncludeHarmonizeMatchReasonWhenAnjuMatchesDrinkHarmonize() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.WINE.createWithHarmonizes(
@@ -1033,7 +1005,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Anju가 Drink의 Harmonize에 맞지 않으면 reasons에 HARMONIZE_MATCH를 포함하지 않는다")
         void shouldNotIncludeHarmonizeMatchReasonWhenAnjuDoesNotMatchDrinkHarmonize() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.WINE.createWithHarmonizes(
@@ -1054,8 +1026,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("도수가 15% 이상이고 Anju가 무거우면 reasons에 RICHNESS_CUTTING을 포함한다")
         void shouldIncludeRichnessCuttingReasonWhenDrinkCutsRichness() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -1087,8 +1058,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Anju가 무거워도 도수가 15% 미만이면 reasons에 RICHNESS_CUTTING을 포함하지 않는다")
         void shouldNotIncludeRichnessCuttingReasonWhenAbvBelowThreshold() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -1105,7 +1075,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("탄산이 4 이상이고 Anju가 무거우면 reasons에 CARBONATION_ACIDITY_CUTTING을 포함한다")
         void shouldIncludeCarbonationAcidityCuttingReasonWhenCarbonationIsStrong() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.CASS_FRESH.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
@@ -1123,8 +1093,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("산미가 4 이상이고 Anju가 무거우면 reasons에 CARBONATION_ACIDITY_CUTTING을 포함한다")
         void shouldIncludeCarbonationAcidityCuttingReasonWhenAcidityIsStrong() {
             // given: 와인은 탄산 0, 산미 4다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.WINE.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.WINE.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -1141,7 +1110,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("도수 대비를 받는 Drink는 탄산이 4 이상이어도 reasons에 RICHNESS_CUTTING만 포함한다")
         void shouldIncludeOnlyRichnessCuttingReasonWhenDrinkAlsoCutsRichnessByAbv() {
             // given: 도수 16.5%인 소주에 탄산 5를 준다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithFlavorProfile(
@@ -1163,7 +1132,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("탄산이 4 이상이어도 Anju가 가벼우면 reasons에 CARBONATION_ACIDITY_CUTTING을 포함하지 않는다")
         void shouldNotIncludeCarbonationAcidityCuttingReasonWhenAnjuIsLight() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.CASS_FRESH.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
@@ -1181,8 +1150,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("Anju가 무거워도 탄산과 산미가 모두 4 미만이면 reasons에 CARBONATION_ACIDITY_CUTTING을 포함하지 않는다")
         void shouldNotIncludeCarbonationAcidityCuttingReasonWhenCarbonationAndAcidityAreWeak() {
             // given: 소주는 탄산 0, 산미 1이다
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.FRIED_CHICKEN.createWithId()));
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
@@ -1223,7 +1191,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("분위기에 어울리는 Drink는 가산점과 MOOD_DRINK_MATCH를 받아 맛이 같은 Drink보다 앞에 둔다")
         void shouldGiveMoodDrinkBonusWhenDrinkSuitsMood() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(1L),
@@ -1298,7 +1266,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("격식 자리여도 관계 유형이 가벼운 안주를 선호하지 않으면 무거운 Anju를 감점하지 않는다")
         void shouldNotPenalizeHeavyAnjuWhenOnlyMoodIsFormal() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.BEER.createWithFlavorProfile(
@@ -1519,7 +1487,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("라거에서 튀긴 스낵인 감자튀김은 후라이드치킨과 같은 점수와 탄산 대비 사유를 받는다")
         void shouldScoreFriedSnackLikeFriedChickenWhenDrinkIsLager() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.CASS_FRESH.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
@@ -1753,7 +1721,7 @@ class PairingQueryServiceTest extends UnitTest {
         void shouldReplaceMemberDislikedNonAlcoholicBestWithNextPair() {
             // given
             Long sodaId = DrinkFixture.SODA.createWithId().getId();
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
@@ -1958,7 +1926,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("싫어요가 많아 감점받은 조합이 결과에 남아도 FEEDBACK_LIKED 사유를 붙이지 않는다")
         void shouldNotIncludeFeedbackLikedReasonWhenCombinationIsPenalized() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
             given(anjuRepository.findAll())
                     .willReturn(
@@ -2012,7 +1980,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("알레르기로 걸러진 안주의 집계에 좋아요가 많아도 FEEDBACK_LIKED 사유를 붙이지 않는다")
         void shouldNotIncludeFeedbackLikedReasonWhenAnjuIsExcludedByAllergy() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
             given(anjuRepository.findAll())
                     .willReturn(
@@ -2042,7 +2010,7 @@ class PairingQueryServiceTest extends UnitTest {
         @DisplayName("도수 상한을 넘어 걸러진 음료의 집계에 좋아요가 많아도 FEEDBACK_LIKED 사유를 붙이지 않는다")
         void shouldNotIncludeFeedbackLikedReasonWhenDrinkExceedsMaxAbv() {
             // given
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(SOJU_ID),
@@ -2073,7 +2041,7 @@ class PairingQueryServiceTest extends UnitTest {
         // 마른안주 1~5번은 맛이 같아 동점이고, 6번은 단맛만 1 낮아 소주와의 점수가 약 0.043 낮다.
         // 피드백이 없으면 1~5번이 추천된다. 좋아요나 싫어요 20개의 피드백 점수(약 ±0.067)는 이 차이를 뒤집는다.
         private void givenDriedSnacksWithWeakerLast() {
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(List.of(DrinkFixture.SOJU.createWithId(SOJU_ID)));
             given(anjuRepository.findAll())
                     .willReturn(
@@ -2086,7 +2054,7 @@ class PairingQueryServiceTest extends UnitTest {
 
         // 스타일 101의 소주 5개와 스타일 102의 소주 하나는 맛이 같다. 상위 경계는 마른안주와의 쌍 6개가 차지하고, 약한 마른안주와의 쌍은 경계 밖이다.
         private void givenSojuStylesWithWeakerAnju() {
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
@@ -2127,7 +2095,7 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         private void givenStandardCatalog() {
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithId(),
@@ -2147,7 +2115,7 @@ class PairingQueryServiceTest extends UnitTest {
 
         // 스타일이 서로 다른 소주 5개가 탄산음료보다 점수가 높아, 스타일당 하나를 골라도 상위 5개가 모두 알코올이다.
         private void givenAlcoholicDrinksOutrankingNonAlcoholicDrink() {
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
+            given(drinkRepository.findAll())
                     .willReturn(
                             List.of(
                                     DrinkFixture.SOJU.createWithIdAndStyle(11L, 101L),
@@ -2168,16 +2136,14 @@ class PairingQueryServiceTest extends UnitTest {
         // 소주와 마른안주는 도수 제한·light anju·무알코올 조건과 무관하다.
         // 맛 유사도만 임계값(0.7)을 넘는 조합이다.
         private void givenSojuAndDriedSnack() {
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
         }
 
         // 맥주는 탄산이 4라 무게감 4인 두 안주 모두 탄산 대비를 받는다. 두 안주는 맛이 같아 분위기 가산점이 없으면 동점이다.
         private void givenBeerWithBoiledPorkAndFrenchFries() {
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(DrinkFixture.BEER.createWithId()));
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.BEER.createWithId()));
             given(anjuRepository.findAll())
                     .willReturn(
                             List.of(
@@ -2238,8 +2204,7 @@ class PairingQueryServiceTest extends UnitTest {
                             AnjuFixture.CATALOG_JANGEO_GUI,
                             AnjuFixture.CATALOG_HOTDOG);
             List<AnjuFixture> pool = Stream.concat(traps.stream(), topRanked.stream()).toList();
-            given(drinkRepository.findAllByAbvLessThanEqual(anyDouble()))
-                    .willReturn(List.of(drink));
+            given(drinkRepository.findAll()).willReturn(List.of(drink));
             given(anjuRepository.findAll())
                     .willReturn(
                             IntStream.range(0, pool.size())

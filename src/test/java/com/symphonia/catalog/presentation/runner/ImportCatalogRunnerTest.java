@@ -1,18 +1,23 @@
 package com.symphonia.catalog.presentation.runner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.symphonia.catalog.application.dto.result.ImportAnjuResult;
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.catalog.application.dto.result.ImportDrinkStyleResult;
 import com.symphonia.catalog.application.dto.result.ImportXWineResult;
+import com.symphonia.catalog.application.usecase.EvictCatalogCacheUseCase;
 import com.symphonia.catalog.application.usecase.ImportAnjuUseCase;
 import com.symphonia.catalog.application.usecase.ImportCuratedDrinkUseCase;
 import com.symphonia.catalog.application.usecase.ImportDrinkStyleUseCase;
 import com.symphonia.catalog.application.usecase.ImportXWineUseCase;
+import com.symphonia.catalog.application.usecase.RefreshCatalogCacheUseCase;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +37,10 @@ class ImportCatalogRunnerTest {
             mock(ImportCuratedDrinkUseCase.class);
     private final ImportXWineUseCase importXWineUseCase = mock(ImportXWineUseCase.class);
     private final ImportAnjuUseCase importAnjuUseCase = mock(ImportAnjuUseCase.class);
+    private final RefreshCatalogCacheUseCase refreshCatalogCacheUseCase =
+            mock(RefreshCatalogCacheUseCase.class);
+    private final EvictCatalogCacheUseCase evictCatalogCacheUseCase =
+            mock(EvictCatalogCacheUseCase.class);
 
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
@@ -39,6 +48,8 @@ class ImportCatalogRunnerTest {
                     .withBean(ImportCuratedDrinkUseCase.class, () -> importCuratedDrinkUseCase)
                     .withBean(ImportXWineUseCase.class, () -> importXWineUseCase)
                     .withBean(ImportAnjuUseCase.class, () -> importAnjuUseCase)
+                    .withBean(RefreshCatalogCacheUseCase.class, () -> refreshCatalogCacheUseCase)
+                    .withBean(EvictCatalogCacheUseCase.class, () -> evictCatalogCacheUseCase)
                     .withUserConfiguration(ImportCatalogRunner.class);
 
     @Nested
@@ -114,10 +125,58 @@ class ImportCatalogRunnerTest {
     @DisplayName("run 메서드는")
     class Run {
 
-        @Test
-        @DisplayName("BJCP 스타일, 국내 유통 맥주, X-Wines 와인, 안주 순서로 적재한다")
-        void shouldImportBjcpStylesCuratedBeersXWinesAndAnjusInOrder() {
-            // given
+        @Nested
+        @DisplayName("적재가 모두 성공한 경우")
+        class WhenImportSucceeded {
+
+            @Test
+            @DisplayName("BJCP 스타일, 국내 유통 맥주, X-Wines 와인, 안주 순서로 적재한 뒤 캐시를 갱신한다")
+            void shouldImportInOrderAndRefreshCache() {
+                // given
+                givenImportsSucceed();
+
+                // when
+                runner().run(new DefaultApplicationArguments());
+
+                // then
+                InOrder inOrder =
+                        inOrder(
+                                importDrinkStyleUseCase,
+                                importCuratedDrinkUseCase,
+                                importXWineUseCase,
+                                importAnjuUseCase,
+                                refreshCatalogCacheUseCase);
+                inOrder.verify(importDrinkStyleUseCase).importBjcpStyles();
+                inOrder.verify(importCuratedDrinkUseCase).importCuratedBeers();
+                inOrder.verify(importXWineUseCase).importXWines();
+                inOrder.verify(importAnjuUseCase).importCuratedAnjus();
+                inOrder.verify(refreshCatalogCacheUseCase).refresh();
+                verify(evictCatalogCacheUseCase, never()).evict();
+            }
+        }
+
+        @Nested
+        @DisplayName("적재가 중간에 실패한 경우")
+        class WhenImportFailed {
+
+            @Test
+            @DisplayName("캐시를 갱신하지 않고 지운 뒤 원래 예외를 그대로 던진다")
+            void shouldEvictCacheAndRethrowWhenImportFailed() {
+                // given
+                IllegalStateException failure = new IllegalStateException("적재 실패");
+                given(importDrinkStyleUseCase.importBjcpStyles())
+                        .willReturn(new ImportDrinkStyleResult(1, List.of(), Map.of()));
+                given(importCuratedDrinkUseCase.importCuratedBeers()).willThrow(failure);
+
+                // when & then
+                assertThatThrownBy(() -> runner().run(new DefaultApplicationArguments()))
+                        .isSameAs(failure);
+                verify(evictCatalogCacheUseCase).evict();
+                verify(refreshCatalogCacheUseCase, never()).refresh();
+            }
+        }
+
+        private void givenImportsSucceed() {
             given(importDrinkStyleUseCase.importBjcpStyles())
                     .willReturn(new ImportDrinkStyleResult(1, List.of(), Map.of()));
             given(importCuratedDrinkUseCase.importCuratedBeers())
@@ -126,27 +185,16 @@ class ImportCatalogRunnerTest {
                     .willReturn(new ImportXWineResult(1, 1, List.of(), List.of()));
             given(importAnjuUseCase.importCuratedAnjus())
                     .willReturn(new ImportAnjuResult(1, List.of(), List.of(), List.of(), Map.of()));
-            ImportCatalogRunner runner =
-                    new ImportCatalogRunner(
-                            importDrinkStyleUseCase,
-                            importCuratedDrinkUseCase,
-                            importXWineUseCase,
-                            importAnjuUseCase);
+        }
 
-            // when
-            runner.run(new DefaultApplicationArguments());
-
-            // then
-            InOrder inOrder =
-                    inOrder(
-                            importDrinkStyleUseCase,
-                            importCuratedDrinkUseCase,
-                            importXWineUseCase,
-                            importAnjuUseCase);
-            inOrder.verify(importDrinkStyleUseCase).importBjcpStyles();
-            inOrder.verify(importCuratedDrinkUseCase).importCuratedBeers();
-            inOrder.verify(importXWineUseCase).importXWines();
-            inOrder.verify(importAnjuUseCase).importCuratedAnjus();
+        private ImportCatalogRunner runner() {
+            return new ImportCatalogRunner(
+                    importDrinkStyleUseCase,
+                    importCuratedDrinkUseCase,
+                    importXWineUseCase,
+                    importAnjuUseCase,
+                    refreshCatalogCacheUseCase,
+                    evictCatalogCacheUseCase);
         }
     }
 }
