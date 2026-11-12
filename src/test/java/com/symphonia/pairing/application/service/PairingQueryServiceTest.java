@@ -30,6 +30,7 @@ import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.PairingReason;
+import com.symphonia.pairing.domain.vo.PairingSituation;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.RecommendPairingQueryFixture;
 import java.util.List;
@@ -73,6 +74,8 @@ class PairingQueryServiceTest extends UnitTest {
         private static final Long SOJU_ID = 1L;
         private static final List<Long> TIED_ANJU_IDS = List.of(1L, 2L, 3L, 4L, 5L);
         private static final Long WEAKER_ANJU_ID = 6L;
+        private static final PairingSituation DEFAULT_SITUATION =
+                PairingSituation.of(RelationshipType.FRIEND, null);
 
         // 음료 픽스처는 스타일 픽스처의 고정 id를 참조하므로, 그 스타일을 모두 두어 음료 종류를 채운다.
         // 테스트가 정한 다른 스타일 id의 음료는 종류 없이 추천된다.
@@ -1559,10 +1562,91 @@ class PairingQueryServiceTest extends UnitTest {
             // then
             then(pairingRatingSummaryRepository)
                     .should()
-                    .findAllWithSampleAtLeast(PairingRatingSummary.MINIMUM_SAMPLE);
+                    .findAllWithSampleAtLeast(
+                            PairingRatingSummary.MINIMUM_SAMPLE, DEFAULT_SITUATION);
             assertThat(results)
                     .extracting(PairingResult::anjuId)
                     .containsExactly(6L, 1L, 2L, 3L, 4L);
+        }
+
+        @Test
+        @DisplayName("요청한 관계 유형과 분위기를 상황으로 넘겨 집계를 조회한다")
+        void shouldFindRatingSummariesOfRequestedSituation() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.LOVER)
+                            .moodType(MoodType.ROMANTIC)
+                            .build();
+
+            // when
+            pairingQueryService.recommend(query);
+
+            // then
+            then(pairingRatingSummaryRepository)
+                    .should()
+                    .findAllWithSampleAtLeast(
+                            PairingRatingSummary.MINIMUM_SAMPLE,
+                            PairingSituation.of(RelationshipType.LOVER, MoodType.ROMANTIC));
+        }
+
+        @Test
+        @DisplayName("전역에서는 좋아요가 많아도 요청한 상황에서 싫어요가 많으면 그 조합을 앞으로 올리지 않는다")
+        void shouldNotRankCombinationAheadWhenRequestedSituationDislikedIt() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 20, 0, 0, 20));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(1L, 2L, 3L, 4L, 5L);
+        }
+
+        @Test
+        @DisplayName("전역에서는 싫어요가 많아도 요청한 상황에서 좋아요가 많으면 그 조합을 앞으로 올린다")
+        void shouldRankCombinationAheadWhenRequestedSituationLikedIt() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 0, 5, 20, 0));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(6L, 1L, 2L, 3L, 4L);
+        }
+
+        @Test
+        @DisplayName("전역 좋아요가 많아도 요청한 상황의 싫어요로 보정한 좋아요 비율이 문턱 0.6 미만이면 FEEDBACK_LIKED 사유를 붙이지 않는다")
+        void shouldNotIncludeFeedbackLikedReasonWhenRequestedSituationDislikedIt() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(
+                    PairingRatingSummary.of(SOJU_ID, TIED_ANJU_IDS.getFirst(), 20, 0, 0, 6));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::anjuId)
+                    .containsExactly(1L, 2L, 3L, 4L, 5L);
+            assertThat(results)
+                    .allSatisfy(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .doesNotContain(
+                                                    PairingReason.FEEDBACK_LIKED.message()));
         }
 
         @Test
@@ -1805,6 +1889,27 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
+        @DisplayName("전역에서는 싫어요가 많아도 요청한 상황의 좋아요로 보정한 좋아요 비율이 문턱 0.6 이상이면 FEEDBACK_LIKED 사유를 붙인다")
+        void shouldIncludeFeedbackLikedReasonWhenRequestedSituationLikedIt() {
+            // given
+            givenDriedSnacksWithWeakerLast();
+            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, WEAKER_ANJU_ID, 0, 5, 20, 0));
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(results)
+                    .filteredOn(result -> result.anjuId().equals(WEAKER_ANJU_ID))
+                    .singleElement()
+                    .satisfies(
+                            result ->
+                                    assertThat(result.reasons())
+                                            .contains(PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
         @DisplayName("점수는 올랐어도 보정한 좋아요 비율이 문턱 0.6 미만이면 FEEDBACK_LIKED 사유를 붙이지 않는다")
         void shouldNotIncludeFeedbackLikedReasonWhenSmoothedLikeRatioIsBelowThreshold() {
             // given
@@ -1944,7 +2049,9 @@ class PairingQueryServiceTest extends UnitTest {
                                     DrinkFixture.BEER.createWithId(2L)));
             given(anjuRepository.findAll())
                     .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId(1L)));
-            givenRatingSummaries(PairingRatingSummary.of(SOJU_ID, 1L, 20, 0));
+            givenRatingSummariesOf(
+                    PairingSituation.of(RelationshipType.BOSS, null),
+                    PairingRatingSummary.of(SOJU_ID, 1L, 20, 0));
             RecommendPairingQuery query =
                     new RecommendPairingQueryFixture()
                             .relationshipType(RelationshipType.BOSS)
@@ -2006,10 +2113,16 @@ class PairingQueryServiceTest extends UnitTest {
                     .willReturn(Set.of(combinations));
         }
 
+        // 요청 픽스처의 기본 상황(분위기 없는 FRIEND)에서 읽는 집계다.
         private void givenRatingSummaries(PairingRatingSummary... ratingSummaries) {
+            givenRatingSummariesOf(DEFAULT_SITUATION, ratingSummaries);
+        }
+
+        private void givenRatingSummariesOf(
+                PairingSituation situation, PairingRatingSummary... ratingSummaries) {
             given(
                             pairingRatingSummaryRepository.findAllWithSampleAtLeast(
-                                    PairingRatingSummary.MINIMUM_SAMPLE))
+                                    PairingRatingSummary.MINIMUM_SAMPLE, situation))
                     .willReturn(List.of(ratingSummaries));
         }
 
