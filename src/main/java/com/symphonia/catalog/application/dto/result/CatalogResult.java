@@ -38,6 +38,12 @@ public record CatalogResult(List<DrinkResult> drinks, List<AnjuResult> anjus) {
                 anjus.stream().map(AnjuResult::from).toList());
     }
 
+    // 도수 상한을 넘는 음료만 걸러낸다. 안주는 도수와 무관하다.
+    public CatalogResult filterByMaxAbv(double maxAbv) {
+        return new CatalogResult(
+                drinks.stream().filter(drink -> drink.abv() <= maxAbv).toList(), anjus);
+    }
+
     public record DrinkResult(
             Long id,
             Long drinkStyleId,
