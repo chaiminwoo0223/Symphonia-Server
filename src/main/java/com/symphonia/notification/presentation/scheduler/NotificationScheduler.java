@@ -20,6 +20,10 @@ import org.springframework.stereotype.Component;
         havingValue = "true",
         matchIfMissing = true)
 public class NotificationScheduler {
+    // 한 번의 스케줄 실행에서 이어서 발행하는 최대 횟수다. 100건씩 발행하므로 한 실행에 최대 1,000건이다.
+    // 5분이 지나 실패로 세는 발송 기록은 발행 중인 상한에 들지 않아 이어서 발행이 길어질 수 있고, 스케줄러 스레드는 하나뿐이라 예약 처리를 막는다.
+    private static final int MAX_PUBLISH_ROUNDS = 10;
+
     private final GetDueNotificationSchedulesUseCase getDueNotificationSchedulesUseCase;
     private final DispatchSettlementNotificationUseCase dispatchSettlementNotificationUseCase;
     private final PublishNotificationDeliveriesUseCase publishNotificationDeliveriesUseCase;
@@ -39,13 +43,14 @@ public class NotificationScheduler {
                         });
     }
 
-    // 상한만큼 발행했으면 다음 주기를 기다리지 않고 이어서 발행한다.
-    // 발행했지만 아직 보내지 못한 발송 기록의 상한에 닿으면 UseCase가 false를 돌려주므로, 예약 처리와 나눠 쓰는 스케줄러 스레드를 오래 잡지 않는다.
+    // 상한만큼 발행했으면 다음 주기를 기다리지 않고 이어서 발행하되, 한 실행에서 이어서 발행하는 횟수에 상한을 둔다.
+    // 발행하지 않았거나 발행 중인 상한에 닿으면 UseCase가 false를 돌려주므로 바로 끝낸다. 횟수 상한에 닿은 나머지는 다음 주기에 처리한다.
     @Scheduled(fixedDelayString = "${notification.poll-interval}")
     public void publishPendingDeliveries() {
-        boolean hasMore;
-        do {
-            hasMore = publishNotificationDeliveriesUseCase.publishPending();
-        } while (hasMore);
+        for (int round = 0; round < MAX_PUBLISH_ROUNDS; round++) {
+            if (!publishNotificationDeliveriesUseCase.publishPending()) {
+                return;
+            }
+        }
     }
 }
