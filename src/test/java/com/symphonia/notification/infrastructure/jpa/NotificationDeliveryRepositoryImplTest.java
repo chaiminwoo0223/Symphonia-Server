@@ -392,6 +392,34 @@ class NotificationDeliveryRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("countInFlight 메서드는")
+    class CountInFlight {
+
+        @Test
+        @DisplayName("기준 시각 이후에 발행한 PENDING 발송 기록만 센다")
+        void shouldCountOnlyPendingDeliveriesPublishedSince() {
+            // given
+            savePending(NOW.minusHours(1), PUBLISHED_BEFORE);
+            savePending(NOW.minusHours(1), NOW);
+            savePending(NOW.minusHours(1), PUBLISHED_BEFORE.minusSeconds(1));
+            savePending(NOW.minusHours(1), null);
+            save(
+                    NotificationDeliveryFixture.SETTLEMENT_NOTICE
+                            .builder(null, gatheringId, leeId, List.of(dinnerId))
+                            .availableAt(NOW.minusHours(1))
+                            .publishedAt(NOW)
+                            .status(DeliveryStatus.SENT));
+            clearPersistenceContext();
+
+            // when
+            long result = notificationDeliveryRepository.countInFlight(PUBLISHED_BEFORE);
+
+            // then
+            assertThat(result).isEqualTo(2);
+        }
+    }
+
+    @Nested
     @DisplayName("findAllSettlementDeliveriesForUpdate 메서드는")
     class FindAllSettlementDeliveriesForUpdate {
 

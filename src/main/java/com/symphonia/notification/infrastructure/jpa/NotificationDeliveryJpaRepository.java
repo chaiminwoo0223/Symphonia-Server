@@ -51,6 +51,14 @@ public interface NotificationDeliveryJpaRepository
     void markPublished(
             @Param("ids") Collection<Long> ids, @Param("publishedAt") LocalDateTime publishedAt);
 
+    @Query(
+            """
+            SELECT COUNT(delivery) FROM NotificationDeliveryJpaEntity delivery
+            WHERE delivery.status = com.symphonia.notification.domain.vo.DeliveryStatus.PENDING
+              AND delivery.publishedAt >= :publishedSince
+            """)
+    long countInFlight(@Param("publishedSince") LocalDateTime publishedSince);
+
     // 상태로 거르지 않고 모두 잠근다. 조건에 맞지 않던 행은 잠그지 않아, 컨슈머가 맡는 중인 행을 기다리지 않기 때문이다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(

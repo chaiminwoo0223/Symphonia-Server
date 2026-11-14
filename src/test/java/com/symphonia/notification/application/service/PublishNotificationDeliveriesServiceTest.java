@@ -15,6 +15,7 @@ import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +27,8 @@ import org.mockito.Mock;
 class PublishNotificationDeliveriesServiceTest extends UnitTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 28, 15, 0);
+    private static final int PUBLISH_LIMIT = 100;
+    private static final int MAX_IN_FLIGHT = 200;
     private static final Long GATHERING_ID = 1L;
     private static final Long PARTICIPANT_ID = 2L;
     private static final Long SETTLEMENT_ID = 3L;
@@ -146,6 +149,122 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("상한만큼 찾은 발송 기록을 브로커가 모두 받았다고 확인한 경우")
+        class WhenFullBatchPublished {
+
+            @Test
+            @DisplayName("남은 발송 기록이 있을 수 있으므로 true를 반환한다")
+            void shouldReturnTrueWhenFullBatchPublished() {
+                // given
+                List<NotificationDelivery> deliveries = unpublishedDeliveries(PUBLISH_LIMIT);
+                List<Long> ids = idsOf(deliveries);
+                givenPublishable(deliveries);
+                given(notificationDeliveryPublisher.publishAll(ids)).willReturn(ids);
+
+                // when
+                boolean result = publishNotificationDeliveriesService.publishPending();
+
+                // then
+                assertThat(result).isTrue();
+            }
+        }
+
+        @Nested
+        @DisplayName("상한보다 적게 찾은 경우")
+        class WhenFewerThanLimitFound {
+
+            @Test
+            @DisplayName("남은 발송 기록이 없으므로 false를 반환한다")
+            void shouldReturnFalseWhenFewerThanLimitFound() {
+                // given
+                givenPublishable(unpublishedDeliveries());
+                given(notificationDeliveryPublisher.publishAll(UNPUBLISHED_IDS))
+                        .willReturn(UNPUBLISHED_IDS);
+
+                // when
+                boolean result = publishNotificationDeliveriesService.publishPending();
+
+                // then
+                assertThat(result).isFalse();
+            }
+        }
+
+        @Nested
+        @DisplayName("상한만큼 찾았지만 브로커가 일부만 받았다고 확인한 경우")
+        class WhenFullBatchPartiallyConfirmed {
+
+            @Test
+            @DisplayName("바로 다시 부르면 같은 발송 기록을 조회하므로 false를 반환한다")
+            void shouldReturnFalseWhenFullBatchPartiallyConfirmed() {
+                // given
+                List<NotificationDelivery> deliveries = unpublishedDeliveries(PUBLISH_LIMIT);
+                List<Long> ids = idsOf(deliveries);
+                givenPublishable(deliveries);
+                given(notificationDeliveryPublisher.publishAll(ids))
+                        .willReturn(ids.subList(0, PUBLISH_LIMIT - 1));
+
+                // when
+                boolean result = publishNotificationDeliveriesService.publishPending();
+
+                // then
+                assertThat(result).isFalse();
+            }
+        }
+
+        @Nested
+        @DisplayName("발행했지만 아직 보내지 못한 발송 기록이 상한에 가까운 경우")
+        class WhenInFlightNearLimit {
+
+            @Test
+            @DisplayName("상한까지 남은 수만큼만 발행하고 false를 반환한다")
+            void shouldPublishOnlyRemainingCapacityAndReturnFalseWhenInFlightNearLimit() {
+                // given
+                List<NotificationDelivery> deliveries = unpublishedDeliveries(PUBLISH_LIMIT);
+                List<Long> publishableIds = idsOf(deliveries).subList(0, 50);
+                givenPublishable(deliveries);
+                givenInFlight(MAX_IN_FLIGHT - 50);
+                given(notificationDeliveryPublisher.publishAll(publishableIds))
+                        .willReturn(publishableIds);
+
+                // when
+                boolean result = publishNotificationDeliveriesService.publishPending();
+
+                // then
+                assertThat(result).isFalse();
+                then(notificationDeliveryRepository).should().markPublished(publishableIds, NOW);
+            }
+        }
+
+        @Nested
+        @DisplayName("발행했지만 아직 보내지 못한 발송 기록이 상한에 이른 경우")
+        class WhenInFlightReachedLimit {
+
+            @Test
+            @DisplayName("새로 발행하지 않지만 발행했는데 보내지 못한 발송 기록은 시도 한 번으로 센다")
+            void shouldNotPublishButStillRetryStalledWhenInFlightReachedLimit() {
+                // given
+                NotificationDelivery stalled =
+                        delivery(SECOND_DELIVERY_ID)
+                                .publishedAt(NOW.minusMinutes(10))
+                                .claimedAt(NOW.minusMinutes(6))
+                                .build();
+                givenPublishable(List.of(delivery(FIRST_DELIVERY_ID).build(), stalled));
+                givenInFlight(MAX_IN_FLIGHT);
+                given(notificationDeliveryPublisher.publishAll(List.of())).willReturn(List.of());
+
+                // when
+                boolean result = publishNotificationDeliveriesService.publishPending();
+
+                // then
+                assertThat(result).isFalse();
+                assertThat(savedStalledDeliveries())
+                        .extracting(NotificationDelivery::getId, NotificationDelivery::getAttempts)
+                        .containsExactly(tuple(SECOND_DELIVERY_ID, 1));
+                then(notificationDeliveryRepository).should().markPublished(List.of(), NOW);
+            }
+        }
+
+        @Nested
         @DisplayName("발행했는데 보내지 못한 발송 기록이 재시도를 모두 쓴 경우")
         class WhenStalledDeliveryRetriesExhausted {
 
@@ -180,8 +299,21 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
                 .willReturn(notificationDeliveries);
     }
 
+    private void givenInFlight(long inFlight) {
+        given(notificationDeliveryRepository.countInFlight(NOW.minusMinutes(5)))
+                .willReturn(inFlight);
+    }
+
     private List<NotificationDelivery> unpublishedDeliveries() {
         return UNPUBLISHED_IDS.stream().map(id -> delivery(id).build()).toList();
+    }
+
+    private List<NotificationDelivery> unpublishedDeliveries(int count) {
+        return LongStream.rangeClosed(1, count).mapToObj(id -> delivery(id).build()).toList();
+    }
+
+    private List<Long> idsOf(List<NotificationDelivery> notificationDeliveries) {
+        return notificationDeliveries.stream().map(NotificationDelivery::getId).toList();
     }
 
     private NotificationDelivery.NotificationDeliveryBuilder delivery(Long deliveryId) {

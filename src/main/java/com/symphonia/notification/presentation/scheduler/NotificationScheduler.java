@@ -39,8 +39,13 @@ public class NotificationScheduler {
                         });
     }
 
+    // 상한만큼 발행했으면 다음 주기를 기다리지 않고 이어서 발행한다.
+    // 발행했지만 아직 보내지 못한 발송 기록의 상한에 닿으면 UseCase가 false를 돌려주므로, 예약 처리와 나눠 쓰는 스케줄러 스레드를 오래 잡지 않는다.
     @Scheduled(fixedDelayString = "${notification.poll-interval}")
     public void publishPendingDeliveries() {
-        publishNotificationDeliveriesUseCase.publishPending();
+        boolean hasMore;
+        do {
+            hasMore = publishNotificationDeliveriesUseCase.publishPending();
+        } while (hasMore);
     }
 }

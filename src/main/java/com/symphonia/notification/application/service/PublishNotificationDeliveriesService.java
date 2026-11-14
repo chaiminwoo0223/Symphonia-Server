@@ -17,8 +17,11 @@ import lombok.RequiredArgsConstructor;
 @CommandService
 @RequiredArgsConstructor
 public class PublishNotificationDeliveriesService implements PublishNotificationDeliveriesUseCase {
-    // 한 번에 발행할 발송 기록 수다. 남은 발송 기록은 다음 주기에 이어서 발행한다.
+    // 한 번에 발행할 발송 기록 수다. 남은 발송 기록은 호출한 쪽이 이어서 발행한다.
     private static final int PUBLISH_LIMIT = 100;
+    // 발행했지만 아직 보내지 못한 발송 기록이 이 수에 이르면 더 발행하지 않는다.
+    // 큐에 쌓인 발송 기록이 5분 재발행 기준을 넘기지 않게 하기 위해서다. 컨슈머 4개 기준으로 보내는 데 6초 넘게 걸리는 발송 수단까지 견딘다.
+    private static final int MAX_IN_FLIGHT = 200;
 
     private final NotificationDeliveryRepository notificationDeliveryRepository;
     private final NotificationDeliveryPublisher notificationDeliveryPublisher;
@@ -26,28 +29,39 @@ public class PublishNotificationDeliveriesService implements PublishNotification
 
     // 브로커가 받았다고 확인한 발송 기록만 발행했다고 남긴다.
     // 브로커가 확인하지 않은 발송 기록은 다음 주기에 다시 발행한다.
+    // 상한만큼 찾아 모두 발행했을 때만 true를 돌려준다. 브로커가 받지 못했거나 발행 중인 상한에 막혔는데 바로 다시 부르면 같은 발송 기록을 계속 조회하기 때문이다.
     @Override
-    public void publishPending() {
+    public boolean publishPending() {
         LocalDateTime now = LocalDateTime.now(clock);
+        List<NotificationDelivery> publishables =
+                notificationDeliveryRepository.findPublishableForUpdate(
+                        now,
+                        NotificationDelivery.republishThreshold(now),
+                        NotificationDelivery.claimExpiryThreshold(now),
+                        PUBLISH_LIMIT);
         // 재시도를 기다리게 하면 발행 시각이 비므로, 상태를 바꾸기 전에 나눈다.
         Map<Boolean, List<NotificationDelivery>> deliveriesByStalled =
-                notificationDeliveryRepository
-                        .findPublishableForUpdate(
-                                now,
-                                NotificationDelivery.republishThreshold(now),
-                                NotificationDelivery.claimExpiryThreshold(now),
-                                PUBLISH_LIMIT)
-                        .stream()
+                publishables.stream()
                         .collect(Collectors.partitioningBy(NotificationDelivery::isPublished));
 
         retryStalledLater(deliveriesByStalled.get(true), now);
 
+        List<Long> unpublishedIds =
+                deliveriesByStalled.get(false).stream().map(NotificationDelivery::getId).toList();
         List<Long> publishedIds =
                 notificationDeliveryPublisher.publishAll(
-                        deliveriesByStalled.get(false).stream()
-                                .map(NotificationDelivery::getId)
-                                .toList());
+                        unpublishedIds.stream().limit(publishableCount(now)).toList());
         notificationDeliveryRepository.markPublished(publishedIds, now);
+
+        return publishables.size() == PUBLISH_LIMIT && publishedIds.size() == unpublishedIds.size();
+    }
+
+    // 상한까지 남은 수만큼만 발행한다. 상한에 이르렀으면 컨슈머가 비울 때까지 발행하지 않는다.
+    private int publishableCount(LocalDateTime now) {
+        long inFlight =
+                notificationDeliveryRepository.countInFlight(
+                        NotificationDelivery.republishThreshold(now));
+        return (int) Math.max(0, MAX_IN_FLIGHT - inFlight);
     }
 
     // 발행했는데 보내지 못한 발송 기록은 원인과 관계없이 시도 한 번으로 세고, 외부 발송 실패와 같은 간격을 기다렸다가 다시 발행한다.
