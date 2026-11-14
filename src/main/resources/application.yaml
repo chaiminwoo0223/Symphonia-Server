@@ -21,6 +21,10 @@ spring:
       simple:
         acknowledge-mode: auto
         default-requeue-rejected: false
+        # 컨슈머 4개가 발송 지연 300ms에서 초당 13건을 처리해 발행 속도(초당 10건)를 넘는다. 컨슈머는 발송하는 동안 DB 커넥션을 쥐므로(기본 풀 10개) 풀의 절반 아래로 둔다.
+        # prefetch는 컨슈머가 미리 받아 두는 수다. 서버가 여러 대일 때 한 서버가 메시지를 쌓아 두고 다른 서버가 놀지 않도록 작게 둔다.
+        concurrency: 4
+        prefetch: 4
         retry:
           enabled: true
           # Spring Boot 4부터 max-attempts는 무시되고 첫 시도를 뺀 재시도 횟수를 max-retries로 받는다. 첫 시도를 합쳐 3번 시도한다.
