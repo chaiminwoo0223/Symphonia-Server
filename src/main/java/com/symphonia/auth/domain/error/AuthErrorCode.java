@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 public enum AuthErrorCode implements ErrorCode {
     // 400
     UNSUPPORTED_SOCIAL_PROVIDER(HttpStatus.BAD_REQUEST, "지원하지 않는 소셜 로그인 제공자입니다."),
-    INVALID_AUTHORIZATION_CODE(HttpStatus.BAD_REQUEST, "만료되었거나 유효하지 않은 인가 코드입니다."),
+    INVALID_SOCIAL_TOKEN(HttpStatus.BAD_REQUEST, "만료되었거나 유효하지 않은 소셜 로그인 토큰입니다."),
     SOCIAL_REQUIRED_INFO_MISSING(HttpStatus.BAD_REQUEST, "소셜 계정의 이메일과 닉네임 제공에 동의해야 이용할 수 있습니다."),
 
     // 401
@@ -19,7 +19,7 @@ public enum AuthErrorCode implements ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 부족합니다."),
 
     // 500
-    OAUTH_TOKEN_EXCHANGE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 토큰 교환에 실패했습니다."),
+    OAUTH_TOKEN_VERIFICATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 토큰 검증에 실패했습니다."),
     OAUTH_MEMBER_INFO_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 사용자 정보 조회에 실패했습니다."),
     ;
 

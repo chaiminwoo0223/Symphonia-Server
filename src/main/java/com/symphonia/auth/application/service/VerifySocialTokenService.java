@@ -1,7 +1,7 @@
 package com.symphonia.auth.application.service;
 
 import com.symphonia.auth.application.dto.result.OAuthMemberResult;
-import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
+import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.exception.UnsupportedSocialProviderException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
@@ -13,13 +13,13 @@ import lombok.RequiredArgsConstructor;
 
 @CommandService
 @RequiredArgsConstructor
-public class ExchangeSocialCodeService implements ExchangeSocialCodeUseCase {
+public class VerifySocialTokenService implements VerifySocialTokenUseCase {
     private final Map<String, SocialClient> socialClients;
 
     @Override
-    public OAuthMemberResult exchange(String provider, String code) {
+    public OAuthMemberResult verify(String provider, String token) {
         SocialClient socialClient = resolveSocialClient(provider);
-        SocialIdentity identity = socialClient.authenticate(code);
+        SocialIdentity identity = socialClient.authenticate(token);
 
         return OAuthMemberResult.from(identity);
     }

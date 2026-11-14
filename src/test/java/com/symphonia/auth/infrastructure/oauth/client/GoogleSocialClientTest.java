@@ -3,76 +3,43 @@ package com.symphonia.auth.infrastructure.oauth.client;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
-import com.symphonia.auth.domain.exception.SocialAuthenticationFailedException;
-import com.symphonia.auth.domain.exception.SocialMemberInfoFetchFailedException;
+import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
+import com.symphonia.auth.domain.exception.SocialTokenVerificationFailedException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
-import com.symphonia.auth.infrastructure.oauth.config.properties.GoogleOAuthProperties;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.RestClient;
+import org.springframework.security.oauth2.jwt.JwtException;
 
 @DisplayName("GoogleSocialClient 단위 테스트")
 class GoogleSocialClientTest extends UnitTest {
 
-    private static final String TOKEN_URI = "https://oauth2.googleapis.com/token";
-    private static final String CODE = "auth-code";
     private static final String ID_TOKEN = "id-token-value";
 
-    private MockRestServiceServer mockServer;
-    private GoogleSocialClient googleSocialClient;
+    @InjectMocks private GoogleSocialClient googleSocialClient;
 
     @Mock private JwtDecoder googleIdTokenDecoder;
-
-    @BeforeEach
-    void setUp() {
-        GoogleOAuthProperties properties =
-                new GoogleOAuthProperties(
-                        "client-id",
-                        "client-secret",
-                        "redirect-uri",
-                        TOKEN_URI,
-                        "jwks-uri",
-                        "issuer");
-        RestClient.Builder builder = RestClient.builder();
-        mockServer = MockRestServiceServer.bindTo(builder).build();
-        googleSocialClient =
-                new GoogleSocialClient(builder.build(), googleIdTokenDecoder, properties);
-    }
 
     @Nested
     @DisplayName("authenticate 메서드는")
     class Authenticate {
 
         @Nested
-        @DisplayName("토큰 교환과 ID 토큰 검증이 모두 성공한 경우")
-        class WhenTokenExchangeAndDecodeSucceed {
+        @DisplayName("ID 토큰 검증이 성공한 경우")
+        class WhenIdTokenDecodeSucceeds {
 
             @Test
             @DisplayName("Jwt 클레임으로 매핑한 SocialIdentity를 반환한다.")
             void shouldReturnSocialIdentity() {
                 // given
-                mockServer
-                        .expect(requestTo(TOKEN_URI))
-                        .andExpect(method(HttpMethod.POST))
-                        .andRespond(
-                                withSuccess(
-                                        "{\"id_token\": \"" + ID_TOKEN + "\"}",
-                                        MediaType.APPLICATION_JSON));
                 Jwt jwt =
                         Jwt.withTokenValue(ID_TOKEN)
                                 .header("alg", "RS256")
@@ -84,7 +51,7 @@ class GoogleSocialClientTest extends UnitTest {
                 given(googleIdTokenDecoder.decode(ID_TOKEN)).willReturn(jwt);
 
                 // when
-                SocialIdentity identity = googleSocialClient.authenticate(CODE);
+                SocialIdentity identity = googleSocialClient.authenticate(ID_TOKEN);
 
                 // then
                 assertThat(identity.socialId()).isEqualTo("google123");
@@ -97,52 +64,38 @@ class GoogleSocialClientTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("토큰 교환에 실패한 경우")
-        class WhenTokenExchangeFails {
-
-            // 서버 오류·인가 코드 무효 분기는 Kakao/Google이 공유하는 AuthorizationCodeClient의 책임이라
-            // AuthorizationCodeClientTest에서 검증한다.
-            // 여기서는 이 SocialClient만의 관심사인 "id_token 누락" 분기만 확인한다.
-            @Test
-            @DisplayName("id_token이 없는 응답이면 SocialAuthenticationFailedException이 발생한다.")
-            void shouldThrowSocialAuthenticationFailedExceptionWhenIdTokenMissing() {
-                // given
-                mockServer
-                        .expect(requestTo(TOKEN_URI))
-                        .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-
-                // when & then
-                assertThatThrownBy(() -> googleSocialClient.authenticate(CODE))
-                        .isInstanceOf(SocialAuthenticationFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_EXCHANGE_FAILED.getMessage());
-            }
-        }
-
-        @Nested
-        @DisplayName("ID 토큰 검증에 실패한 경우")
-        class WhenIdTokenDecodeFails {
-
-            @BeforeEach
-            void setUp() {
-                mockServer
-                        .expect(requestTo(TOKEN_URI))
-                        .andRespond(
-                                withSuccess(
-                                        "{\"id_token\": \"" + ID_TOKEN + "\"}",
-                                        MediaType.APPLICATION_JSON));
-            }
+        @DisplayName("서명, 발급자, aud, 만료 검증에 실패한 토큰인 경우")
+        class WhenIdTokenIsInvalid {
 
             @Test
-            @DisplayName("SocialMemberInfoFetchFailedException이 발생한다.")
-            void shouldThrowSocialMemberInfoFetchFailedException() {
+            @DisplayName("InvalidSocialTokenException이 발생한다.")
+            void shouldThrowInvalidSocialTokenException() {
                 // given
                 given(googleIdTokenDecoder.decode(ID_TOKEN))
                         .willThrow(new BadJwtException("invalid id token"));
 
                 // when & then
-                assertThatThrownBy(() -> googleSocialClient.authenticate(CODE))
-                        .isInstanceOf(SocialMemberInfoFetchFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_MEMBER_INFO_FETCH_FAILED.getMessage());
+                assertThatThrownBy(() -> googleSocialClient.authenticate(ID_TOKEN))
+                        .isInstanceOf(InvalidSocialTokenException.class)
+                        .hasMessage(AuthErrorCode.INVALID_SOCIAL_TOKEN.getMessage());
+            }
+        }
+
+        @Nested
+        @DisplayName("공개키 목록을 가져오지 못한 경우")
+        class WhenJwkSetRetrievalFails {
+
+            @Test
+            @DisplayName("SocialTokenVerificationFailedException이 발생한다.")
+            void shouldThrowSocialTokenVerificationFailedException() {
+                // given
+                given(googleIdTokenDecoder.decode(ID_TOKEN))
+                        .willThrow(new JwtException("Couldn't retrieve remote JWK set"));
+
+                // when & then
+                assertThatThrownBy(() -> googleSocialClient.authenticate(ID_TOKEN))
+                        .isInstanceOf(SocialTokenVerificationFailedException.class)
+                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_VERIFICATION_FAILED.getMessage());
             }
         }
     }

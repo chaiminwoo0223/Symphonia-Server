@@ -3,9 +3,9 @@ package com.symphonia.auth.application.service;
 import com.symphonia.auth.application.dto.command.SignupCommand;
 import com.symphonia.auth.application.dto.result.OAuthMemberResult;
 import com.symphonia.auth.application.dto.result.TokenResult;
-import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
+import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.audit.AuditAction;
 import com.symphonia.common.audit.Audited;
@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 @CommandService
 @RequiredArgsConstructor
 public class SignupService implements SignupUseCase {
-    private final ExchangeSocialCodeUseCase exchangeSocialCodeUseCase;
+    private final VerifySocialTokenUseCase verifySocialTokenUseCase;
     private final CreateMemberUseCase createMemberUseCase;
     private final IssueTokenUseCase issueTokenUseCase;
 
@@ -24,7 +24,7 @@ public class SignupService implements SignupUseCase {
     @Audited(action = AuditAction.SIGNUP)
     public TokenResult signup(SignupCommand command) {
         OAuthMemberResult result =
-                exchangeSocialCodeUseCase.exchange(command.provider(), command.code());
+                verifySocialTokenUseCase.verify(command.provider(), command.token());
         MemberResult member = createMemberUseCase.create(result.toCreateMemberCommand());
 
         return issueTokenUseCase.issue(String.valueOf(member.id()), member.role().name());
