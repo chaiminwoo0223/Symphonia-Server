@@ -1,6 +1,6 @@
 // gathering 도메인에서 모임 참여(POST /api/v1/participants)와 분담금 조회(GET /api/v1/shares)를 동시에 요청하는 K6 스크립트다.
 // 두 API 모두 모임을 읽을 때 참여자 전원의 이름과 휴대폰을 복호화하므로, 참여자가 늘어나는 동안의 응답 시간을 측정한다(#125).
-// 모임 열기는 회원 JWT가 필요하다. 로그인은 소셜 인가 코드가 있어야 해서 setup에서 JWT_SECRET으로 액세스 토큰을 직접 서명한다.
+// 모임 열기는 회원 JWT가 필요하다. 로그인은 소셜 SDK 토큰이 있어야 해서 setup에서 JWT_SECRET으로 액세스 토큰을 직접 서명한다.
 // 실행 방법은 k6/README.md를 참고한다.
 
 import http from 'k6/http';
