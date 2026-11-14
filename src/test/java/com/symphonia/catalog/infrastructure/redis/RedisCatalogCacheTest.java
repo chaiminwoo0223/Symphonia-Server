@@ -77,6 +77,19 @@ class RedisCatalogCacheTest extends RedisRepositoryTest {
             // then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("값이 JSON null이면 예외 없이 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenValueIsJsonNull() {
+            // given
+            redisTemplate.opsForValue().set(KEY, "null");
+
+            // when
+            Optional<CatalogResult> result = catalogCache.find();
+
+            // then
+            assertThat(result).isEmpty();
+        }
     }
 
     @Nested
