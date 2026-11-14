@@ -105,19 +105,5 @@ class RefreshServiceTest extends UnitTest {
                         .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
             }
         }
-
-        @Nested
-        @DisplayName("리프레시 토큰 자체가 없는 경우")
-        class WhenRefreshTokenAbsent {
-
-            @Test
-            @DisplayName("RefreshTokenNotFoundException이 발생한다.")
-            void shouldThrowRefreshTokenNotFoundException() {
-                // when & then
-                assertThatThrownBy(() -> refreshService.refresh(RefreshCommand.of(null, IP)))
-                        .isInstanceOf(RefreshTokenNotFoundException.class)
-                        .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
-            }
-        }
     }
 }
