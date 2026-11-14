@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -243,12 +244,12 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
             @DisplayName("새로 발행하지 않지만 발행했는데 보내지 못한 발송 기록은 시도 한 번으로 센다")
             void shouldNotPublishButStillRetryStalledWhenInFlightReachedLimit() {
                 // given
-                NotificationDelivery stalled =
-                        delivery(SECOND_DELIVERY_ID)
-                                .publishedAt(NOW.minusMinutes(10))
-                                .claimedAt(NOW.minusMinutes(6))
-                                .build();
-                givenPublishable(List.of(delivery(FIRST_DELIVERY_ID).build(), stalled));
+                Long stalledId = (long) PUBLISH_LIMIT;
+                givenPublishable(
+                        Stream.concat(
+                                        unpublishedDeliveries(PUBLISH_LIMIT - 1).stream(),
+                                        Stream.of(stalledDelivery(stalledId)))
+                                .toList());
                 givenInFlight(MAX_IN_FLIGHT);
                 given(notificationDeliveryPublisher.publishAll(List.of())).willReturn(List.of());
 
@@ -259,8 +260,57 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
                 assertThat(result).isFalse();
                 assertThat(savedStalledDeliveries())
                         .extracting(NotificationDelivery::getId, NotificationDelivery::getAttempts)
-                        .containsExactly(tuple(SECOND_DELIVERY_ID, 1));
+                        .containsExactly(tuple(stalledId, 1));
                 then(notificationDeliveryRepository).should().markPublished(List.of(), NOW);
+            }
+        }
+
+        @Nested
+        @DisplayName("발행했지만 아직 보내지 못한 발송 기록이 상한을 넘은 경우")
+        class WhenInFlightExceededLimit {
+
+            @Test
+            @DisplayName("발행 가능한 수를 음수로 계산하지 않고 새로 발행하지 않는다")
+            void shouldNotPublishWhenInFlightExceededLimit() {
+                // given
+                givenPublishable(unpublishedDeliveries());
+                givenInFlight(MAX_IN_FLIGHT + 50);
+                given(notificationDeliveryPublisher.publishAll(List.of())).willReturn(List.of());
+
+                // when
+                publishNotificationDeliveriesService.publishPending();
+
+                // then
+                then(notificationDeliveryPublisher).should().publishAll(List.of());
+                then(notificationDeliveryRepository).should().markPublished(List.of(), NOW);
+            }
+        }
+
+        @Nested
+        @DisplayName("상한만큼 찾은 발송 기록이 모두 발행했는데 보내지 못한 것인 경우")
+        class WhenAllStalled {
+
+            @Test
+            @DisplayName("모두 다음 조회에서 빠지므로 이어서 발행하도록 true를 반환한다")
+            void shouldReturnTrueWhenAllStalled() {
+                // given
+                givenPublishable(
+                        LongStream.rangeClosed(1, PUBLISH_LIMIT)
+                                .mapToObj(id -> stalledDelivery(id))
+                                .toList());
+                given(notificationDeliveryPublisher.publishAll(List.of())).willReturn(List.of());
+
+                // when
+                boolean result = publishNotificationDeliveriesService.publishPending();
+
+                // then
+                assertThat(result).isTrue();
+                assertThat(savedStalledDeliveries())
+                        .hasSize(PUBLISH_LIMIT)
+                        .allMatch(
+                                delivery ->
+                                        delivery.getAttempts() == 1
+                                                && delivery.getPublishedAt() == null);
             }
         }
 
@@ -295,7 +345,7 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
     private void givenPublishable(List<NotificationDelivery> notificationDeliveries) {
         given(
                         notificationDeliveryRepository.findPublishableForUpdate(
-                                NOW, NOW.minusMinutes(5), NOW.minusMinutes(5), 100))
+                                NOW, NOW.minusMinutes(5), NOW.minusMinutes(5), PUBLISH_LIMIT))
                 .willReturn(notificationDeliveries);
     }
 
@@ -310,6 +360,14 @@ class PublishNotificationDeliveriesServiceTest extends UnitTest {
 
     private List<NotificationDelivery> unpublishedDeliveries(int count) {
         return LongStream.rangeClosed(1, count).mapToObj(id -> delivery(id).build()).toList();
+    }
+
+    // 발행한 지 5분이 지나도록 컨슈머가 맡은 지 오래된 발송 기록이다.
+    private NotificationDelivery stalledDelivery(Long deliveryId) {
+        return delivery(deliveryId)
+                .publishedAt(NOW.minusMinutes(10))
+                .claimedAt(NOW.minusMinutes(6))
+                .build();
     }
 
     private List<Long> idsOf(List<NotificationDelivery> notificationDeliveries) {
