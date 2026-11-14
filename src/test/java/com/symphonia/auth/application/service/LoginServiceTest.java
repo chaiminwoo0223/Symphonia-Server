@@ -9,8 +9,8 @@ import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.command.LoginCommand;
 import com.symphonia.auth.application.dto.result.OAuthMemberResult;
 import com.symphonia.auth.application.dto.result.TokenResult;
-import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
+import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
@@ -31,7 +31,7 @@ import org.mockito.Mock;
 class LoginServiceTest extends UnitTest {
 
     private static final String PROVIDER = "kakao";
-    private static final String CODE = "auth-code";
+    private static final String TOKEN = "social-token";
     private static final String IP = "127.0.0.1";
     private static final Long MEMBER_ID = 1L;
     private static final String ACCESS_TOKEN = "access-token";
@@ -39,7 +39,7 @@ class LoginServiceTest extends UnitTest {
 
     @InjectMocks private LoginService loginService;
 
-    @Mock private ExchangeSocialCodeUseCase exchangeSocialCodeUseCase;
+    @Mock private VerifySocialTokenUseCase verifySocialTokenUseCase;
 
     @Mock private GetMemberUseCase getMemberUseCase;
 
@@ -48,13 +48,13 @@ class LoginServiceTest extends UnitTest {
     @Nested
     @DisplayName("login 메서드는")
     class Login {
-        private final LoginCommand command = new LoginCommand(PROVIDER, CODE, IP);
+        private final LoginCommand command = new LoginCommand(PROVIDER, TOKEN, IP);
         private final OAuthMemberResult oAuthMemberResult =
                 OAuthMemberResult.from(SocialIdentityFixture.KAKAO.create());
 
         @BeforeEach
         void setUp() {
-            given(exchangeSocialCodeUseCase.exchange(PROVIDER, CODE)).willReturn(oAuthMemberResult);
+            given(verifySocialTokenUseCase.verify(PROVIDER, TOKEN)).willReturn(oAuthMemberResult);
         }
 
         @Nested

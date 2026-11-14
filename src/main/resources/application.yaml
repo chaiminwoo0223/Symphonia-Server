@@ -53,18 +53,16 @@ cors:
 
 oauth:
   kakao:
-    client-id: ${KAKAO_CLIENT_ID}
-    client-secret: ${KAKAO_CLIENT_SECRET}
-    redirect-uri: ${KAKAO_REDIRECT_URI}
-    token-uri: https://kauth.kakao.com/oauth/token
+    app-id: ${KAKAO_APP_ID}
+    access-token-info-uri: https://kapi.kakao.com/v1/user/access_token_info
     user-info-uri: https://kapi.kakao.com/v2/user/me
   google:
+    # 앱이 구글 로그인에서 serverClientId로 지정하는 웹 클라이언트 ID다. ID 토큰의 aud가 이 값이어야 한다.
     client-id: ${GOOGLE_CLIENT_ID}
-    client-secret: ${GOOGLE_CLIENT_SECRET}
-    redirect-uri: ${GOOGLE_REDIRECT_URI}
-    token-uri: https://oauth2.googleapis.com/token
     jwks-uri: https://www.googleapis.com/oauth2/v3/certs
-    issuer: https://accounts.google.com
+    issuers:
+      - https://accounts.google.com
+      - accounts.google.com
 
 # 카탈로그 적재(./gradlew importCatalog)가 읽는 원본.
 # BJCP는 저작권 때문에 커밋하지 않고 scripts/import/fetch-bjcp.sh로 받는다. X-Wines(CC0)는 레포에 커밋되어 있다.

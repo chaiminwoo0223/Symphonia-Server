@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.error.AuthErrorCode;
+import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
 import com.symphonia.auth.domain.exception.SocialRequiredInfoMissingException;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
@@ -37,7 +38,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class AuthControllerTest extends IntegrationTest {
 
     private static final String COOKIE_NAME = RefreshTokenCookieFactory.COOKIE_NAME;
-    private static final String AUTH_CODE = "auth-code";
+    private static final String SOCIAL_TOKEN = "social-token";
 
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
@@ -57,16 +58,16 @@ class AuthControllerTest extends IntegrationTest {
     class Signup {
 
         @Nested
-        @DisplayName("지원하는 provider의 유효한 인가 코드인 경우")
-        class WhenAuthorizationCodeIsValid {
+        @DisplayName("지원하는 provider의 유효한 소셜 토큰인 경우")
+        class WhenSocialTokenIsValid {
 
             @Test
             @DisplayName("멤버를 생성하고 201과 함께 토큰을 반환한다")
             void shouldCreateMemberAndReturnToken() throws Exception {
                 // given
-                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                given(kakaoSocialClient.authenticate(SOCIAL_TOKEN))
                         .willReturn(SocialIdentityFixture.KAKAO.create());
-                SignupRequest request = new SignupRequest("kakao", AUTH_CODE);
+                SignupRequest request = new SignupRequest("kakao", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -93,9 +94,9 @@ class AuthControllerTest extends IntegrationTest {
             void shouldReturnConflict() throws Exception {
                 // given
                 memberHelper.save(MemberFixture.KAKAO);
-                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                given(kakaoSocialClient.authenticate(SOCIAL_TOKEN))
                         .willReturn(SocialIdentityFixture.KAKAO.create());
-                SignupRequest request = new SignupRequest("kakao", AUTH_CODE);
+                SignupRequest request = new SignupRequest("kakao", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -114,9 +115,9 @@ class AuthControllerTest extends IntegrationTest {
             @DisplayName("400과 SOCIAL_REQUIRED_INFO_MISSING 코드를 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
-                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                given(kakaoSocialClient.authenticate(SOCIAL_TOKEN))
                         .willThrow(new SocialRequiredInfoMissingException());
-                SignupRequest request = new SignupRequest("kakao", AUTH_CODE);
+                SignupRequest request = new SignupRequest("kakao", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -140,7 +141,7 @@ class AuthControllerTest extends IntegrationTest {
             @DisplayName("400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
-                SignupRequest request = new SignupRequest("naver", AUTH_CODE);
+                SignupRequest request = new SignupRequest("naver", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -152,14 +153,14 @@ class AuthControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("provider 또는 code가 빈 문자열인 경우")
+        @DisplayName("provider 또는 token이 빈 문자열인 경우")
         class WhenRequestFieldBlank {
 
             @Test
             @DisplayName("provider가 비어 있으면 400을 반환한다")
             void shouldReturnBadRequestWhenProviderBlank() throws Exception {
                 // given
-                SignupRequest request = new SignupRequest("", AUTH_CODE);
+                SignupRequest request = new SignupRequest("", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -170,8 +171,8 @@ class AuthControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("code가 비어 있으면 400을 반환한다")
-            void shouldReturnBadRequestWhenCodeBlank() throws Exception {
+            @DisplayName("token이 비어 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenTokenBlank() throws Exception {
                 // given
                 SignupRequest request = new SignupRequest("kakao", "");
 
@@ -185,14 +186,14 @@ class AuthControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("provider 또는 code가 길이 상한을 초과한 경우")
+        @DisplayName("provider 또는 token이 길이 상한을 초과한 경우")
         class WhenRequestFieldTooLong {
 
             @Test
             @DisplayName("provider가 20자를 초과하면 400을 반환한다")
             void shouldReturnBadRequestWhenProviderTooLong() throws Exception {
                 // given
-                SignupRequest request = new SignupRequest("a".repeat(21), AUTH_CODE);
+                SignupRequest request = new SignupRequest("a".repeat(21), SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -203,10 +204,10 @@ class AuthControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("code가 1000자를 초과하면 400을 반환한다")
-            void shouldReturnBadRequestWhenCodeTooLong() throws Exception {
+            @DisplayName("token이 4096자를 초과하면 400을 반환한다")
+            void shouldReturnBadRequestWhenTokenTooLong() throws Exception {
                 // given
-                SignupRequest request = new SignupRequest("kakao", "a".repeat(1001));
+                SignupRequest request = new SignupRequest("kakao", "a".repeat(4097));
 
                 // when & then
                 mockMvc.perform(
@@ -231,9 +232,9 @@ class AuthControllerTest extends IntegrationTest {
             void shouldReturnToken() throws Exception {
                 // given
                 memberHelper.save(MemberFixture.KAKAO);
-                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                given(kakaoSocialClient.authenticate(SOCIAL_TOKEN))
                         .willReturn(SocialIdentityFixture.KAKAO.create());
-                LoginRequest request = new LoginRequest("kakao", AUTH_CODE);
+                LoginRequest request = new LoginRequest("kakao", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -254,9 +255,9 @@ class AuthControllerTest extends IntegrationTest {
             @DisplayName("404를 반환한다")
             void shouldReturnNotFound() throws Exception {
                 // given
-                given(kakaoSocialClient.authenticate(AUTH_CODE))
+                given(kakaoSocialClient.authenticate(SOCIAL_TOKEN))
                         .willReturn(SocialIdentityFixture.KAKAO.create());
-                LoginRequest request = new LoginRequest("kakao", AUTH_CODE);
+                LoginRequest request = new LoginRequest("kakao", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -268,6 +269,30 @@ class AuthControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("만료되었거나 유효하지 않은 소셜 토큰인 경우")
+        class WhenSocialTokenIsInvalid {
+
+            @Test
+            @DisplayName("400과 INVALID_SOCIAL_TOKEN 코드를 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                given(kakaoSocialClient.authenticate(SOCIAL_TOKEN))
+                        .willThrow(new InvalidSocialTokenException());
+                LoginRequest request = new LoginRequest("kakao", SOCIAL_TOKEN);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/auth/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(AuthErrorCode.INVALID_SOCIAL_TOKEN.getCode()));
+            }
+        }
+
+        @Nested
         @DisplayName("지원하지 않는 provider인 경우")
         class WhenProviderUnsupported {
 
@@ -275,7 +300,7 @@ class AuthControllerTest extends IntegrationTest {
             @DisplayName("400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
-                LoginRequest request = new LoginRequest("naver", AUTH_CODE);
+                LoginRequest request = new LoginRequest("naver", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -287,14 +312,14 @@ class AuthControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("provider 또는 code가 빈 문자열인 경우")
+        @DisplayName("provider 또는 token이 빈 문자열인 경우")
         class WhenRequestFieldBlank {
 
             @Test
             @DisplayName("provider가 비어 있으면 400을 반환한다")
             void shouldReturnBadRequestWhenProviderBlank() throws Exception {
                 // given
-                LoginRequest request = new LoginRequest("", AUTH_CODE);
+                LoginRequest request = new LoginRequest("", SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -305,8 +330,8 @@ class AuthControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("code가 비어 있으면 400을 반환한다")
-            void shouldReturnBadRequestWhenCodeBlank() throws Exception {
+            @DisplayName("token이 비어 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenTokenBlank() throws Exception {
                 // given
                 LoginRequest request = new LoginRequest("kakao", "");
 
@@ -320,14 +345,14 @@ class AuthControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("provider 또는 code가 길이 상한을 초과한 경우")
+        @DisplayName("provider 또는 token이 길이 상한을 초과한 경우")
         class WhenRequestFieldTooLong {
 
             @Test
             @DisplayName("provider가 20자를 초과하면 400을 반환한다")
             void shouldReturnBadRequestWhenProviderTooLong() throws Exception {
                 // given
-                LoginRequest request = new LoginRequest("a".repeat(21), AUTH_CODE);
+                LoginRequest request = new LoginRequest("a".repeat(21), SOCIAL_TOKEN);
 
                 // when & then
                 mockMvc.perform(
@@ -338,10 +363,10 @@ class AuthControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("code가 1000자를 초과하면 400을 반환한다")
-            void shouldReturnBadRequestWhenCodeTooLong() throws Exception {
+            @DisplayName("token이 4096자를 초과하면 400을 반환한다")
+            void shouldReturnBadRequestWhenTokenTooLong() throws Exception {
                 // given
-                LoginRequest request = new LoginRequest("kakao", "a".repeat(1001));
+                LoginRequest request = new LoginRequest("kakao", "a".repeat(4097));
 
                 // when & then
                 mockMvc.perform(

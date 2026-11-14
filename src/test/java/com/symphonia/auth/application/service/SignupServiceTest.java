@@ -10,8 +10,8 @@ import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.command.SignupCommand;
 import com.symphonia.auth.application.dto.result.OAuthMemberResult;
 import com.symphonia.auth.application.dto.result.TokenResult;
-import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
+import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.member.application.dto.command.CreateMemberCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
@@ -33,7 +33,7 @@ import org.mockito.Mock;
 class SignupServiceTest extends UnitTest {
 
     private static final String PROVIDER = "kakao";
-    private static final String CODE = "auth-code";
+    private static final String TOKEN = "social-token";
     private static final String IP = "127.0.0.1";
     private static final Long MEMBER_ID = 1L;
     private static final String ACCESS_TOKEN = "access-token";
@@ -41,7 +41,7 @@ class SignupServiceTest extends UnitTest {
 
     @InjectMocks private SignupService signupService;
 
-    @Mock private ExchangeSocialCodeUseCase exchangeSocialCodeUseCase;
+    @Mock private VerifySocialTokenUseCase verifySocialTokenUseCase;
 
     @Mock private CreateMemberUseCase createMemberUseCase;
 
@@ -50,13 +50,13 @@ class SignupServiceTest extends UnitTest {
     @Nested
     @DisplayName("signup 메서드는")
     class Signup {
-        private final SignupCommand command = new SignupCommand(PROVIDER, CODE, IP);
+        private final SignupCommand command = new SignupCommand(PROVIDER, TOKEN, IP);
         private final OAuthMemberResult oAuthMemberResult =
                 OAuthMemberResult.from(SocialIdentityFixture.KAKAO.create());
 
         @BeforeEach
         void setUp() {
-            given(exchangeSocialCodeUseCase.exchange(PROVIDER, CODE)).willReturn(oAuthMemberResult);
+            given(verifySocialTokenUseCase.verify(PROVIDER, TOKEN)).willReturn(oAuthMemberResult);
         }
 
         @Nested

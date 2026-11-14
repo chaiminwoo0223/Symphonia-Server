@@ -1,14 +1,16 @@
 package com.symphonia.auth.infrastructure.oauth.client;
 
 import com.symphonia.auth.domain.client.SocialClient;
-import com.symphonia.auth.domain.exception.SocialAuthenticationFailedException;
+import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
 import com.symphonia.auth.domain.exception.SocialMemberInfoFetchFailedException;
+import com.symphonia.auth.domain.exception.SocialTokenVerificationFailedException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
-import com.symphonia.auth.infrastructure.oauth.client.response.KakaoTokenResponse;
+import com.symphonia.auth.infrastructure.oauth.client.response.KakaoAccessTokenInfoResponse;
 import com.symphonia.auth.infrastructure.oauth.client.response.KakaoUserInfoResponse;
 import com.symphonia.auth.infrastructure.oauth.config.properties.KakaoOAuthProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -19,27 +21,38 @@ public class KakaoSocialClient implements SocialClient {
     private final KakaoOAuthProperties properties;
 
     @Override
-    public SocialIdentity authenticate(String code) {
-        String accessToken = exchangeAccessToken(code);
+    public SocialIdentity authenticate(String token) {
+        verifyIssuedForThisApp(token);
 
-        return fetchUserInfo(accessToken).toSocialIdentity();
+        return fetchUserInfo(token).toSocialIdentity();
     }
 
-    private String exchangeAccessToken(String code) {
-        KakaoTokenResponse response =
-                AuthorizationCodeClient.exchange(
-                        restClient,
-                        properties.tokenUri(),
-                        properties.clientId(),
-                        properties.clientSecret(),
-                        properties.redirectUri(),
-                        code,
-                        KakaoTokenResponse.class);
+    // 사용자 정보 조회는 다른 앱이 발급한 액세스 토큰도 통과시키므로, 토큰이 이 앱에서 발급됐는지 앱 ID로 확인한다.
+    private void verifyIssuedForThisApp(String accessToken) {
+        KakaoAccessTokenInfoResponse response = fetchAccessTokenInfo(accessToken);
 
-        if (response == null || response.accessToken() == null) {
-            throw new SocialAuthenticationFailedException();
+        if (response == null || response.appId() == null) {
+            throw new SocialTokenVerificationFailedException();
         }
-        return response.accessToken();
+        if (!properties.appId().equals(String.valueOf(response.appId()))) {
+            throw new InvalidSocialTokenException();
+        }
+    }
+
+    private KakaoAccessTokenInfoResponse fetchAccessTokenInfo(String accessToken) {
+        try {
+            return restClient
+                    .get()
+                    .uri(properties.accessTokenInfoUri())
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .retrieve()
+                    .body(KakaoAccessTokenInfoResponse.class);
+        } catch (HttpClientErrorException e) {
+            // 만료되었거나 형식이 잘못된 토큰(401, 400)은 클라이언트 잘못이라 서버 오류(500)로 흘리지 않는다.
+            throw new InvalidSocialTokenException();
+        } catch (RestClientException e) {
+            throw new SocialTokenVerificationFailedException();
+        }
     }
 
     private KakaoUserInfoResponse fetchUserInfo(String accessToken) {

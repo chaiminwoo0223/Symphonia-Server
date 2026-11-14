@@ -3,9 +3,9 @@ package com.symphonia.auth.application.service;
 import com.symphonia.auth.application.dto.command.LoginCommand;
 import com.symphonia.auth.application.dto.result.OAuthMemberResult;
 import com.symphonia.auth.application.dto.result.TokenResult;
-import com.symphonia.auth.application.usecase.ExchangeSocialCodeUseCase;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.LoginUseCase;
+import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.audit.AuditAction;
 import com.symphonia.common.audit.Audited;
@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 @CommandService
 @RequiredArgsConstructor
 public class LoginService implements LoginUseCase {
-    private final ExchangeSocialCodeUseCase exchangeSocialCodeUseCase;
+    private final VerifySocialTokenUseCase verifySocialTokenUseCase;
     private final GetMemberUseCase getMemberUseCase;
     private final IssueTokenUseCase issueTokenUseCase;
 
@@ -24,7 +24,7 @@ public class LoginService implements LoginUseCase {
     @Audited(action = AuditAction.LOGIN)
     public TokenResult login(LoginCommand command) {
         OAuthMemberResult identity =
-                exchangeSocialCodeUseCase.exchange(command.provider(), command.code());
+                verifySocialTokenUseCase.verify(command.provider(), command.token());
         MemberResult member =
                 getMemberUseCase.getBySocialLogin(identity.socialProvider(), identity.socialId());
 

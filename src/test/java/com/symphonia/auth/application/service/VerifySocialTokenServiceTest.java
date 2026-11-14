@@ -20,14 +20,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
-@DisplayName("ExchangeSocialCodeService 단위 테스트")
-class ExchangeSocialCodeServiceTest extends UnitTest {
+@DisplayName("VerifySocialTokenService 단위 테스트")
+class VerifySocialTokenServiceTest extends UnitTest {
 
-    private static final String CODE = "auth-code";
+    private static final String TOKEN = "social-token";
     private static final String KAKAO = "kakao";
     private static final String GOOGLE = "google";
 
-    private ExchangeSocialCodeService exchangeSocialCodeService;
+    private VerifySocialTokenService verifySocialTokenService;
 
     @Mock private SocialClient kakaoSocialClient;
 
@@ -35,14 +35,14 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        exchangeSocialCodeService =
-                new ExchangeSocialCodeService(
+        verifySocialTokenService =
+                new VerifySocialTokenService(
                         Map.of(KAKAO, kakaoSocialClient, GOOGLE, googleSocialClient));
     }
 
     @Nested
-    @DisplayName("exchange 메서드는")
-    class Exchange {
+    @DisplayName("verify 메서드는")
+    class Verify {
 
         @Nested
         @DisplayName("provider가 kakao인 경우")
@@ -53,10 +53,10 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
             void shouldReturnOAuthMemberResultFromKakaoClient() {
                 // given
                 SocialIdentity identity = SocialIdentityFixture.KAKAO.create();
-                given(kakaoSocialClient.authenticate(CODE)).willReturn(identity);
+                given(kakaoSocialClient.authenticate(TOKEN)).willReturn(identity);
 
                 // when
-                OAuthMemberResult result = exchangeSocialCodeService.exchange(KAKAO, CODE);
+                OAuthMemberResult result = verifySocialTokenService.verify(KAKAO, TOKEN);
 
                 // then
                 assertThat(result.socialId()).isEqualTo(identity.socialId());
@@ -72,10 +72,10 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
             void shouldReturnOAuthMemberResultWhenProviderCasingIsMixed() {
                 // given
                 SocialIdentity identity = SocialIdentityFixture.KAKAO.create();
-                given(kakaoSocialClient.authenticate(CODE)).willReturn(identity);
+                given(kakaoSocialClient.authenticate(TOKEN)).willReturn(identity);
 
                 // when
-                OAuthMemberResult result = exchangeSocialCodeService.exchange("KaKao", CODE);
+                OAuthMemberResult result = verifySocialTokenService.verify("KaKao", TOKEN);
 
                 // then
                 assertThat(result.socialProvider()).isEqualTo(SocialProvider.KAKAO);
@@ -91,10 +91,10 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
             void shouldReturnOAuthMemberResultFromGoogleClient() {
                 // given
                 SocialIdentity identity = SocialIdentityFixture.GOOGLE.create();
-                given(googleSocialClient.authenticate(CODE)).willReturn(identity);
+                given(googleSocialClient.authenticate(TOKEN)).willReturn(identity);
 
                 // when
-                OAuthMemberResult result = exchangeSocialCodeService.exchange(GOOGLE, CODE);
+                OAuthMemberResult result = verifySocialTokenService.verify(GOOGLE, TOKEN);
 
                 // then
                 assertThat(result.socialId()).isEqualTo(identity.socialId());
@@ -114,7 +114,7 @@ class ExchangeSocialCodeServiceTest extends UnitTest {
             @DisplayName("UnsupportedSocialProviderException이 발생한다.")
             void shouldThrowUnsupportedSocialProviderException() {
                 // when & then
-                assertThatThrownBy(() -> exchangeSocialCodeService.exchange("naver", CODE))
+                assertThatThrownBy(() -> verifySocialTokenService.verify("naver", TOKEN))
                         .isInstanceOf(UnsupportedSocialProviderException.class)
                         .hasMessage(AuthErrorCode.UNSUPPORTED_SOCIAL_PROVIDER.getMessage());
                 then(kakaoSocialClient).shouldHaveNoInteractions();

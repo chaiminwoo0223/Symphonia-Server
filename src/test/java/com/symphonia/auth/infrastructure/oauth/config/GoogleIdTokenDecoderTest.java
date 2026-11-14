@@ -33,6 +33,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 class GoogleIdTokenDecoderTest {
 
     private static final String ISSUER = "https://accounts.google.com";
+    private static final String ISSUER_WITHOUT_SCHEME = "accounts.google.com";
     private static final String CLIENT_ID = "test-client-id";
     private static final String SUBJECT = "google-subject-id";
 
@@ -48,12 +49,7 @@ class GoogleIdTokenDecoderTest {
         privateKey = (RSAPrivateKey) keyPair.getPrivate();
         GoogleOAuthProperties properties =
                 new GoogleOAuthProperties(
-                        CLIENT_ID,
-                        "client-secret",
-                        "redirect-uri",
-                        "token-uri",
-                        "jwks-uri",
-                        ISSUER);
+                        CLIENT_ID, "jwks-uri", List.of(ISSUER, ISSUER_WITHOUT_SCHEME));
         decoder = createDecoder((RSAPublicKey) keyPair.getPublic(), properties);
     }
 
@@ -71,6 +67,28 @@ class GoogleIdTokenDecoderTest {
                 // given
                 String token =
                         signedToken(ISSUER, List.of(CLIENT_ID), Instant.now().plusSeconds(300));
+
+                // when
+                Jwt jwt = decoder.decode(token);
+
+                // then
+                assertThat(jwt.getSubject()).isEqualTo(SUBJECT);
+            }
+        }
+
+        @Nested
+        @DisplayName("iss가 스킴 없는 accounts.google.com인 토큰인 경우")
+        class WhenIssuerHasNoScheme {
+
+            @Test
+            @DisplayName("Jwt로 디코딩한다.")
+            void shouldDecodeJwt() {
+                // given
+                String token =
+                        signedToken(
+                                ISSUER_WITHOUT_SCHEME,
+                                List.of(CLIENT_ID),
+                                Instant.now().plusSeconds(300));
 
                 // when
                 Jwt jwt = decoder.decode(token);
