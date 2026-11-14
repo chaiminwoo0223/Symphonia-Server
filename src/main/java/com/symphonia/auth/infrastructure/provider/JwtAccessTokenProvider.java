@@ -13,8 +13,7 @@ import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-// 모바일: Response Body(JSON) → iOS Keychain / Android Keystore 저장
-// 클라이언트: Response Body(JSON), HttpOnly Secure Cookie(BFF 패턴) → XSS 공격 / CSRF 공격 차단
+// 앱: 응답 바디(JSON)로 받아 Android Keystore 기반 보안 저장소에 보관
 @Slf4j
 @Component
 public class JwtAccessTokenProvider implements AccessTokenProvider {

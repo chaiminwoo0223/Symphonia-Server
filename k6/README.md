@@ -57,7 +57,7 @@ k6 run --summary-export=k6/results/recommend-baseline.json k6/recommend.js
 
 `POST /api/v1/participants`와 `GET /api/v1/shares`를 같은 모임에 동시에 요청한다(이슈 #125). 두 API는 모임을 읽을 때 참여자 전원의 이름과 휴대폰을 복호화한다. 참여자가 늘어나는 동안 응답 시간이 기준을 넘으면 `architecture` 스킬 `gathering.md`의 참여자 전체 복호화 결정을 재검토한다.
 
-모임 열기에는 회원 JWT가 필요하다. 로그인은 소셜 인가 코드가 있어야 해서, setup에서 서버와 같은 `JWT_SECRET`으로 액세스 토큰을 직접 서명한다. 서버를 띄운 셸에서 `.env`를 불러왔다면 같은 셸에서 실행한다.
+모임 열기에는 회원 JWT가 필요하다. 로그인은 소셜 SDK 토큰이 있어야 해서, setup에서 서버와 같은 `JWT_SECRET`으로 액세스 토큰을 직접 서명한다. 서버를 띄운 셸에서 `.env`를 불러왔다면 같은 셸에서 실행한다.
 
 ```bash
 k6 run -e JWT_SECRET="$JWT_SECRET" k6/gathering.js
