@@ -7,6 +7,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -144,6 +146,21 @@ class KakaoSocialClientTest extends UnitTest {
                 assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
                         .isInstanceOf(InvalidSocialTokenException.class)
                         .hasMessage(AuthErrorCode.INVALID_SOCIAL_TOKEN.getMessage());
+            }
+
+            @Test
+            @DisplayName(
+                    "호출 한도 초과나 앱 권한 문제처럼 토큰 잘못이 아닌 4xx이면 SocialTokenVerificationFailedException이 발생한다.")
+            void shouldThrowSocialTokenVerificationFailedExceptionWhenForbidden() {
+                // given
+                mockServer
+                        .expect(requestTo(ACCESS_TOKEN_INFO_URI))
+                        .andRespond(withStatus(HttpStatus.FORBIDDEN));
+
+                // when & then
+                assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
+                        .isInstanceOf(SocialTokenVerificationFailedException.class)
+                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_VERIFICATION_FAILED.getMessage());
             }
 
             @Test
