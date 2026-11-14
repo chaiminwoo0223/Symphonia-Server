@@ -54,6 +54,10 @@ SUT를 생성자 인자 문제 등으로 Mockito가 `@InjectMocks`로 자동 조
 
 1차 부하테스트는 `pairing` 도메인의 `GET /api/v1/pairings/recommendations`를 대상으로 로컬과 dev 프로파일 환경에서 K6 스크립트를 실행하는 범위로 시작한다(이슈 #70). GCP 실행 위치와 Grafana Alloy 연동은 인프라 협의가 끝난 뒤 별도 이슈에서 다룬다. 인증이 필요한 `FEEDBACK` 엔드포인트를 포함한 로그인 플로우도 범위를 넓힐 때 별도 이슈에서 다룬다.
 
+## 스트레스·스파이크 테스트 시점
+
+**(2026-11-14 결정, 이슈 #180)**: 스트레스와 스파이크 테스트는 dev 배포 이후로 미루고, 스크립트도 그때 추가한다. 로컬에서는 앱, Postgres, Redis, K6가 한 머신의 CPU를 나눠 쓰므로 측정한 한계 값이 서버 사양이 아니라 개발 머신의 한계가 된다. 무너진 원인을 보려면 CPU, 커넥션 풀, GC 지표가 필요한데 actuator 연동(#174)이 아직 없다. 지금 도입하는 안은 이 두 이유로 택하지 않았다. 도입 필요성은 있다. 술자리 서비스라 트래픽이 평일 저녁에 몰리고 정산 알림이 한꺼번에 나가는 시점이 있어 스파이크가 의미 있고, 커넥션 풀과 Redis 타임아웃 같은 설정값의 한계를 숫자로 알려면 스트레스가 필요하다. prod에는 실행하지 않는다. dev 배포 일정과 dev 사양이 정해지면 시나리오와 스크립트를 다루는 이슈를 만든다.
+
 ## 테스트 컨테이너 공유
 
 **(2026-11-08 결정, 이슈 #178)**: Postgres와 Redis 컨테이너를 `TestcontainersConfiguration`의 static 필드로 테스트 JVM에서 한 번만 띄운다. 컨테이너를 `@Bean`으로 선언하면 Repository 테스트마다 다른 `@Import` 조합 때문에 생기는 스프링 컨텍스트 약 25개가 각자 컨테이너 3개를 띄우고 Flyway를 처음부터 실행했다. `check-all.sh`는 198초에서 65초로 줄었다. `@ImportTestcontainers`로 static 필드를 등록하는 안은 택하지 않았다. 컨테이너가 빈으로 등록되어, 컨텍스트 캐시가 오래된 컨텍스트를 닫을 때 공유 컨테이너가 멈추고 새 포트로 다시 떠 캐시에 남은 컨텍스트가 연결에 실패했다. 그래서 컨테이너는 빈으로 두지 않고 `DynamicPropertyRegistrar`로 접속 정보만 넘긴다. RabbitMQ는 공유하지 않는다. 캐시된 다른 `@SpringBootTest` 컨텍스트의 리스너가 `NotificationDeliveryListenerTest`가 발행한 메시지를 가져갈 수 있기 때문이다. 대신 `RabbitTestcontainersConfiguration`으로 나눠 큐 리스너가 뜨는 `IntegrationTest` 컨텍스트에서만 띄운다. 공유 Postgres에 컨텍스트마다 기본 10개인 커넥션 풀이 붙어 `max_connections` 100을 넘었다(`too many clients already`). 그래서 테스트 커넥션 풀을 4개로 줄이고, 컨텍스트 캐시 상한 32개가 모두 차도 넘지 않게 `max_connections`를 200으로 늘렸다. 테스트 병렬 fork는 공유 DB 경합으로 결과가 흔들릴 수 있어 택하지 않았다. Testcontainers reuse는 실행 사이에 데이터가 남고 홈 디렉터리 설정에 의존해 택하지 않았다.
