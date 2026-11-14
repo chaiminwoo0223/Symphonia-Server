@@ -62,6 +62,11 @@ public class NotificationDeliveryRepositoryImpl implements NotificationDeliveryR
     }
 
     @Override
+    public long countInFlight(LocalDateTime publishedSince) {
+        return notificationDeliveryJpaRepository.countInFlight(publishedSince);
+    }
+
+    @Override
     public List<NotificationDelivery> findAllSettlementDeliveriesForUpdate(Long settlementId) {
         return notificationDeliveryJpaRepository
                 .findAllSettlementDeliveriesForUpdate(settlementId)
