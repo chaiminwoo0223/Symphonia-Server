@@ -135,3 +135,5 @@ class LoginServiceTest extends UnitTest {
 
 - 부하테스트 도구는 K6다.
 - 범위는 `pairing`의 `GET /api/v1/pairings/recommendations`를 로컬과 dev 프로파일에서 실행하는 것이다. GCP 실행 위치, Grafana Alloy 연동, 인증이 필요한 엔드포인트는 별도 이슈에서 다룬다.
+- 스트레스와 스파이크 테스트는 prod와 같은 사양의 dev에서만 실행하고, 로컬 결과는 한계 값으로 인용하지 않는다.
+- prod에는 부하테스트를 실행하지 않는다.
