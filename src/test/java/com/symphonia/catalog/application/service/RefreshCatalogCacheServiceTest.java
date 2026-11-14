@@ -46,7 +46,7 @@ class RefreshCatalogCacheServiceTest extends UnitTest {
 
         @Test
         @DisplayName("음료를 스타일의 종류와 함께, 안주를 분류 값과 함께 CatalogResult로 반환한다")
-        void shouldReturnCatalogResultWithinMaxAbv() {
+        void shouldReturnCatalogResultWithDrinkCategoryAndAnjuFlavorValues() {
             // given: 축마다 값이 달라 축 순서가 바뀌면 결과가 달라진다
             Drink beer =
                     DrinkFixture.BEER.createWithIdAndFlavorProfile(
