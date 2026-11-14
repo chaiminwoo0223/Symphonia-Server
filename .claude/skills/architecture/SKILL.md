@@ -144,9 +144,11 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 ## 인증
 
 - 리프레시 토큰은 RTR로 회전한다. 탈취를 감지하고, 누락되면 거부한다(Tombstone 없음).
-- 리프레시 토큰은 httpOnly, Secure, `SameSite=Strict` 쿠키로, 액세스 토큰은 응답 바디로 전달한다. 쿠키 `Path`는 `AuthEndpoints.BASE`다.
-- CORS는 `Access-Control-Allow-Credentials: true`라서 허용 오리진을 명시한다. 와일드카드(`*`)는 쓰지 않는다. CSRF는 `SameSite=Strict`로 막고 별도 CSRF 토큰은 두지 않는다.
-- 로그아웃은 인증 없이 호출할 수 있고, 토큰이 없거나 만료돼도 204를 반환한다. 쿠키의 리프레시 토큰 하나를 `consume`으로 지우고, 필터가 인증한 유효한 액세스 토큰만 블랙리스트에 올린다.
+- 클라이언트는 회원 기능을 맡는 앱(React Native, Android)과 비회원 전용 웹으로 나뉜다. 로그인은 앱만 한다.
+- 로그인과 가입은 카카오 액세스 토큰이나 구글 ID 토큰을 받는다. `SocialClient` 구현체는 이 서비스를 위해 발급된 토큰일 때만 신원을 반환한다(카카오는 `access_token_info`의 `app_id`, 구글은 `aud`). 유효하지 않은 토큰은 400 `INVALID_SOCIAL_TOKEN`이고, 검증 과정의 실패는 500 `OAUTH_TOKEN_VERIFICATION_FAILED`다.
+- 액세스 토큰과 리프레시 토큰은 모두 응답 바디로 전달하고, 재발급과 로그아웃은 리프레시 토큰을 요청 바디로 받는다. 쿠키는 쓰지 않는다. 재발급의 빈 토큰은 요청 DTO의 `@NotBlank`로 400이다.
+- CORS는 `allowCredentials`를 켜지 않고 허용 오리진을 명시한다. 와일드카드(`*`)는 쓰지 않는다. 인증 정보를 브라우저가 자동으로 붙이지 않으므로 CSRF 토큰은 두지 않는다.
+- 로그아웃은 인증 없이 호출할 수 있고, 토큰이 없거나 만료돼도 204를 반환한다. 요청 바디의 리프레시 토큰 하나를 `consume`으로 지우고, 필터가 인증한 유효한 액세스 토큰만 블랙리스트에 올린다.
 - 회원 탈퇴는 `MemberDeletedEventListener`가 `ForceRevokeUseCase`로 리프레시 토큰을 모두 지우고 `LogoutUseCase`로 액세스 토큰을 블랙리스트에 올린다.
 - `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"`를 넣는다. `GlobalExceptionHandler`의 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다.
 - 앱 단 rate limit은 두지 않는다. 대량 요청 방어는 LB/WAF가 맡는다.

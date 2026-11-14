@@ -95,7 +95,7 @@
 - dev와 prod는 `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`로, local은 compose와 같은 `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`로 주입한다.
 - `GATHERING_LINK_BASE_URL`은 local에만 기본값을 두고, dev와 prod는 기본값 없이 주입한다.
 - dev와 prod는 `spring.docker.compose.enabled: false`로 compose 연결을 끈다.
-- SQL 로그(`show-sql`, `format_sql`)는 local에서만 켠다. `refresh-token.cookie-secure`는 local에서만 기본값이 false이고, dev, prod, test에서는 true다.
+- SQL 로그(`show-sql`, `format_sql`)는 local에서만 켠다.
 - JWT, OAuth, CORS는 환경변수로 주입한다. 비밀값은 `${ENV_VAR}`, 만료 시간과 CORS는 `${ENV_VAR:기본값}`이다. `.env`는 Spring이 직접 읽지 않고 실행 환경에서 주입한다.
 
 ## 시간대와 Clock
