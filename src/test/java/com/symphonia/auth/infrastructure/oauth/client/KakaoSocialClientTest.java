@@ -100,15 +100,30 @@ class KakaoSocialClientTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("다른 앱에서 발급된 토큰인 경우")
-        class WhenTokenIssuedForOtherApp {
+        @DisplayName("이 앱에서 발급됐는지 확인되지 않는 토큰인 경우")
+        class WhenTokenNotIssuedForThisApp {
 
             // 사용자 정보 조회 요청을 기대하지 않으므로, 앱 ID가 다르면 조회하지 않는 것도 함께 검증한다.
             @Test
-            @DisplayName("InvalidSocialTokenException이 발생한다.")
-            void shouldThrowInvalidSocialTokenException() {
+            @DisplayName("다른 앱에서 발급된 토큰이면 InvalidSocialTokenException이 발생한다.")
+            void shouldThrowInvalidSocialTokenExceptionWhenIssuedForOtherApp() {
                 // given
                 givenAccessTokenInfo("9999");
+
+                // when & then
+                assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
+                        .isInstanceOf(InvalidSocialTokenException.class)
+                        .hasMessage(AuthErrorCode.INVALID_SOCIAL_TOKEN.getMessage());
+                mockServer.verify();
+            }
+
+            @Test
+            @DisplayName("app_id가 없는 응답이면 InvalidSocialTokenException이 발생한다.")
+            void shouldThrowInvalidSocialTokenExceptionWhenAppIdMissing() {
+                // given
+                mockServer
+                        .expect(requestTo(ACCESS_TOKEN_INFO_URI))
+                        .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
                 // when & then
                 assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
@@ -168,20 +183,6 @@ class KakaoSocialClientTest extends UnitTest {
             void shouldThrowSocialTokenVerificationFailedExceptionWhenServerError() {
                 // given
                 mockServer.expect(requestTo(ACCESS_TOKEN_INFO_URI)).andRespond(withServerError());
-
-                // when & then
-                assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
-                        .isInstanceOf(SocialTokenVerificationFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_VERIFICATION_FAILED.getMessage());
-            }
-
-            @Test
-            @DisplayName("app_id가 없는 응답이면 SocialTokenVerificationFailedException이 발생한다.")
-            void shouldThrowSocialTokenVerificationFailedExceptionWhenAppIdMissing() {
-                // given
-                mockServer
-                        .expect(requestTo(ACCESS_TOKEN_INFO_URI))
-                        .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
                 // when & then
                 assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
