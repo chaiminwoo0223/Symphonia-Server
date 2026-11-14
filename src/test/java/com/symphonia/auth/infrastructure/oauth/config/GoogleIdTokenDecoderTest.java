@@ -21,9 +21,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 // OAuthConfig.googleIdTokenDecoder()는 withJwkSetUri()로 실제 네트워크에서 JWK Set을 가져오므로
@@ -103,15 +103,15 @@ class GoogleIdTokenDecoderTest {
         class WhenAudienceMismatches {
 
             @Test
-            @DisplayName("JwtException이 발생한다.")
-            void shouldThrowJwtException() {
+            @DisplayName("BadJwtException이 발생한다.")
+            void shouldThrowBadJwtException() {
                 // given
                 String token =
                         signedToken(
                                 ISSUER, List.of("other-client-id"), Instant.now().plusSeconds(300));
 
                 // when & then
-                assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(JwtException.class);
+                assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(BadJwtException.class);
             }
         }
 
@@ -120,8 +120,8 @@ class GoogleIdTokenDecoderTest {
         class WhenIssuerMismatches {
 
             @Test
-            @DisplayName("JwtException이 발생한다.")
-            void shouldThrowJwtException() {
+            @DisplayName("BadJwtException이 발생한다.")
+            void shouldThrowBadJwtException() {
                 // given
                 String token =
                         signedToken(
@@ -130,7 +130,7 @@ class GoogleIdTokenDecoderTest {
                                 Instant.now().plusSeconds(300));
 
                 // when & then
-                assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(JwtException.class);
+                assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(BadJwtException.class);
             }
         }
 
@@ -139,14 +139,14 @@ class GoogleIdTokenDecoderTest {
         class WhenTokenExpired {
 
             @Test
-            @DisplayName("JwtException이 발생한다.")
-            void shouldThrowJwtException() {
+            @DisplayName("BadJwtException이 발생한다.")
+            void shouldThrowBadJwtException() {
                 // given
                 String token =
                         signedToken(ISSUER, List.of(CLIENT_ID), Instant.now().minusSeconds(300));
 
                 // when & then
-                assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(JwtException.class);
+                assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(BadJwtException.class);
             }
         }
     }

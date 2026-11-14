@@ -9,6 +9,8 @@ import com.symphonia.auth.infrastructure.oauth.client.response.KakaoAccessTokenI
 import com.symphonia.auth.infrastructure.oauth.client.response.KakaoUserInfoResponse;
 import com.symphonia.auth.infrastructure.oauth.config.properties.KakaoOAuthProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -49,10 +51,19 @@ public class KakaoSocialClient implements SocialClient {
                     .body(KakaoAccessTokenInfoResponse.class);
         } catch (HttpClientErrorException e) {
             // 만료되었거나 형식이 잘못된 토큰(401, 400)은 클라이언트 잘못이라 서버 오류(500)로 흘리지 않는다.
-            throw new InvalidSocialTokenException();
+            // 호출 한도 초과(429)나 앱 권한 문제(403)는 토큰의 잘못이 아니다.
+            if (isInvalidTokenStatus(e.getStatusCode())) {
+                throw new InvalidSocialTokenException();
+            }
+            throw new SocialTokenVerificationFailedException();
         } catch (RestClientException e) {
             throw new SocialTokenVerificationFailedException();
         }
+    }
+
+    private boolean isInvalidTokenStatus(HttpStatusCode status) {
+        return status.isSameCodeAs(HttpStatus.UNAUTHORIZED)
+                || status.isSameCodeAs(HttpStatus.BAD_REQUEST);
     }
 
     private KakaoUserInfoResponse fetchUserInfo(String accessToken) {
