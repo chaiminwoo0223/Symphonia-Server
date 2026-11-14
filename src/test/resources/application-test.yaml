@@ -9,9 +9,6 @@ spring:
 access-token:
   secret: test-only-fixed-jwt-secret-for-symphonia-integration-tests-do-not-use-in-prod
 
-refresh-token:
-  cookie-secure: true
-
 gathering:
   crypto:
     master-key: dGVzdC1vbmx5LWdhdGhlcmluZy1tYXN0ZXIta2V5ISE=

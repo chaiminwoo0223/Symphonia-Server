@@ -1,23 +1,21 @@
 package com.symphonia.auth.presentation.controller;
 
 import com.symphonia.auth.application.dto.command.LogoutCommand;
-import com.symphonia.auth.application.dto.command.RefreshCommand;
 import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.LoginUseCase;
 import com.symphonia.auth.application.usecase.LogoutUseCase;
 import com.symphonia.auth.application.usecase.RefreshUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
 import com.symphonia.auth.presentation.api.AuthApi;
-import com.symphonia.auth.presentation.cookie.factory.RefreshTokenCookieFactory;
 import com.symphonia.auth.presentation.dto.request.LoginRequest;
+import com.symphonia.auth.presentation.dto.request.LogoutRequest;
+import com.symphonia.auth.presentation.dto.request.RefreshRequest;
 import com.symphonia.auth.presentation.dto.request.SignupRequest;
 import com.symphonia.auth.presentation.dto.response.TokenResponse;
 import com.symphonia.common.response.StandardResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,58 +27,47 @@ public class AuthController implements AuthApi {
     private final LoginUseCase loginUseCase;
     private final RefreshUseCase refreshUseCase;
     private final LogoutUseCase logoutUseCase;
-    private final RefreshTokenCookieFactory refreshTokenCookieFactory;
 
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> signup(
             SignupRequest request, HttpServletRequest httpRequest) {
         TokenResult result = signupUseCase.signup(request.toCommand(httpRequest.getRemoteAddr()));
-        TokenResponse response = TokenResponse.from(result);
-        ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(StandardResponse.success(HttpStatus.CREATED, response));
+                .body(StandardResponse.success(HttpStatus.CREATED, TokenResponse.from(result)));
     }
 
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> login(
             LoginRequest request, HttpServletRequest httpRequest) {
         TokenResult result = loginUseCase.login(request.toCommand(httpRequest.getRemoteAddr()));
-        TokenResponse response = TokenResponse.from(result);
-        ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
 
         return ResponseEntity.status(HttpStatus.OK)
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(StandardResponse.success(HttpStatus.OK, response));
+                .body(StandardResponse.success(HttpStatus.OK, TokenResponse.from(result)));
     }
 
     @Override
     public ResponseEntity<StandardResponse<TokenResponse>> refresh(
-            String refreshToken, HttpServletRequest httpRequest) {
-        RefreshCommand command = RefreshCommand.of(refreshToken, httpRequest.getRemoteAddr());
-        TokenResult result = refreshUseCase.refresh(command);
-        TokenResponse response = TokenResponse.from(result);
-        ResponseCookie cookie = refreshTokenCookieFactory.create(result.refreshToken());
+            RefreshRequest request, HttpServletRequest httpRequest) {
+        TokenResult result = refreshUseCase.refresh(request.toCommand(httpRequest.getRemoteAddr()));
 
         return ResponseEntity.status(HttpStatus.OK)
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(StandardResponse.success(HttpStatus.OK, response));
+                .body(StandardResponse.success(HttpStatus.OK, TokenResponse.from(result)));
     }
 
     @Override
     public ResponseEntity<StandardResponse<Void>> logout(
-            String refreshToken, Authentication authentication, HttpServletRequest httpRequest) {
+            LogoutRequest request, Authentication authentication, HttpServletRequest httpRequest) {
+        // 본문이 없어도 로그아웃하므로 request는 null일 수 있다.
+        String refreshToken = request == null ? null : request.refreshToken();
         // 필터는 유효하고 블랙리스트에 없는 액세스 토큰만 인증하므로, 만료된 토큰이면 authentication은 null이다.
         String accessToken =
                 authentication == null ? null : (String) authentication.getCredentials();
         LogoutCommand command =
                 LogoutCommand.of(refreshToken, accessToken, httpRequest.getRemoteAddr());
         logoutUseCase.logout(command);
-        ResponseCookie cookie = refreshTokenCookieFactory.expire();
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));
     }
 }
