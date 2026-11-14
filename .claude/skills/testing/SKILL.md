@@ -85,11 +85,11 @@ class MemberServiceTest {
 class LoginServiceTest extends UnitTest {
 
     private static final String PROVIDER = "kakao";
-    private static final String CODE = "auth-code";
+    private static final String TOKEN = "social-token";
 
     @InjectMocks private LoginService loginService;
 
-    @Mock private ExchangeSocialCodeUseCase exchangeSocialCodeUseCase;
+    @Mock private VerifySocialTokenUseCase verifySocialTokenUseCase;
     @Mock private GetMemberUseCase getMemberUseCase;
 }
 ```
