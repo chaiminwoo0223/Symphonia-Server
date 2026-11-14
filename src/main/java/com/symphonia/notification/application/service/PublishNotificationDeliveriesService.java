@@ -56,19 +56,20 @@ public class PublishNotificationDeliveriesService implements PublishNotification
         return publishables.size() == PUBLISH_LIMIT && publishedIds.size() == unpublishedIds.size();
     }
 
-    // 상한까지 남은 수만큼만 발행한다. 상한에 이르렀으면 컨슈머가 비울 때까지 발행하지 않는다.
-    private int publishableCount(LocalDateTime now) {
-        long inFlight =
-                notificationDeliveryRepository.countInFlight(
-                        NotificationDelivery.republishThreshold(now));
-        return (int) Math.max(0, MAX_IN_FLIGHT - inFlight);
-    }
-
     // 발행했는데 보내지 못한 발송 기록은 원인과 관계없이 시도 한 번으로 세고, 외부 발송 실패와 같은 간격을 기다렸다가 다시 발행한다.
     // 컨슈머의 트랜잭션은 예외로 롤백되므로 시도 횟수를 이 트랜잭션에서 남겨야, 계속 실패하는 발송 기록도 FAILED로 끝난다.
     private void retryStalledLater(
             List<NotificationDelivery> stalledDeliveries, LocalDateTime now) {
         stalledDeliveries.forEach(notificationDelivery -> notificationDelivery.retryLater(now));
         notificationDeliveryRepository.saveAll(stalledDeliveries);
+    }
+
+    // 상한까지 남은 수만큼만 발행한다. 상한에 이르렀으면 컨슈머가 비울 때까지 발행하지 않는다.
+    // 진행 중인 수는 잠그지 않고 세므로, 여러 서버가 동시에 폴링하면 상한을 한 묶음 정도 넘을 수 있다.
+    private int publishableCount(LocalDateTime now) {
+        long inFlight =
+                notificationDeliveryRepository.countInFlight(
+                        NotificationDelivery.republishThreshold(now));
+        return (int) Math.max(0, MAX_IN_FLIGHT - inFlight);
     }
 }
