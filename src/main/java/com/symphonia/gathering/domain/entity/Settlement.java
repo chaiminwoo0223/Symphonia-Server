@@ -1,7 +1,6 @@
 package com.symphonia.gathering.domain.entity;
 
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
-import com.symphonia.gathering.domain.exception.SettlementAlreadyNotifiedException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
 import com.symphonia.gathering.domain.vo.ShareStatus;
@@ -30,7 +29,6 @@ public class Settlement {
     private long totalAmount;
     private List<SettlementShare> shares;
     private LocalDateTime recordedAt;
-    private LocalDateTime notifiedAt;
     private LocalDateTime cancelledAt;
     // 정산 건을 읽은 뒤 다른 요청이 바꿨는지 저장할 때 확인하는 애그리거트 버전이다. 새 정산 건은 null이다.
     private Long version;
@@ -45,12 +43,9 @@ public class Settlement {
                 .build();
     }
 
-    // 이미 받은 메시지의 금액이 알림 없이 바뀌지 않게, 정산 메시지를 보낸 뒤에는 수정을 막는다.
-    // 수정하면 분담금을 모두 다시 만들므로, 보낸 기록이 사라지지 않게 보낸 분담금이 있어도 막는다.
-    // 발송 시각을 다시 계산할 때 마지막 기록 시각을 쓰므로(#126), 수정하면 기록 시각도 바꾼다.
+    // 수정하면 분담금을 모두 다시 만들므로, 보낸 기록이 사라지지 않게 보낸 분담금이 있으면 막는다.
     public void update(SplitMethod splitMethod, LocalDateTime now) {
         validateNotCancelled();
-        validateNotNotified();
         validateNoSentShares();
 
         totalAmount = splitMethod.totalAmount();
@@ -66,15 +61,6 @@ public class Settlement {
         cancelledAt = now;
     }
 
-    // 모임의 발송 예약이 이 정산 건의 정산 메시지를 보내기 시작하면 발송 시각을 남긴다. 이때부터 수정할 수 없다.
-    public void markNotified(LocalDateTime now) {
-        validateNotCancelled();
-        validateNotNotified();
-
-        notifiedAt = now;
-    }
-
-    // 정산 메시지를 보내기 전에도 개인 링크로 분담금을 볼 수 있으므로, 발송 여부와 관계없이 보냄으로 바꿀 수 있다.
     public void markShareSent(Long participantId, LocalDateTime now) {
         validateNotCancelled();
         replaceShare(getShareOf(participantId).sent(now));
@@ -130,10 +116,6 @@ public class Settlement {
         return cancelledAt != null;
     }
 
-    public boolean isNotified() {
-        return notifiedAt != null;
-    }
-
     public boolean hasSentShares() {
         return shares.stream().anyMatch(SettlementShare::isSent);
     }
@@ -177,12 +159,6 @@ public class Settlement {
     private void validateNotCancelled() {
         if (isCancelled()) {
             throw new SettlementAlreadyCancelledException();
-        }
-    }
-
-    private void validateNotNotified() {
-        if (isNotified()) {
-            throw new SettlementAlreadyNotifiedException();
         }
     }
 

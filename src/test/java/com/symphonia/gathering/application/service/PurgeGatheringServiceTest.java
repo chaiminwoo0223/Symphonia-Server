@@ -20,7 +20,6 @@ import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
-import com.symphonia.notification.application.usecase.PurgeNotificationsUseCase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -59,7 +58,6 @@ class PurgeGatheringServiceTest extends UnitTest {
     @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private SettlementRepository settlementRepository;
-    @Mock private PurgeNotificationsUseCase purgeNotificationsUseCase;
 
     @Nested
     @DisplayName("discardDataKeyIfExpired 메서드는")
@@ -322,7 +320,6 @@ class PurgeGatheringServiceTest extends UnitTest {
             // then
             InOrder inOrder =
                     inOrder(
-                            purgeNotificationsUseCase,
                             participantLinkTokenRepository,
                             participantBankAccountRepository,
                             participantPairingFeedbackRepository,
@@ -330,7 +327,6 @@ class PurgeGatheringServiceTest extends UnitTest {
                             gatheringJoinTokenRepository,
                             gatheringPairingRepository,
                             gatheringRepository);
-            inOrder.verify(purgeNotificationsUseCase).purge(GATHERING_ID);
             inOrder.verify(participantLinkTokenRepository).deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(participantBankAccountRepository).deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(participantPairingFeedbackRepository)
@@ -379,7 +375,6 @@ class PurgeGatheringServiceTest extends UnitTest {
                         participantPairingFeedbackRepository,
                         gatheringPairingRepository,
                         settlementRepository,
-                        purgeNotificationsUseCase,
                         clock);
     }
 }

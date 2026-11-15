@@ -39,8 +39,6 @@ public class SettlementJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime recordedAt;
 
-    private LocalDateTime notifiedAt;
-
     private LocalDateTime cancelledAt;
 
     @Version private Long version;
@@ -52,7 +50,6 @@ public class SettlementJpaEntity extends BaseTimeEntity {
                 .payerParticipantId(settlement.getPayerParticipantId())
                 .totalAmount(settlement.getTotalAmount())
                 .recordedAt(settlement.getRecordedAt())
-                .notifiedAt(settlement.getNotifiedAt())
                 .cancelledAt(settlement.getCancelledAt())
                 .version(settlement.getVersion())
                 .build();
@@ -67,7 +64,6 @@ public class SettlementJpaEntity extends BaseTimeEntity {
                 .totalAmount(totalAmount)
                 .shares(shares)
                 .recordedAt(recordedAt)
-                .notifiedAt(notifiedAt)
                 .cancelledAt(cancelledAt)
                 .version(version)
                 .build();

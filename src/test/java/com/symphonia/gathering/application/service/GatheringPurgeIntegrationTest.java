@@ -7,7 +7,6 @@ import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
 import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
-import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringPairingFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
@@ -17,9 +16,6 @@ import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
-import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
-import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
-import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -68,32 +64,19 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
                     Map.entry(
                             "settlement_share",
                             "SELECT COUNT(*) FROM settlement_share WHERE settlement_id IN"
-                                    + " (SELECT id FROM settlement WHERE gathering_id = ?)"),
-                    Map.entry(
-                            "notification_schedule",
-                            "SELECT COUNT(*) FROM notification_schedule WHERE gathering_id = ?"),
-                    Map.entry(
-                            "notification_delivery",
-                            "SELECT COUNT(*) FROM notification_delivery WHERE gathering_id = ?"),
-                    Map.entry(
-                            "notification_delivery_settlement",
-                            "SELECT COUNT(*) FROM notification_delivery_settlement WHERE delivery_id"
-                                    + " IN (SELECT id FROM notification_delivery WHERE"
-                                    + " gathering_id = ?)"));
+                                    + " (SELECT id FROM settlement WHERE gathering_id = ?)"));
 
     @Autowired private GetExpiredGatheringsUseCase getExpiredGatheringsUseCase;
     @Autowired private PurgeGatheringUseCase purgeGatheringUseCase;
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
-    @Autowired private NotificationScheduleRepository notificationScheduleRepository;
-    @Autowired private NotificationDeliveryRepository notificationDeliveryRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     private Long expiredGatheringId;
     private Long retainedGatheringId;
 
-    // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 모임 페어링, 피드백 제출 표시, 정산 건, 발송 예약, 발송 기록을 모두 만든다.
+    // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 모임 페어링, 피드백 제출 표시, 정산 건을 모두 만든다.
     // 한 모임만 29일 전에 연 모임으로 바꾼다.
     @BeforeEach
     void setUp() {
@@ -202,11 +185,7 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
         settlementHelper.registerBankAccount(gathering, payer);
         gatheringHelper.choosePairing(gathering, GatheringPairingFixture.FRIEND_CASUAL.create());
         gatheringHelper.markPairingFeedbackSubmitted(lee);
-        Settlement settlement = settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
-        notificationScheduleRepository.findOrCreateForUpdate(gathering.getId());
-        notificationDeliveryRepository.save(
-                NotificationDeliveryFixture.SETTLEMENT_NOTICE.create(
-                        gathering.getId(), lee.getId(), List.of(settlement.getId())));
+        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
 
         return gathering;
     }

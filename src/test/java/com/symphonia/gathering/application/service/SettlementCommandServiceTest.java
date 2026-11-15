@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
@@ -26,7 +25,6 @@ import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsExc
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
-import com.symphonia.gathering.domain.exception.SettlementAlreadyNotifiedException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
@@ -38,14 +36,6 @@ import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
-import com.symphonia.notification.application.service.NotificationCommandService;
-import com.symphonia.notification.domain.entity.NotificationDelivery;
-import com.symphonia.notification.domain.entity.NotificationSchedule;
-import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
-import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
-import com.symphonia.notification.domain.vo.DeliveryStatus;
-import com.symphonia.notification.domain.vo.NotificationType;
-import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,7 +46,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 
 @DisplayName("SettlementCommandService 단위 테스트")
@@ -64,7 +53,6 @@ class SettlementCommandServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
     private static final Long SETTLEMENT_ID = 30L;
-    private static final Long SECOND_SETTLEMENT_ID = 31L;
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
@@ -85,10 +73,7 @@ class SettlementCommandServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
-    @Mock private NotificationScheduleRepository notificationScheduleRepository;
-    @Mock private NotificationDeliveryRepository notificationDeliveryRepository;
 
-    // 시각은 NOW로 고정한다. 발송 시각을 따지는 테스트만 givenNow로 다른 시각을 고정한다.
     @BeforeEach
     void setUp() {
         givenNow(NOW);
@@ -327,7 +312,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -339,7 +323,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(captor.getValue().getGatheringId()).isEqualTo(GATHERING_ID);
                 assertThat(result.payerParticipantId()).isEqualTo(PAYER_ID);
                 assertThat(result.totalAmount()).isEqualTo(9_000L);
-                assertThat(result.notified()).isFalse();
                 assertThat(result.shares())
                         .extracting(
                                 SettlementShareResult::participantId,
@@ -358,7 +341,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 RecordSettlementCommand command =
                         command(10_000L, PARTICIPANT_IDS, Map.of(PARK_ID, 0L));
 
@@ -388,7 +370,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 RecordSettlementCommand command = command(10_050L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -407,7 +388,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 RecordSettlementCommand command = command(10_001L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -426,7 +406,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 RecordSettlementCommand command =
                         command(10_000L, PARTICIPANT_IDS, Map.of(LEE_ID, 1_050L));
 
@@ -450,7 +429,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering();
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 RecordSettlementCommand command =
                         command(10_000L, PARTICIPANT_IDS, Map.of(LEE_ID, 3_333L, PARK_ID, 0L));
 
@@ -465,109 +443,6 @@ class SettlementCommandServiceTest extends UnitTest {
             }
         }
 
-        @Nested
-        @DisplayName("발송 예약을 잡는 경우")
-        class WhenScheduling {
-
-            @Test
-            @DisplayName("정산 건을 저장하기 전에 모임의 발송 예약을 잠그고, 기록 시각에 수정 시간 30분을 더한 시각으로 예약을 먼저 저장해 반환한다")
-            void shouldLockAndSaveScheduleBeforeSavingSettlement() {
-                // given
-                givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 20, 0));
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                ArgumentCaptor<NotificationSchedule> captor =
-                        ArgumentCaptor.forClass(NotificationSchedule.class);
-                InOrder inOrder = inOrder(notificationScheduleRepository, settlementRepository);
-                inOrder.verify(notificationScheduleRepository).findOrCreateForUpdate(GATHERING_ID);
-                inOrder.verify(notificationScheduleRepository).save(captor.capture());
-                inOrder.verify(settlementRepository).save(any(Settlement.class));
-                assertThat(captor.getValue().getScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 28, 20, 30));
-                assertThat(result.notificationScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 28, 20, 30));
-            }
-
-            @Test
-            @DisplayName("09:50에 기록하면 수정 시간을 다 받도록 같은 날 10:20으로 예약한다")
-            void shouldScheduleAfterEditWindowWhenRecordedJustBeforeSendingStart() {
-                // given
-                givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 9, 50));
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.notificationScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 28, 10, 20));
-            }
-
-            @Test
-            @DisplayName("10:00에 기록하면 10:30으로 예약한다")
-            void shouldScheduleAfterEditWindowWhenRecordedAtSendingStart() {
-                // given
-                givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 10, 0));
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.notificationScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 28, 10, 30));
-            }
-
-            @Test
-            @DisplayName("21:00에 기록하면 예약할 수 있는 마지막 시각인 21:30으로 예약한다")
-            void shouldScheduleAtSchedulingEndWhenRecordedAtNinePm() {
-                // given
-                givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 21, 0));
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.notificationScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 28, 21, 30));
-            }
-
-            @Test
-            @DisplayName("21:01에 기록하면 다음 날 10:00으로 예약한다")
-            void shouldScheduleNextDaySendingStartWhenRecordedAfterNinePm() {
-                // given
-                givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 21, 1));
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.notificationScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 29, 10, 0));
-            }
-
-            @Test
-            @DisplayName("00:30에 기록하면 같은 날 10:00으로 예약한다")
-            void shouldScheduleSameDaySendingStartWhenRecordedAtDawn() {
-                // given
-                givenRecordableGatheringAt(LocalDateTime.of(2026, 10, 28, 0, 30));
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                SettlementResult result = settlementCommandService.record(command);
-
-                // then
-                assertThat(result.notificationScheduledAt())
-                        .isEqualTo(LocalDateTime.of(2026, 10, 28, 10, 0));
-            }
-        }
-
         private RecordSettlementCommand command(
                 long totalAmount, List<Long> participantIds, Map<Long, Long> fixedAmounts) {
             return new RecordSettlementCommand(
@@ -578,15 +453,6 @@ class SettlementCommandServiceTest extends UnitTest {
             givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
             given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
                     .willReturn(true);
-        }
-
-        private void givenRecordableGatheringAt(LocalDateTime now) {
-            givenNow(now);
-            givenGatheringOfPayer(now.minusHours(1));
-            given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                    .willReturn(true);
-            givenSaveReturnsSettlement();
-            givenScheduleLocked();
         }
     }
 
@@ -678,29 +544,6 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("정산 메시지를 보낸 정산 건인 경우")
-        class WhenSettlementNotified {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowSettlementAlreadyNotifiedException() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createNotified(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_PERIOD_OPENED_AT);
-                givenScheduleLocked();
-                UpdateSettlementCommand command = command();
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.update(command))
-                        .isInstanceOf(SettlementAlreadyNotifiedException.class);
-                thenSettlementNotSaved();
-            }
-        }
-
-        @Nested
         @DisplayName("취소한 정산 건인 경우")
         class WhenSettlementCancelled {
 
@@ -713,7 +556,6 @@ class SettlementCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createCancelled(
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
-                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -740,7 +582,6 @@ class SettlementCommandServiceTest extends UnitTest {
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
-                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -764,7 +605,6 @@ class SettlementCommandServiceTest extends UnitTest {
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when
@@ -789,7 +629,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenSettlement(settlementWithZeroShare());
                 givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when
@@ -807,8 +646,8 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("모임의 발송 예약을 잠그고, 바꾼 기록 시각으로 발송 시각을 다시 잡아 저장해 반환한다")
-            void shouldRescheduleFromNewRecordedAt() {
+            @DisplayName("기록 시각을 수정한 시각으로 바꿔 저장해 반환한다")
+            void shouldUpdateRecordedAt() {
                 // given
                 LocalDateTime now = LocalDateTime.of(2026, 10, 28, 20, 0);
                 givenNow(now);
@@ -818,20 +657,13 @@ class SettlementCommandServiceTest extends UnitTest {
                                 SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(now.minusHours(1));
                 givenSaveReturnsSettlement();
-                givenScheduleLocked();
                 UpdateSettlementCommand command = command();
 
                 // when
                 SettlementResult result = settlementCommandService.update(command);
 
                 // then
-                then(notificationScheduleRepository).should().findOrCreateForUpdate(GATHERING_ID);
-                ArgumentCaptor<NotificationSchedule> captor =
-                        ArgumentCaptor.forClass(NotificationSchedule.class);
-                then(notificationScheduleRepository).should().save(captor.capture());
-                assertThat(captor.getValue().getScheduledAt()).isEqualTo(now.plusMinutes(30));
                 assertThat(result.recordedAt()).isEqualTo(now);
-                assertThat(result.notificationScheduledAt()).isEqualTo(now.plusMinutes(30));
             }
         }
 
@@ -990,242 +822,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 then(settlementRepository).should().save(settlement);
                 assertThat(settlement.isCancelled()).isTrue();
             }
-
-            @Test
-            @DisplayName("정산 메시지를 보내기 전이면 취소 알림을 저장하지 않는다")
-            void shouldNotSaveCancellationNoticesWhenSettlementNotNotified() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                then(notificationDeliveryRepository).shouldHaveNoInteractions();
-            }
-        }
-
-        @Nested
-        @DisplayName("정산 메시지를 보낸 정산 건인 경우")
-        class WhenSettlementNotified {
-
-            // 정산 메시지가 닿지 않은 수신자다. 맡지 않은 PENDING, SKIPPED, FAILED 발송 기록의 수신자로 쓴다.
-            private static final Long CHOI_ID = 23L;
-            private static final Long JUNG_ID = 24L;
-            private static final Long KANG_ID = 25L;
-
-            @Test
-            @DisplayName(
-                    "보낸 정산 메시지와 컨슈머가 맡은 정산 메시지의 수신자에게만 취소 알림을 저장하고, 맡지 않았거나 건너뛰었거나 실패한 정산 메시지의 수신자는 뺀다")
-            void shouldSaveCancellationNoticesOnlyForReachedRecipients() {
-                // given
-                givenNotifiedSettlementCancelledAt(LocalDateTime.of(2026, 10, 28, 10, 0));
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                then(notificationDeliveryRepository).should().saveAll(captor.capture());
-                assertThat(captor.getValue())
-                        .extracting(NotificationDelivery::getParticipantId)
-                        .containsExactly(LEE_ID, PARK_ID);
-            }
-
-            @Test
-            @DisplayName("보낼 수 있는 시간대면 정산 메시지를 받은 참여자마다 바로 보낼 취소 알림을 저장한다")
-            void shouldSaveCancellationNoticesAvailableNowWhenSendable() {
-                // given
-                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
-                givenNotifiedSettlementCancelledAt(now);
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                thenCancellationNoticesSavedAvailableAt(now);
-            }
-
-            @Test
-            @DisplayName("22:00 이후면 다음 날 10:00에 보낼 취소 알림을 저장한다")
-            void shouldSaveCancellationNoticesAvailableNextDayWhenCancelledAtNight() {
-                // given
-                givenNotifiedSettlementCancelledAt(LocalDateTime.of(2026, 10, 28, 22, 0));
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                thenCancellationNoticesSavedAvailableAt(LocalDateTime.of(2026, 10, 29, 10, 0));
-            }
-
-            @Test
-            @DisplayName("10:00 전이면 같은 날 10:00에 보낼 취소 알림을 저장한다")
-            void shouldSaveCancellationNoticesAvailableSameDayWhenCancelledBeforeSendingStart() {
-                // given
-                givenNotifiedSettlementCancelledAt(LocalDateTime.of(2026, 10, 28, 9, 59));
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                thenCancellationNoticesSavedAvailableAt(LocalDateTime.of(2026, 10, 28, 10, 0));
-            }
-
-            @Test
-            @DisplayName("그 정산 건을 담고 수신자에게 닿은 리마인드의 참여자에게도 취소 알림을 저장한다")
-            void shouldSaveCancellationNoticesForReachedReminderRecipients() {
-                // given
-                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
-                givenNotifiedSettlementCancelledAt(now);
-                givenReminders(
-                        reminder(11L, CHOI_ID, List.of(SECOND_SETTLEMENT_ID, SETTLEMENT_ID))
-                                .status(DeliveryStatus.SENT)
-                                .claimedAt(now.minusHours(1))
-                                .sentAt(now.minusHours(1))
-                                .build(),
-                        reminder(12L, JUNG_ID, List.of(SETTLEMENT_ID))
-                                .claimedAt(now.minusMinutes(1))
-                                .build());
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                thenCancellationNoticesSavedFor(LEE_ID, PARK_ID, CHOI_ID, JUNG_ID);
-            }
-
-            @Test
-            @DisplayName("다른 정산 건만 담은 리마인드와 컨슈머가 아직 맡지 않은 리마인드의 참여자는 뺀다")
-            void shouldExcludeRecipientsOfRemindersNotReachedOrWithoutSettlement() {
-                // given
-                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
-                givenNotifiedSettlementCancelledAt(now);
-                givenReminders(
-                        reminder(11L, KANG_ID, List.of(SECOND_SETTLEMENT_ID))
-                                .status(DeliveryStatus.SENT)
-                                .claimedAt(now.minusHours(1))
-                                .sentAt(now.minusHours(1))
-                                .build(),
-                        reminder(12L, CHOI_ID, List.of(SETTLEMENT_ID)).build());
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                thenCancellationNoticesSavedFor(LEE_ID, PARK_ID);
-            }
-
-            @Test
-            @DisplayName("정산 메시지와 리마인드를 모두 받은 참여자에게는 취소 알림을 하나만 저장한다")
-            void shouldSaveOneCancellationNoticeForRecipientOfNoticeAndReminder() {
-                // given
-                LocalDateTime now = LocalDateTime.of(2026, 10, 28, 10, 0);
-                givenNotifiedSettlementCancelledAt(now);
-                givenReminders(
-                        reminder(11L, LEE_ID, List.of(SETTLEMENT_ID))
-                                .status(DeliveryStatus.SENT)
-                                .claimedAt(now.minusMinutes(30))
-                                .sentAt(now.minusMinutes(30))
-                                .build());
-
-                // when
-                settlementCommandService.cancel(command());
-
-                // then
-                thenCancellationNoticesSavedFor(LEE_ID, PARK_ID);
-            }
-
-            // 이는 정산 메시지를 받았고, 박은 컨슈머가 맡아 내용을 만들었다. 나머지 수신자에게는 정산 메시지가 닿지 않았다.
-            private void givenNotifiedSettlementCancelledAt(LocalDateTime now) {
-                givenNow(now);
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createNotified(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                List.of(PAYER_ID, LEE_ID, PARK_ID, CHOI_ID, JUNG_ID, KANG_ID)));
-                given(
-                                notificationDeliveryRepository.findAllSettlementDeliveriesForUpdate(
-                                        SETTLEMENT_ID))
-                        .willReturn(
-                                List.of(
-                                        settlementNotice(1L, LEE_ID)
-                                                .status(DeliveryStatus.SENT)
-                                                .claimedAt(now.minusHours(1))
-                                                .sentAt(now.minusHours(1))
-                                                .build(),
-                                        settlementNotice(2L, CHOI_ID).build(),
-                                        settlementNotice(3L, PARK_ID)
-                                                .claimedAt(now.minusMinutes(1))
-                                                .build(),
-                                        settlementNotice(4L, JUNG_ID)
-                                                .status(DeliveryStatus.SKIPPED)
-                                                .build(),
-                                        settlementNotice(5L, KANG_ID)
-                                                .status(DeliveryStatus.FAILED)
-                                                .attempts(5)
-                                                .build()));
-            }
-
-            private NotificationDelivery.NotificationDeliveryBuilder settlementNotice(
-                    Long deliveryId, Long participantId) {
-                return NotificationDeliveryFixture.SETTLEMENT_NOTICE.builder(
-                        deliveryId, GATHERING_ID, participantId, List.of(SETTLEMENT_ID));
-            }
-
-            private NotificationDelivery.NotificationDeliveryBuilder reminder(
-                    Long deliveryId, Long participantId, List<Long> settlementIds) {
-                return NotificationDeliveryFixture.REMINDER_NOTICE.builder(
-                        deliveryId, GATHERING_ID, participantId, settlementIds);
-            }
-
-            private void givenReminders(NotificationDelivery... reminders) {
-                given(
-                                notificationDeliveryRepository
-                                        .findAllRemindersByGatheringIdForUpdate(GATHERING_ID))
-                        .willReturn(List.of(reminders));
-            }
-
-            private void thenCancellationNoticesSavedFor(Long... participantIds) {
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                then(notificationDeliveryRepository).should().saveAll(captor.capture());
-                assertThat(captor.getValue())
-                        .extracting(NotificationDelivery::getParticipantId)
-                        .containsExactly(participantIds);
-            }
-
-            private void thenCancellationNoticesSavedAvailableAt(LocalDateTime availableAt) {
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                then(notificationDeliveryRepository).should().saveAll(captor.capture());
-                assertThat(captor.getValue())
-                        .extracting(
-                                NotificationDelivery::getGatheringId,
-                                NotificationDelivery::getParticipantId,
-                                NotificationDelivery::getType,
-                                NotificationDelivery::getSettlementIds,
-                                NotificationDelivery::getStatus,
-                                NotificationDelivery::getAvailableAt)
-                        .containsExactly(
-                                tuple(
-                                        GATHERING_ID,
-                                        LEE_ID,
-                                        NotificationType.CANCELLATION,
-                                        List.of(SETTLEMENT_ID),
-                                        DeliveryStatus.PENDING,
-                                        availableAt),
-                                tuple(
-                                        GATHERING_ID,
-                                        PARK_ID,
-                                        NotificationType.CANCELLATION,
-                                        List.of(SETTLEMENT_ID),
-                                        DeliveryStatus.PENDING,
-                                        availableAt));
-            }
         }
 
         private CancelSettlementCommand command() {
@@ -1268,28 +864,16 @@ class SettlementCommandServiceTest extends UnitTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
     }
 
-    private void givenScheduleLocked() {
-        given(notificationScheduleRepository.findOrCreateForUpdate(GATHERING_ID))
-                .willReturn(NotificationSchedule.empty(GATHERING_ID));
-        given(notificationScheduleRepository.save(any(NotificationSchedule.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
-    }
-
     private void givenNow(LocalDateTime now) {
         Clock clock =
                 Clock.fixed(
                         now.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
-        NotificationCommandService notificationCommandService =
-                new NotificationCommandService(
-                        notificationScheduleRepository, notificationDeliveryRepository, clock);
         settlementCommandService =
                 new SettlementCommandService(
                         getLinkedParticipantUseCase,
                         gatheringRepository,
                         participantBankAccountRepository,
                         settlementRepository,
-                        notificationCommandService,
-                        notificationCommandService,
                         clock);
     }
 

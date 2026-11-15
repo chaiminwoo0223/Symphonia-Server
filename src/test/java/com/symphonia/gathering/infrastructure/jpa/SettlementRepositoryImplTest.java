@@ -383,70 +383,6 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findAllUnnotifiedByGatheringIdForUpdate 메서드는")
-    class FindAllUnnotifiedByGatheringIdForUpdate {
-
-        @Test
-        @DisplayName("모임의 정산 건 중 보내지 않았고 취소하지 않은 것만 id 순서대로 분담금과 함께 반환한다")
-        void shouldReturnUnnotifiedSettlementsExcludingCancelled() {
-            // given
-            Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
-            markNotified(recordDinner(kimId, List.of(kimId, leeId)));
-            cancel(recordDinner(leeId, List.of(leeId, kimId)));
-            Settlement second = recordDinner(parkId, List.of(parkId, leeId));
-            recordInOtherGathering();
-            clearPersistenceContext();
-
-            // when
-            List<Settlement> result =
-                    settlementRepository.findAllUnnotifiedByGatheringIdForUpdate(gatheringId);
-
-            // then
-            assertThat(result)
-                    .extracting(Settlement::getId)
-                    .containsExactly(first.getId(), second.getId());
-            assertThat(result.getFirst().getShares())
-                    .extracting(SettlementShare::getParticipantId)
-                    .containsExactly(leeId, parkId);
-            assertThat(result.getLast().getShares())
-                    .extracting(SettlementShare::getParticipantId)
-                    .containsExactly(leeId);
-        }
-
-        @Test
-        @DisplayName("보내지 않은 정산 건이 없으면 빈 목록을 반환한다")
-        void shouldReturnEmptyListWhenUnnotifiedSettlementsNotExist() {
-            // given
-            markNotified(recordDinner(kimId, List.of(kimId, leeId, parkId)));
-            clearPersistenceContext();
-
-            // when
-            List<Settlement> result =
-                    settlementRepository.findAllUnnotifiedByGatheringIdForUpdate(gatheringId);
-
-            // then
-            assertThat(result).isEmpty();
-        }
-
-        // 다른 모임의 보내지 않은 정산 건이라, 모임으로 거르는지 확인한다.
-        private void recordInOtherGathering() {
-            Gathering otherGathering =
-                    gatheringRepository.save(
-                            GatheringFixture.FRIDAY_DINNER.createWithParticipants(
-                                    List.of(
-                                            ParticipantFixture.KIM.create(),
-                                            ParticipantFixture.LEE.create())));
-            List<Long> otherParticipantIds =
-                    otherGathering.getParticipants().stream().map(Participant::getId).toList();
-            settlementRepository.save(
-                    SettlementFixture.DINNER.create(
-                            otherGathering.getId(),
-                            otherParticipantIds.getFirst(),
-                            otherParticipantIds));
-        }
-    }
-
-    @Nested
     @DisplayName("findLatestByGatheringId 메서드는")
     class FindLatestByGatheringId {
 
@@ -671,11 +607,6 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
     private void cancel(Settlement settlement) {
         settlement.cancel(LocalDateTime.now());
-        settlementRepository.save(settlement);
-    }
-
-    private void markNotified(Settlement settlement) {
-        settlement.markNotified(LocalDateTime.now());
         settlementRepository.save(settlement);
     }
 

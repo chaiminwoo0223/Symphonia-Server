@@ -19,17 +19,12 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.BankAccount;
-import com.symphonia.notification.application.dto.command.ScheduleReminderCommand;
-import com.symphonia.notification.application.usecase.GetNotificationScheduleUseCase;
-import com.symphonia.notification.application.usecase.ScheduleReminderUseCase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
 // 분담금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다. 둘 다 개인 링크 토큰으로 요청한다.
-// notification의 UseCase 둘은 응답에 담을 발송 예정 시각과 되돌린 분담금의 리마인드라서, 분담금 상태 변경이 발송에 미치는 영향이라는 한 관심사다.
 @CommandService
 @RequiredArgsConstructor
 public class ShareCommandService
@@ -38,8 +33,6 @@ public class ShareCommandService
     private final GatheringRepository gatheringRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
-    private final GetNotificationScheduleUseCase getNotificationScheduleUseCase;
-    private final ScheduleReminderUseCase scheduleReminderUseCase;
     private final Clock clock;
 
     // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
@@ -80,14 +73,10 @@ public class ShareCommandService
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
         settlement.confirmShare(command.participantId(), LocalDateTime.now(clock));
-        Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.of(
-                savedSettlement, findScheduledAt(savedSettlement.getGatheringId()));
+        return SettlementResult.of(settlementRepository.save(settlement));
     }
 
-    // 정산 메시지를 보낸 정산 건이면 되돌린 참여자에게 24시간 뒤 리마인드를 남긴다.
-    // 리마인드는 발송 예약을 잠그고 만들므로, 기록과 같은 순서가 되게 정산 건을 저장하기 전에 부른다.
     @Override
     public SettlementResult revert(RevertShareCommand command) {
         Long participantId = findParticipantId(command.linkToken());
@@ -95,13 +84,8 @@ public class ShareCommandService
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
         settlement.revertShareToUnpaid(command.participantId(), LocalDateTime.now(clock));
-        Optional.of(settlement)
-                .filter(Settlement::isNotified)
-                .ifPresent(notified -> scheduleReminder(notified, command.participantId()));
-        Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.of(
-                savedSettlement, findScheduledAt(savedSettlement.getGatheringId()));
+        return SettlementResult.of(settlementRepository.save(settlement));
     }
 
     private Long findParticipantId(String linkToken) {
@@ -122,15 +106,5 @@ public class ShareCommandService
         return settlementRepository
                 .findById(settlementId)
                 .orElseThrow(SettlementNotFoundException::new);
-    }
-
-    private LocalDateTime findScheduledAt(Long gatheringId) {
-        return getNotificationScheduleUseCase.getSchedule(gatheringId).scheduledAt();
-    }
-
-    private void scheduleReminder(Settlement settlement, Long participantId) {
-        scheduleReminderUseCase.scheduleReminder(
-                ScheduleReminderCommand.of(
-                        settlement.getGatheringId(), participantId, settlement.getId()));
     }
 }

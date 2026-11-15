@@ -38,8 +38,6 @@ public enum GatheringErrorCode implements ErrorCode {
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
     BANK_ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 계좌를 등록한 참여자입니다."),
     PAIRING_FEEDBACK_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 페어링 피드백을 남긴 참여자입니다."),
-    SETTLEMENT_ALREADY_NOTIFIED(
-            HttpStatus.CONFLICT, "정산 메시지를 보낸 정산 건은 수정할 수 없습니다. 취소하고 다시 기록해 주세요."),
     SETTLEMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 취소한 정산 건입니다."),
     SETTLEMENT_CONFLICT(HttpStatus.CONFLICT, "다른 요청이 먼저 정산 건을 바꿨습니다. 다시 불러와 주세요."),
     SETTLEMENT_SHARES_SENT(

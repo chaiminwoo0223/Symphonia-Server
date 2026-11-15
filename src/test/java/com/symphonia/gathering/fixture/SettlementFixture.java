@@ -36,13 +36,6 @@ public enum SettlementFixture {
         return builder(id, gatheringId, payerParticipantId, participantIds).build();
     }
 
-    public Settlement createNotified(
-            Long id, Long gatheringId, Long payerParticipantId, List<Long> participantIds) {
-        return builder(id, gatheringId, payerParticipantId, participantIds)
-                .notifiedAt(recordedAt.plusHours(1))
-                .build();
-    }
-
     public Settlement createCancelled(
             Long id, Long gatheringId, Long payerParticipantId, List<Long> participantIds) {
         return builder(id, gatheringId, payerParticipantId, participantIds)
