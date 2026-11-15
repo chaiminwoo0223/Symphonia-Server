@@ -27,12 +27,13 @@
 - 좌표는 도에 10의 7제곱을 곱한 정수 문자열이라 도 단위로 바꾼다. 이름이 없거나 좌표를 숫자로 읽을 수 없는 가게는 뺀다.
 - 이름의 HTML 태그와 엔티티는 풀어서 담는다.
 - 429는 `PlaceSearchLimitExceededException`, 그 밖의 호출 실패는 `PlaceSearchUnavailableException`으로 바꾼다. 둘 다 503이고 코드는 `PLACE_SEARCH_LIMIT_EXCEEDED`, `PLACE_SEARCH_UNAVAILABLE`이다.
-- 호출은 `global.config.RestClientConfig`의 공유 `RestClient`로 한다. 호출 실패 로그에는 상태 코드나 예외 종류만 남기고, 지역명이 들어갈 수 있는 예외 메시지는 남기지 않는다.
+- 호출은 `global.config.RestClientConfig`의 공유 `RestClient`로 한다. 429를 뺀 호출 실패는 상태 코드나 예외 종류만 warn 로그로 남기고, 지역명이 들어갈 수 있는 예외 메시지는 남기지 않는다. 429는 `GlobalExceptionHandler`가 에러 코드로 남긴다.
 
 ## 저장과 캐시
 
 - 가게 정보는 DB와 Redis를 포함해 서버에 저장하거나 캐시하지 않는다. 요청마다 외부 검색을 호출한다.
 - 결과 화면에 광고를 표시하지 않고, 네이버의 BI 가이드에 따라 네이버 검색결과임을 표시한다. 이 둘은 클라이언트가 지킨다.
+- 검색 결과를 AI에 입력하거나 제3자에게 제공, 판매하지 않는다. 검색 API를 활용한 수익을 만들지 않는다.
 
 ## 안주의 맛집 검색어
 
