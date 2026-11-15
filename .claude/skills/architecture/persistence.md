@@ -6,7 +6,6 @@
 
 - DB는 PostgreSQL 17이다. 로컬 compose와 Testcontainers 모두 `pgvector/pgvector:pg17` 이미지를 쓴다.
 - `compose.yaml`의 `postgres` 서비스에 `org.springframework.boot.service-connection=postgres` 라벨을 유지한다. 없으면 `spring-boot-docker-compose`가 datasource를 연결하지 못한다. 테스트는 이 문제를 잡지 못하므로 이미지를 바꾸면 `bootRun`으로 직접 확인한다.
-- RabbitMQ는 compose와 Testcontainers 모두 `rabbitmq:4.3-management` 이미지를 쓴다.
 - `CREATE EXTENSION IF NOT EXISTS vector`는 vector 컬럼을 도입하는 이슈의 마이그레이션에서 실행한다.
 
 ## 맛과 분위기 값의 저장
@@ -39,7 +38,7 @@
 ## 동시 INSERT
 
 - 동시에 들어온 요청 중 한 행만 남겨야 하는 INSERT는 행의 성격으로 방식을 나눈다.
-- 도메인 상태 없이 있는지만 뜻하는 기록용 행은 네이티브 `INSERT ... ON CONFLICT DO NOTHING`으로 넣고, 넣었는지를 boolean으로 돌려준다. 중복인지는 Service가 반환값으로 판단한다(예: `participant_pairing_feedback`, `notification_schedule`, `pairing_feedback` 첫 제출).
+- 도메인 상태 없이 있는지만 뜻하는 기록용 행은 네이티브 `INSERT ... ON CONFLICT DO NOTHING`으로 넣고, 넣었는지를 boolean으로 돌려준다. 중복인지는 Service가 반환값으로 판단한다(예: `participant_pairing_feedback`, `pairing_feedback` 첫 제출).
 - 변환, 암호화, 연관이 있는 엔티티는 JPA `saveAndFlush`로 저장하고, 제약 위반을 제약 이름으로 구분해 도메인 예외로 바꾼다(예: 계좌, 회원 소셜 로그인, 참여자 휴대폰).
 
 ## 음료 모델
@@ -93,8 +92,6 @@
 - Redis 명령 타임아웃 `timeout`(300ms)과 `connect-timeout`(1s)은 세 프로파일에 각각 명시한다. 응답 없는 Redis가 카탈로그 캐시 대체(DB 조회)를 지연시키지 않게 하는 값이다.
 - dev와 prod에 Redis를 만들 때 `maxmemory-policy`를 확인한다. 리프레시 토큰과 카탈로그 캐시가 같은 Redis를 쓰므로, 메모리가 차도 리프레시 토큰이 밀려나지 않는 `noeviction`으로 두고 `maxmemory`는 카탈로그 값 크기(약 250KB)보다 충분히 크게 정한다.
 - dev와 prod는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`로 주입한다. 6개 모두 필수이고, 비밀번호가 없는 Redis라도 `REDIS_PASSWORD`는 빈 값으로 넣는다.
-- dev와 prod는 `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`로, local은 compose와 같은 `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`로 주입한다.
-- `GATHERING_LINK_BASE_URL`은 local에만 기본값을 두고, dev와 prod는 기본값 없이 주입한다.
 - dev와 prod는 `spring.docker.compose.enabled: false`로 compose 연결을 끈다.
 - SQL 로그(`show-sql`, `format_sql`)는 local에서만 켠다.
 - JWT, OAuth, CORS는 환경변수로 주입한다. 비밀값은 `${ENV_VAR}`, 만료 시간과 CORS는 `${ENV_VAR:기본값}`이다. `.env`는 Spring이 직접 읽지 않고 실행 환경에서 주입한다.

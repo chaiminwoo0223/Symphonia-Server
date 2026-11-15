@@ -28,7 +28,6 @@ JUnit 5, Mockito, Testcontainers를 쓴다.
 ## 테스트 컨테이너
 
 - Postgres와 Redis 컨테이너는 `TestcontainersConfiguration`의 static 필드로 테스트 JVM에서 한 번만 띄운다. 빈으로 등록하지 않고 `DynamicPropertyRegistrar`로 접속 정보만 넘긴다. 빈으로 두면 컨텍스트 캐시가 오래된 컨텍스트를 닫을 때 공유 컨테이너도 멈춘다.
-- RabbitMQ 컨테이너는 `RabbitTestcontainersConfiguration`의 빈으로 두어 `IntegrationTest` 컨텍스트마다 따로 띄운다. 공유하면 캐시된 다른 컨텍스트의 리스너가 메시지를 가져간다.
 - 컨텍스트끼리 DB와 Redis를 같이 쓰므로 테스트는 데이터를 남기지 않는다. 트랜잭션 롤백을 쓰지 않는 테스트(`Propagation.NOT_SUPPORTED`)는 `@AfterEach`에서 직접 지운다.
 - 테스트 커넥션 풀은 컨텍스트마다 최대 4개(`application-test.yaml`)이고, Postgres 컨테이너의 `max_connections`는 200이다. 컨텍스트 조합(`@Import`, `@MockitoBean`)이 늘어 연결 수가 부족하면 이 두 값을 함께 조정한다.
 

@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), notification 발송 규칙(notification.md), place 맛집 조회 규칙(place.md), 메시지 큐(RabbitMQ) 사용 범위.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -14,7 +14,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 
 ## 프로젝트 구조
 
-도메인은 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`, `place` 7개이고, 각각 `domain`, `application`, `presentation`, `infrastructure` 패키지를 가진다.
+도메인은 `member`, `auth`, `catalog`, `pairing`, `gathering`, `place` 6개이고, 각각 `domain`, `application`, `presentation`, `infrastructure` 패키지를 가진다.
 
 | 도메인 | 책임 |
 |---|---|
@@ -23,7 +23,6 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 | `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`)와 그 맛, 분류 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
 | `gathering` | 모임, 참여, 정산 건과 분담금 상태 |
-| `notification` | 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체 |
 | `place` | 안주를 곁들일 가게의 외부 검색. 의존 방향은 `place → catalog` |
 | `common` | 공유 커널. 공통 예외(`common.exception`), `StandardResponse`, `BaseTimeEntity`, `@CommandService`/`@QueryService`(`common.annotation`) |
 | `global` | 기술 부트스트랩. Security, JPA, Redis, Swagger, 외부 서비스 공용 RestClient 설정(`config`), 인증 필터와 핸들러(`security`) |
@@ -76,7 +75,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 - 크로스 도메인 조율은 Facade 없이 대상 도메인의 `*UseCase`와 `*Result`를 직접 의존한다. 다른 도메인의 Repository와 구현체는 참조하지 않는다.
 - 다른 도메인에서 참조할 수 있는 것은 `application`의 `usecase`, `dto`, `event`, `provider`와 `domain`의 enum뿐이다. enum이 직접 선언한 메서드는 호출하지 않는다. `name()`, `valueOf()`, `values()` 같은 `java.lang.Enum` 기본 메서드는 호출할 수 있다. 테스트 코드에는 이 규칙을 적용하지 않는다.
-- 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되면 그 UseCase를 쪼갤 수 있는지부터 검토한다. `SettlementCommandService`와 `ShareCommandService`가 `notification`의 UseCase 두 개씩에 의존하는 것은 검토를 마친 예외다.
+- 하나의 `*Service`가 크로스 도메인 `*UseCase`를 2개 이상 의존하게 되면 그 UseCase를 쪼갤 수 있는지부터 검토한다.
 - 다른 도메인이 선언한 인터페이스를 구현할 때도 Port, Adapter라는 이름은 쓰지 않는다.
 
 ### catalog와 pairing
@@ -91,17 +90,9 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `CatalogResult`를 `PairingDrink`, `PairingAnju`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다.
 - 타입 이름에 `Candidate`, `Item(s)`를 쓰지 않는다.
 
-### gathering과 notification
-
-- 의존 방향은 `gathering → notification` 한 방향이다.
-- 정산 건 기록과 수정은 정산 건을 바꾸기 전에 `notification`의 예약 UseCase를 같은 트랜잭션에서 부른다. 취소 알림도 같은 트랜잭션에서 부른다.
-- `notification`이 `gathering`의 데이터를 써야 하는 곳은 `notification.application.provider`에 인터페이스로 선언하고, `gathering.application.provider`의 `*ProviderImpl`이 구현한다. 주고받는 값은 `notification`의 `*Result`다.
-- 메시지에 담을 금액을 고르는 규칙(미입금 분담금, 취소된 정산 건)은 `gathering`에 둔다.
-- 설정 키와 큐 이름의 접두사는 `notification.*`이다. 링크 주소 환경 변수 `GATHERING_LINK_BASE_URL`과 테이블 이름, FK는 바꾸지 않는다.
-
 ## 크로스 도메인 부수효과
 
-- 부수효과가 실패했을 때 원본 작업도 함께 실패해야 하면 원본 도메인의 `@CommandService` 안에서 대상 도메인의 `*UseCase`를 부른다. 두 작업이 한 트랜잭션에서 함께 커밋되거나 함께 롤백된다(예: 정산 건 기록과 발송 예약). Controller에서 UseCase를 차례로 부르면 앞 UseCase가 먼저 커밋되므로 이렇게 조율하지 않는다.
+- 부수효과가 실패했을 때 원본 작업도 함께 실패해야 하면 원본 도메인의 `@CommandService` 안에서 대상 도메인의 `*UseCase`를 부른다. 두 작업이 한 트랜잭션에서 함께 커밋되거나 함께 롤백된다. Controller에서 UseCase를 차례로 부르면 앞 UseCase가 먼저 커밋되므로 이렇게 조율하지 않는다.
 - 원본이 커밋된 뒤에만 의미가 있고 실패해도 원본을 되돌릴 이유가 없는 후속 정리라면 `@TransactionalEventListener(phase = AFTER_COMMIT)` 도메인 이벤트로 분리한다(예: 회원 삭제 뒤 로그아웃 처리).
 - 이벤트 이름은 `<Entity><과거분사>Event`(예: `MemberDeletedEvent`)다. 구독자에게 필요한 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다.
 - 이벤트는 발행하는 도메인의 `application.event`에 정의하고, `@CommandService` 구현체 안에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다. 트랜잭션 밖에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
@@ -122,17 +113,13 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`persistence.md`](persistence.md) | 엔티티와 `*JpaEntity` 매핑, `db/migration`, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때. 맛 값을 계산하는 규칙표(`FlavorRule`, `WineFlavorRule`, `AnjuRule`)와 `Drink`, `DrinkStyle` 분리도 여기 있다 |
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`), `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표(`anju-serving-richness.csv`)도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, 익명 페어링 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
-| [`notification.md`](notification.md) | 발송 예약, 발송 기록, 재시도, 발송 시간대, 개인 링크, 큐 발행과 컨슈머, 폴러를 바꿀 때. 정산 건 변경이 예약과 취소 알림에 미치는 영향도 함께 읽는다 |
 | [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 안주의 맛집 검색어를 바꿀 때 |
 
-## 메시지 큐 (RabbitMQ)
+## 메시지 큐
 
-- 큐는 정산 메시지와 리마인드 발송에만 쓰고, 발송은 `notification`이 맡는다.
-- 발송 예정 시각은 DB의 예약이 갖는다. 큐는 수신자별 발송, 재시도, DLQ, 외부 장애 격리를 맡는다. 지연을 큐에 맡기지 않는다.
-- 메시지에는 id만 담는다. 컨슈머는 발송 직전에 상태를 다시 조회하고 멱등하게 처리한다.
-- 리마인드 횟수와 간격은 큐 설정이 아니라 `NotificationPolicy`가 정한다.
+- 지금은 메시지 큐를 쓰지 않는다.
 - 개인정보 파기는 주기적 스윕으로, 페어링 피드백 집계는 큐 없이 처리한다.
-- 다른 곳에 큐를 쓰려면 다음 중 하나에 해당해야 한다. 예약이 시각별로 흩어진다. 재시작해도 예약이 유실되면 안 된다. 외부 장애를 격리하고 재시도와 DLQ가 필요하다.
+- 큐를 도입하려면 다음 중 하나에 해당해야 한다. 예약이 시각별로 흩어진다. 재시작해도 예약이 유실되면 안 된다. 외부 장애를 격리하고 재시도와 DLQ가 필요하다.
 
 ## DDD 핵심 원칙
 
