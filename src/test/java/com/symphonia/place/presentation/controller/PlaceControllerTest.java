@@ -1,7 +1,6 @@
 package com.symphonia.place.presentation.controller;
 
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -12,7 +11,6 @@ import com.symphonia.catalog.domain.error.CatalogErrorCode;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.helper.CatalogHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
-import com.symphonia.place.application.cache.PlaceSearchCache;
 import com.symphonia.place.domain.client.PlaceSearchClient;
 import com.symphonia.place.domain.error.PlaceErrorCode;
 import com.symphonia.place.domain.exception.PlaceSearchLimitExceededException;
@@ -26,7 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.ResultActions;
 
 @Sql("/sql/clear-catalog.sql")
 class PlaceControllerTest extends IntegrationTest {
@@ -35,7 +32,6 @@ class PlaceControllerTest extends IntegrationTest {
     private static final String REGION = "강남구";
 
     @Autowired private CatalogHelper catalogHelper;
-    @Autowired private PlaceSearchCache placeSearchCache;
 
     @MockitoBean private PlaceSearchClient placeSearchClient;
 
@@ -84,26 +80,6 @@ class PlaceControllerTest extends IntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.source").value("네이버 검색결과"))
                     .andExpect(jsonPath("$.data.places").isEmpty());
-        }
-
-        @Test
-        @DisplayName("캐시에 검색 결과가 있으면 외부 검색을 호출하지 않고 캐시의 가게를 반환한다")
-        void shouldReturnCachedPlacesWithoutCallingSearch() throws Exception {
-            // given
-            Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            placeSearchCache.put(searchQueryOf(anju), List.of(PlaceFixture.GANGNAM_HOF.create()));
-
-            // when
-            ResultActions result =
-                    mockMvc.perform(
-                            get(RECOMMEND_PATH)
-                                    .param("region", REGION)
-                                    .param("anjuId", anju.getId().toString()));
-
-            // then
-            result.andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.places[0].name").value("강남 호프"));
-            then(placeSearchClient).shouldHaveNoInteractions();
         }
 
         @Test

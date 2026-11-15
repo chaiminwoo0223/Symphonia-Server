@@ -9,16 +9,13 @@ import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.dto.result.AnjuPlaceKeywordResult;
 import com.symphonia.catalog.application.usecase.GetAnjuPlaceKeywordUseCase;
 import com.symphonia.catalog.domain.exception.AnjuNotFoundException;
-import com.symphonia.place.application.cache.PlaceSearchCache;
 import com.symphonia.place.application.dto.query.RecommendPlacesQuery;
 import com.symphonia.place.application.dto.result.PlaceResult;
 import com.symphonia.place.domain.client.PlaceSearchClient;
 import com.symphonia.place.domain.exception.PlaceSearchLimitExceededException;
-import com.symphonia.place.domain.vo.Place;
 import com.symphonia.place.domain.vo.PlaceSearchQuery;
 import com.symphonia.place.fixture.PlaceFixture;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,7 +33,6 @@ class PlaceQueryServiceTest extends UnitTest {
     @InjectMocks private PlaceQueryService placeQueryService;
 
     @Mock private GetAnjuPlaceKeywordUseCase getAnjuPlaceKeywordUseCase;
-    @Mock private PlaceSearchCache placeSearchCache;
     @Mock private PlaceSearchClient placeSearchClient;
 
     @Nested
@@ -44,19 +40,19 @@ class PlaceQueryServiceTest extends UnitTest {
     class Recommend {
 
         @Nested
-        @DisplayName("캐시에 검색 결과가 있는 경우")
-        class WhenCacheHit {
+        @DisplayName("외부 검색이 가게를 돌려준 경우")
+        class WhenSearchSucceeds {
 
             @Test
-            @DisplayName("외부 검색을 부르지 않고 캐시의 가게를 순서 그대로 반환한다")
-            void shouldReturnCachedPlacesWithoutSearching() {
+            @DisplayName("안주의 검색어와 지역명으로 검색해 결과를 순서 그대로 반환한다")
+            void shouldReturnSearchedPlacesInOrder() {
                 // given
                 givenPlaceKeyword();
-                List<Place> cached =
-                        List.of(
-                                PlaceFixture.NONHYEON_PUB.create(),
-                                PlaceFixture.GANGNAM_HOF.create());
-                given(placeSearchCache.find(SEARCH_QUERY)).willReturn(Optional.of(cached));
+                given(placeSearchClient.search(SEARCH_QUERY))
+                        .willReturn(
+                                List.of(
+                                        PlaceFixture.NONHYEON_PUB.create(),
+                                        PlaceFixture.GANGNAM_HOF.create()));
 
                 // when
                 List<PlaceResult> results = placeQueryService.recommend(query());
@@ -66,66 +62,6 @@ class PlaceQueryServiceTest extends UnitTest {
                         .containsExactly(
                                 PlaceResult.from(PlaceFixture.NONHYEON_PUB.create()),
                                 PlaceResult.from(PlaceFixture.GANGNAM_HOF.create()));
-                then(placeSearchClient).shouldHaveNoInteractions();
-            }
-
-            @Test
-            @DisplayName("결과가 없던 검색의 빈 목록도 외부 검색 없이 빈 목록으로 반환한다")
-            void shouldReturnEmptyWithoutSearchingWhenCachedEmpty() {
-                // given
-                givenPlaceKeyword();
-                given(placeSearchCache.find(SEARCH_QUERY)).willReturn(Optional.of(List.of()));
-
-                // when
-                List<PlaceResult> results = placeQueryService.recommend(query());
-
-                // then
-                assertThat(results).isEmpty();
-                then(placeSearchClient).shouldHaveNoInteractions();
-            }
-        }
-
-        @Nested
-        @DisplayName("캐시에 검색 결과가 없는 경우")
-        class WhenCacheMissed {
-
-            @Test
-            @DisplayName("외부 검색 결과를 순서 그대로 반환하고 캐시에 담는다")
-            void shouldSearchAndPutPlacesInOrder() {
-                // given
-                givenPlaceKeyword();
-                given(placeSearchCache.find(SEARCH_QUERY)).willReturn(Optional.empty());
-                List<Place> searched =
-                        List.of(
-                                PlaceFixture.NONHYEON_PUB.create(),
-                                PlaceFixture.GANGNAM_HOF.create());
-                given(placeSearchClient.search(SEARCH_QUERY)).willReturn(searched);
-
-                // when
-                List<PlaceResult> results = placeQueryService.recommend(query());
-
-                // then
-                assertThat(results)
-                        .containsExactly(
-                                PlaceResult.from(PlaceFixture.NONHYEON_PUB.create()),
-                                PlaceResult.from(PlaceFixture.GANGNAM_HOF.create()));
-                then(placeSearchCache).should().put(SEARCH_QUERY, searched);
-            }
-
-            @Test
-            @DisplayName("검색 결과가 없으면 빈 목록도 캐시에 담는다")
-            void shouldPutEmptyPlacesWhenNothingFound() {
-                // given
-                givenPlaceKeyword();
-                given(placeSearchCache.find(SEARCH_QUERY)).willReturn(Optional.empty());
-                given(placeSearchClient.search(SEARCH_QUERY)).willReturn(List.of());
-
-                // when
-                List<PlaceResult> results = placeQueryService.recommend(query());
-
-                // then
-                assertThat(results).isEmpty();
-                then(placeSearchCache).should().put(SEARCH_QUERY, List.of());
             }
 
             @Test
@@ -134,7 +70,6 @@ class PlaceQueryServiceTest extends UnitTest {
                 // given
                 givenPlaceKeyword();
                 PlaceSearchQuery normalized = PlaceSearchQuery.of("강남구 역삼동", PLACE_KEYWORD);
-                given(placeSearchCache.find(normalized)).willReturn(Optional.empty());
                 given(placeSearchClient.search(normalized)).willReturn(List.of());
 
                 // when
@@ -143,21 +78,42 @@ class PlaceQueryServiceTest extends UnitTest {
                 // then
                 then(placeSearchClient).should().search(normalized);
             }
+        }
+
+        @Nested
+        @DisplayName("외부 검색 결과가 없는 경우")
+        class WhenNothingFound {
 
             @Test
-            @DisplayName("외부 검색이 실패하면 예외를 그대로 던지고 캐시에 담지 않는다")
+            @DisplayName("빈 목록을 반환한다")
+            void shouldReturnEmptyPlaces() {
+                // given
+                givenPlaceKeyword();
+                given(placeSearchClient.search(SEARCH_QUERY)).willReturn(List.of());
+
+                // when
+                List<PlaceResult> results = placeQueryService.recommend(query());
+
+                // then
+                assertThat(results).isEmpty();
+            }
+        }
+
+        @Nested
+        @DisplayName("외부 검색이 실패한 경우")
+        class WhenSearchFails {
+
+            @Test
+            @DisplayName("PlaceSearchLimitExceededException을 그대로 던진다")
             void shouldThrowPlaceSearchLimitExceededException() {
                 // given
                 givenPlaceKeyword();
-                given(placeSearchCache.find(SEARCH_QUERY)).willReturn(Optional.empty());
                 given(placeSearchClient.search(SEARCH_QUERY))
                         .willThrow(new PlaceSearchLimitExceededException());
 
                 // when & then
                 assertThatThrownBy(() -> placeQueryService.recommend(query()))
                         .isInstanceOf(PlaceSearchLimitExceededException.class);
-                then(placeSearchCache).should().find(SEARCH_QUERY);
-                then(placeSearchCache).shouldHaveNoMoreInteractions();
             }
         }
 
@@ -166,7 +122,7 @@ class PlaceQueryServiceTest extends UnitTest {
         class WhenAnjuNotFound {
 
             @Test
-            @DisplayName("AnjuNotFoundException을 던지고 캐시와 외부 검색을 부르지 않는다")
+            @DisplayName("AnjuNotFoundException을 던지고 외부 검색을 부르지 않는다")
             void shouldThrowAnjuNotFoundException() {
                 // given
                 given(getAnjuPlaceKeywordUseCase.getPlaceKeyword(ANJU_ID))
@@ -175,7 +131,6 @@ class PlaceQueryServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> placeQueryService.recommend(query()))
                         .isInstanceOf(AnjuNotFoundException.class);
-                then(placeSearchCache).shouldHaveNoInteractions();
                 then(placeSearchClient).shouldHaveNoInteractions();
             }
         }
