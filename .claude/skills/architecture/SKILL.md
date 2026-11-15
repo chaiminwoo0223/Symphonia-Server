@@ -50,7 +50,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | 계층 | 역할 |
 |---|---|
 | `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository`·`*Reader` 인터페이스. 비즈니스 로직이 사는 곳 |
-| `application` | `*UseCase` 인터페이스 + `*Service` 구현체(`@CommandService`/`@QueryService`). 오케스트레이션만 담당 |
+| `application` | `*UseCase` 인터페이스 + `*Service` 구현체. 오케스트레이션만 담당 |
 | `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response`, 수동 실행 진입점 `*Runner`, 큐 리스너(`listener`), 스케줄러(`scheduler`) |
 | `infrastructure` | `*RepositoryImpl`, `*JpaEntity`, Redis 등 외부 연동, 파일 원본을 읽는 `*Reader` 구현체 |
 
@@ -89,7 +89,6 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `CatalogResult`는 추천에 필요한 값을 원시값과 enum으로 담는다. 음식 계열 판정은 계열마다 비트 하나인 `harmonizeMask`로 담고, `pairing`은 두 값의 비트 AND만 본다.
 - `CatalogResult`는 음료 종류(스타일의 `DrinkCategory`)와 안주의 주재료 계열, 형태, 매운맛 여부도 enum과 원시값으로 담는다.
 - `CatalogResult`를 `PairingDrink`, `PairingAnju`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다.
-- 적재에서 빠진 안주를 지울 때 `AnjuRepository.findReferencedIds`가 `pairing_feedback`이 참조하는 안주를 네이티브 쿼리로 걸러 낸다.
 - 타입 이름에 `Candidate`, `Item(s)`를 쓰지 않는다.
 
 ### gathering과 notification
@@ -111,7 +110,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 트랜잭션 / CQRS
 
-- 모든 `*Service`에 `@CommandService`(`@Service` + `@Transactional`) 또는 `@QueryService`(`@Service` + `@Transactional(readOnly = true)`)를 붙인다.
+- DB를 직접 쓰는 `*Service`에는 `@CommandService`(`@Service` + `@Transactional`) 또는 `@QueryService`(`@Service` + `@Transactional(readOnly = true)`)를 붙인다.
+- 외부 호출과 `*UseCase` 조율만 하고 Repository를 직접 의존하지 않는 `*Service`에는 `@Service`만 붙인다. 트랜잭션은 DB를 쓰는 `*UseCase`가 연다.
 - 메서드 단위 `@Transactional`은 붙이지 않는다. 한 클래스는 한 가지 트랜잭션 성격만 갖는다. 성격이 섞이면 UseCase를 나눈다.
 - `spring.jpa.open-in-view=false`다. Controller에서 지연 로딩을 쓰지 않는다.
 

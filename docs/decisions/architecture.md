@@ -39,6 +39,10 @@
 - 구독 위치: 구독하는 도메인의 `application.listener` 패키지에 `@Component` 클래스를 두고 `@TransactionalEventListener(phase = AFTER_COMMIT)` 메서드로 구독한다. 리스너는 대상 도메인의 `*UseCase`를 직접 의존해 위임만 하고, 그 안에 비즈니스 로직을 직접 작성하지 않는다 (`@Component`는 기술적 wiring 전용이라는 기존 원칙과 동일).
 - 공유 마커 인터페이스나 베이스 클래스(`common.event` 등)는 두지 않는다. Spring의 `ApplicationEventPublisher`/`@TransactionalEventListener`는 특정 타입을 요구하지 않고, 이벤트가 아직 소수라 공유 추상화를 선제적으로 둘 근거가 없다 (YAGNI). 이벤트 종류가 늘어 정말 공통 로직(로깅, 재시도 등)이 필요해지는 시점에 재검토한다.
 
+## 외부 호출과 트랜잭션
+
+**(2026-11-15 결정, 이슈 #182)**: 외부 서비스 호출과 UseCase 조율만 하는 Service는 애노테이션 없는 `@Service`로 둔다. `@CommandService`와 `@QueryService`로 감싸면 트랜잭션이 시작될 때 DB 커넥션을 잡아 외부 응답을 기다리는 동안 풀(기본 10개)을 점유한다. 로그인 없이 호출하는 맛집 검색은 캐시도 없어 요청마다 이 위험이 걸린다. 지연 획득 설정(`DELAYED_ACQUISITION`)은 택하지 않았다. 키워드 조회 같은 첫 쿼리에서 커넥션을 잡고 트랜잭션이 끝날 때까지 쥐어서 외부 호출 구간을 막지 못한다. 트랜잭션 없는 새 애노테이션을 만드는 안도 택하지 않았다. 애노테이션을 `@CommandService`와 `@QueryService` 둘로 유지하는 컨벤션을 깨기 때문이다. 이 결정으로 `RecommendPlacesService`(옛 `PlaceQueryService`), `VerifySocialTokenService`, `LoginService`, `SignupService`를 `@Service`로 바꿨다. `SignupService`는 회원 생성이 먼저 커밋되고 토큰 발급이 Redis 장애로 실패하면 회원만 남는다. 이때 사용자는 로그인으로 복구하므로 받아들인다. `check-architecture.sh`가 `@Service` 클래스의 `domain.repository` import를 막아 이 구분이 흐려지지 않게 한다. Redis만 쓰는 `RefreshService`, `LogoutService`, `IssueTokenService`, `ForceRevokeService`도 DB 트랜잭션을 열지만 외부 호출 구간이 아니라서 이번 범위에서 뺐다.
+
 ## 계층 규칙 검증 도구
 
 Konsist/ArchUnit 같은 아키텍처 자동검증 도구는 도입하지 않기로 했다. 단일 모듈 구조라 패키지 규칙 위반을 코드리뷰(`code-reviewer` 에이전트의 체크리스트 기반 수동 검토)로 잡는 게 더 실용적이라고 판단했기 때문이다. 계층 의존 방향처럼 판단이 섞이는 규칙은 이 방식으로 검증하고(import로 판정할 수 있는 규칙은 `check-architecture.sh`로 옮김, #178에서 변경), EOF 개행·코드 스타일처럼 완전히 결정론적인 것만 스크립트/포맷터로 강제한다.
