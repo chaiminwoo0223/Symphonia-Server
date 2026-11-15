@@ -150,6 +150,7 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
         private ParticipantPairingResult expectedResult(boolean feedbackSubmitted) {
             return new ParticipantPairingResult(
                     CATALOG_REFERENCES.drinkName(),
+                    PAIRING.getAnjuId(),
                     CATALOG_REFERENCES.anjuName(),
                     feedbackSubmitted);
         }

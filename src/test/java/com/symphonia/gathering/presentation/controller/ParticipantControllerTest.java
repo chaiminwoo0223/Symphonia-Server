@@ -259,10 +259,10 @@ class ParticipantControllerTest extends IntegrationTest {
         class WhenPairingChosen {
 
             @Test
-            @DisplayName("인증 없이도 술, 안주 이름과 피드백을 내지 않았다는 값을 담아 200을 반환한다")
+            @DisplayName("인증 없이도 술 이름, 안주 ID와 이름, 피드백을 내지 않았다는 값을 담아 200을 반환한다")
             void shouldReturnPairing() throws Exception {
                 // given
-                choosePairing(gathering);
+                GatheringPairing chosen = choosePairing(gathering);
 
                 // when & then
                 mockMvc.perform(
@@ -270,6 +270,7 @@ class ParticipantControllerTest extends IntegrationTest {
                                         .header("X-Link-Token", linkToken))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.drinkName").value(DrinkFixture.SOJU.getName()))
+                        .andExpect(jsonPath("$.data.anjuId").value(chosen.anjuId().intValue()))
                         .andExpect(
                                 jsonPath("$.data.anjuName")
                                         .value(AnjuFixture.GOLBAENGI_MUCHIM.getName()))

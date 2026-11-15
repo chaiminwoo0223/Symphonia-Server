@@ -5,10 +5,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 public record ParticipantPairingResponse(
         @Schema(description = "술 이름") String drinkName,
+        @Schema(description = "안주 ID. 이 안주를 곁들일 맛집을 조회할 때 씁니다.") Long anjuId,
         @Schema(description = "안주 이름") String anjuName,
         @Schema(description = "이미 피드백을 남겼는지 여부 (true면 피드백을 묻지 않음)") boolean feedbackSubmitted) {
     public static ParticipantPairingResponse from(ParticipantPairingResult result) {
         return new ParticipantPairingResponse(
-                result.drinkName(), result.anjuName(), result.feedbackSubmitted());
+                result.drinkName(), result.anjuId(), result.anjuName(), result.feedbackSubmitted());
     }
 }
