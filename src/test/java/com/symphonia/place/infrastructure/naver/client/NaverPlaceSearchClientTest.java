@@ -163,13 +163,15 @@ class NaverPlaceSearchClientTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("이름이 없거나 좌표가 숫자가 아닌 가게는 뺀다")
+            @DisplayName("태그를 지우면 이름이 남지 않거나 좌표가 숫자가 아닌 가게는 뺀다")
             void shouldExcludePlaceWithBlankTitleOrNonNumericCoordinates() {
                 // given
                 String items =
                         """
                         [
                           {"title":"","link":"","category":"술집>맥주,호프",
+                           "address":"a","roadAddress":"b","mapx":"1270278735","mapy":"375034081"},
+                          {"title":"<b></b>","link":"","category":"술집>맥주,호프",
                            "address":"a","roadAddress":"b","mapx":"1270278735","mapy":"375034081"},
                           {"title":"좌표가 이상한 호프","link":"","category":"술집>맥주,호프",
                            "address":"a","roadAddress":"b","mapx":"abc","mapy":"375034081"},
@@ -227,7 +229,7 @@ class NaverPlaceSearchClientTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("네이버가 하루 호출 한도 초과(429)로 응답한 경우")
+        @DisplayName("네이버가 호출 한도 초과(429)로 응답한 경우")
         class WhenLimitExceeded {
 
             @Test

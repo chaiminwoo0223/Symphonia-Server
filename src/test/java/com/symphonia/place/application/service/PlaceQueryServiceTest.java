@@ -63,9 +63,14 @@ class PlaceQueryServiceTest extends UnitTest {
                                 PlaceResult.from(PlaceFixture.NONHYEON_PUB.create()),
                                 PlaceResult.from(PlaceFixture.GANGNAM_HOF.create()));
             }
+        }
+
+        @Nested
+        @DisplayName("지역명에 공백이 여러 개인 경우")
+        class WhenRegionHasExtraSpaces {
 
             @Test
-            @DisplayName("공백이 여러 개인 지역명은 하나로 정리해 검색한다")
+            @DisplayName("공백을 하나로 정리한 검색어로 검색한다")
             void shouldSearchWithNormalizedRegion() {
                 // given
                 givenPlaceKeyword();
