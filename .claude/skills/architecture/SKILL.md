@@ -24,7 +24,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
 | `gathering` | 모임, 참여, 정산 건과 분담금 상태 |
 | `notification` | 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체 |
-| `place` | 안주를 곁들일 가게의 외부 검색과 캐시. 의존 방향은 `place → catalog` |
+| `place` | 안주를 곁들일 가게의 외부 검색. 의존 방향은 `place → catalog` |
 | `common` | 공유 커널. 공통 예외(`common.exception`), `StandardResponse`, `BaseTimeEntity`, `@CommandService`/`@QueryService`(`common.annotation`) |
 | `global` | 기술 부트스트랩. Security, JPA, Redis, Swagger 설정(`config`), 인증 필터와 핸들러(`security`) |
 
@@ -123,7 +123,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`), `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표(`anju-serving-richness.csv`)도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, 익명 페어링 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
 | [`notification.md`](notification.md) | 발송 예약, 발송 기록, 재시도, 발송 시간대, 개인 링크, 큐 발행과 컨슈머, 폴러를 바꿀 때. 정산 건 변경이 예약과 취소 알림에 미치는 영향도 함께 읽는다 |
-| [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 검색 결과 캐시, 안주의 맛집 검색어를 바꿀 때 |
+| [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 안주의 맛집 검색어를 바꿀 때 |
 
 ## 메시지 큐 (RabbitMQ)
 
