@@ -50,7 +50,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 |---|---|
 | `domain` | 순수 도메인 모델, 도메인 서비스, `*Repository`·`*Reader` 인터페이스. 비즈니스 로직이 사는 곳 |
 | `application` | `*UseCase` 인터페이스 + `*Service` 구현체. 오케스트레이션만 담당 |
-| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response`, 수동 실행 진입점 `*Runner`, 큐 리스너(`listener`), 스케줄러(`scheduler`) |
+| `presentation` | `*Controller`, `*Api` 인터페이스, `*Request`/`*Response`, 수동 실행 진입점 `*Runner`, 스케줄러(`scheduler`) |
 | `infrastructure` | `*RepositoryImpl`, `*JpaEntity`, Redis 등 외부 연동, 파일 원본을 읽는 `*Reader` 구현체 |
 
 ## 계층별 타입 어휘
@@ -69,7 +69,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - DTO(`*Command`/`*Result`/`*Request`/`*Response`)는 자기 정적 팩토리(`from`/`of`)나 변환 메서드(`to*`)에서 필드를 채운다. 호출부가 `new`로 필드를 나열해 조립하지 않는다.
 - 변환 대상이 다른 도메인 소속이면 이미 그 도메인을 의존하는 쪽이 변환 메서드를 갖는다(예: `auth.OAuthMemberResult.toMemberCreateCommand()`).
 - 조회 파라미터가 2개 이상이거나 필터, 정렬, 페이징처럼 늘어날 조건이면 `*Query`로 감싼다.
-- 스케줄러, 큐 리스너, 이벤트 리스너처럼 내부에서 시작하는 쓰기는 넘길 값이 식별자 하나면 원시값으로 받고(예: `dispatch(Long gatheringId)`), 2개 이상이면 `*Command`로 감싼다.
+- 스케줄러, 이벤트 리스너처럼 내부에서 시작하는 쓰기는 넘길 값이 식별자 하나면 원시값으로 받고(예: `purge(Long gatheringId)`), 2개 이상이면 `*Command`로 감싼다.
 
 ## 크로스 도메인 참조
 
