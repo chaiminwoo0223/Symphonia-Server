@@ -146,7 +146,7 @@ class PlaceQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("외부 검색이 실패하면 예외를 그대로 던지고 캐시에 담지 않는다")
-            void shouldThrowAndNotPutWhenSearchFails() {
+            void shouldThrowPlaceSearchLimitExceededException() {
                 // given
                 givenPlaceKeyword();
                 given(placeSearchCache.find(SEARCH_QUERY)).willReturn(Optional.empty());
