@@ -6,7 +6,7 @@ public class TestSymphoniaApplication {
 
     static void main(String[] args) {
         SpringApplication.from(SymphoniaApplication::main)
-                .with(TestcontainersConfiguration.class, RabbitTestcontainersConfiguration.class)
+                .with(TestcontainersConfiguration.class)
                 .run(args);
     }
 }

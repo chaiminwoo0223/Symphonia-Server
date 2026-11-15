@@ -10,29 +10,6 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
-  # 브로커가 받았다고 확인한 메시지만 발행한 것으로 본다. 라우팅되지 않은 메시지는 버리지 않고 돌려받아 발행 실패로 본다.
-  # 리스너는 처리를 마친 뒤에 ack하고, 재시도를 다 쓴 메시지는 다시 큐에 넣지 않고 DLQ로 보낸다.
-  rabbitmq:
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    template:
-      mandatory: true
-    listener:
-      simple:
-        acknowledge-mode: auto
-        default-requeue-rejected: false
-        # 컨슈머 4개는 발송 지연 300ms에서 초당 13건을 처리한다. 이 처리량이 발행 중인 발송 기록의 상한(200건)이 큐 대기를 5분 안으로 묶는 계산의 바탕이다.
-        # 컨슈머는 발송하는 동안 DB 커넥션을 쥐므로(기본 풀 10개) 풀의 절반 아래로 둔다.
-        # prefetch는 컨슈머가 미리 받아 두는 수다. 서버가 여러 대일 때 한 서버가 메시지를 쌓아 두고 다른 서버가 놀지 않도록 작게 둔다.
-        concurrency: 4
-        prefetch: 4
-        retry:
-          enabled: true
-          # Spring Boot 4부터 max-attempts는 무시되고 첫 시도를 뺀 재시도 횟수를 max-retries로 받는다. 첫 시도를 합쳐 3번 시도한다.
-          max-retries: 2
-          initial-interval: 1s
-          multiplier: 2
-
 # LB 뒤에서 감사 로그에 실제 클라이언트 IP를 남기기 위해, 신뢰하는 프록시가 보낸 X-Forwarded-For만 반영한다.
 # TRUSTED_PROXIES가 없으면 Spring Boot 기본값(사설 IP 대역)을 쓴다. 배포 시 LB 대역을 기본값과 같은 쉼표 구분 CIDR 형식으로 넣는다.
 server:
@@ -87,13 +64,3 @@ gathering:
   # 개인정보 파기 스윕(#128)의 주기다. 안내하는 보유 기간(최대 30일)보다 하루 일찍 파기 대상이 되므로, 하루 안에 여러 번 돌면 된다.
   purge:
     interval: 1h
-
-# 정산 메시지 발송(#126, #159). 폴러는 이 주기로 예약 시각이 된 모임과 발행할 발송 기록을 찾는다.
-# 개인 링크의 웹 주소(link.base-url)는 환경마다 달라 application-{profile}.yaml에 둔다.
-notification:
-  poll-interval: 10s
-  queue:
-    exchange: notification
-    delivery: notification.delivery
-    dead-letter-exchange: notification.dlx
-    dead-letter: notification.delivery.dlq

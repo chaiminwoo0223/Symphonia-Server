@@ -10,21 +10,11 @@ spring:
       password: ${REDIS_PASSWORD}
       timeout: 300ms
       connect-timeout: 1s
-  rabbitmq:
-    host: ${RABBITMQ_HOST}
-    port: ${RABBITMQ_PORT}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
   docker:
     compose:
       enabled: false
   jpa:
     show-sql: false
-
-# 기본값을 두지 않아, 변수를 빠뜨리면 localhost 링크를 보내지 않고 기동에 실패한다.
-notification:
-  link:
-    base-url: ${GATHERING_LINK_BASE_URL}
 
 logging:
   level:

@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
-@Import({TestcontainersConfiguration.class, RabbitTestcontainersConfiguration.class})
+@Import(TestcontainersConfiguration.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @Transactional
