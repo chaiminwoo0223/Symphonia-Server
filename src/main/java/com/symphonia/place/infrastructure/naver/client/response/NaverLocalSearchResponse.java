@@ -11,7 +11,7 @@ public record NaverLocalSearchResponse(List<Item> items) {
     public List<Place> toPlaces() {
         return Stream.ofNullable(items)
                 .flatMap(List::stream)
-                .filter(Item::hasCoordinates)
+                .filter(Item::isShowable)
                 .map(Item::toPlace)
                 .toList();
     }
@@ -27,9 +27,10 @@ public record NaverLocalSearchResponse(List<Item> items) {
         // mapx는 경도, mapy는 위도에 10의 7제곱을 곱한 정수 문자열이다.
         private static final int COORDINATE_SCALE = 7;
 
-        // 지도에 찍을 수 없는 가게는 보여 줄 수 없으므로 좌표가 없는 가게는 뺀다.
-        public boolean hasCoordinates() {
-            return StringUtils.hasText(mapx) && StringUtils.hasText(mapy);
+        // 이름이 없거나 좌표를 숫자로 읽을 수 없는 가게는 지도에 찍어 보여 줄 수 없으므로 뺀다.
+        // 이런 가게 하나 때문에 조회 전체가 실패하지 않게 한다.
+        public boolean isShowable() {
+            return StringUtils.hasText(title) && isNumber(mapx) && isNumber(mapy);
         }
 
         public Place toPlace() {
@@ -47,6 +48,10 @@ public record NaverLocalSearchResponse(List<Item> items) {
         // 이름에 들어 있는 부등호가 태그로 지워지지 않도록 태그를 먼저 지우고 엔티티를 푼다.
         private static String plainText(String html) {
             return HtmlUtils.htmlUnescape(html.replaceAll("<[^>]*>", ""));
+        }
+
+        private static boolean isNumber(String value) {
+            return value != null && value.matches("-?\\d+(\\.\\d+)?");
         }
 
         private static double toDegrees(String scaledDegrees) {
