@@ -64,6 +64,15 @@ report_matches \
     "애노테이션을 지우고 클래스에 @CommandService 또는 @QueryService를 붙인다. 성격이 둘이면 Service를 나눈다." \
     < <(java_code_lines "$MAIN" | search -E '^[^:]+:[0-9]+:.*@([a-z][a-z0-9_]*\.)*Transactional\b' | search -v "^$MAIN/common/annotation/" | sort -t: -k1,1 -k2,2n)
 
+# 애노테이션 없는 @Service는 외부 호출과 UseCase 조율만 한다. Repository를 직접 의존하면 트랜잭션이 필요한 Service다.
+while IFS= read -r service_file; do
+    [[ -n "$service_file" ]] || continue
+    report_matches \
+        "@Service를 붙인 클래스가 Repository를 직접 의존한다" \
+        "영속성에 직접 접근하는 Service는 @CommandService나 @QueryService를 붙인다. @Service는 외부 호출과 UseCase 조율만 하는 Service에 쓴다." \
+        < <(search -Hn -E '^import (static )?com\.symphonia\.[a-z][a-z0-9_]*\.domain\.repository\.' "$service_file")
+done < <(java_code_lines "$MAIN" | search -E '^[^:]+:[0-9]+:[[:space:]]*@Service\b' | cut -d: -f1 | sort -u)
+
 for domain in $DOMAINS; do
     layer_dir="$MAIN/$domain/domain"
     [[ -d "$layer_dir" ]] || continue
