@@ -13,7 +13,7 @@ description: Load when handling exceptions/errors. BusinessException 계층(공�
 |---|---|---|
 | `ErrorCode` (인터페이스) | `common.exception.error` | `getStatus()`(HttpStatus)·`getCode()`·`getMessage()` 계약. 도메인/공통 에러 코드 enum이 구현 |
 | `BusinessException` | `common.exception` | 모든 비즈니스 예외의 베이스. `errorCode: ErrorCode`를 갖는다. **서브클래싱을 전제로 한다** (아래 "예외 계층" 참고) |
-| 공통 예외 (`BadRequestException` 등) | `common.exception` | HTTP 상태별 얇은 래퍼: `BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException`/`InternalServerException` |
+| 공통 예외 (`BadRequestException` 등) | `common.exception` | HTTP 상태별 얇은 래퍼: `BadRequestException`/`UnauthorizedException`/`ForbiddenException`/`NotFoundException`/`ConflictException`/`InternalServerException`/`ServiceUnavailableException` |
 | 도메인 구체 예외 (`MemberNotFoundException` 등) | 각 도메인의 `domain/exception` 패키지 | 공통 예외를 상속해 에러 코드를 고정한 도메인 전용 예외 |
 | 도메인 `*ErrorCode` (enum) | 각 도메인의 `domain/error` 패키지 | `ErrorCode` 구현. 도메인별 에러 정의 (`MemberErrorCode`, `AuthErrorCode`) |
 | `CommonErrorCode` (enum) | `common.exception.error` | 도메인 무관 공통 에러 코드. 주로 프레임워크 예외를 매핑하는 데 쓴다 |
@@ -29,10 +29,10 @@ description: Load when handling exceptions/errors. BusinessException 계층(공�
 
 ```
 BusinessException (common.exception, errorCode: ErrorCode)
-├── BadRequestException / UnauthorizedException / ForbiddenException / NotFoundException / ConflictException / InternalServerException (common.exception)
+├── BadRequestException / UnauthorizedException / ForbiddenException / NotFoundException / ConflictException / InternalServerException / ServiceUnavailableException (common.exception)
 │     ├── MemberNotFoundException 등: 도메인별 구체 예외 ({domain}/domain/exception)
 │     └── SocialTokenVerificationFailedException / SocialMemberInfoFetchFailedException: InternalServerException(500)을 상속하는 도메인별 구체 예외
-└── (공통 6종 중에도 맞는 상태 코드가 없는 경우에만 도메인이 BusinessException을 직접 상속한다. 기본은 공통 6종 중 하나를 상속하는 것이다)
+└── (공통 7종 중에도 맞는 상태 코드가 없는 경우에만 도메인이 BusinessException을 직접 상속한다. 기본은 공통 7종 중 하나를 상속하는 것이다)
 ```
 
 공통 예외는 상태 하나만 대표하는 얇은 래퍼다. 필드나 로직을 추가하지 않는다. `BusinessException`의 생성자는 `protected`로 열어 공통 예외만 상속할 수 있게 하고, 도메인은 공통 예외를 상속해 에러 코드를 생성자에서 고정한다 (호출부가 매번 `ErrorCode`를 넘기지 않는다).
@@ -112,6 +112,7 @@ public enum MemberErrorCode implements ErrorCode {
 | 404 | `*_NOT_FOUND` | `GATHERING_NOT_FOUND` |
 | 409 | `*_ALREADY_*`, `*_CONFLICT`, `*_UNCHANGEABLE` | `SHARE_ALREADY_SENT` |
 | 500 | 실패한 작업은 `{작업}_FAILED`, 불변식 위반은 위반한 상태 | `GATHERING_ENCRYPTION_FAILED`, `UNDETERMINED_EVALUATION` |
+| 503 | 외부 서비스를 지금 쓸 수 없으면 `*_UNAVAILABLE`, 외부 서비스의 호출 한도를 넘으면 `*_LIMIT_EXCEEDED` | `PLACE_SEARCH_UNAVAILABLE`, `PLACE_SEARCH_LIMIT_EXCEEDED` |
 
 - `INVALID_`는 400에서만 쓴다. 클라이언트가 보낸 값이 형식이나 규칙을 어겼다는 뜻이다. 500에 쓰면 서버의 실패가 클라이언트 입력의 잘못처럼 읽힌다.
 - 404는 반드시 `*_NOT_FOUND`를 쓴다. `*_NOT_FOUND`는 찾는 대상이 없다는 사실을 나타내므로 다른 상태에도 쓸 수 있다. 상태는 그 대상을 누가 책임지는지로 정한다. 리프레시 토큰은 인증 수단이라 401(`REFRESH_TOKEN_NOT_FOUND`)이고, 서버가 저장한 데이터 키는 500(`GATHERING_DATA_KEY_NOT_FOUND`)이다.
@@ -139,8 +140,8 @@ public enum MemberErrorCode implements ErrorCode {
 
 ## 원칙
 
-- `RuntimeException`을 직접 throw하지 않는다. 항상 `BusinessException`의 서브클래스(공통 6종 또는 도메인별 구체 예외)를 사용한다.
-- **도메인 실패는 반드시 공통 6종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_SERVER_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다. 체크 예외를 언체크로 바꿔야만 하는 "도달 불가능한" 방어적 분기도 마찬가지다 — `InternalServerException`을 상속한 도메인별 구체 예외를 만든다. 단, 여러 도메인이 함께 쓰는 `common` 유틸의 실패는 도메인과 무관하므로 `CommonErrorCode`로 공통 예외를 던진다(예: `Sha256.hash`의 `NoSuchAlgorithmException` → `InternalServerException(CommonErrorCode.HASHING_FAILED)`).
+- `RuntimeException`을 직접 throw하지 않는다. 항상 `BusinessException`의 서브클래스(공통 7종 또는 도메인별 구체 예외)를 사용한다.
+- **도메인 실패는 반드시 공통 7종 예외 또는 그 하위 도메인별 구체 예외로 던진다.** 맨 `throw`, `IllegalStateException` 등을 그대로 던지면 `GlobalExceptionHandler`의 catch-all이 잡긴 하지만 `INTERNAL_SERVER_ERROR`(500)로 뭉개져서 원래 의도한 도메인 코드와 HTTP status를 잃는다. 체크 예외를 언체크로 바꿔야만 하는 "도달 불가능한" 방어적 분기도 마찬가지다 — `InternalServerException`을 상속한 도메인별 구체 예외를 만든다. 단, 여러 도메인이 함께 쓰는 `common` 유틸의 실패는 도메인과 무관하므로 `CommonErrorCode`로 공통 예외를 던진다(예: `Sha256.hash`의 `NoSuchAlgorithmException` → `InternalServerException(CommonErrorCode.HASHING_FAILED)`).
 - HTTP status는 **오직 `ErrorCode.getStatus()`를 통해서만** 표현한다. 핸들러나 예외 클래스에 하드코딩하지 않는다.
 - 토큰 SHA-256 해싱은 `common.crypto.Sha256`을 쓴다. Repository마다 해싱 메서드를 두지 않는다.
 - 예외 메시지는 한국어로 작성한다.
