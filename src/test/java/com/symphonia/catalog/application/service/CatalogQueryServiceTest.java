@@ -9,6 +9,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.catalog.application.cache.CatalogCache;
 import com.symphonia.catalog.application.dto.query.CatalogQuery;
 import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.result.AnjuPlaceKeywordResult;
 import com.symphonia.catalog.application.dto.result.CatalogReferencesResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult.AnjuResult;
@@ -249,6 +250,66 @@ class CatalogQueryServiceTest extends UnitTest {
 
         private CatalogReferencesQuery query() {
             return CatalogReferencesQuery.of(DRINK_ID, ANJU_ID);
+        }
+    }
+
+    @Nested
+    @DisplayName("getPlaceKeyword 메서드는")
+    class GetPlaceKeyword {
+
+        @Nested
+        @DisplayName("Anju가 존재하지 않는 경우")
+        class WhenAnjuNotFound {
+
+            @Test
+            @DisplayName("AnjuNotFoundException을 던진다")
+            void shouldThrowAnjuNotFoundException() {
+                // given
+                given(anjuRepository.findById(ANJU_ID)).willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> catalogQueryService.getPlaceKeyword(ANJU_ID))
+                        .isInstanceOf(AnjuNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("Anju가 존재하는 경우")
+        class WhenAnjuExists {
+
+            @Test
+            @DisplayName("이름과 다른 검색어를 정한 안주는 그 검색어를 반환한다")
+            void shouldReturnPlaceKeywordOfAnju() {
+                // given
+                given(anjuRepository.findById(ANJU_ID))
+                        .willReturn(
+                                Optional.of(
+                                        AnjuFixture.GOLBAENGI_MUCHIM.createWithIdAndPlaceKeyword(
+                                                ANJU_ID, "호프")));
+
+                // when
+                AnjuPlaceKeywordResult result = catalogQueryService.getPlaceKeyword(ANJU_ID);
+
+                // then
+                assertThat(result).isEqualTo(new AnjuPlaceKeywordResult("호프"));
+            }
+
+            @Test
+            @DisplayName("검색어를 따로 정하지 않은 안주는 이름을 검색어로 반환한다")
+            void shouldReturnNameAsPlaceKeywordWhenNotSpecified() {
+                // given
+                given(anjuRepository.findById(ANJU_ID))
+                        .willReturn(
+                                Optional.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
+
+                // when
+                AnjuPlaceKeywordResult result = catalogQueryService.getPlaceKeyword(ANJU_ID);
+
+                // then
+                assertThat(result)
+                        .isEqualTo(
+                                new AnjuPlaceKeywordResult(AnjuFixture.GOLBAENGI_MUCHIM.getName()));
+            }
         }
     }
 }
