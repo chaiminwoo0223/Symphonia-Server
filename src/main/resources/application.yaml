@@ -64,6 +64,13 @@ oauth:
       - https://accounts.google.com
       - accounts.google.com
 
+# 맛집 검색에 쓰는 NAVER API HUB의 지역 검색이다. 개발자센터에서 발급한 키는 쓸 수 없고, API HUB에서 발급한 Client ID와 Client Secret을 넣는다.
+naver:
+  local-search:
+    client-id: ${NAVER_LOCAL_SEARCH_CLIENT_ID}
+    client-secret: ${NAVER_LOCAL_SEARCH_CLIENT_SECRET}
+    uri: https://naverapihub.apigw.ntruss.com/search/v1/local
+
 # 카탈로그 적재(./gradlew importCatalog)가 읽는 원본.
 # BJCP는 저작권 때문에 커밋하지 않고 scripts/import/fetch-bjcp.sh로 받는다. X-Wines(CC0)는 레포에 커밋되어 있다.
 import:
