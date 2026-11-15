@@ -19,6 +19,10 @@ public class Anju {
     private AnjuSource source;
     private String externalId;
     private String name;
+
+    // 맛집을 찾을 때 지역명과 함께 쓰는 검색어다. 따로 정하지 않은 안주는 이름을 쓴다.
+    private String placeKeyword;
+
     private FlavorProfile flavorProfile;
     private Set<AllergyType> allergyTypes;
     private AnjuBase base;
@@ -34,6 +38,7 @@ public class Anju {
             AnjuSource source,
             String externalId,
             String name,
+            String placeKeyword,
             FlavorProfile flavorProfile,
             Set<AllergyType> allergyTypes,
             AnjuBase base,
@@ -43,6 +48,7 @@ public class Anju {
         this.source = source;
         this.externalId = externalId;
         this.name = name;
+        this.placeKeyword = placeKeyword == null || placeKeyword.isBlank() ? name : placeKeyword;
         this.flavorProfile = flavorProfile;
         this.allergyTypes = allergyTypes == null ? Set.of() : Set.copyOf(allergyTypes);
         this.base = base;
@@ -55,6 +61,7 @@ public class Anju {
             AnjuSource source,
             String externalId,
             String name,
+            String placeKeyword,
             FlavorProfile flavorProfile,
             Set<AllergyType> allergyTypes,
             AnjuBase base,
@@ -64,6 +71,7 @@ public class Anju {
                 .source(source)
                 .externalId(externalId)
                 .name(name)
+                .placeKeyword(placeKeyword)
                 .flavorProfile(flavorProfile)
                 .allergyTypes(allergyTypes)
                 .base(base)
@@ -75,6 +83,7 @@ public class Anju {
     // 다시 적재할 때 매핑표와 규칙표에서 바뀔 수 있는 값만 덮어쓴다. id와 식별 키(source, externalId)는 유지한다.
     public Anju overwriteWith(Anju imported) {
         this.name = imported.name;
+        this.placeKeyword = imported.placeKeyword;
         this.flavorProfile = imported.flavorProfile;
         this.allergyTypes = imported.allergyTypes;
         this.base = imported.base;

@@ -245,6 +245,25 @@ class AnjuRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
+        @DisplayName("맛집 검색어를 포함해 Anju를 반환한다")
+        void shouldReturnAnjuWithPlaceKeyword() {
+            // given
+            AnjuJpaEntity saved =
+                    anjuJpaRepository.save(
+                            AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()));
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            Optional<Anju> result = anjuRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getPlaceKeyword())
+                    .isEqualTo(AnjuFixture.GOLBAENGI_MUCHIM.getName());
+        }
+
+        @Test
         @DisplayName("flavorProfile의 acidity 값을 포함해 Anju를 반환한다")
         void shouldReturnAnjuWithAcidity() {
             // given

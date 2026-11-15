@@ -90,6 +90,38 @@ class ImportAnjuServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("매핑표에 맛집 검색어를 적은 안주는 그 검색어를 저장한다")
+            void shouldSavePlaceKeywordOfMappingTable() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
+                givenCuratedAnjus(
+                        List.of(fixture.createWithPlaceKeyword("닭요리")),
+                        List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getPlaceKeyword()).isEqualTo("닭요리");
+            }
+
+            @Test
+            @DisplayName("매핑표에 맛집 검색어를 적지 않은 안주는 이름을 검색어로 저장한다")
+            void shouldSaveNameAsPlaceKeywordWhenNotSpecified() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.DAKBAL_BOKKEUM;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getPlaceKeyword()).isEqualTo(fixture.getName());
+            }
+
+            @Test
             @DisplayName("부재료의 알레르기는 넣되, 매운 재료가 부재료에만 있으면 매운 안주로 보지 않는다")
             void shouldNotMarkSpicyWhenSpicyIngredientOnlyInSubIngredients() {
                 // given
@@ -231,6 +263,24 @@ class ImportAnjuServiceTest extends UnitTest {
                 assertThat(saved.getServing()).isEqualTo(fixture.getServing());
                 assertThat(saved.isSpicy()).isFalse();
                 assertThat(result.importedCount()).isEqualTo(1);
+            }
+
+            @Test
+            @DisplayName("매핑표에서 바뀐 맛집 검색어로 덮어쓴다")
+            void shouldOverwritePlaceKeywordOfExistingAnju() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.FRIED_CHICKEN;
+                givenCuratedAnjus(
+                        List.of(fixture.createWithPlaceKeyword("호프")),
+                        List.of(fixture.createNutrition()));
+                given(anjuRepository.findAll()).willReturn(List.of(fixture.createImportedAnju(2L)));
+                givenSaveReturnsArgument();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getPlaceKeyword()).isEqualTo("호프");
             }
         }
 

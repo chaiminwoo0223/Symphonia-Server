@@ -120,7 +120,22 @@ class CsvCuratedAnjuReaderTest {
                                     List.of("밀가루", "전분", "달걀"),
                                     AnjuBase.POULTRY,
                                     ServingStyle.MAIN,
-                                    true));
+                                    true,
+                                    ""));
+        }
+
+        @Test
+        @DisplayName("이름으로 맞는 가게를 찾지 못해 검색어를 적은 행은 그 검색어를 읽는다")
+        void shouldReadPlaceKeywordWhenCellFilled() {
+            // when
+            List<CuratedAnju> curatedAnjus = csvCuratedAnjuReader.read();
+
+            // then
+            assertThat(curatedAnjus)
+                    .filteredOn(curatedAnju -> curatedAnju.name().equals("멜론"))
+                    .singleElement()
+                    .extracting(CuratedAnju::placeKeyword)
+                    .isEqualTo("와인바");
         }
 
         @Test
