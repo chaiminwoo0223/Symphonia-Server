@@ -6,14 +6,14 @@ import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.application.usecase.SignupUseCase;
 import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
-import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.audit.AuditAction;
 import com.symphonia.common.audit.Audited;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.CreateMemberUseCase;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-@CommandService
+@Service
 @RequiredArgsConstructor
 public class SignupService implements SignupUseCase {
     private final VerifySocialTokenUseCase verifySocialTokenUseCase;
