@@ -4,10 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -39,15 +37,6 @@ import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
-import com.symphonia.notification.application.service.NotificationCommandService;
-import com.symphonia.notification.application.service.NotificationQueryService;
-import com.symphonia.notification.domain.entity.NotificationDelivery;
-import com.symphonia.notification.domain.entity.NotificationSchedule;
-import com.symphonia.notification.domain.repository.NotificationDeliveryRepository;
-import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
-import com.symphonia.notification.domain.vo.DeliveryStatus;
-import com.symphonia.notification.domain.vo.NotificationType;
-import com.symphonia.notification.fixture.NotificationDeliveryFixture;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,7 +47,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 
 @DisplayName("ShareCommandService 단위 테스트")
@@ -74,7 +62,6 @@ class ShareCommandServiceTest extends UnitTest {
     private static final Long OUTSIDER_ID = 99L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
-    private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
     private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
     private static final LocalDateTime OPENED_AT = NOW.minusHours(1);
@@ -85,10 +72,7 @@ class ShareCommandServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
-    @Mock private NotificationScheduleRepository notificationScheduleRepository;
-    @Mock private NotificationDeliveryRepository notificationDeliveryRepository;
 
-    // 시각은 NOW로 고정한다. 리마인드 시각을 따지는 테스트만 givenNow로 다른 시각을 고정한다.
     @BeforeEach
     void setUp() {
         givenNow(NOW);
@@ -481,47 +465,6 @@ class ShareCommandServiceTest extends UnitTest {
                 assertThat(result.confirmedAmount()).isEqualTo(3_333L);
                 assertThat(result.sentAmount()).isEqualTo(3_333L);
             }
-
-            @Test
-            @DisplayName("정산 메시지를 보내기 전이면 모임의 발송 예정 시각을 담아 반환한다")
-            void shouldReturnNotificationScheduledAtWhenSettlementNotNotified() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-                givenSchedule();
-
-                // when
-                SettlementResult result = shareCommandService.confirm(command(LEE_ID));
-
-                // then
-                assertThat(result.notificationScheduledAt()).isEqualTo(SCHEDULED_AT);
-            }
-
-            @Test
-            @DisplayName("정산 메시지를 보낸 정산 건이면 모임에 다른 예약이 있어도 발송 예정 시각을 비워 반환한다")
-            void shouldReturnNullNotificationScheduledAtWhenSettlementNotified() {
-                // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createNotified(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenSaveReturnsSettlement();
-                givenSchedule();
-
-                // when
-                SettlementResult result = shareCommandService.confirm(command(LEE_ID));
-
-                // then
-                assertThat(result.notified()).isTrue();
-                assertThat(result.notificationScheduledAt()).isNull();
-            }
         }
 
         private ConfirmShareCommand command(Long participantId) {
@@ -539,7 +482,7 @@ class ShareCommandServiceTest extends UnitTest {
         class WhenLinkTokenNotFound {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 읽지 않으며 리마인드를 남기지 않는다")
+            @DisplayName("예외를 던지고 정산 건을 읽지 않는다")
             void shouldThrowLinkTokenNotFoundException() {
                 // given
                 givenLinkTokenNotFound();
@@ -549,7 +492,6 @@ class ShareCommandServiceTest extends UnitTest {
                 assertThatThrownBy(() -> shareCommandService.revert(command))
                         .isInstanceOf(LinkTokenNotFoundException.class);
                 then(settlementRepository).shouldHaveNoInteractions();
-                then(notificationScheduleRepository).shouldHaveNoInteractions();
             }
         }
 
@@ -674,203 +616,6 @@ class ShareCommandServiceTest extends UnitTest {
             }
         }
 
-        @Nested
-        @DisplayName("정산 메시지를 보내기 전의 정산 건인 경우")
-        class WhenSettlementNotNotified {
-
-            @Test
-            @DisplayName("모임의 발송 예정 시각을 담아 반환한다")
-            void shouldReturnNotificationScheduledAt() {
-                // given
-                givenUnnotifiedSettlement();
-                givenSchedule();
-
-                // when
-                SettlementResult result = shareCommandService.revert(command());
-
-                // then
-                assertThat(result.notificationScheduledAt()).isEqualTo(SCHEDULED_AT);
-            }
-
-            @Test
-            @DisplayName("발송 예약을 잠그지 않고 리마인드를 저장하지 않는다")
-            void shouldNotScheduleReminder() {
-                // given
-                givenUnnotifiedSettlement();
-
-                // when
-                shareCommandService.revert(command());
-
-                // then
-                then(notificationScheduleRepository)
-                        .should(never())
-                        .findOrCreateForUpdate(anyLong());
-                then(notificationDeliveryRepository).shouldHaveNoInteractions();
-            }
-
-            private void givenUnnotifiedSettlement() {
-                givenParticipant(PAYER_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT));
-                givenSaveReturnsSettlement();
-            }
-        }
-
-        @Nested
-        @DisplayName("정산 메시지를 보낸 정산 건의 분담금을 되돌리는 경우")
-        class WhenSettlementNotified {
-
-            @Test
-            @DisplayName("모임에 다른 예약이 있어도 발송 예정 시각을 비워 반환한다")
-            void shouldReturnNullNotificationScheduledAt() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-                givenSchedule();
-
-                // when
-                SettlementResult result = shareCommandService.revert(command());
-
-                // then
-                assertThat(result.notified()).isTrue();
-                assertThat(result.notificationScheduledAt()).isNull();
-            }
-
-            @Test
-            @DisplayName("정산 건을 저장하기 전에 모임의 발송 예약을 잠그고, 되돌린 참여자에게 24시간 뒤 그 정산 건을 담은 리마인드를 저장한다")
-            void shouldLockScheduleAndSaveReminderBeforeSavingSettlement() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-
-                // when
-                shareCommandService.revert(command());
-
-                // then
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                InOrder inOrder =
-                        inOrder(
-                                notificationScheduleRepository,
-                                notificationDeliveryRepository,
-                                settlementRepository);
-                inOrder.verify(notificationScheduleRepository).findOrCreateForUpdate(GATHERING_ID);
-                inOrder.verify(notificationDeliveryRepository).saveAll(captor.capture());
-                inOrder.verify(settlementRepository).save(any(Settlement.class));
-                assertThat(captor.getValue())
-                        .extracting(
-                                NotificationDelivery::getGatheringId,
-                                NotificationDelivery::getParticipantId,
-                                NotificationDelivery::getType,
-                                NotificationDelivery::getSettlementIds,
-                                NotificationDelivery::getStatus,
-                                NotificationDelivery::getAvailableAt)
-                        .containsExactly(
-                                tuple(
-                                        GATHERING_ID,
-                                        LEE_ID,
-                                        NotificationType.REMINDER,
-                                        List.of(SETTLEMENT_ID),
-                                        DeliveryStatus.PENDING,
-                                        LocalDateTime.of(2026, 10, 30, 18, 0)));
-            }
-
-            @Test
-            @DisplayName("21:59:59에 되돌리면 다음 날 21:59:59에 보낼 리마인드를 저장한다")
-            void shouldSaveReminderNextDayWhenRevertedJustBeforeSendingEnd() {
-                // given
-                givenNotifiedSettlementRevertedAt(LocalDateTime.of(2026, 10, 29, 21, 59, 59));
-
-                // when
-                shareCommandService.revert(command());
-
-                // then
-                thenReminderSavedAt(LocalDateTime.of(2026, 10, 30, 21, 59, 59));
-            }
-
-            @Test
-            @DisplayName("22:00에 되돌리면 24시간 뒤가 보낼 수 없는 시간대라 그다음 10:00에 보낼 리마인드를 저장한다")
-            void shouldSaveReminderAtSendingStartWhenRevertedAtSendingEnd() {
-                // given
-                givenNotifiedSettlementRevertedAt(LocalDateTime.of(2026, 10, 29, 22, 0));
-
-                // when
-                shareCommandService.revert(command());
-
-                // then
-                thenReminderSavedAt(LocalDateTime.of(2026, 10, 31, 10, 0));
-            }
-
-            @Test
-            @DisplayName("되돌린 참여자의 보내기를 기다리는 리마인드가 새 리마인드 시각과 24시간에서 1초 모자란 차이면 리마인드를 저장하지 않는다")
-            void shouldNotSaveReminderWhenPendingReminderWithinGap() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-                givenPendingReminderOfLeeAt(LocalDateTime.of(2026, 10, 31, 17, 59, 59));
-
-                // when
-                shareCommandService.revert(command());
-
-                // then
-                then(notificationDeliveryRepository).should().saveAll(List.of());
-                then(settlementRepository).should().save(any(Settlement.class));
-            }
-
-            @Test
-            @DisplayName("되돌린 참여자의 보내기를 기다리는 리마인드가 새 리마인드 시각과 정확히 24시간 차이면 리마인드를 저장한다")
-            void shouldSaveReminderWhenPendingReminderAtGap() {
-                // given
-                givenNotifiedSettlementRevertedAt(NOW);
-                givenPendingReminderOfLeeAt(LocalDateTime.of(2026, 10, 31, 18, 0));
-
-                // when
-                shareCommandService.revert(command());
-
-                // then
-                thenReminderSavedAt(LocalDateTime.of(2026, 10, 30, 18, 0));
-            }
-
-            // 이의 분담금을 보냄으로 바꾼 뒤 정산 메시지를 보낸 정산 건이다.
-            private void givenNotifiedSettlementRevertedAt(LocalDateTime now) {
-                givenNow(now);
-                Settlement settlement =
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.SENT);
-                settlement.markNotified(SettlementFixture.DINNER.getRecordedAt().plusHours(1));
-                givenParticipant(PAYER_ID);
-                givenSettlement(settlement);
-                givenSaveReturnsSettlement();
-            }
-
-            private void givenPendingReminderOfLeeAt(LocalDateTime availableAt) {
-                given(notificationDeliveryRepository.findAllRemindersByGatheringId(GATHERING_ID))
-                        .willReturn(
-                                List.of(
-                                        NotificationDeliveryFixture.REMINDER_NOTICE
-                                                .builder(
-                                                        1L,
-                                                        GATHERING_ID,
-                                                        LEE_ID,
-                                                        List.of(SECOND_SETTLEMENT_ID))
-                                                .availableAt(availableAt)
-                                                .build()));
-            }
-
-            private void thenReminderSavedAt(LocalDateTime availableAt) {
-                ArgumentCaptor<List<NotificationDelivery>> captor = ArgumentCaptor.captor();
-                then(notificationDeliveryRepository).should().saveAll(captor.capture());
-                assertThat(captor.getValue())
-                        .extracting(NotificationDelivery::getAvailableAt)
-                        .containsExactly(availableAt);
-            }
-        }
-
         private RevertShareCommand command() {
             return RevertShareCommand.of(LINK_TOKEN, SETTLEMENT_ID, LEE_ID);
         }
@@ -905,16 +650,6 @@ class ShareCommandServiceTest extends UnitTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
     }
 
-    private void givenSchedule() {
-        given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
-                .willReturn(
-                        Optional.of(
-                                NotificationSchedule.builder()
-                                        .gatheringId(GATHERING_ID)
-                                        .scheduledAt(SCHEDULED_AT)
-                                        .build()));
-    }
-
     private void givenNow(LocalDateTime now) {
         Clock clock =
                 Clock.fixed(
@@ -925,11 +660,6 @@ class ShareCommandServiceTest extends UnitTest {
                         gatheringRepository,
                         participantBankAccountRepository,
                         settlementRepository,
-                        new NotificationQueryService(notificationScheduleRepository, clock),
-                        new NotificationCommandService(
-                                notificationScheduleRepository,
-                                notificationDeliveryRepository,
-                                clock),
                         clock);
     }
 

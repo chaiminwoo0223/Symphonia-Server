@@ -30,9 +30,6 @@ import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
-import com.symphonia.notification.application.service.NotificationQueryService;
-import com.symphonia.notification.domain.entity.NotificationSchedule;
-import com.symphonia.notification.domain.repository.NotificationScheduleRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -58,7 +55,6 @@ class SettlementQueryServiceTest extends UnitTest {
     private static final Long PARK_ID = 22L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
-    private static final LocalDateTime SCHEDULED_AT = LocalDateTime.of(2026, 10, 28, 20, 30);
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
     private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
 
@@ -73,7 +69,6 @@ class SettlementQueryServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
-    @Mock private NotificationScheduleRepository notificationScheduleRepository;
 
     @BeforeEach
     void setUp() {
@@ -86,7 +81,6 @@ class SettlementQueryServiceTest extends UnitTest {
                         gatheringRepository,
                         participantBankAccountRepository,
                         settlementRepository,
-                        new NotificationQueryService(notificationScheduleRepository, clock),
                         clock);
     }
 
@@ -230,71 +224,6 @@ class SettlementQueryServiceTest extends UnitTest {
 
                 // then
                 assertThat(result.recordable()).isFalse();
-            }
-        }
-
-        @Nested
-        @DisplayName("모임에 발송 예약이 있는 경우")
-        class WhenScheduleExists {
-
-            @Test
-            @DisplayName("정산 메시지를 보내기 전인 정산 건에는 발송 예정 시각을 담고, 보낸 정산 건에는 비워 반환한다")
-            void shouldReturnNotificationScheduledAtOnlyForUnnotifiedSettlements() {
-                // given
-                Settlement unnotified =
-                        SettlementFixture.SECOND_ROUND.createWithId(
-                                SECOND_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                Settlement notified =
-                        SettlementFixture.DINNER.createNotified(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, unnotified, true, List.of(notified, unnotified));
-                given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
-                        .willReturn(
-                                Optional.of(
-                                        NotificationSchedule.builder()
-                                                .gatheringId(GATHERING_ID)
-                                                .scheduledAt(SCHEDULED_AT)
-                                                .build()));
-
-                // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
-
-                // then
-                assertThat(result.settlements())
-                        .extracting(
-                                SettlementResult::id,
-                                SettlementResult::notified,
-                                SettlementResult::notificationScheduledAt)
-                        .containsExactly(
-                                tuple(SETTLEMENT_ID, true, null),
-                                tuple(SECOND_SETTLEMENT_ID, false, SCHEDULED_AT));
-            }
-        }
-
-        @Nested
-        @DisplayName("모임에 발송 예약이 없는 경우")
-        class WhenScheduleNotFound {
-
-            @Test
-            @DisplayName("정산 메시지를 보내기 전인 정산 건도 발송 예정 시각을 비워 반환한다")
-            void shouldReturnNullNotificationScheduledAt() {
-                // given
-                Settlement settlement =
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
-                given(notificationScheduleRepository.findByGatheringId(GATHERING_ID))
-                        .willReturn(Optional.empty());
-
-                // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
-
-                // then
-                assertThat(result.settlements())
-                        .extracting(
-                                SettlementResult::notified,
-                                SettlementResult::notificationScheduledAt)
-                        .containsExactly(tuple(false, null));
             }
         }
 

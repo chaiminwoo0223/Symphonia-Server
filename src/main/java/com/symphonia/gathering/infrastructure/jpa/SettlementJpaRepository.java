@@ -47,18 +47,6 @@ public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEnti
             @Param("participantId") Long participantId,
             @Param("payerParticipantId") Long payerParticipantId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
-            SELECT settlement FROM SettlementJpaEntity settlement
-            WHERE settlement.gatheringId = :gatheringId
-              AND settlement.notifiedAt IS NULL
-              AND settlement.cancelledAt IS NULL
-            ORDER BY settlement.id
-            """)
-    List<SettlementJpaEntity> findAllUnnotifiedByGatheringIdForUpdate(
-            @Param("gatheringId") Long gatheringId);
-
     List<SettlementJpaEntity> findAllByGatheringIdOrderById(Long gatheringId);
 
     List<SettlementJpaEntity> findAllByGatheringIdInOrderById(Collection<Long> gatheringIds);

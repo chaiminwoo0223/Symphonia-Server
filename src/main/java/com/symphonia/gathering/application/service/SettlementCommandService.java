@@ -18,20 +18,11 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.SplitMethod;
-import com.symphonia.notification.application.dto.command.AnnounceCancellationCommand;
-import com.symphonia.notification.application.dto.command.RescheduleNotificationCommand;
-import com.symphonia.notification.application.dto.result.NotificationScheduleResult;
-import com.symphonia.notification.application.usecase.AnnounceCancellationUseCase;
-import com.symphonia.notification.application.usecase.RescheduleNotificationUseCase;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
 // 정산 건은 결제자가 개인 링크 토큰으로 기록하고 수정하고 취소한다. 요청한 참여자가 곧 결제자다.
-// 기록과 수정은 정산 건을 바꾸기 전에 notification의 발송 예약을 먼저 잠근다.
-// 발송도 예약을 잠근 뒤 정산 건을 잠그므로, 같은 순서로 잠가 교착 상태가 생기지 않는다.
-// notification의 UseCase 둘은 정산 건 변경이 발송에 미치는 영향이라는 한 관심사라 같은 Service가 부른다(#159, #168).
 @CommandService
 @RequiredArgsConstructor
 public class SettlementCommandService
@@ -40,8 +31,6 @@ public class SettlementCommandService
     private final GatheringRepository gatheringRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
-    private final RescheduleNotificationUseCase rescheduleNotificationUseCase;
-    private final AnnounceCancellationUseCase announceCancellationUseCase;
     private final Clock clock;
 
     @Override
@@ -64,14 +53,10 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
-        NotificationScheduleResult schedule =
-                rescheduleNotificationUseCase.reschedule(
-                        RescheduleNotificationCommand.of(gathering.getId(), now));
-
         Settlement settlement = Settlement.record(gathering.getId(), splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.of(savedSettlement, schedule.scheduledAt());
+        return SettlementResult.of(savedSettlement);
     }
 
     @Override
@@ -94,14 +79,10 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
-        NotificationScheduleResult schedule =
-                rescheduleNotificationUseCase.reschedule(
-                        RescheduleNotificationCommand.of(gathering.getId(), now));
-
         settlement.update(splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.of(savedSettlement, schedule.scheduledAt());
+        return SettlementResult.of(savedSettlement);
     }
 
     @Override
@@ -113,10 +94,6 @@ public class SettlementCommandService
         LocalDateTime now = LocalDateTime.now(clock);
         settlement.cancel(now);
         settlementRepository.save(settlement);
-
-        Optional.of(settlement)
-                .filter(Settlement::isNotified)
-                .ifPresent(this::announceCancellation);
     }
 
     private Long findParticipantId(String linkToken) {
@@ -127,10 +104,5 @@ public class SettlementCommandService
         return settlementRepository
                 .findById(settlementId)
                 .orElseThrow(SettlementNotFoundException::new);
-    }
-
-    private void announceCancellation(Settlement settlement) {
-        announceCancellationUseCase.announceCancellation(
-                AnnounceCancellationCommand.of(settlement.getGatheringId(), settlement.getId()));
     }
 }

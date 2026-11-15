@@ -50,12 +50,6 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     }
 
     @Override
-    public List<Settlement> findAllUnnotifiedByGatheringIdForUpdate(Long gatheringId) {
-        return toDomains(
-                settlementJpaRepository.findAllUnnotifiedByGatheringIdForUpdate(gatheringId));
-    }
-
-    @Override
     public Optional<Settlement> findLatestByGatheringId(Long gatheringId) {
         return settlementJpaRepository
                 .findFirstByGatheringIdAndCancelledAtIsNullOrderByIdDesc(gatheringId)
