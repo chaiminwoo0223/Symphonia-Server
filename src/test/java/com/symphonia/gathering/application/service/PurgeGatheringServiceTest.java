@@ -309,7 +309,7 @@ class PurgeGatheringServiceTest extends UnitTest {
     class Purge {
 
         @Test
-        @DisplayName("발송 예약과 발송 기록을 먼저 지우고, 참조하는 쪽 순서로 모임의 행을 테이블마다 한 번씩 지운다")
+        @DisplayName("참조하는 쪽 순서로 모임의 행을 테이블마다 한 번씩 지운다")
         void shouldDeleteRowsInForeignKeyOrder() {
             // given
             givenNow(MAX_DELETES_AT);

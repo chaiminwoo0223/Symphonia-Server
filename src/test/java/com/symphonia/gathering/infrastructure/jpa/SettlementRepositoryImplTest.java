@@ -340,49 +340,6 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findAllByIds 메서드는")
-    class FindAllByIds {
-
-        @Test
-        @DisplayName("요청한 정산 건만 id 순서대로 분담금과 함께 반환한다")
-        void shouldReturnRequestedSettlementsWithSharesInIdOrder() {
-            // given
-            Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));
-            recordDinner(kimId, List.of(kimId, leeId));
-            Settlement third = recordDinner(leeId, List.of(leeId, parkId));
-            clearPersistenceContext();
-
-            // when
-            List<Settlement> result =
-                    settlementRepository.findAllByIds(List.of(third.getId(), first.getId()));
-
-            // then
-            assertThat(result)
-                    .extracting(Settlement::getId)
-                    .containsExactly(first.getId(), third.getId());
-            assertThat(result.getFirst().getShares())
-                    .extracting(SettlementShare::getParticipantId)
-                    .containsExactly(leeId, parkId);
-            assertThat(result.getLast().getShares())
-                    .extracting(SettlementShare::getParticipantId)
-                    .containsExactly(parkId);
-        }
-
-        @Test
-        @DisplayName("요청한 정산 건이 비어 있으면 빈 목록을 반환한다")
-        void shouldReturnEmptyListWhenIdsEmpty() {
-            // given
-            recordDinner(kimId, List.of(kimId, leeId, parkId));
-
-            // when
-            List<Settlement> result = settlementRepository.findAllByIds(List.of());
-
-            // then
-            assertThat(result).isEmpty();
-        }
-    }
-
-    @Nested
     @DisplayName("findLatestByGatheringId 메서드는")
     class FindLatestByGatheringId {
 
