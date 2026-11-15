@@ -27,10 +27,13 @@ public record NaverLocalSearchResponse(List<Item> items) {
         // mapx는 경도, mapy는 위도에 10의 7제곱을 곱한 정수 문자열이다.
         private static final int COORDINATE_SCALE = 7;
 
-        // 이름이 없거나 좌표를 숫자로 읽을 수 없는 가게는 지도에 찍어 보여 줄 수 없으므로 뺀다.
+        // 태그를 지운 뒤에도 이름이 남지 않거나 좌표를 숫자로 읽을 수 없는 가게는 뺀다.
         // 이런 가게 하나 때문에 조회 전체가 실패하지 않게 한다.
         public boolean isShowable() {
-            return StringUtils.hasText(title) && isNumber(mapx) && isNumber(mapy);
+            return title != null
+                    && StringUtils.hasText(plainText(title))
+                    && isNumber(mapx)
+                    && isNumber(mapy);
         }
 
         public Place toPlace() {
