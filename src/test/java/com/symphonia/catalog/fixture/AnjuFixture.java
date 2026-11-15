@@ -315,6 +315,11 @@ public enum AnjuFixture {
         return build(id, AnjuSource.SEED, getExternalId(), profile);
     }
 
+    // 이름과 다른 맛집 검색어를 가진 안주를 만든다.
+    public Anju createWithIdAndPlaceKeyword(Long id, String placeKeyword) {
+        return build(id, AnjuSource.SEED, getExternalId(), flavorProfile, placeKeyword);
+    }
+
     public Anju createWithIdentity(AnjuSource source, String externalId) {
         return build(null, source, externalId);
     }
@@ -324,11 +329,21 @@ public enum AnjuFixture {
     }
 
     private Anju build(Long id, AnjuSource source, String externalId, FlavorProfile profile) {
+        return build(id, source, externalId, profile, null);
+    }
+
+    private Anju build(
+            Long id,
+            AnjuSource source,
+            String externalId,
+            FlavorProfile profile,
+            String placeKeyword) {
         return Anju.builder()
                 .id(id)
                 .source(source)
                 .externalId(externalId)
                 .name(name)
+                .placeKeyword(placeKeyword)
                 .flavorProfile(profile)
                 .allergyTypes(allergyTypes)
                 .base(base)

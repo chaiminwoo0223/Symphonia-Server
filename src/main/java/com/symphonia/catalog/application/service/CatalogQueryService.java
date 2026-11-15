@@ -3,8 +3,10 @@ package com.symphonia.catalog.application.service;
 import com.symphonia.catalog.application.cache.CatalogCache;
 import com.symphonia.catalog.application.dto.query.CatalogQuery;
 import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.result.AnjuPlaceKeywordResult;
 import com.symphonia.catalog.application.dto.result.CatalogReferencesResult;
 import com.symphonia.catalog.application.dto.result.CatalogResult;
+import com.symphonia.catalog.application.usecase.GetAnjuPlaceKeywordUseCase;
 import com.symphonia.catalog.application.usecase.GetCatalogReferencesUseCase;
 import com.symphonia.catalog.application.usecase.GetCatalogUseCase;
 import com.symphonia.catalog.application.usecase.RefreshCatalogCacheUseCase;
@@ -21,7 +23,10 @@ import lombok.RequiredArgsConstructor;
 @QueryService
 @RequiredArgsConstructor
 public class CatalogQueryService
-        implements GetCatalogUseCase, VerifyCatalogReferencesUseCase, GetCatalogReferencesUseCase {
+        implements GetCatalogUseCase,
+                VerifyCatalogReferencesUseCase,
+                GetCatalogReferencesUseCase,
+                GetAnjuPlaceKeywordUseCase {
     private final DrinkRepository drinkRepository;
     private final AnjuRepository anjuRepository;
     private final CatalogCache catalogCache;
@@ -46,6 +51,11 @@ public class CatalogQueryService
     @Override
     public CatalogReferencesResult getReferences(CatalogReferencesQuery query) {
         return CatalogReferencesResult.of(findDrink(query.drinkId()), findAnju(query.anjuId()));
+    }
+
+    @Override
+    public AnjuPlaceKeywordResult getPlaceKeyword(Long anjuId) {
+        return AnjuPlaceKeywordResult.from(findAnju(anjuId));
     }
 
     private Drink findDrink(Long drinkId) {
