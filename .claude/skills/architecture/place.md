@@ -24,9 +24,10 @@
 - NAVER API HUB의 지역 검색을 쓴다. 개발자센터의 검색 API는 쓰지 않는다.
 - 키는 `NAVER_LOCAL_SEARCH_CLIENT_ID`와 `NAVER_LOCAL_SEARCH_CLIENT_SECRET`으로 주입한다.
 - 한 번에 5건을 정확도순(`sort=random`)으로 받는다. 리뷰순(`comment`)은 쓰지 않는다.
-- 좌표는 도에 10의 7제곱을 곱한 정수 문자열이라 도 단위로 바꾼다. 좌표가 없는 가게는 뺀다.
+- 좌표는 도에 10의 7제곱을 곱한 정수 문자열이라 도 단위로 바꾼다. 이름이 없거나 좌표를 숫자로 읽을 수 없는 가게는 뺀다.
 - 이름의 HTML 태그와 엔티티는 풀어서 담는다.
 - 429는 `PlaceSearchLimitExceededException`, 그 밖의 호출 실패는 `PlaceSearchUnavailableException`으로 바꾼다. 둘 다 503이고 코드는 `PLACE_SEARCH_LIMIT_EXCEEDED`, `PLACE_SEARCH_UNAVAILABLE`이다.
+- 호출은 `global.config.RestClientConfig`의 공유 `RestClient`로 한다. 호출 실패 로그에는 상태 코드나 예외 종류만 남기고, 지역명이 들어갈 수 있는 예외 메시지는 남기지 않는다.
 
 ## 저장과 캐시
 
