@@ -92,80 +92,93 @@ class PlaceControllerTest extends IntegrationTest {
                             jsonPath("$.data.code").value(CatalogErrorCode.ANJU_NOT_FOUND.name()));
         }
 
-        @Test
-        @DisplayName("지역명이 없으면 400을 반환한다")
-        void shouldReturnBadRequestWhenRegionMissing() throws Exception {
-            // when & then
-            mockMvc.perform(get(RECOMMEND_PATH).param("anjuId", "1"))
-                    .andExpect(status().isBadRequest());
+        @Nested
+        @DisplayName("요청 파라미터가 잘못된 경우")
+        class WhenRequestInvalid {
+
+            @Test
+            @DisplayName("지역명이 없으면 400을 반환한다")
+            void shouldReturnBadRequestWhenRegionMissing() throws Exception {
+                // when & then
+                mockMvc.perform(get(RECOMMEND_PATH).param("anjuId", "1"))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("지역명에 한글, 숫자, 공백 외의 문자가 있으면 400을 반환한다")
+            void shouldReturnBadRequestWhenRegionHasInvalidCharacters() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                get(RECOMMEND_PATH)
+                                        .param("region", "강남구<script>")
+                                        .param("anjuId", "1"))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.name()));
+            }
+
+            @Test
+            @DisplayName("지역명이 30자를 넘으면 400을 반환한다")
+            void shouldReturnBadRequestWhenRegionTooLong() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                get(RECOMMEND_PATH)
+                                        .param("region", "가".repeat(31))
+                                        .param("anjuId", "1"))
+                        .andExpect(status().isBadRequest());
+            }
+
+            @Test
+            @DisplayName("안주 ID가 없으면 400을 반환한다")
+            void shouldReturnBadRequestWhenAnjuIdMissing() throws Exception {
+                // when & then
+                mockMvc.perform(get(RECOMMEND_PATH).param("region", REGION))
+                        .andExpect(status().isBadRequest());
+            }
         }
 
-        @Test
-        @DisplayName("지역명에 한글, 숫자, 공백 외의 문자가 있으면 400을 반환한다")
-        void shouldReturnBadRequestWhenRegionHasInvalidCharacters() throws Exception {
-            // when & then
-            mockMvc.perform(get(RECOMMEND_PATH).param("region", "강남구<script>").param("anjuId", "1"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(
-                            jsonPath("$.data.code")
-                                    .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.name()));
-        }
+        @Nested
+        @DisplayName("외부 검색이 실패한 경우")
+        class WhenSearchFails {
 
-        @Test
-        @DisplayName("지역명이 30자를 넘으면 400을 반환한다")
-        void shouldReturnBadRequestWhenRegionTooLong() throws Exception {
-            // when & then
-            mockMvc.perform(
-                            get(RECOMMEND_PATH)
-                                    .param("region", "가".repeat(31))
-                                    .param("anjuId", "1"))
-                    .andExpect(status().isBadRequest());
-        }
+            @Test
+            @DisplayName("외부 검색의 호출 한도를 넘으면 503과 한도 초과 코드를 반환한다")
+            void shouldReturnServiceUnavailableWhenLimitExceeded() throws Exception {
+                // given
+                Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+                given(placeSearchClient.search(searchQueryOf(anju)))
+                        .willThrow(new PlaceSearchLimitExceededException());
 
-        @Test
-        @DisplayName("안주 ID가 없으면 400을 반환한다")
-        void shouldReturnBadRequestWhenAnjuIdMissing() throws Exception {
-            // when & then
-            mockMvc.perform(get(RECOMMEND_PATH).param("region", REGION))
-                    .andExpect(status().isBadRequest());
-        }
+                // when & then
+                mockMvc.perform(
+                                get(RECOMMEND_PATH)
+                                        .param("region", REGION)
+                                        .param("anjuId", anju.getId().toString()))
+                        .andExpect(status().isServiceUnavailable())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(PlaceErrorCode.PLACE_SEARCH_LIMIT_EXCEEDED.name()));
+            }
 
-        @Test
-        @DisplayName("외부 검색의 호출 한도를 넘으면 503과 한도 초과 코드를 반환한다")
-        void shouldReturnServiceUnavailableWhenLimitExceeded() throws Exception {
-            // given
-            Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            given(placeSearchClient.search(searchQueryOf(anju)))
-                    .willThrow(new PlaceSearchLimitExceededException());
+            @Test
+            @DisplayName("외부 검색을 쓸 수 없으면 503과 검색 불가 코드를 반환한다")
+            void shouldReturnServiceUnavailableWhenSearchUnavailable() throws Exception {
+                // given
+                Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+                given(placeSearchClient.search(searchQueryOf(anju)))
+                        .willThrow(new PlaceSearchUnavailableException());
 
-            // when & then
-            mockMvc.perform(
-                            get(RECOMMEND_PATH)
-                                    .param("region", REGION)
-                                    .param("anjuId", anju.getId().toString()))
-                    .andExpect(status().isServiceUnavailable())
-                    .andExpect(
-                            jsonPath("$.data.code")
-                                    .value(PlaceErrorCode.PLACE_SEARCH_LIMIT_EXCEEDED.name()));
-        }
-
-        @Test
-        @DisplayName("외부 검색을 쓸 수 없으면 503과 검색 불가 코드를 반환한다")
-        void shouldReturnServiceUnavailableWhenSearchUnavailable() throws Exception {
-            // given
-            Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
-            given(placeSearchClient.search(searchQueryOf(anju)))
-                    .willThrow(new PlaceSearchUnavailableException());
-
-            // when & then
-            mockMvc.perform(
-                            get(RECOMMEND_PATH)
-                                    .param("region", REGION)
-                                    .param("anjuId", anju.getId().toString()))
-                    .andExpect(status().isServiceUnavailable())
-                    .andExpect(
-                            jsonPath("$.data.code")
-                                    .value(PlaceErrorCode.PLACE_SEARCH_UNAVAILABLE.name()));
+                // when & then
+                mockMvc.perform(
+                                get(RECOMMEND_PATH)
+                                        .param("region", REGION)
+                                        .param("anjuId", anju.getId().toString()))
+                        .andExpect(status().isServiceUnavailable())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(PlaceErrorCode.PLACE_SEARCH_UNAVAILABLE.name()));
+            }
         }
 
         private PlaceSearchQuery searchQueryOf(Anju anju) {
