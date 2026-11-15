@@ -161,6 +161,69 @@ class NaverPlaceSearchClientTest extends UnitTest {
                 // then
                 assertThat(places).extracting(Place::name).containsExactly("좌표 있는 호프");
             }
+
+            @Test
+            @DisplayName("이름이 없거나 좌표가 숫자가 아닌 가게는 뺀다")
+            void shouldExcludePlaceWithBlankTitleOrNonNumericCoordinates() {
+                // given
+                String items =
+                        """
+                        [
+                          {"title":"","link":"","category":"술집>맥주,호프",
+                           "address":"a","roadAddress":"b","mapx":"1270278735","mapy":"375034081"},
+                          {"title":"좌표가 이상한 호프","link":"","category":"술집>맥주,호프",
+                           "address":"a","roadAddress":"b","mapx":"abc","mapy":"375034081"},
+                          {"title":"정상 호프","link":"","category":"술집>맥주,호프",
+                           "address":"a","roadAddress":"b","mapx":"1270278735","mapy":"375034081"}
+                        ]
+                        """;
+                mockServer
+                        .expect(method(HttpMethod.GET))
+                        .andRespond(withSuccess(body(items), MediaType.APPLICATION_JSON));
+
+                // when
+                List<Place> places = naverPlaceSearchClient.search(QUERY);
+
+                // then
+                assertThat(places).extracting(Place::name).containsExactly("정상 호프");
+            }
+
+            @Test
+            @DisplayName("태그를 먼저 지운 뒤 엔티티를 풀어 이름의 부등호가 태그로 지워지지 않는다")
+            void shouldUnescapeEntitiesAfterRemovingTags() {
+                // given
+                String items =
+                        """
+                        [
+                          {"title":"<b>호프</b> &lt;본점&gt;","link":"","category":"술집>맥주,호프",
+                           "address":"a","roadAddress":"b","mapx":"1270278735","mapy":"375034081"}
+                        ]
+                        """;
+                mockServer
+                        .expect(method(HttpMethod.GET))
+                        .andRespond(withSuccess(body(items), MediaType.APPLICATION_JSON));
+
+                // when
+                List<Place> places = naverPlaceSearchClient.search(QUERY);
+
+                // then
+                assertThat(places).extracting(Place::name).containsExactly("호프 <본점>");
+            }
+
+            @Test
+            @DisplayName("응답에 items가 없으면 빈 목록을 반환한다")
+            void shouldReturnEmptyPlacesWhenItemsMissing() {
+                // given
+                mockServer
+                        .expect(method(HttpMethod.GET))
+                        .andRespond(withSuccess("{\"total\":0}", MediaType.APPLICATION_JSON));
+
+                // when
+                List<Place> places = naverPlaceSearchClient.search(QUERY);
+
+                // then
+                assertThat(places).isEmpty();
+            }
         }
 
         @Nested
