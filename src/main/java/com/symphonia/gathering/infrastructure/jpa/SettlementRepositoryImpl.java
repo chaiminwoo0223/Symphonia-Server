@@ -45,11 +45,6 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     }
 
     @Override
-    public List<Settlement> findAllByIds(Collection<Long> settlementIds) {
-        return toDomains(settlementJpaRepository.findAllByIdInOrderById(settlementIds));
-    }
-
-    @Override
     public Optional<Settlement> findLatestByGatheringId(Long gatheringId) {
         return settlementJpaRepository
                 .findFirstByGatheringIdAndCancelledAtIsNullOrderByIdDesc(gatheringId)

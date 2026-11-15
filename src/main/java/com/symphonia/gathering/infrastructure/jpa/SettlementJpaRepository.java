@@ -11,7 +11,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEntity, Long> {
-    List<SettlementJpaEntity> findAllByIdInOrderById(Collection<Long> ids);
 
     Optional<SettlementJpaEntity> findFirstByGatheringIdAndCancelledAtIsNullOrderByIdDesc(
             Long gatheringId);

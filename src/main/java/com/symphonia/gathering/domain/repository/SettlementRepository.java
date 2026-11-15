@@ -10,9 +10,6 @@ public interface SettlementRepository {
 
     Optional<Settlement> findById(Long settlementId);
 
-    // 발송 기록이 담은 정산 건을 한 번에 읽는다. 보내기 직전에 분담금 상태를 다시 확인하는 데 쓴다.
-    List<Settlement> findAllByIds(Collection<Long> settlementIds);
-
     // 취소한 정산 건은 빼고 가장 나중에 만든 정산 건을 찾는다. 다음 정산 건의 인원 기본값으로 쓴다.
     Optional<Settlement> findLatestByGatheringId(Long gatheringId);
 

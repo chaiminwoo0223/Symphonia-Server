@@ -32,7 +32,7 @@ public interface SettlementApi {
             @Valid @RequestBody RecordSettlementRequest request);
 
     @PutMapping(SettlementEndpoints.UPDATE)
-    @Operation(summary = "정산 건 수정", description = "정산 메시지를 보내기 전의 정산 건을 수정합니다.")
+    @Operation(summary = "정산 건 수정", description = "돈을 보낸 참여자가 없는 정산 건을 수정합니다.")
     ResponseEntity<StandardResponse<SettlementResponse>> update(
             @PathVariable Long settlementId,
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken,
