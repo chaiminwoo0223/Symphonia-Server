@@ -1,7 +1,6 @@
 package com.symphonia.place.application.service;
 
 import com.symphonia.catalog.application.usecase.GetAnjuPlaceKeywordUseCase;
-import com.symphonia.common.annotation.QueryService;
 import com.symphonia.place.application.dto.query.RecommendPlacesQuery;
 import com.symphonia.place.application.dto.result.PlaceResult;
 import com.symphonia.place.application.usecase.RecommendPlacesUseCase;
@@ -9,10 +8,11 @@ import com.symphonia.place.domain.client.PlaceSearchClient;
 import com.symphonia.place.domain.vo.PlaceSearchQuery;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-@QueryService
+@Service
 @RequiredArgsConstructor
-public class PlaceQueryService implements RecommendPlacesUseCase {
+public class RecommendPlacesService implements RecommendPlacesUseCase {
     private final GetAnjuPlaceKeywordUseCase getAnjuPlaceKeywordUseCase;
     private final PlaceSearchClient placeSearchClient;
 

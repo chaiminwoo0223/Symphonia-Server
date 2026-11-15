@@ -22,15 +22,15 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
-@DisplayName("PlaceQueryService 단위 테스트")
-class PlaceQueryServiceTest extends UnitTest {
+@DisplayName("RecommendPlacesService 단위 테스트")
+class RecommendPlacesServiceTest extends UnitTest {
 
     private static final String REGION = "강남구";
     private static final Long ANJU_ID = 7L;
     private static final String PLACE_KEYWORD = "호프";
     private static final PlaceSearchQuery SEARCH_QUERY = PlaceSearchQuery.of(REGION, PLACE_KEYWORD);
 
-    @InjectMocks private PlaceQueryService placeQueryService;
+    @InjectMocks private RecommendPlacesService recommendPlacesService;
 
     @Mock private GetAnjuPlaceKeywordUseCase getAnjuPlaceKeywordUseCase;
     @Mock private PlaceSearchClient placeSearchClient;
@@ -55,7 +55,7 @@ class PlaceQueryServiceTest extends UnitTest {
                                         PlaceFixture.GANGNAM_HOF.create()));
 
                 // when
-                List<PlaceResult> results = placeQueryService.recommend(query());
+                List<PlaceResult> results = recommendPlacesService.recommend(query());
 
                 // then
                 assertThat(results)
@@ -78,7 +78,7 @@ class PlaceQueryServiceTest extends UnitTest {
                 given(placeSearchClient.search(normalized)).willReturn(List.of());
 
                 // when
-                placeQueryService.recommend(RecommendPlacesQuery.of("  강남구   역삼동 ", ANJU_ID));
+                recommendPlacesService.recommend(RecommendPlacesQuery.of("  강남구   역삼동 ", ANJU_ID));
 
                 // then
                 then(placeSearchClient).should().search(normalized);
@@ -97,7 +97,7 @@ class PlaceQueryServiceTest extends UnitTest {
                 given(placeSearchClient.search(SEARCH_QUERY)).willReturn(List.of());
 
                 // when
-                List<PlaceResult> results = placeQueryService.recommend(query());
+                List<PlaceResult> results = recommendPlacesService.recommend(query());
 
                 // then
                 assertThat(results).isEmpty();
@@ -117,7 +117,7 @@ class PlaceQueryServiceTest extends UnitTest {
                         .willThrow(new PlaceSearchLimitExceededException());
 
                 // when & then
-                assertThatThrownBy(() -> placeQueryService.recommend(query()))
+                assertThatThrownBy(() -> recommendPlacesService.recommend(query()))
                         .isInstanceOf(PlaceSearchLimitExceededException.class);
             }
         }
@@ -134,7 +134,7 @@ class PlaceQueryServiceTest extends UnitTest {
                         .willThrow(new AnjuNotFoundException());
 
                 // when & then
-                assertThatThrownBy(() -> placeQueryService.recommend(query()))
+                assertThatThrownBy(() -> recommendPlacesService.recommend(query()))
                         .isInstanceOf(AnjuNotFoundException.class);
                 then(placeSearchClient).shouldHaveNoInteractions();
             }
