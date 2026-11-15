@@ -8,6 +8,7 @@ import com.symphonia.place.domain.vo.PlaceSearchQuery;
 import com.symphonia.place.infrastructure.naver.client.response.NaverLocalSearchResponse;
 import com.symphonia.place.infrastructure.naver.config.properties.NaverLocalSearchProperties;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -35,23 +36,37 @@ public class NaverPlaceSearchClient implements PlaceSearchClient {
     @Override
     public List<Place> search(PlaceSearchQuery query) {
         try {
-            return restClient
-                    .get()
-                    .uri(properties.uri() + SEARCH_PARAMETERS, query.text(), DISPLAY, SORT)
-                    .header(CLIENT_ID_HEADER, properties.clientId())
-                    .header(CLIENT_SECRET_HEADER, properties.clientSecret())
-                    .retrieve()
-                    .onStatus(
-                            status -> status.isSameCodeAs(HttpStatus.TOO_MANY_REQUESTS),
-                            (_, _) -> {
-                                throw new PlaceSearchLimitExceededException();
-                            })
-                    .requiredBody(NaverLocalSearchResponse.class)
-                    .toPlaces();
+            // 본문 없는 200이나 204는 예외 없이 null로 읽히므로 검색 불가로 바꾼다.
+            return Optional.ofNullable(
+                            restClient
+                                    .get()
+                                    .uri(
+                                            properties.uri() + SEARCH_PARAMETERS,
+                                            query.text(),
+                                            DISPLAY,
+                                            SORT)
+                                    .header(CLIENT_ID_HEADER, properties.clientId())
+                                    .header(CLIENT_SECRET_HEADER, properties.clientSecret())
+                                    .retrieve()
+                                    .onStatus(
+                                            status ->
+                                                    status.isSameCodeAs(
+                                                            HttpStatus.TOO_MANY_REQUESTS),
+                                            (_, _) -> {
+                                                throw new PlaceSearchLimitExceededException();
+                                            })
+                                    .body(NaverLocalSearchResponse.class))
+                    .map(NaverLocalSearchResponse::toPlaces)
+                    .orElseThrow(this::emptyBody);
         } catch (RestClientException e) {
             log.warn("맛집 검색 호출에 실패했습니다. 원인: {}", causeOf(e));
             throw new PlaceSearchUnavailableException();
         }
+    }
+
+    private PlaceSearchUnavailableException emptyBody() {
+        log.warn("맛집 검색 응답 본문이 비어 있습니다.");
+        return new PlaceSearchUnavailableException();
     }
 
     // 예외 메시지에는 요청 주소와 함께 지역명이 들어갈 수 있어 남기지 않는다.

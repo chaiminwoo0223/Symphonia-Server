@@ -269,6 +269,17 @@ class NaverPlaceSearchClientTest extends UnitTest {
                 assertThatThrownBy(() -> naverPlaceSearchClient.search(QUERY))
                         .isInstanceOf(PlaceSearchUnavailableException.class);
             }
+
+            @Test
+            @DisplayName("응답 본문이 비어 있으면 PlaceSearchUnavailableException을 던진다")
+            void shouldThrowPlaceSearchUnavailableExceptionWhenBodyEmpty() {
+                // given
+                mockServer.expect(method(HttpMethod.GET)).andRespond(withSuccess());
+
+                // when & then
+                assertThatThrownBy(() -> naverPlaceSearchClient.search(QUERY))
+                        .isInstanceOf(PlaceSearchUnavailableException.class);
+            }
         }
     }
 
