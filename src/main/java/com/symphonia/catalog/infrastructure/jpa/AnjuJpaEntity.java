@@ -43,6 +43,9 @@ public class AnjuJpaEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(nullable = false)
+    private String placeKeyword;
+
     @Embedded private FlavorProfileEmbeddable flavorProfile;
 
     @ElementCollection
@@ -68,6 +71,7 @@ public class AnjuJpaEntity {
                 .source(anju.getSource())
                 .externalId(anju.getExternalId())
                 .name(anju.getName())
+                .placeKeyword(anju.getPlaceKeyword())
                 .flavorProfile(FlavorProfileEmbeddable.from(anju.getFlavorProfile()))
                 .allergyTypes(anju.getAllergyTypes())
                 .base(anju.getBase())
@@ -82,6 +86,7 @@ public class AnjuJpaEntity {
                 .source(source)
                 .externalId(externalId)
                 .name(name)
+                .placeKeyword(placeKeyword)
                 .flavorProfile(flavorProfile.toDomain())
                 .allergyTypes(allergyTypes)
                 .base(base)

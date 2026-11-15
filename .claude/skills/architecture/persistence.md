@@ -67,7 +67,8 @@
 - 국내 유통 맥주는 매핑표 `import/curated/beers.csv`로 적재한다. 제품마다 BJCP 스타일 id 하나를 가리키고, `ImportCuratedDrinkService`가 그 스타일의 기본 맛을 복사한 뒤 `(CURATED, external_id)`로 upsert한다. 제품별 맛 보정 열은 두지 않는다. 매핑한 스타일이 없으면 저장하지 않고 리포트에 남긴다.
 - X-Wines(Slim) 원본 CSV는 `scripts/import/data/x-wines/`에 커밋하고 `import.x-wines.path`로 읽는다. 스타일은 `Type` 6종이고 `(X_WINES, type 슬러그)`로 식별하며 이름은 영문(`Red Wine` 등)이다. `ImportXWineService`가 한 트랜잭션에서 스타일을 먼저 적재한다.
 - 와인 맛은 `Type`의 기본 맛에서 무게감을 `Body`로, 산미를 `Acidity`로 덮어쓴다. 값은 `wine-type.csv`, `wine-body.csv`, `wine-acidity.csv`에 둔다. 도수 25% 초과 행은 적재하지 않는다.
-- 안주는 매핑표 `import/curated/anjus.csv`에 이름, `external_id`, `kfind_code`, 주재료, 부재료, 주재료 계열, 형태, 튀김 여부를 적는다. `external_id`는 사람이 정한 `anju-001` 같은 키이고, 한 번 정하면 바꾸거나 다시 쓰지 않는다. `kfind_code`는 적재에서만 쓰는 조회 키라 `anju` 테이블에 넣지 않는다.
+- 안주는 매핑표 `import/curated/anjus.csv`에 이름, `external_id`, `kfind_code`, 주재료, 부재료, 주재료 계열, 형태, 튀김 여부, 맛집 검색어를 적는다. `external_id`는 사람이 정한 `anju-001` 같은 키이고, 한 번 정하면 바꾸거나 다시 쓰지 않는다. `kfind_code`는 적재에서만 쓰는 조회 키라 `anju` 테이블에 넣지 않는다.
+- 맛집 검색어(`place_keyword`)는 이름으로 맞는 가게를 찾지 못하는 안주에만 매핑표에 적는다. 비워 두면 `Anju`가 이름을 검색어로 쓰므로 `anju.place_keyword`는 `NOT NULL`이다.
 - 안주의 단맛은 당류 구간, 무게감은 지방 구간으로 정한 뒤 형태와 튀김 여부로 보정한다. 산미와 쓴맛은 재료 규칙표(`ingredients.csv`)의 맛 태그 중 재료 전체에서 가장 큰 값을 쓴다. 탄산은 0이다. 알레르기는 주재료와 부재료 전체에서, 매운맛은 주재료에서만 계산한다.
 - 안주의 표시명은 업체명과 제품명을 합치고, `uk_anju_name`을 유지한다.
 - 적재가 소유한 K_FIND 안주 중 이번에 적재하지 않은 안주는 지운다. 피드백이 참조해 지울 수 없는 안주는 리포트에 남긴다. 지우기를 바로 반영한 뒤 저장한다.

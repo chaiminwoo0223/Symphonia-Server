@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 // externalId는 사람이 정한 식별 키이고 kfindCode는 K-FIND 영양성분을 찾는 조회 키다.
 // 식품코드는 선정 결과라 고칠 수 있으므로 식별 키로 쓰지 않는다. 그래야 코드를 고쳐도 적재된 안주의 id가 유지된다.
 // fried는 기름에 튀긴 요리인지다. 무게감 형태 보정에만 쓰므로 Anju에 옮기지 않는다.
+// placeKeyword는 이름으로 맞는 가게를 찾지 못하는 안주에만 적는 맛집 검색어다. 비워 두면 Anju가 이름을 쓴다.
 public record CuratedAnju(
         AnjuSource source,
         String externalId,
@@ -18,7 +19,8 @@ public record CuratedAnju(
         List<String> subIngredients,
         AnjuBase base,
         ServingStyle serving,
-        boolean fried) {
+        boolean fried,
+        String placeKeyword) {
     public CuratedAnju {
         mainIngredients = List.copyOf(mainIngredients);
         subIngredients = List.copyOf(subIngredients);
@@ -29,6 +31,15 @@ public record CuratedAnju(
     }
 
     public Anju toAnju(FlavorProfile flavorProfile, Set<AllergyType> allergyTypes, boolean spicy) {
-        return Anju.of(source, externalId, name, flavorProfile, allergyTypes, base, serving, spicy);
+        return Anju.of(
+                source,
+                externalId,
+                name,
+                placeKeyword,
+                flavorProfile,
+                allergyTypes,
+                base,
+                serving,
+                spicy);
     }
 }

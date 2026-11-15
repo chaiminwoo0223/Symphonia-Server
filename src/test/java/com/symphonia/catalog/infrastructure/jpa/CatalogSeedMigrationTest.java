@@ -111,6 +111,21 @@ class CatalogSeedMigrationTest extends RepositoryTest {
         assertThat(wine.getSource()).isEqualTo(DrinkSource.X_WINES);
     }
 
+    @Test
+    @DisplayName("시드 안주 6행은 이름을 맛집 검색어로 채운다")
+    void shouldFillSeedAnjuPlaceKeywordWithName() {
+        // given: 시드 마이그레이션이 적재된 상태
+
+        // when
+        List<AnjuJpaEntity> seedAnjus =
+                anjuJpaRepository.findAllById(List.of(1L, 2L, 3L, 4L, 5L, 6L));
+
+        // then
+        assertThat(seedAnjus)
+                .hasSize(6)
+                .allSatisfy(anju -> assertThat(anju.getPlaceKeyword()).isEqualTo(anju.getName()));
+    }
+
     // V7이 시드 안주를 지우고 다시 넣으면 id가 바뀌어 pairing_feedback의 FK가 끊긴다.
     @Test
     @DisplayName("시드 안주 6행은 같은 id를 유지한 채 출처 식별 키와 주재료 계열, 형태, 매운맛 여부가 채워진다")

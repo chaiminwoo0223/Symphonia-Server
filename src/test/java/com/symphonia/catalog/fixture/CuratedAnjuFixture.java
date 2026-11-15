@@ -101,16 +101,21 @@ public enum CuratedAnjuFixture {
     private final String rawMaterials;
 
     public CuratedAnju create() {
-        return build(externalId, kfindCode, subIngredients);
+        return build(externalId, kfindCode, subIngredients, "");
     }
 
     // 매핑표에서 식별 키나 식품코드를 아직 채우지 않은 행을 만든다.
     public CuratedAnju createWithIdentity(String externalId, String kfindCode) {
-        return build(externalId, kfindCode, subIngredients);
+        return build(externalId, kfindCode, subIngredients, "");
     }
 
     public CuratedAnju createWithSubIngredients(List<String> subIngredients) {
-        return build(externalId, kfindCode, subIngredients);
+        return build(externalId, kfindCode, subIngredients, "");
+    }
+
+    // 이름으로 맞는 가게를 찾지 못해 매핑표에 맛집 검색어를 따로 적은 행을 만든다.
+    public CuratedAnju createWithPlaceKeyword(String placeKeyword) {
+        return build(externalId, kfindCode, subIngredients, placeKeyword);
     }
 
     public AnjuNutrition createNutrition() {
@@ -141,7 +146,8 @@ public enum CuratedAnjuFixture {
                 .build();
     }
 
-    private CuratedAnju build(String externalId, String kfindCode, List<String> subIngredients) {
+    private CuratedAnju build(
+            String externalId, String kfindCode, List<String> subIngredients, String placeKeyword) {
         return new CuratedAnju(
                 source,
                 externalId,
@@ -151,6 +157,7 @@ public enum CuratedAnjuFixture {
                 subIngredients,
                 base,
                 serving,
-                fried);
+                fried,
+                placeKeyword);
     }
 }
