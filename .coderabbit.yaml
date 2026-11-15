@@ -47,7 +47,7 @@ reviews:
         아래 핵심 제약과 반대되는 수정은 제안하지 않는다.
         Kotlin 도입, 헥사고날 Port/Adapter 명칭, 멀티모듈 구조를 제안하지 않는다.
         도메인 실패를 RuntimeException, IllegalArgumentException, IllegalStateException으로 던지는 코드를 제안하지 않는다. 도메인 실패는 공통 예외(NotFoundException 등)나 이를 상속한 도메인별 예외와 *ErrorCode로 만든다.
-        메서드 단위 @Transactional을 제안하지 않는다. 트랜잭션 경계는 @CommandService, @QueryService 클래스 단위로 선언한다.
+        메서드 단위 @Transactional을 제안하지 않는다. 트랜잭션 경계는 @CommandService, @QueryService 클래스 단위로 선언한다. 외부 호출과 UseCase 조율만 하고 Repository를 직접 의존하지 않는 Service는 @Service만 붙이므로 애노테이션 누락으로 지적하지 않는다.
         Facade 클래스를 제안하지 않는다. 크로스 도메인 조율은 대상 UseCase에 직접 의존한다.
         성능 개선을 이유로 다른 도메인의 Repository, 엔티티, infrastructure를 직접 참조하거나 *Result에 엔티티를 담는 수정을 제안하지 않는다.
     - path: "src/main/resources/db/migration/**"
