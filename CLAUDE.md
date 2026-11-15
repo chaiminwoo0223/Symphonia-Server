@@ -67,12 +67,11 @@
 | 언어/프레임워크 | Java / Spring Boot / Spring Security |
 | 인증 | JWT 액세스 토큰(jjwt 0.12+, 응답 바디) + UUID 리프레시 토큰(Redis 저장, RTR 적용, 응답 바디 전달) |
 | DB / Cache | PostgreSQL 17 (`pgvector/pgvector:pg17` 이미지) + JPA (Hibernate) / Redis |
-| 메시지 큐 | RabbitMQ 4.3 (정산 메시지 발송) |
 | 테스트 | JUnit 5 / Mockito / Testcontainers |
 
 ## 프로젝트 구조 (단일 모듈, 도메인별 패키지)
 
-`com.symphonia` 아래 도메인 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`, `place`가 각각 `domain`, `application`, `presentation`, `infrastructure`를 갖는다. `common`은 공유 커널(공통 예외, 응답 포맷, `BaseTimeEntity`, CQRS 트랜잭션 애노테이션)이고, `global`은 기술 부트스트랩(Security, JPA/Redis/Swagger 설정)이다. 도메인별 책임은 `architecture` 스킬에 있다.
+`com.symphonia` 아래 도메인 `member`, `auth`, `catalog`, `pairing`, `gathering`, `place`가 각각 `domain`, `application`, `presentation`, `infrastructure`를 갖는다. `common`은 공유 커널(공통 예외, 응답 포맷, `BaseTimeEntity`, CQRS 트랜잭션 애노테이션)이고, `global`은 기술 부트스트랩(Security, JPA/Redis/Swagger 설정)이다. 도메인별 책임은 `architecture` 스킬에 있다.
 
 ## Profiles
 
