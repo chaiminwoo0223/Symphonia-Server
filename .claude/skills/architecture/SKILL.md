@@ -26,7 +26,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 | `notification` | 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체 |
 | `place` | 안주를 곁들일 가게의 외부 검색. 의존 방향은 `place → catalog` |
 | `common` | 공유 커널. 공통 예외(`common.exception`), `StandardResponse`, `BaseTimeEntity`, `@CommandService`/`@QueryService`(`common.annotation`) |
-| `global` | 기술 부트스트랩. Security, JPA, Redis, Swagger 설정(`config`), 인증 필터와 핸들러(`security`) |
+| `global` | 기술 부트스트랩. Security, JPA, Redis, Swagger, 외부 서비스 공용 RestClient 설정(`config`), 인증 필터와 핸들러(`security`) |
 
 - 도메인 모델과 JPA 엔티티를 분리한다. Domain↔JPA 변환은 `*JpaEntity`의 `from(도메인객체)`와 `toDomain()`에 둔다. 변환에 암호화 키 같은 다른 값이 필요하면 인자로 받는다(예: `ParticipantJpaEntity.from(participant, gatheringId, dataKey)`). 별도 `*Mapper`는 두지 않는다.
 - `shared` 패키지는 두지 않는다. 크로스 도메인 조율은 대상 도메인의 `*UseCase`를 직접 의존한다.
