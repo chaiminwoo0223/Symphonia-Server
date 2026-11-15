@@ -1,20 +1,20 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), notification 발송 규칙(notification.md), 메시지 큐(RabbitMQ) 사용 범위.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), notification 발송 규칙(notification.md), place 맛집 조회 규칙(place.md), 메시지 큐(RabbitMQ) 사용 범위.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
 
 # Architecture Rules
 
-이 문서는 현재 규칙만 담는다. 근거, 택하지 않은 안, 변경 이력은 `docs/decisions/`의 `architecture.md`, `auth.md`, `catalog.md`, `notification.md`에 있다. 규칙을 바꾸면 같은 커밋에서 두 곳을 함께 고친다(`design-decision` 스킬).
+이 문서는 현재 규칙만 담는다. 근거, 택하지 않은 안, 변경 이력은 `docs/decisions/`의 주제별 파일에 있다. 규칙을 바꾸면 같은 커밋에서 두 곳을 함께 고친다(`design-decision` 스킬).
 
 - 단일 Gradle 모듈에 도메인별 계층형 패키지를 둔다. 헥사고날 포트/어댑터 명칭과 멀티모듈 구조는 쓰지 않는다.
 - `*Repository` 구현체는 `*RepositoryImpl`로 쓴다(예: `MemberRepositoryImpl implements MemberRepository`). `*RepositoryAdapter`는 금지한다.
 
 ## 프로젝트 구조
 
-도메인은 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification` 6개이고, 각각 `domain`, `application`, `presentation`, `infrastructure` 패키지를 가진다.
+도메인은 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`, `place` 7개이고, 각각 `domain`, `application`, `presentation`, `infrastructure` 패키지를 가진다.
 
 | 도메인 | 책임 |
 |---|---|
@@ -24,6 +24,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
 | `gathering` | 모임, 참여, 정산 건과 분담금 상태 |
 | `notification` | 정산 메시지의 발송 예약, 발송 기록, 큐 발행, 발송 구현체 |
+| `place` | 안주를 곁들일 가게의 외부 검색과 캐시. 의존 방향은 `place → catalog` |
 | `common` | 공유 커널. 공통 예외(`common.exception`), `StandardResponse`, `BaseTimeEntity`, `@CommandService`/`@QueryService`(`common.annotation`) |
 | `global` | 기술 부트스트랩. Security, JPA, Redis, Swagger 설정(`config`), 인증 필터와 핸들러(`security`) |
 
@@ -122,6 +123,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`), `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표(`anju-serving-richness.csv`)도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, 익명 페어링 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
 | [`notification.md`](notification.md) | 발송 예약, 발송 기록, 재시도, 발송 시간대, 개인 링크, 큐 발행과 컨슈머, 폴러를 바꿀 때. 정산 건 변경이 예약과 취소 알림에 미치는 영향도 함께 읽는다 |
+| [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 검색 결과 캐시, 안주의 맛집 검색어를 바꿀 때 |
 
 ## 메시지 큐 (RabbitMQ)
 

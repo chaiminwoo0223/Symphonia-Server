@@ -72,7 +72,7 @@
 
 ## 프로젝트 구조 (단일 모듈, 도메인별 패키지)
 
-`com.symphonia` 아래 도메인 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`이 각각 `domain`, `application`, `presentation`, `infrastructure`를 갖는다. `common`은 공유 커널(공통 예외, 응답 포맷, `BaseTimeEntity`, CQRS 트랜잭션 애노테이션)이고, `global`은 기술 부트스트랩(Security, JPA/Redis/Swagger 설정)이다. 도메인별 책임은 `architecture` 스킬에 있다.
+`com.symphonia` 아래 도메인 `member`, `auth`, `catalog`, `pairing`, `gathering`, `notification`, `place`가 각각 `domain`, `application`, `presentation`, `infrastructure`를 갖는다. `common`은 공유 커널(공통 예외, 응답 포맷, `BaseTimeEntity`, CQRS 트랜잭션 애노테이션)이고, `global`은 기술 부트스트랩(Security, JPA/Redis/Swagger 설정)이다. 도메인별 책임은 `architecture` 스킬에 있다.
 
 ## Profiles
 
