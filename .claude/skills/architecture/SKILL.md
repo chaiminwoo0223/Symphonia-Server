@@ -111,7 +111,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 ## 트랜잭션 / CQRS
 
 - DB를 직접 쓰는 `*Service`에는 `@CommandService`(`@Service` + `@Transactional`) 또는 `@QueryService`(`@Service` + `@Transactional(readOnly = true)`)를 붙인다.
-- 외부 호출과 `*UseCase` 조율만 하고 Repository를 직접 의존하지 않는 `*Service`에는 `@Service`만 붙인다. 트랜잭션은 DB를 쓰는 `*UseCase`가 연다.
+- 외부 호출과 `*UseCase` 조율만 하고 Repository를 직접 의존하지 않는 `*Service`에는 `@Service`만 붙인다. 트랜잭션은 DB를 쓰는 `*UseCase`가 연다. UseCase들이 함께 커밋돼야 하면 `@CommandService`를 붙인다.
 - 메서드 단위 `@Transactional`은 붙이지 않는다. 한 클래스는 한 가지 트랜잭션 성격만 갖는다. 성격이 섞이면 UseCase를 나눈다.
 - `spring.jpa.open-in-view=false`다. Controller에서 지연 로딩을 쓰지 않는다.
 
