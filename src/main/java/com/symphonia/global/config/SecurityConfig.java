@@ -12,6 +12,7 @@ import com.symphonia.global.security.filter.JwtAuthenticationFilter;
 import com.symphonia.global.security.handler.CustomAccessDeniedHandler;
 import com.symphonia.global.security.handler.CustomAuthenticationEntryPoint;
 import com.symphonia.pairing.presentation.PairingEndpoints;
+import com.symphonia.place.presentation.PlaceEndpoints;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -47,6 +48,7 @@ public class SecurityConfig {
         AuthEndpoints.REFRESH,
         AuthEndpoints.LOGOUT,
         PairingEndpoints.RECOMMEND,
+        PlaceEndpoints.RECOMMEND,
         GatheringEndpoints.PREVIEW,
         ParticipantEndpoints.JOIN,
         ParticipantEndpoints.REGISTER_BANK_ACCOUNT,
