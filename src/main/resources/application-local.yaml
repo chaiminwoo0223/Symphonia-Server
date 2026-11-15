@@ -11,20 +11,11 @@ spring:
       port: 6379
       timeout: 300ms
       connect-timeout: 1s
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
   jpa:
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-
-notification:
-  link:
-    base-url: ${GATHERING_LINK_BASE_URL:http://localhost:5173/shares}
 
 logging:
   level:
