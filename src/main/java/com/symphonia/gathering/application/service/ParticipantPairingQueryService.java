@@ -37,6 +37,7 @@ public class ParticipantPairingQueryService implements GetParticipantPairingUseC
                                 gatheringPairing.drinkId(), gatheringPairing.anjuId()));
 
         return ParticipantPairingResult.of(
+                gatheringPairing.anjuId(),
                 catalogReferences,
                 participantPairingFeedbackRepository.existsByParticipantId(participantId));
     }
