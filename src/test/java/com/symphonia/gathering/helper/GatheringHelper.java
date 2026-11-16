@@ -55,6 +55,15 @@ public class GatheringHelper {
         return gatheringRepository.save(gathering);
     }
 
+    // 마지막 차수 다음부터 lastRoundNumber차까지 차수를 더해 저장하고, id가 채워진 차수를 담은 모임을 돌려준다.
+    public Gathering addRoundsUpTo(Gathering gathering, int lastRoundNumber) {
+        for (int number = gathering.getLastRoundNumber() + 1; number <= lastRoundNumber; number++) {
+            gathering.addRound(number);
+        }
+
+        return gatheringRepository.save(gathering);
+    }
+
     // 저장소에는 해시만 남으므로, 요청에 쓸 원본 개인 링크 토큰을 돌려준다.
     public String issueLinkToken(Participant participant) {
         String linkToken = gatheringTokenProvider.generate();

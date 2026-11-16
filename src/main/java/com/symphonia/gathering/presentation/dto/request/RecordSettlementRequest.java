@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public record RecordSettlementRequest(
+        @NotNull @Schema(description = "정산 건이 속한 차수의 ID") Long roundId,
         @Positive @Max(100_000_000) @Schema(description = "카드 결제 총액 (원)") long totalAmount,
         @NotEmpty @Schema(description = "결제자를 포함한 정산 건 인원의 참여자 ID")
                 List<@NotNull Long> participantIds,
@@ -28,7 +29,7 @@ public record RecordSettlementRequest(
 
     public RecordSettlementCommand toCommand(String linkToken) {
         return new RecordSettlementCommand(
-                linkToken, totalAmount, participantIds, toFixedAmountMap());
+                linkToken, roundId, totalAmount, participantIds, toFixedAmountMap());
     }
 
     private Map<Long, Long> toFixedAmountMap() {

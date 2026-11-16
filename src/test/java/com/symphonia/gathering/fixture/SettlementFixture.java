@@ -26,19 +26,31 @@ public enum SettlementFixture {
     }
 
     // 저장 전의 새 정산 건이다.
-    public Settlement create(Long gatheringId, Long payerParticipantId, List<Long> participantIds) {
+    public Settlement create(
+            Long gatheringId, Long roundId, Long payerParticipantId, List<Long> participantIds) {
         return Settlement.record(
-                gatheringId, createSplitMethod(payerParticipantId, participantIds), recordedAt);
+                gatheringId,
+                roundId,
+                createSplitMethod(payerParticipantId, participantIds),
+                recordedAt);
     }
 
     public Settlement createWithId(
-            Long id, Long gatheringId, Long payerParticipantId, List<Long> participantIds) {
-        return builder(id, gatheringId, payerParticipantId, participantIds).build();
+            Long id,
+            Long gatheringId,
+            Long roundId,
+            Long payerParticipantId,
+            List<Long> participantIds) {
+        return builder(id, gatheringId, roundId, payerParticipantId, participantIds).build();
     }
 
     public Settlement createCancelled(
-            Long id, Long gatheringId, Long payerParticipantId, List<Long> participantIds) {
-        return builder(id, gatheringId, payerParticipantId, participantIds)
+            Long id,
+            Long gatheringId,
+            Long roundId,
+            Long payerParticipantId,
+            List<Long> participantIds) {
+        return builder(id, gatheringId, roundId, payerParticipantId, participantIds)
                 .cancelledAt(recordedAt.plusHours(1))
                 .build();
     }
@@ -46,13 +58,14 @@ public enum SettlementFixture {
     public Settlement createWithFixedAmounts(
             Long id,
             Long gatheringId,
+            Long roundId,
             Long payerParticipantId,
             List<Long> participantIds,
             Map<Long, Long> fixedAmounts) {
         SplitMethod splitMethod =
                 SplitMethod.of(totalAmount, payerParticipantId, participantIds, fixedAmounts);
 
-        return builder(id, gatheringId, payerParticipantId, participantIds)
+        return builder(id, gatheringId, roundId, payerParticipantId, participantIds)
                 .shares(splitMethod.shares())
                 .build();
     }
@@ -61,6 +74,7 @@ public enum SettlementFixture {
     public Settlement createWithFirstShareStatus(
             Long id,
             Long gatheringId,
+            Long roundId,
             Long payerParticipantId,
             List<Long> participantIds,
             ShareStatus status) {
@@ -77,18 +91,23 @@ public enum SettlementFixture {
         List<SettlementShare> changedShares =
                 Stream.concat(Stream.of(changedFirstShare), shares.stream().skip(1)).toList();
 
-        return builder(id, gatheringId, payerParticipantId, participantIds)
+        return builder(id, gatheringId, roundId, payerParticipantId, participantIds)
                 .shares(changedShares)
                 .build();
     }
 
     private Settlement.SettlementBuilder builder(
-            Long id, Long gatheringId, Long payerParticipantId, List<Long> participantIds) {
+            Long id,
+            Long gatheringId,
+            Long roundId,
+            Long payerParticipantId,
+            List<Long> participantIds) {
         SplitMethod splitMethod = createSplitMethod(payerParticipantId, participantIds);
 
         return Settlement.builder()
                 .id(id)
                 .gatheringId(gatheringId)
+                .roundId(roundId)
                 .payerParticipantId(payerParticipantId)
                 .totalAmount(totalAmount)
                 .shares(splitMethod.shares())

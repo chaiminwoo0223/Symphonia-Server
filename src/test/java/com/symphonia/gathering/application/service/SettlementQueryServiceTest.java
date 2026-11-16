@@ -9,6 +9,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
@@ -26,6 +27,7 @@ import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepositor
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -47,6 +49,7 @@ import org.mockito.Mock;
 class SettlementQueryServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
+    private static final Long ROUND_ID = GatheringRoundFixture.FIRST.getId();
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
     private static final Long THIRD_SETTLEMENT_ID = 32L;
@@ -159,6 +162,32 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("모임에 정산 건이 없는 빈 차수가 있는 경우")
+        class WhenEmptyRoundExists {
+
+            @Test
+            @DisplayName("빈 차수를 포함한 모임의 차수를 번호 순서대로 모두 반환한다")
+            void shouldReturnAllRoundsOfGathering() {
+                // given
+                givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.rounds())
+                        .extracting(GatheringRoundResult::id, GatheringRoundResult::number)
+                        .containsExactly(
+                                tuple(
+                                        GatheringRoundFixture.FIRST.getId(),
+                                        GatheringRoundFixture.FIRST.getNumber()),
+                                tuple(
+                                        GatheringRoundFixture.SECOND.getId(),
+                                        GatheringRoundFixture.SECOND.getNumber()));
+            }
+        }
+
+        @Nested
         @DisplayName("직전 정산 건이 있는 경우")
         class WhenLatestSettlementExists {
 
@@ -168,7 +197,11 @@ class SettlementQueryServiceTest extends UnitTest {
                 // given
                 Settlement latest =
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, LEE_ID, List.of(PAYER_ID, LEE_ID));
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                LEE_ID,
+                                List.of(PAYER_ID, LEE_ID));
                 givenForm(OPEN_PERIOD_OPENED_AT, latest, false, List.of());
 
                 // when
@@ -191,6 +224,7 @@ class SettlementQueryServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID, PARK_ID));
                 givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
@@ -206,6 +240,31 @@ class SettlementQueryServiceTest extends UnitTest {
                 assertThat(settlementResult.payerParticipantId()).isEqualTo(PAYER_ID);
                 assertThat(settlementResult.payerAmount()).isEqualTo(3_334L);
                 assertThat(settlementResult.shares()).hasSize(2);
+            }
+
+            @Test
+            @DisplayName("정산 건이 속한 차수의 id와 번호를 담아 반환한다")
+            void shouldReturnRoundOfSettlement() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.SECOND.getId(),
+                                PAYER_ID,
+                                PARTICIPANT_IDS);
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.settlements())
+                        .extracting(SettlementResult::roundId, SettlementResult::roundNumber)
+                        .containsExactly(
+                                tuple(
+                                        GatheringRoundFixture.SECOND.getId(),
+                                        GatheringRoundFixture.SECOND.getNumber()));
             }
         }
 
@@ -278,7 +337,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 // given
                 givenShares(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
 
                 // when
                 SharesResult result = settlementQueryService.getShares(LINK_TOKEN);
@@ -324,12 +383,17 @@ class SettlementQueryServiceTest extends UnitTest {
                 // given
                 givenShares(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS),
                         SettlementFixture.SECOND_ROUND.createWithId(
-                                SECOND_SETTLEMENT_ID, GATHERING_ID, PARK_ID, PARTICIPANT_IDS),
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                PARTICIPANT_IDS),
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 THIRD_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID),
                                 ShareStatus.SENT));
@@ -372,11 +436,16 @@ class SettlementQueryServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT),
                         SettlementFixture.SECOND_ROUND.createWithId(
-                                SECOND_SETTLEMENT_ID, GATHERING_ID, PARK_ID, PARTICIPANT_IDS));
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                PARTICIPANT_IDS));
 
                 // when
                 List<PayerSharesResult> result =
@@ -398,11 +467,16 @@ class SettlementQueryServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFixedAmounts(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 Map.of(LEE_ID, 0L)),
                         SettlementFixture.SECOND_ROUND.createWithId(
-                                SECOND_SETTLEMENT_ID, GATHERING_ID, PARK_ID, PARTICIPANT_IDS));
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                PARTICIPANT_IDS));
 
                 // when
                 List<PayerSharesResult> result =
@@ -426,9 +500,13 @@ class SettlementQueryServiceTest extends UnitTest {
                 // given
                 givenShares(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS),
                         SettlementFixture.SECOND_ROUND.createWithId(
-                                SECOND_SETTLEMENT_ID, GATHERING_ID, PARK_ID, PARTICIPANT_IDS));
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                PARTICIPANT_IDS));
 
                 // when
                 settlementQueryService.getShares(LINK_TOKEN);
@@ -452,16 +530,18 @@ class SettlementQueryServiceTest extends UnitTest {
                 // given
                 givenShares(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS),
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SECOND_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID),
                                 ShareStatus.SENT),
                         SettlementFixture.SECOND_ROUND.createWithFirstShareStatus(
                                 THIRD_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
@@ -495,6 +575,7 @@ class SettlementQueryServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFixedAmounts(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 Map.of(LEE_ID, 1_050L));
@@ -538,13 +619,17 @@ class SettlementQueryServiceTest extends UnitTest {
                 .willReturn(new LinkedParticipantResult(participantId, DELETES_AT));
     }
 
+    // 1차에만 정산 건이 있고 2차는 비어 있는 모임이다.
     private Gathering gathering(LocalDateTime openedAt) {
-        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+        return GatheringFixture.FRIDAY_DINNER.createWithRounds(
                 GATHERING_ID,
                 openedAt,
                 List.of(
                         ParticipantFixture.KIM.createWithId(PAYER_ID),
                         ParticipantFixture.LEE.createWithId(LEE_ID),
-                        ParticipantFixture.PARK.createWithId(PARK_ID)));
+                        ParticipantFixture.PARK.createWithId(PARK_ID)),
+                List.of(
+                        GatheringRoundFixture.FIRST.create(),
+                        GatheringRoundFixture.SECOND.create()));
     }
 }

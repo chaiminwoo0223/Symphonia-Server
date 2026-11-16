@@ -31,6 +31,9 @@ public class SettlementJpaEntity extends BaseTimeEntity {
     private Long gatheringId;
 
     @Column(nullable = false)
+    private Long roundId;
+
+    @Column(nullable = false)
     private Long payerParticipantId;
 
     @Column(nullable = false)
@@ -47,6 +50,7 @@ public class SettlementJpaEntity extends BaseTimeEntity {
         return SettlementJpaEntity.builder()
                 .id(settlement.getId())
                 .gatheringId(settlement.getGatheringId())
+                .roundId(settlement.getRoundId())
                 .payerParticipantId(settlement.getPayerParticipantId())
                 .totalAmount(settlement.getTotalAmount())
                 .recordedAt(settlement.getRecordedAt())
@@ -60,6 +64,7 @@ public class SettlementJpaEntity extends BaseTimeEntity {
         return Settlement.builder()
                 .id(id)
                 .gatheringId(gatheringId)
+                .roundId(roundId)
                 .payerParticipantId(payerParticipantId)
                 .totalAmount(totalAmount)
                 .shares(shares)

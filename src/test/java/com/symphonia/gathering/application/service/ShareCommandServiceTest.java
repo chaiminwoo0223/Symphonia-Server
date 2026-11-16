@@ -33,6 +33,7 @@ import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepositor
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -53,6 +54,8 @@ import org.mockito.Mock;
 class ShareCommandServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
+    private static final Long ROUND_ID = GatheringRoundFixture.FIRST.getId();
+    private static final Long SECOND_ROUND_ID = GatheringRoundFixture.SECOND.getId();
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
     private static final Long THIRD_SETTLEMENT_ID = 32L;
@@ -134,10 +137,11 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSharedSettlements(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS),
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS),
                         SettlementFixture.SECOND_ROUND.createWithId(
                                 THIRD_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID)));
                 givenGatheringWithPayerBankAccount();
@@ -191,17 +195,23 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT),
                         SettlementFixture.SECOND_ROUND.createWithFirstShareStatus(
                                 SECOND_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED),
                         SettlementFixture.DINNER.createWithId(
-                                THIRD_SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                THIRD_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS));
                 givenGatheringWithPayerBankAccount();
                 givenSaveReturnsSettlement();
 
@@ -230,12 +240,14 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT),
                         SettlementFixture.SECOND_ROUND.createWithFirstShareStatus(
                                 SECOND_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
@@ -309,7 +321,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 ConfirmShareCommand command = command(LEE_ID);
 
                 // when & then
@@ -332,6 +344,7 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
@@ -374,7 +387,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 ConfirmShareCommand command = command(OUTSIDER_ID);
 
                 // when & then
@@ -395,7 +408,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createCancelled(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 ConfirmShareCommand command = command(LEE_ID);
 
                 // when & then
@@ -418,9 +431,11 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
+                givenGatheringOfPayer();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -447,9 +462,11 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
+                givenGatheringOfPayer();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -464,6 +481,31 @@ class ShareCommandServiceTest extends UnitTest {
                                 tuple(PARK_ID, ShareStatus.CONFIRMED));
                 assertThat(result.confirmedAmount()).isEqualTo(3_333L);
                 assertThat(result.sentAmount()).isEqualTo(3_333L);
+            }
+
+            @Test
+            @DisplayName("정산 건이 속한 차수의 id와 번호를 담아 반환한다")
+            void shouldReturnRoundOfSettlement() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithFirstShareStatus(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                SECOND_ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS,
+                                ShareStatus.SENT));
+                givenGatheringOfPayer();
+                givenSaveReturnsSettlement();
+
+                // when
+                SettlementResult result = shareCommandService.confirm(command(LEE_ID));
+
+                // then
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
             }
         }
 
@@ -508,6 +550,7 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
@@ -531,7 +574,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 RevertShareCommand command = command();
 
                 // when & then
@@ -574,9 +617,11 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
+                givenGatheringOfPayer();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -599,9 +644,11 @@ class ShareCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
+                givenGatheringOfPayer();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -614,6 +661,31 @@ class ShareCommandServiceTest extends UnitTest {
                         .containsOnly(ShareStatus.UNPAID);
                 assertThat(result.confirmedAmount()).isZero();
             }
+
+            @Test
+            @DisplayName("정산 건이 속한 차수의 id와 번호를 담아 반환한다")
+            void shouldReturnRoundOfSettlement() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithFirstShareStatus(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                SECOND_ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS,
+                                ShareStatus.SENT));
+                givenGatheringOfPayer();
+                givenSaveReturnsSettlement();
+
+                // when
+                SettlementResult result = shareCommandService.revert(command());
+
+                // then
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+            }
         }
 
         private RevertShareCommand command() {
@@ -622,13 +694,22 @@ class ShareCommandServiceTest extends UnitTest {
     }
 
     private Gathering gathering() {
-        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+        return GatheringFixture.FRIDAY_DINNER.createWithRounds(
                 GATHERING_ID,
                 OPENED_AT,
                 List.of(
                         ParticipantFixture.KIM.createWithId(PAYER_ID),
                         ParticipantFixture.LEE.createWithId(LEE_ID),
-                        ParticipantFixture.PARK.createWithId(PARK_ID)));
+                        ParticipantFixture.PARK.createWithId(PARK_ID)),
+                List.of(
+                        GatheringRoundFixture.FIRST.create(),
+                        GatheringRoundFixture.SECOND.create()));
+    }
+
+    // confirm과 revert는 응답에 차수 번호를 담으려고 요청한 참여자(결제자)의 모임을 읽는다.
+    private void givenGatheringOfPayer() {
+        given(gatheringRepository.findByParticipantId(PAYER_ID))
+                .willReturn(Optional.of(gathering()));
     }
 
     private void givenParticipant(Long participantId) {
@@ -670,6 +751,11 @@ class ShareCommandServiceTest extends UnitTest {
     // 박의 분담금을 0원으로 지정해 확인 완료로 시작하고, 이의 분담금은 미입금인 정산 건이다.
     private Settlement settlementWithZeroShare() {
         return SettlementFixture.DINNER.createWithFixedAmounts(
-                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS, Map.of(PARK_ID, 0L));
+                SETTLEMENT_ID,
+                GATHERING_ID,
+                ROUND_ID,
+                PAYER_ID,
+                PARTICIPANT_IDS,
+                Map.of(PARK_ID, 0L));
     }
 }

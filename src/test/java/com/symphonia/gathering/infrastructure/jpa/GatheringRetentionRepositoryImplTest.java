@@ -57,13 +57,14 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     private Long gatheringId;
+    private Long roundId;
     private Long kimId;
     private Long leeId;
 
     @BeforeEach
     void setUp() {
         Gathering gathering =
-                gatheringRepository.save(
+                saveInTransaction(
                         GatheringFixture.FRIDAY_DINNER.createWithParticipants(
                                 List.of(
                                         ParticipantFixture.KIM.create(),
@@ -71,6 +72,7 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
         List<Long> participantIds =
                 gathering.getParticipants().stream().map(Participant::getId).toList();
         gatheringId = gathering.getId();
+        roundId = gathering.getRounds().getFirst().getId();
         kimId = participantIds.get(0);
         leeId = participantIds.get(1);
     }
@@ -228,6 +230,8 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
             void tearDown() throws Exception {
                 read.countDown();
                 lockHolder.get(10, TimeUnit.SECONDS);
+                jdbcTemplate.update(
+                        "DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
                 jdbcTemplate.update("DELETE FROM participant WHERE gathering_id = ?", gatheringId);
                 jdbcTemplate.update(
                         "DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
@@ -268,12 +272,18 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
 
     private Settlement recordDinner() {
         return settlementRepository.save(
-                SettlementFixture.DINNER.create(gatheringId, kimId, List.of(kimId, leeId)));
+                SettlementFixture.DINNER.create(
+                        gatheringId, roundId, kimId, List.of(kimId, leeId)));
     }
 
     // 1차 캐시를 비워 다음 조회가 DB에서 다시 읽게 한다.
     private void clearPersistenceContext() {
         entityManager.flush();
         entityManager.clear();
+    }
+
+    // 저장소는 부른 쪽의 트랜잭션을 전제로 하므로, 테스트 트랜잭션 없이 도는 중첩 클래스의 준비도 트랜잭션 안에서 저장한다.
+    private Gathering saveInTransaction(Gathering gathering) {
+        return transactionTemplate.execute(_ -> gatheringRepository.save(gathering));
     }
 }

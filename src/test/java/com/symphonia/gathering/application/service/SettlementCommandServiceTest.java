@@ -20,6 +20,7 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
+import com.symphonia.gathering.domain.exception.GatheringRoundNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
@@ -33,6 +34,7 @@ import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepositor
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
@@ -52,6 +54,9 @@ import org.mockito.Mock;
 class SettlementCommandServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
+    private static final Long ROUND_ID = GatheringRoundFixture.FIRST.getId();
+    private static final Long SECOND_ROUND_ID = GatheringRoundFixture.SECOND.getId();
+    private static final Long OTHER_GATHERING_ROUND_ID = 999L;
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
@@ -117,6 +122,25 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(SettlementRecordingClosedException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("이 모임의 차수가 아닌 차수 id인 경우")
+        class WhenRoundNotInGathering {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowGatheringRoundNotFoundException() {
+                // given
+                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
+                RecordSettlementCommand command =
+                        command(OTHER_GATHERING_ROUND_ID, 10_000L, PARTICIPANT_IDS, Map.of());
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.record(command))
+                        .isInstanceOf(GatheringRoundNotFoundException.class);
                 then(settlementRepository).shouldHaveNoInteractions();
             }
         }
@@ -336,6 +360,27 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("고른 차수를 정산 건에 담아 저장하고, 그 차수의 id와 번호를 반환한다")
+            void shouldSaveSettlementOfRound() {
+                // given
+                givenRecordableGathering();
+                givenSaveReturnsSettlement();
+                RecordSettlementCommand command =
+                        command(SECOND_ROUND_ID, 9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+                then(settlementRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getRoundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+            }
+
+            @Test
             @DisplayName("0원으로 지정한 분담금은 받을 돈이 없어 확인 완료로 저장한다")
             void shouldSaveZeroFixedShareAsConfirmed() {
                 // given
@@ -445,8 +490,16 @@ class SettlementCommandServiceTest extends UnitTest {
 
         private RecordSettlementCommand command(
                 long totalAmount, List<Long> participantIds, Map<Long, Long> fixedAmounts) {
+            return command(ROUND_ID, totalAmount, participantIds, fixedAmounts);
+        }
+
+        private RecordSettlementCommand command(
+                Long roundId,
+                long totalAmount,
+                List<Long> participantIds,
+                Map<Long, Long> fixedAmounts) {
             return new RecordSettlementCommand(
-                    LINK_TOKEN, totalAmount, participantIds, fixedAmounts);
+                    LINK_TOKEN, roundId, totalAmount, participantIds, fixedAmounts);
         }
 
         private void givenRecordableGathering() {
@@ -510,7 +563,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -532,13 +585,35 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(CLOSED_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.update(command))
                         .isInstanceOf(SettlementRecordingClosedException.class);
+                thenSettlementNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("이 모임의 차수가 아닌 차수 id인 경우")
+        class WhenRoundNotInGathering {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowGatheringRoundNotFoundException() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                UpdateSettlementCommand command = command(OTHER_GATHERING_ROUND_ID);
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.update(command))
+                        .isInstanceOf(GatheringRoundNotFoundException.class);
                 thenSettlementNotSaved();
             }
         }
@@ -554,7 +629,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createCancelled(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
@@ -578,6 +653,7 @@ class SettlementCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
@@ -602,7 +678,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
                 UpdateSettlementCommand command = command();
@@ -619,6 +695,30 @@ class SettlementCommandServiceTest extends UnitTest {
                         .containsExactly(tuple(LEE_ID, 10_000L));
                 assertThat(result.payerAmount()).isEqualTo(10_000L);
                 assertThat(result.recordedAt()).isAfter(SettlementFixture.DINNER.getRecordedAt());
+            }
+
+            @Test
+            @DisplayName("차수를 바꿔 저장하고, 새 차수의 id와 번호를 반환한다")
+            void shouldSaveSettlementWithNewRound() {
+                // given
+                givenParticipant(PAYER_ID);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenSaveReturnsSettlement();
+                UpdateSettlementCommand command = command(SECOND_ROUND_ID);
+
+                // when
+                SettlementResult result = settlementCommandService.update(command);
+
+                // then
+                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+                then(settlementRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getRoundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
             }
 
             @Test
@@ -654,7 +754,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
                 givenGathering(now.minusHours(1));
                 givenSaveReturnsSettlement();
                 UpdateSettlementCommand command = command();
@@ -668,8 +768,17 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private UpdateSettlementCommand command() {
+            return command(ROUND_ID);
+        }
+
+        private UpdateSettlementCommand command(Long roundId) {
             return new UpdateSettlementCommand(
-                    LINK_TOKEN, SETTLEMENT_ID, 20_000L, List.of(PAYER_ID, LEE_ID), Map.of());
+                    LINK_TOKEN,
+                    SETTLEMENT_ID,
+                    roundId,
+                    20_000L,
+                    List.of(PAYER_ID, LEE_ID),
+                    Map.of());
         }
 
         private void givenGathering(LocalDateTime openedAt) {
@@ -712,7 +821,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.cancel(command()))
@@ -732,7 +841,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 givenParticipant(PAYER_ID);
                 givenSettlement(
                         SettlementFixture.DINNER.createCancelled(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.cancel(command()))
@@ -754,6 +863,7 @@ class SettlementCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
@@ -773,6 +883,7 @@ class SettlementCommandServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
@@ -794,7 +905,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
                 givenParticipant(PAYER_ID);
                 givenSettlement(settlement);
 
@@ -830,13 +941,16 @@ class SettlementCommandServiceTest extends UnitTest {
     }
 
     private Gathering gathering(LocalDateTime openedAt) {
-        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+        return GatheringFixture.FRIDAY_DINNER.createWithRounds(
                 GATHERING_ID,
                 openedAt,
                 List.of(
                         ParticipantFixture.KIM.createWithId(PAYER_ID),
                         ParticipantFixture.LEE.createWithId(LEE_ID),
-                        ParticipantFixture.PARK.createWithId(PARK_ID)));
+                        ParticipantFixture.PARK.createWithId(PARK_ID)),
+                List.of(
+                        GatheringRoundFixture.FIRST.create(),
+                        GatheringRoundFixture.SECOND.create()));
     }
 
     private void givenParticipant(Long participantId) {
@@ -884,6 +998,11 @@ class SettlementCommandServiceTest extends UnitTest {
     // 박의 분담금을 0원으로 지정해 확인 완료로 시작하고, 이의 분담금은 미입금인 정산 건이다.
     private Settlement settlementWithZeroShare() {
         return SettlementFixture.DINNER.createWithFixedAmounts(
-                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS, Map.of(PARK_ID, 0L));
+                SETTLEMENT_ID,
+                GATHERING_ID,
+                ROUND_ID,
+                PAYER_ID,
+                PARTICIPANT_IDS,
+                Map.of(PARK_ID, 0L));
     }
 }

@@ -25,6 +25,7 @@ import lombok.NoArgsConstructor;
 public class Settlement {
     private Long id;
     private Long gatheringId;
+    private Long roundId;
     private Long payerParticipantId;
     private long totalAmount;
     private List<SettlementShare> shares;
@@ -33,9 +34,11 @@ public class Settlement {
     // 정산 건을 읽은 뒤 다른 요청이 바꿨는지 저장할 때 확인하는 애그리거트 버전이다. 새 정산 건은 null이다.
     private Long version;
 
-    public static Settlement record(Long gatheringId, SplitMethod splitMethod, LocalDateTime now) {
+    public static Settlement record(
+            Long gatheringId, Long roundId, SplitMethod splitMethod, LocalDateTime now) {
         return Settlement.builder()
                 .gatheringId(gatheringId)
+                .roundId(roundId)
                 .payerParticipantId(splitMethod.payerParticipantId())
                 .totalAmount(splitMethod.totalAmount())
                 .shares(splitMethod.shares())
@@ -44,10 +47,12 @@ public class Settlement {
     }
 
     // 수정하면 분담금을 모두 다시 만들므로, 보낸 기록이 사라지지 않게 보낸 분담금이 있으면 막는다.
-    public void update(SplitMethod splitMethod, LocalDateTime now) {
+    // 잘못 고른 차수를 취소 없이 바로잡을 수 있게 차수도 함께 바꾼다.
+    public void update(Long roundId, SplitMethod splitMethod, LocalDateTime now) {
         validateNotCancelled();
         validateNoSentShares();
 
+        this.roundId = roundId;
         totalAmount = splitMethod.totalAmount();
         shares = splitMethod.shares();
         recordedAt = now;

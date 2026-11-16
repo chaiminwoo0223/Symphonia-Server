@@ -3,6 +3,7 @@ package com.symphonia.gathering.domain.policy;
 import com.symphonia.gathering.domain.exception.BankAccountAlreadyRegisteredException;
 import com.symphonia.gathering.domain.exception.BankAccountConsentRequiredException;
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
+import com.symphonia.gathering.domain.exception.GatheringRoundNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
@@ -26,6 +27,12 @@ public enum SettlementPolicy {
     public static void validateGatheringParticipants(boolean allJoined) {
         if (!allJoined) {
             throw new InvalidSettlementParticipantsException();
+        }
+    }
+
+    public static void validateGatheringRound(boolean found) {
+        if (!found) {
+            throw new GatheringRoundNotFoundException();
         }
     }
 

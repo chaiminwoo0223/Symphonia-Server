@@ -74,7 +74,7 @@ public class ShareCommandService
 
         settlement.confirmShare(command.participantId(), LocalDateTime.now(clock));
 
-        return SettlementResult.of(settlementRepository.save(settlement));
+        return toResult(settlementRepository.save(settlement), participantId);
     }
 
     @Override
@@ -85,7 +85,17 @@ public class ShareCommandService
 
         settlement.revertShareToUnpaid(command.participantId(), LocalDateTime.now(clock));
 
-        return SettlementResult.of(settlementRepository.save(settlement));
+        return toResult(settlementRepository.save(settlement), participantId);
+    }
+
+    // 응답에 정산 건이 속한 차수의 번호를 담으려면 모임의 차수가 필요하다.
+    private SettlementResult toResult(Settlement settlement, Long participantId) {
+        Gathering gathering =
+                gatheringRepository
+                        .findByParticipantId(participantId)
+                        .orElseThrow(GatheringNotFoundException::new);
+
+        return SettlementResult.of(settlement, gathering.getRound(settlement.getRoundId()));
     }
 
     private Long findParticipantId(String linkToken) {
