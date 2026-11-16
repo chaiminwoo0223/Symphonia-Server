@@ -3,6 +3,9 @@ package com.symphonia.gathering.domain.policy;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
+import com.symphonia.gathering.domain.exception.GatheringRoundClosedException;
+import com.symphonia.gathering.domain.exception.GatheringRoundCountExceedsLimitException;
+import com.symphonia.gathering.domain.exception.InvalidGatheringRoundNumberException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
 import com.symphonia.gathering.domain.exception.PairingFeedbackAlreadySubmittedException;
@@ -19,6 +22,9 @@ public enum GatheringPolicy {
     // 모임 생성 후 정산 건을 기록할 수 있는 기간이다. 이 기간이 지나 참여한 사람은 분담에 들어갈 수 없어 참여도 함께 막는다.
     public static final Duration RECORDING_PERIOD = Duration.ofHours(48);
 
+    // 참여자 누구나 차수를 추가할 수 있어서, 빈 차수가 무제한 쌓이지 않도록 한 모임의 차수 수를 제한한다.
+    public static final int MAX_ROUND_COUNT = 10;
+
     public static boolean isWithinRecordingPeriod(LocalDateTime openedAt, LocalDateTime now) {
         return now.isBefore(recordingClosesAt(openedAt));
     }
@@ -30,6 +36,23 @@ public enum GatheringPolicy {
     public static void validateJoinable(LocalDateTime openedAt, LocalDateTime now) {
         if (!isWithinRecordingPeriod(openedAt, now)) {
             throw new GatheringJoinClosedException();
+        }
+    }
+
+    // 정산 건을 기록할 수 없는 기간에는 차수를 늘릴 이유가 없다.
+    public static void validateRoundAddable(LocalDateTime openedAt, LocalDateTime now) {
+        if (!isWithinRecordingPeriod(openedAt, now)) {
+            throw new GatheringRoundClosedException();
+        }
+    }
+
+    // 마지막 차수의 다음 번호까지만 추가할 수 있어 번호가 빈틈없이 이어진다. 그 번호가 상한을 넘으면 추가할 수 없다.
+    public static void validateRoundNumber(int requestedNumber, int lastRoundNumber) {
+        if (requestedNumber > lastRoundNumber + 1) {
+            throw new InvalidGatheringRoundNumberException();
+        }
+        if (requestedNumber > MAX_ROUND_COUNT) {
+            throw new GatheringRoundCountExceedsLimitException();
         }
     }
 

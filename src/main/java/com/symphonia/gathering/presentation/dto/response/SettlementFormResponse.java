@@ -9,6 +9,7 @@ public record SettlementFormResponse(
         @Schema(description = "정산 건을 기록할 수 있는지 여부") boolean recordable,
         @Schema(description = "요청한 참여자의 계좌 등록 여부") boolean bankAccountRegistered,
         @Schema(description = "계좌를 등록할 때 함께 보낼 동의 안내 버전") String bankAccountConsentVersion,
+        @Schema(description = "정산 건이 없는 빈 차수를 포함한 모임의 차수") List<GatheringRoundResponse> rounds,
         @Schema(description = "모임 참여자") List<SettlementParticipantResponse> participants,
         @Schema(description = "인원 기본값 (직전 정산 건의 인원, 첫 건이면 참여자 전원)")
                 List<Long> defaultParticipantIds,
@@ -20,6 +21,7 @@ public record SettlementFormResponse(
                 result.recordable(),
                 result.bankAccountRegistered(),
                 result.bankAccountConsentVersion(),
+                result.rounds().stream().map(GatheringRoundResponse::from).toList(),
                 result.participants().stream().map(SettlementParticipantResponse::from).toList(),
                 result.defaultParticipantIds(),
                 result.settlements().stream().map(SettlementResponse::from).toList(),

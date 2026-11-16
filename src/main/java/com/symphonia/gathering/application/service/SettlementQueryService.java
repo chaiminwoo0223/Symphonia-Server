@@ -1,6 +1,7 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.QueryService;
+import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
@@ -62,12 +63,17 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                 recordable,
                 participantBankAccountRepository.existsByParticipantId(participantId),
                 SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION,
+                gathering.getRounds().stream().map(GatheringRoundResult::from).toList(),
                 gathering.getParticipants().stream()
                         .map(SettlementParticipantResult::from)
                         .toList(),
                 defaultParticipantIds,
                 settlementRepository.findAllByPayerParticipantId(participantId).stream()
-                        .map(SettlementResult::of)
+                        .map(
+                                settlement ->
+                                        SettlementResult.of(
+                                                settlement,
+                                                gathering.getRound(settlement.getRoundId())))
                         .toList(),
                 linkedParticipant.deletesAt());
     }

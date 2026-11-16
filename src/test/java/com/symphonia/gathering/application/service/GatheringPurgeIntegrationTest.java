@@ -57,6 +57,9 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
                             "SELECT COUNT(*) FROM participant_pairing_feedback WHERE participant_id IN"
                                     + " (SELECT id FROM participant WHERE gathering_id = ?)"),
                     Map.entry(
+                            "gathering_round",
+                            "SELECT COUNT(*) FROM gathering_round WHERE gathering_id = ?"),
+                    Map.entry(
                             "gathering_pairing",
                             "SELECT COUNT(*) FROM gathering_pairing WHERE gathering_id = ?"),
                     Map.entry(
@@ -76,7 +79,7 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
     private Long expiredGatheringId;
     private Long retainedGatheringId;
 
-    // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 모임 페어링, 피드백 제출 표시, 정산 건을 모두 만든다.
+    // 두 모임에 참여 토큰, 개인 링크 토큰, 결제자 계좌, 모임 페어링, 피드백 제출 표시, 정산 건을 모두 만든다. 차수는 모임을 열 때 1차가 생긴다.
     // 한 모임만 29일 전에 연 모임으로 바꾼다.
     @BeforeEach
     void setUp() {

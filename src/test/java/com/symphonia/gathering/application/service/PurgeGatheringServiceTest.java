@@ -18,6 +18,7 @@ import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
+import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
@@ -35,6 +36,7 @@ import org.mockito.Mock;
 class PurgeGatheringServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
+    private static final Long ROUND_ID = GatheringRoundFixture.FIRST.getId();
     private static final Long SETTLEMENT_ID = 30L;
     private static final Long SECOND_SETTLEMENT_ID = 31L;
     private static final Long PAYER_ID = 20L;
@@ -141,6 +143,7 @@ class PurgeGatheringServiceTest extends UnitTest {
                         SettlementFixture.SECOND_ROUND.createWithId(
                                 SECOND_SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID));
                 lastSettled.confirmShare(LEE_ID, COMPLETED_AT);
@@ -211,6 +214,7 @@ class PurgeGatheringServiceTest extends UnitTest {
                         SettlementFixture.DINNER.createWithFixedAmounts(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
+                                ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 Map.of(LEE_ID, 0L, PARK_ID, 0L)));
@@ -341,7 +345,7 @@ class PurgeGatheringServiceTest extends UnitTest {
     // 결제자 말고 이와 박의 분담금이 모두 미입금인 정산 건이다.
     private Settlement unpaidSettlement() {
         return SettlementFixture.DINNER.createWithId(
-                SETTLEMENT_ID, GATHERING_ID, PAYER_ID, PARTICIPANT_IDS);
+                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
     }
 
     // 박은 하루 먼저 보냈고, 이가 settledAt에 보내 모든 분담금이 끝난 정산 건이다.

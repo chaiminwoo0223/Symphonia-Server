@@ -2,6 +2,7 @@ package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.common.entity.BaseTimeEntity;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,14 +45,15 @@ public class GatheringJpaEntity extends BaseTimeEntity {
                 .build();
     }
 
-    // 참여자는 별도 테이블에서 읽어 복호화한 뒤 받는다.
-    public Gathering toDomain(List<Participant> participants) {
+    // 참여자와 차수는 별도 테이블에서 읽어 받는다. 참여자는 복호화한 뒤 받는다.
+    public Gathering toDomain(List<Participant> participants, List<GatheringRound> rounds) {
         return Gathering.builder()
                 .id(id)
                 .hostMemberId(hostMemberId)
                 .name(name)
                 .openedAt(openedAt)
                 .participants(participants)
+                .rounds(rounds)
                 .build();
     }
 }

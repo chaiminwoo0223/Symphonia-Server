@@ -1,6 +1,7 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Repository;
 public class GatheringRepositoryImpl implements GatheringRepository {
     private final GatheringJpaRepository gatheringJpaRepository;
     private final ParticipantJpaRepository participantJpaRepository;
+    private final GatheringRoundJpaRepository gatheringRoundJpaRepository;
     private final GatheringDataKeyJpaRepository gatheringDataKeyJpaRepository;
     private final GatheringMasterKey gatheringMasterKey;
     private final GatheringDataKeyLoader gatheringDataKeyLoader;
@@ -43,6 +45,14 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                                                 participant, gatheringId, dataKey))
                         .toList();
 
+        // 차수도 새로 더해진 것만 넣는다. 같은 번호를 동시에 추가하면 먼저 넣은 쪽의 행만 남고, 읽을 때 그 행을 받는다.
+        gathering.getRounds().stream()
+                .filter(round -> round.getId() == null)
+                .forEach(
+                        round ->
+                                gatheringRoundJpaRepository.insertIfAbsent(
+                                        gatheringId, round.getNumber()));
+
         try {
             List<ParticipantJpaEntity> savedParticipants =
                     participantJpaRepository.saveAll(participantEntities);
@@ -56,7 +66,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                                                             participantEntity.toDomain(dataKey)))
                             .toList();
 
-            return savedGathering.toDomain(participants);
+            return savedGathering.toDomain(participants, findRounds(gatheringId));
         } catch (DataIntegrityViolationException e) {
             GatheringPolicy.validateNotJoined(isPhoneNumberViolation(e));
             throw e;
@@ -81,8 +91,10 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     // 참여 토큰, 개인 링크 토큰, 계좌, 피드백 제출 표시, 정산 건, 모임 페어링은 부른 쪽이 먼저 지운다. 데이터 키는 파기 1단계에서 이미 지웠다.
+    // 차수는 정산 건이 참조하므로 정산 건을 지운 뒤인 여기서 지운다.
     @Override
     public void delete(Long gatheringId) {
+        gatheringRoundJpaRepository.deleteAllByGatheringId(gatheringId);
         participantJpaRepository.deleteAllByGatheringId(gatheringId);
         gatheringJpaRepository.deleteGathering(gatheringId);
     }
@@ -117,6 +129,15 @@ public class GatheringRepositoryImpl implements GatheringRepository {
         return gatheringEntity.toDomain(
                 participantEntities.stream()
                         .map(participantEntity -> participantEntity.toDomain(dataKey))
-                        .toList());
+                        .toList(),
+                findRounds(gatheringEntity.getId()));
+    }
+
+    private List<GatheringRound> findRounds(Long gatheringId) {
+        return gatheringRoundJpaRepository
+                .findAllByGatheringIdOrderByRoundNumber(gatheringId)
+                .stream()
+                .map(GatheringRoundJpaEntity::toDomain)
+                .toList();
     }
 }

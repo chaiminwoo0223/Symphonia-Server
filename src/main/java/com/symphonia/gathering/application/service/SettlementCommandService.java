@@ -42,6 +42,7 @@ public class SettlementCommandService
                         .orElseThrow(GatheringNotFoundException::new);
         LocalDateTime now = LocalDateTime.now(clock);
         SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
+        SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
         SettlementPolicy.validateBankAccountRegistered(
@@ -53,10 +54,11 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
-        Settlement settlement = Settlement.record(gathering.getId(), splitMethod, now);
+        Settlement settlement =
+                Settlement.record(gathering.getId(), command.roundId(), splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.of(savedSettlement);
+        return SettlementResult.of(savedSettlement, gathering.getRound(command.roundId()));
     }
 
     @Override
@@ -70,6 +72,7 @@ public class SettlementCommandService
                         .orElseThrow(GatheringNotFoundException::new);
         LocalDateTime now = LocalDateTime.now(clock);
         SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
+        SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
         SplitMethod splitMethod =
@@ -79,10 +82,10 @@ public class SettlementCommandService
                         command.participantIds(),
                         command.fixedAmounts());
 
-        settlement.update(splitMethod, now);
+        settlement.update(command.roundId(), splitMethod, now);
         Settlement savedSettlement = settlementRepository.save(settlement);
 
-        return SettlementResult.of(savedSettlement);
+        return SettlementResult.of(savedSettlement, gathering.getRound(command.roundId()));
     }
 
     @Override

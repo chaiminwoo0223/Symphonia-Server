@@ -21,6 +21,10 @@ public enum GatheringErrorCode implements ErrorCode {
     FIXED_AMOUNT_EXCEEDS_TOTAL(HttpStatus.BAD_REQUEST, "지정 금액의 합이 총액보다 클 수 없습니다."),
     INVALID_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "정산 건 인원이나 지정 금액의 대상이 올바르지 않습니다."),
     GATHERING_PAIRING_CLOSED(HttpStatus.BAD_REQUEST, "페어링을 바꿀 수 있는 기간이 끝난 모임입니다."),
+    GATHERING_ROUND_CLOSED(HttpStatus.BAD_REQUEST, "차수를 추가할 수 있는 기간이 끝난 모임입니다."),
+    GATHERING_ROUND_COUNT_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "한 모임에 추가할 수 있는 차수를 넘었습니다."),
+    INVALID_GATHERING_ROUND_NUMBER(
+            HttpStatus.BAD_REQUEST, "마지막 차수의 다음 차수까지만 추가할 수 있습니다. 기록 화면을 다시 불러와 주세요."),
 
     // 403
     NOT_GATHERING_HOST(HttpStatus.FORBIDDEN, "모임을 만든 회원만 요청할 수 있습니다."),
@@ -33,6 +37,7 @@ public enum GatheringErrorCode implements ErrorCode {
     SETTLEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 정산 건을 찾을 수 없습니다."),
     SETTLEMENT_SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 분담금을 찾을 수 없습니다."),
     GATHERING_PAIRING_NOT_FOUND(HttpStatus.NOT_FOUND, "모임에서 고른 페어링이 없습니다."),
+    GATHERING_ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 차수를 찾을 수 없습니다."),
 
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),

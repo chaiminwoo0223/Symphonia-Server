@@ -16,6 +16,7 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
@@ -55,22 +56,27 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     private Long gatheringId;
+    private Long roundId;
+    private Long secondRoundId;
     private Long kimId;
     private Long leeId;
     private Long parkId;
 
     @BeforeEach
     void setUp() {
-        Gathering gathering =
-                gatheringRepository.save(
-                        GatheringFixture.FRIDAY_DINNER.createWithParticipants(
-                                List.of(
-                                        ParticipantFixture.KIM.create(),
-                                        ParticipantFixture.LEE.create(),
-                                        ParticipantFixture.PARK.create())));
+        Gathering opened =
+                GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                        List.of(
+                                ParticipantFixture.KIM.create(),
+                                ParticipantFixture.LEE.create(),
+                                ParticipantFixture.PARK.create()));
+        opened.addRound(GatheringRoundFixture.SECOND.getNumber());
+        Gathering gathering = saveInTransaction(opened);
         List<Long> participantIds =
                 gathering.getParticipants().stream().map(Participant::getId).toList();
         gatheringId = gathering.getId();
+        roundId = gathering.getRounds().getFirst().getId();
+        secondRoundId = gathering.getRounds().getLast().getId();
         kimId = participantIds.get(0);
         leeId = participantIds.get(1);
         parkId = participantIds.get(2);
@@ -90,7 +96,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 // given
                 Settlement settlement =
                         SettlementFixture.DINNER.create(
-                                gatheringId, kimId, List.of(kimId, leeId, parkId));
+                                gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
 
                 // when
                 Settlement saved = settlementRepository.save(settlement);
@@ -101,12 +107,29 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
+            @DisplayName("차수 id를 저장해 조회할 때 그대로 돌려준다")
+            void shouldPersistRoundId() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.create(
+                                gatheringId, secondRoundId, kimId, List.of(kimId, leeId, parkId));
+
+                // when
+                Settlement saved = settlementRepository.save(settlement);
+
+                // then
+                clearPersistenceContext();
+                assertThat(settlementRepository.findById(saved.getId()).orElseThrow().getRoundId())
+                        .isEqualTo(secondRoundId);
+            }
+
+            @Test
             @DisplayName("분담금을 인원 순서대로 저장해 같은 순서로 조회된다")
             void shouldPersistSharesInParticipantOrder() {
                 // given
                 Settlement settlement =
                         SettlementFixture.DINNER.create(
-                                gatheringId, kimId, List.of(kimId, parkId, leeId));
+                                gatheringId, roundId, kimId, List.of(kimId, parkId, leeId));
 
                 // when
                 Settlement saved = settlementRepository.save(settlement);
@@ -130,6 +153,28 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         class WhenSettlementIsUpdated {
 
             @Test
+            @DisplayName("바꾼 차수 id를 저장해 조회할 때 돌려준다")
+            void shouldPersistChangedRoundId() {
+                // given
+                Long settlementId = recordDinner(kimId, List.of(kimId, leeId, parkId)).getId();
+                clearPersistenceContext();
+                Settlement loaded = settlementRepository.findById(settlementId).orElseThrow();
+                loaded.update(
+                        secondRoundId,
+                        SettlementFixture.DINNER.createSplitMethod(
+                                kimId, List.of(kimId, leeId, parkId)),
+                        LocalDateTime.now());
+
+                // when
+                settlementRepository.save(loaded);
+
+                // then
+                clearPersistenceContext();
+                assertThat(settlementRepository.findById(settlementId).orElseThrow().getRoundId())
+                        .isEqualTo(secondRoundId);
+            }
+
+            @Test
             @DisplayName("기존 분담금을 지우고 수정한 분담금으로 바꿔 저장한다")
             void shouldReplaceShares() {
                 // given
@@ -137,6 +182,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 clearPersistenceContext();
                 Settlement loaded = settlementRepository.findById(settlementId).orElseThrow();
                 loaded.update(
+                        roundId,
                         SettlementFixture.SECOND_ROUND.createSplitMethod(
                                 kimId, List.of(kimId, leeId)),
                         LocalDateTime.now());
@@ -203,6 +249,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 settlementRepository.save(first);
                 clearPersistenceContext();
                 stale.update(
+                        roundId,
                         SettlementFixture.SECOND_ROUND.createSplitMethod(
                                 kimId, List.of(kimId, leeId)),
                         LocalDateTime.now());
@@ -333,6 +380,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
             private void update(Settlement settlement, List<Long> participantIds) {
                 settlement.update(
+                        roundId,
                         SettlementFixture.SECOND_ROUND.createSplitMethod(kimId, participantIds),
                         LocalDateTime.now());
             }
@@ -559,7 +607,8 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
     private Settlement recordDinner(Long payerParticipantId, List<Long> participantIds) {
         return settlementRepository.save(
-                SettlementFixture.DINNER.create(gatheringId, payerParticipantId, participantIds));
+                SettlementFixture.DINNER.create(
+                        gatheringId, roundId, payerParticipantId, participantIds));
     }
 
     private void cancel(Settlement settlement) {
@@ -580,6 +629,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 "DELETE FROM settlement_share WHERE settlement_id IN (SELECT id FROM settlement WHERE gathering_id = ?)",
                 gatheringId);
         jdbcTemplate.update("DELETE FROM settlement WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update(
                 "DELETE FROM participant_bank_account WHERE participant_id IN ("
                         + participantIds
@@ -594,5 +644,10 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         jdbcTemplate.update("DELETE FROM gathering_join_token WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update("DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
+    }
+
+    // 저장소는 부른 쪽의 트랜잭션을 전제로 하므로, 테스트 트랜잭션 없이 도는 중첩 클래스의 준비도 트랜잭션 안에서 저장한다.
+    private Gathering saveInTransaction(Gathering gathering) {
+        return transactionTemplate.execute(_ -> gatheringRepository.save(gathering));
     }
 }

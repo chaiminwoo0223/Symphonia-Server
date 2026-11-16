@@ -42,6 +42,7 @@ class SettlementControllerTest extends IntegrationTest {
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
 
+    private Member member;
     private Gathering gathering;
     private Participant payer;
     private Participant lee;
@@ -50,7 +51,7 @@ class SettlementControllerTest extends IntegrationTest {
 
     @BeforeEach
     void setUp() {
-        Member member = memberHelper.save(MemberFixture.KAKAO);
+        member = memberHelper.save(MemberFixture.KAKAO);
         gathering =
                 gatheringHelper.join(
                         gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId()),
@@ -105,7 +106,12 @@ class SettlementControllerTest extends IntegrationTest {
                                                         payer.getId().intValue(),
                                                         lee.getId().intValue(),
                                                         park.getId().intValue())))
+                        .andExpect(jsonPath("$.data.rounds.length()").value(1))
+                        .andExpect(jsonPath("$.data.rounds[0].id").value(roundId()))
+                        .andExpect(jsonPath("$.data.rounds[0].number").value(1))
                         .andExpect(jsonPath("$.data.settlements[0].id").value(settlement.getId()))
+                        .andExpect(jsonPath("$.data.settlements[0].roundId").value(roundId()))
+                        .andExpect(jsonPath("$.data.settlements[0].roundNumber").value(1))
                         .andExpect(jsonPath("$.data.settlements[0].payerAmount").value(3_334));
             }
         }
@@ -160,6 +166,7 @@ class SettlementControllerTest extends IntegrationTest {
                 settlementHelper.registerBankAccount(gathering, payer);
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                roundId(),
                                 10_000L,
                                 participantIds(),
                                 List.of(new FixedAmountRequest(lee.getId(), 1_050L)));
@@ -172,6 +179,8 @@ class SettlementControllerTest extends IntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.id").isNumber())
+                        .andExpect(jsonPath("$.data.roundId").value(roundId()))
+                        .andExpect(jsonPath("$.data.roundNumber").value(1))
                         .andExpect(jsonPath("$.data.payerParticipantId").value(payer.getId()))
                         .andExpect(jsonPath("$.data.totalAmount").value(10_000))
                         .andExpect(jsonPath("$.data.payerAmount").value(4_475))
@@ -194,7 +203,8 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(10_000L, participantIds(), List.of());
+                        new RecordSettlementRequest(
+                                roundId(), 10_000L, participantIds(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -202,6 +212,50 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.code")
                                         .value(GatheringErrorCode.BANK_ACCOUNT_REQUIRED.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("차수 id가 없는 경우")
+        class WhenRoundIdMissing {
+
+            @Test
+            @DisplayName("roundId 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                RecordSettlementRequest request =
+                        new RecordSettlementRequest(null, 10_000L, participantIds(), List.of());
+
+                // when & then
+                performRecord(request)
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("roundId"));
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 모임의 차수 id인 경우")
+        class WhenRoundOfOtherGathering {
+
+            @Test
+            @DisplayName("GATHERING_ROUND_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                RecordSettlementRequest request =
+                        new RecordSettlementRequest(
+                                otherGatheringRoundId(), 10_000L, participantIds(), List.of());
+
+                // when & then
+                performRecord(request)
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.GATHERING_ROUND_NOT_FOUND
+                                                        .getCode()));
             }
         }
 
@@ -214,7 +268,7 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(0L, participantIds(), List.of());
+                        new RecordSettlementRequest(roundId(), 0L, participantIds(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -235,7 +289,8 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(100_000_001L, participantIds(), List.of());
+                        new RecordSettlementRequest(
+                                roundId(), 100_000_001L, participantIds(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -257,6 +312,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                roundId(),
                                 10_000L,
                                 participantIds(),
                                 List.of(new FixedAmountRequest(lee.getId(), -1L)));
@@ -283,6 +339,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                roundId(),
                                 10_000L,
                                 participantIds(),
                                 List.of(new FixedAmountRequest(lee.getId(), 100_000_001L)));
@@ -309,6 +366,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                roundId(),
                                 10_000L,
                                 participantIds(),
                                 List.of(
@@ -336,7 +394,7 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(10_000L, List.of(), List.of());
+                        new RecordSettlementRequest(roundId(), 10_000L, List.of(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -381,11 +439,80 @@ class SettlementControllerTest extends IntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.id").value(settlement.getId()))
+                        .andExpect(jsonPath("$.data.roundId").value(roundId()))
+                        .andExpect(jsonPath("$.data.roundNumber").value(1))
                         .andExpect(jsonPath("$.data.totalAmount").value(20_000))
                         .andExpect(jsonPath("$.data.payerAmount").value(10_000))
                         .andExpect(jsonPath("$.data.shares.length()").value(1))
                         .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
                         .andExpect(jsonPath("$.data.shares[0].amount").value(10_000));
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 차수로 바꾸는 요청인 경우")
+        class WhenRoundChanged {
+
+            @Test
+            @DisplayName("정산 건을 새 차수로 옮기고 그 차수의 id와 번호를 담아 200을 반환한다")
+            void shouldMoveSettlementToRound() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+                Gathering withSecondRound = gatheringHelper.addRoundsUpTo(gathering, 2);
+                Long secondRoundId = withSecondRound.getRounds().getLast().getId();
+                UpdateSettlementRequest request = updateRequest(secondRoundId, 20_000L);
+
+                // when & then
+                performUpdate(settlement, request)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.roundId").value(secondRoundId))
+                        .andExpect(jsonPath("$.data.roundNumber").value(2));
+            }
+        }
+
+        @Nested
+        @DisplayName("차수 id가 없는 경우")
+        class WhenRoundIdMissing {
+
+            @Test
+            @DisplayName("roundId 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+                UpdateSettlementRequest request = updateRequest(null, 20_000L);
+
+                // when & then
+                performUpdate(settlement, request)
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("roundId"));
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 모임의 차수 id인 경우")
+        class WhenRoundOfOtherGathering {
+
+            @Test
+            @DisplayName("GATHERING_ROUND_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                Settlement settlement =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+                UpdateSettlementRequest request = updateRequest(otherGatheringRoundId(), 20_000L);
+
+                // when & then
+                performUpdate(settlement, request)
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.GATHERING_ROUND_NOT_FOUND
+                                                        .getCode()));
             }
         }
 
@@ -442,8 +569,21 @@ class SettlementControllerTest extends IntegrationTest {
         }
 
         private UpdateSettlementRequest updateRequest(long totalAmount) {
+            return updateRequest(roundId(), totalAmount);
+        }
+
+        private UpdateSettlementRequest updateRequest(Long roundId, long totalAmount) {
             return new UpdateSettlementRequest(
-                    totalAmount, List.of(payer.getId(), lee.getId()), List.of());
+                    roundId, totalAmount, List.of(payer.getId(), lee.getId()), List.of());
+        }
+
+        private ResultActions performUpdate(Settlement settlement, UpdateSettlementRequest request)
+                throws Exception {
+            return mockMvc.perform(
+                    put("/api/v1/settlements/{settlementId}", settlement.getId())
+                            .header("X-Link-Token", payerLinkToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)));
         }
     }
 
@@ -523,6 +663,8 @@ class SettlementControllerTest extends IntegrationTest {
                 performConfirm(settlement, park, payerLinkToken)
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.id").value(settlement.getId()))
+                        .andExpect(jsonPath("$.data.roundId").value(roundId()))
+                        .andExpect(jsonPath("$.data.roundNumber").value(1))
                         .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
                         .andExpect(jsonPath("$.data.shares[0].status").value("SENT"))
                         .andExpect(jsonPath("$.data.shares[1].participantId").value(park.getId()))
@@ -612,6 +754,8 @@ class SettlementControllerTest extends IntegrationTest {
                 performRevert(settlement, lee, payerLinkToken)
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.id").value(settlement.getId()))
+                        .andExpect(jsonPath("$.data.roundId").value(roundId()))
+                        .andExpect(jsonPath("$.data.roundNumber").value(1))
                         .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
                         .andExpect(jsonPath("$.data.shares[0].status").value("UNPAID"))
                         .andExpect(jsonPath("$.data.shares[1].status").value("CONFIRMED"))
@@ -672,6 +816,18 @@ class SettlementControllerTest extends IntegrationTest {
                                     participant.getId())
                             .header("X-Link-Token", linkToken));
         }
+    }
+
+    private Long roundId() {
+        return gathering.getRounds().getFirst().getId();
+    }
+
+    private Long otherGatheringRoundId() {
+        return gatheringHelper
+                .save(GatheringFixture.FRIDAY_DINNER, member.getId())
+                .getRounds()
+                .getFirst()
+                .getId();
     }
 
     private List<Long> participantIds() {

@@ -1,6 +1,7 @@
 package com.symphonia.gathering.fixture;
 
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +28,7 @@ public enum GatheringFixture {
                 .name(name)
                 .openedAt(OPENED_AT)
                 .participants(participants)
+                .rounds(List.of(GatheringRoundFixture.FIRST.createNew()))
                 .build();
     }
 
@@ -40,12 +42,22 @@ public enum GatheringFixture {
 
     public Gathering createWithIdAndOpenedAt(
             Long id, LocalDateTime openedAt, List<Participant> participants) {
+        return createWithRounds(
+                id, openedAt, participants, List.of(GatheringRoundFixture.FIRST.create()));
+    }
+
+    public Gathering createWithRounds(
+            Long id,
+            LocalDateTime openedAt,
+            List<Participant> participants,
+            List<GatheringRound> rounds) {
         return Gathering.builder()
                 .id(id)
                 .hostMemberId(hostMemberId)
                 .name(name)
                 .openedAt(openedAt)
                 .participants(participants)
+                .rounds(rounds)
                 .build();
     }
 }

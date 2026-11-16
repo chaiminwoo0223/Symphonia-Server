@@ -6,6 +6,7 @@ import java.util.Map;
 // participantIds는 결제자를 포함한 인원이고, fixedAmounts는 결제자가 금액을 지정한 참여자 id와 그 금액이다.
 public record RecordSettlementCommand(
         String linkToken,
+        Long roundId,
         long totalAmount,
         List<Long> participantIds,
         Map<Long, Long> fixedAmounts) {}

@@ -61,13 +61,13 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
     @BeforeEach
     void setUp() {
         Gathering gathering =
-                gatheringRepository.save(
+                saveInTransaction(
                         GatheringFixture.FRIDAY_DINNER.createWithParticipants(
                                 List.of(
                                         ParticipantFixture.KIM.create(),
                                         ParticipantFixture.LEE.create())));
         Gathering otherGathering =
-                gatheringRepository.save(
+                saveInTransaction(
                         GatheringFixture.FRIDAY_DINNER.createWithParticipants(
                                 List.of(ParticipantFixture.KIM.create())));
         List<Long> participantIds =
@@ -241,8 +241,14 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
         jdbcTemplate.update(
                 "DELETE FROM participant_pairing_feedback WHERE participant_id IN (SELECT id FROM participant WHERE gathering_id = ?)",
                 gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update("DELETE FROM participant WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update("DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
+    }
+
+    // 저장소는 부른 쪽의 트랜잭션을 전제로 하므로, 테스트 트랜잭션 없이 도는 중첩 클래스의 준비도 트랜잭션 안에서 저장한다.
+    private Gathering saveInTransaction(Gathering gathering) {
+        return transactionTemplate.execute(_ -> gatheringRepository.save(gathering));
     }
 }

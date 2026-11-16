@@ -1,16 +1,21 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
+import static com.symphonia.common.helper.ConcurrencyHelper.await;
+import static com.symphonia.common.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
@@ -18,11 +23,18 @@ import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Import({
     GatheringRepositoryImpl.class,
@@ -35,7 +47,10 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     @Autowired private GatheringRepository gatheringRepository;
     @Autowired private ParticipantJpaRepository participantJpaRepository;
     @Autowired private GatheringDataKeyJpaRepository gatheringDataKeyJpaRepository;
+    @Autowired private GatheringRoundJpaRepository gatheringRoundJpaRepository;
     @Autowired private EntityManager entityManager;
+    @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     @Nested
     @DisplayName("save 메서드는")
@@ -57,6 +72,33 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                 // then
                 assertThat(saved.getId()).isNotNull();
                 assertThat(gatheringDataKeyJpaRepository.findById(saved.getId())).isPresent();
+            }
+
+            @Test
+            @DisplayName("1차를 저장하고 id가 채워진 1차를 담아 반환한다")
+            void shouldPersistFirstRound() {
+                // given
+                Gathering gathering = GatheringFixture.FRIDAY_DINNER.create();
+
+                // when
+                Gathering saved = gatheringRepository.save(gathering);
+
+                // then
+                assertThat(saved.getRounds())
+                        .singleElement()
+                        .satisfies(
+                                round -> {
+                                    assertThat(round.getId()).isNotNull();
+                                    assertThat(round.getNumber())
+                                            .isEqualTo(GatheringRoundFixture.FIRST.getNumber());
+                                });
+                clearPersistenceContext();
+                assertThat(gatheringRepository.findById(saved.getId()).orElseThrow().getRounds())
+                        .extracting(GatheringRound::getId, GatheringRound::getNumber)
+                        .containsExactly(
+                                tuple(
+                                        saved.getRounds().getFirst().getId(),
+                                        GatheringRoundFixture.FIRST.getNumber()));
             }
 
             @Test
@@ -198,6 +240,137 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         }
 
         @Nested
+        @DisplayName("이미 저장된 모임에 차수를 더한 경우")
+        class WhenRoundAddedToSavedGathering {
+
+            @Test
+            @DisplayName("기존 차수의 id를 유지하고 새 차수만 id를 채워 반환한다")
+            void shouldKeepExistingRoundAndAddNewRound() {
+                // given
+                Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+                Long firstRoundId = saved.getRounds().getFirst().getId();
+                clearPersistenceContext();
+                Gathering loaded = gatheringRepository.findById(saved.getId()).orElseThrow();
+                loaded.addRound(GatheringRoundFixture.SECOND.getNumber());
+
+                // when
+                Gathering result = gatheringRepository.save(loaded);
+
+                // then
+                assertThat(result.getRounds())
+                        .extracting(GatheringRound::getNumber)
+                        .containsExactly(1, 2);
+                assertThat(result.getRounds().getFirst().getId()).isEqualTo(firstRoundId);
+                assertThat(result.getRounds().getLast().getId())
+                        .isNotNull()
+                        .isNotEqualTo(firstRoundId);
+                clearPersistenceContext();
+                assertThat(
+                                gatheringRoundJpaRepository.findAllByGatheringIdOrderByRoundNumber(
+                                        saved.getId()))
+                        .hasSize(2);
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 번호의 차수를 두 번 더해 저장한 경우")
+        class WhenSameRoundNumberSavedTwice {
+
+            @Test
+            @DisplayName("행을 하나만 두고 예외 없이 먼저 저장한 차수를 반환한다")
+            void shouldKeepSingleRowAndReturnExistingRound() {
+                // given: 두 요청이 같은 모임을 읽어 각자 2차를 더한 상태에서 한 요청이 먼저 저장한 상태
+                Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+                clearPersistenceContext();
+                Gathering first = gatheringRepository.findById(saved.getId()).orElseThrow();
+                Gathering second = gatheringRepository.findById(saved.getId()).orElseThrow();
+                first.addRound(GatheringRoundFixture.SECOND.getNumber());
+                second.addRound(GatheringRoundFixture.SECOND.getNumber());
+                Long firstSavedRoundId =
+                        gatheringRepository.save(first).getRounds().getLast().getId();
+                clearPersistenceContext();
+
+                // when
+                Gathering result = gatheringRepository.save(second);
+
+                // then
+                assertThat(result.getRounds())
+                        .extracting(GatheringRound::getNumber)
+                        .containsExactly(1, 2);
+                assertThat(result.getRounds().getLast().getId()).isEqualTo(firstSavedRoundId);
+                clearPersistenceContext();
+                assertThat(
+                                gatheringRoundJpaRepository.findAllByGatheringIdOrderByRoundNumber(
+                                        saved.getId()))
+                        .hasSize(2);
+            }
+        }
+
+        // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
+        @Nested
+        @DisplayName("두 요청이 같은 번호의 차수를 동시에 더해 저장하는 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenSameRoundAddedConcurrently {
+
+            private Long gatheringId;
+
+            @AfterEach
+            void tearDown() {
+                jdbcTemplate.update(
+                        "DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
+                jdbcTemplate.update(
+                        "DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
+                jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
+            }
+
+            @Test
+            @DisplayName("행을 하나만 두고 두 요청 모두 예외 없이 같은 차수를 반환받는다")
+            void shouldKeepSingleRowAndReturnSameRound() {
+                // given
+                gatheringId =
+                        transactionTemplate.execute(
+                                _ ->
+                                        gatheringRepository
+                                                .save(GatheringFixture.FRIDAY_DINNER.create())
+                                                .getId());
+                CountDownLatch loaded = new CountDownLatch(2);
+                List<Long> savedRoundIds = new CopyOnWriteArrayList<>();
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () -> savedRoundIds.add(addSecondRoundAfterBothLoaded(loaded)),
+                                () -> savedRoundIds.add(addSecondRoundAfterBothLoaded(loaded)));
+
+                // then
+                assertThat(failures).isEmpty();
+                List<GatheringRoundJpaEntity> stored =
+                        gatheringRoundJpaRepository.findAllByGatheringIdOrderByRoundNumber(
+                                gatheringId);
+                assertThat(stored).hasSize(2);
+                assertThat(savedRoundIds).hasSize(2).containsOnly(stored.getLast().getId());
+            }
+
+            // 두 요청이 모두 같은 모임을 읽은 뒤에 저장하도록 맞춘다.
+            private Long addSecondRoundAfterBothLoaded(CountDownLatch loaded) {
+                return transactionTemplate.execute(
+                        _ -> {
+                            Gathering gathering =
+                                    gatheringRepository.findById(gatheringId).orElseThrow();
+                            gathering.addRound(GatheringRoundFixture.SECOND.getNumber());
+                            loaded.countDown();
+                            await(loaded);
+
+                            return gatheringRepository
+                                    .save(gathering)
+                                    .findRound(GatheringRoundFixture.SECOND.getNumber())
+                                    .orElseThrow()
+                                    .getId();
+                        });
+            }
+        }
+
+        @Nested
         @DisplayName("같은 모임에 같은 휴대폰의 참여자가 둘인 경우")
         class WhenPhoneNumberDuplicated {
 
@@ -216,6 +389,45 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                 assertThatThrownBy(() -> gatheringRepository.save(gathering))
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("delete 메서드는")
+    class Delete {
+
+        @Test
+        @DisplayName("모임과 참여자와 차수를 지우고 다른 모임의 차수는 남긴다")
+        void shouldDeleteGatheringWithRounds() {
+            // given: 파기 1단계로 데이터 키를 지운 상태
+            Gathering deleted = saveWithSecondRound();
+            Gathering retained = saveWithSecondRound();
+            gatheringRepository.discardDataKey(deleted.getId());
+            clearPersistenceContext();
+
+            // when
+            gatheringRepository.delete(deleted.getId());
+
+            // then
+            clearPersistenceContext();
+            assertThat(gatheringRepository.findById(deleted.getId())).isEmpty();
+            assertThat(
+                            gatheringRoundJpaRepository.findAllByGatheringIdOrderByRoundNumber(
+                                    deleted.getId()))
+                    .isEmpty();
+            assertThat(
+                            gatheringRoundJpaRepository.findAllByGatheringIdOrderByRoundNumber(
+                                    retained.getId()))
+                    .hasSize(2);
+        }
+
+        private Gathering saveWithSecondRound() {
+            Gathering gathering =
+                    GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                            List.of(ParticipantFixture.KIM.create()));
+            gathering.addRound(GatheringRoundFixture.SECOND.getNumber());
+
+            return gatheringRepository.save(gathering);
         }
     }
 
@@ -242,6 +454,25 @@ class GatheringRepositoryImplTest extends RepositoryTest {
             assertThat(participant.getName()).isEqualTo(ParticipantFixture.KIM.getName());
             assertThat(participant.getPhoneNumber().value())
                     .isEqualTo(ParticipantFixture.KIM.getPhoneNumber());
+        }
+
+        @Test
+        @DisplayName("존재하는 ID면 차수를 번호 순서대로 담은 모임을 반환한다")
+        void shouldReturnRoundsInNumberOrderWhenIdExists() {
+            // given
+            Gathering gathering = GatheringFixture.FRIDAY_DINNER.create();
+            gathering.addRound(GatheringRoundFixture.SECOND.getNumber());
+            Gathering saved = gatheringRepository.save(gathering);
+            clearPersistenceContext();
+
+            // when
+            Optional<Gathering> result = gatheringRepository.findById(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getRounds())
+                    .extracting(GatheringRound::getNumber)
+                    .containsExactly(1, 2);
         }
 
         @Test

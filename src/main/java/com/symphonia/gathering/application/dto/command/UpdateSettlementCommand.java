@@ -6,6 +6,7 @@ import java.util.Map;
 public record UpdateSettlementCommand(
         String linkToken,
         Long settlementId,
+        Long roundId,
         long totalAmount,
         List<Long> participantIds,
         Map<Long, Long> fixedAmounts) {}

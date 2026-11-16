@@ -7,6 +7,8 @@ import java.util.List;
 
 public record SettlementResponse(
         @Schema(description = "정산 건 ID") Long id,
+        @Schema(description = "정산 건이 속한 차수 ID") Long roundId,
+        @Schema(description = "정산 건이 속한 차수 번호") int roundNumber,
         @Schema(description = "결제자 참여자 ID") Long payerParticipantId,
         @Schema(description = "카드 결제 총액 (원)") long totalAmount,
         @Schema(description = "결제자 분담액 (원)") long payerAmount,
@@ -17,6 +19,8 @@ public record SettlementResponse(
     public static SettlementResponse from(SettlementResult result) {
         return new SettlementResponse(
                 result.id(),
+                result.roundId(),
+                result.roundNumber(),
                 result.payerParticipantId(),
                 result.totalAmount(),
                 result.payerAmount(),

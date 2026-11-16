@@ -1,6 +1,7 @@
 package com.symphonia.gathering.helper;
 
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
@@ -23,12 +24,22 @@ public class SettlementHelper {
                 ParticipantBankAccountFixture.KOOKMIN.create(payer.getId()), gathering.getId());
     }
 
-    // 모임 참여자 전원을 인원으로 정산 건을 기록한다.
+    // 모임의 1차에 참여자 전원을 인원으로 정산 건을 기록한다.
     public Settlement record(
             SettlementFixture settlementFixture, Gathering gathering, Participant payer) {
+        return record(settlementFixture, gathering, gathering.getRounds().getFirst(), payer);
+    }
+
+    // 모임 참여자 전원을 인원으로 정산 건을 기록한다.
+    public Settlement record(
+            SettlementFixture settlementFixture,
+            Gathering gathering,
+            GatheringRound round,
+            Participant payer) {
         return settlementRepository.save(
                 settlementFixture.create(
                         gathering.getId(),
+                        round.getId(),
                         payer.getId(),
                         gathering.getParticipants().stream().map(Participant::getId).toList()));
     }
