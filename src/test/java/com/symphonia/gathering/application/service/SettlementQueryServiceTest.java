@@ -19,6 +19,7 @@ import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
 import com.symphonia.gathering.application.dto.result.SharesResult;
 import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
@@ -38,6 +39,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -167,7 +169,7 @@ class SettlementQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("빈 차수를 포함한 모임의 차수를 번호 순서대로 모두 반환한다")
-            void shouldReturnAllRoundsOfGathering() {
+            void shouldReturnRoundsOfGathering() {
                 // given
                 givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
 
@@ -209,6 +211,49 @@ class SettlementQueryServiceTest extends UnitTest {
 
                 // then
                 assertThat(result.defaultParticipantIds()).containsExactly(LEE_ID, PAYER_ID);
+            }
+        }
+
+        @Nested
+        @DisplayName("직전 정산 건이 이전 차수보다 적은 인원으로 기록된 경우")
+        class WhenLatestSettlementHasFewerParticipants {
+
+            @Test
+            @DisplayName("차수와 관계없이 직전 정산 건의 인원만 인원 기본값으로 반환하고 참여자는 전원을 반환한다")
+            void shouldReturnLatestSettlementParticipantsAsDefaultRegardlessOfRound() {
+                // given
+                List<Long> gatheringParticipantIds =
+                        LongStream.range(PAYER_ID, PAYER_ID + 10).boxed().toList();
+                List<Long> latestParticipantIds =
+                        List.of(
+                                gatheringParticipantIds.get(0),
+                                gatheringParticipantIds.get(3),
+                                gatheringParticipantIds.get(5),
+                                gatheringParticipantIds.get(8));
+                Settlement latest =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.SECOND.getId(),
+                                PAYER_ID,
+                                latestParticipantIds);
+                givenForm(
+                        gathering(
+                                OPEN_PERIOD_OPENED_AT,
+                                ParticipantFixture.createWithIds(gatheringParticipantIds)),
+                        latest,
+                        false,
+                        List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.defaultParticipantIds())
+                        .containsExactlyElementsOf(latestParticipantIds);
+                assertThat(result.participants())
+                        .extracting(SettlementParticipantResult::id)
+                        .containsExactlyElementsOf(gatheringParticipantIds);
             }
         }
 
@@ -292,9 +337,18 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement latestSettlement,
                 boolean bankAccountRegistered,
                 List<Settlement> payerSettlements) {
+            givenForm(
+                    gathering(openedAt), latestSettlement, bankAccountRegistered, payerSettlements);
+        }
+
+        private void givenForm(
+                Gathering gathering,
+                Settlement latestSettlement,
+                boolean bankAccountRegistered,
+                List<Settlement> payerSettlements) {
             givenParticipant(PAYER_ID);
             given(gatheringRepository.findByParticipantId(PAYER_ID))
-                    .willReturn(Optional.of(gathering(openedAt)));
+                    .willReturn(Optional.of(gathering));
             given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
                     .willReturn(Optional.ofNullable(latestSettlement));
             given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
@@ -621,13 +675,14 @@ class SettlementQueryServiceTest extends UnitTest {
 
     // 1차에만 정산 건이 있고 2차는 비어 있는 모임이다.
     private Gathering gathering(LocalDateTime openedAt) {
+        return gathering(openedAt, ParticipantFixture.createWithIds(PARTICIPANT_IDS));
+    }
+
+    private Gathering gathering(LocalDateTime openedAt, List<Participant> participants) {
         return GatheringFixture.FRIDAY_DINNER.createWithRounds(
                 GATHERING_ID,
                 openedAt,
-                List.of(
-                        ParticipantFixture.KIM.createWithId(PAYER_ID),
-                        ParticipantFixture.LEE.createWithId(LEE_ID),
-                        ParticipantFixture.PARK.createWithId(PARK_ID)),
+                participants,
                 List.of(
                         GatheringRoundFixture.FIRST.create(),
                         GatheringRoundFixture.SECOND.create()));
