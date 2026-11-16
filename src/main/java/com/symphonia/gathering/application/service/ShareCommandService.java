@@ -49,6 +49,9 @@ public class ShareCommandService
                 gatheringRepository
                         .findByParticipantId(participantId)
                         .orElseThrow(GatheringNotFoundException::new);
+        // 차수의 참여자 이름은 잠그지 않고 읽는다. 이름만 보여 주고 상태는 바꾸지 않아 다른 정산 건의 변경과 겹쳐도 충돌하지 않는다.
+        List<Settlement> gatheringSettlements =
+                settlementRepository.findAllByGatheringId(gathering.getId());
         LocalDateTime now = LocalDateTime.now(clock);
 
         settlements.stream()
@@ -63,7 +66,9 @@ public class ShareCommandService
                 gathering.getParticipant(command.payerParticipantId()),
                 findPayerBankAccount(command.payerParticipantId(), gathering.getId()),
                 settlements,
-                participantId);
+                participantId,
+                gathering,
+                gatheringSettlements);
     }
 
     @Override

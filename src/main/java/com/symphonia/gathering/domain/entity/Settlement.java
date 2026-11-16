@@ -123,8 +123,13 @@ public class Settlement {
                 .sum();
     }
 
+    // 결제자가 다른 참여자에게서 받을 금액이다. 총액에서 결제자 분담액을 뺀 값과 같다.
+    public long getReceivableAmount() {
+        return shares.stream().mapToLong(SettlementShare::getAmount).sum();
+    }
+
     public long getPayerAmount() {
-        return totalAmount - shares.stream().mapToLong(SettlementShare::getAmount).sum();
+        return totalAmount - getReceivableAmount();
     }
 
     // 결제자를 포함한 인원이다. 다음 정산 건의 인원 기본값으로 쓴다.

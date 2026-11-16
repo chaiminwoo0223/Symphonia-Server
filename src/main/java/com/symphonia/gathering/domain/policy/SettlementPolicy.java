@@ -1,5 +1,6 @@
 package com.symphonia.gathering.domain.policy;
 
+import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.BankAccountAlreadyRegisteredException;
 import com.symphonia.gathering.domain.exception.BankAccountConsentRequiredException;
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
@@ -10,8 +11,13 @@ import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersio
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-// 정산 건과 모임, 계좌를 함께 봐야 하는 검증이다. Service가 Settlement의 상태를 바꾸기 전에 호출한다.
+// 정산 건과 모임, 계좌를 함께 봐야 하는 검증과 계산이다. 검증은 Service가 Settlement의 상태를 바꾸기 전에 호출한다.
 public enum SettlementPolicy {
     ;
 
@@ -61,6 +67,18 @@ public enum SettlementPolicy {
         if (!found) {
             throw new SettlementShareNotFoundException();
         }
+    }
+
+    // 차수의 참여자는 그 차수에 속한 취소하지 않은 정산 건 인원의 합집합이다. 정산 건이 없거나 모두 취소한 차수는 키가 없다.
+    public static Map<Long, Set<Long>> getParticipantIdsByRoundId(List<Settlement> settlements) {
+        return settlements.stream()
+                .filter(settlement -> !settlement.isCancelled())
+                .collect(
+                        Collectors.groupingBy(
+                                Settlement::getRoundId,
+                                Collectors.flatMapping(
+                                        settlement -> settlement.getParticipantIds().stream(),
+                                        Collectors.toCollection(HashSet::new))));
     }
 
     public static void validatePayer(Long payerParticipantId, Long participantId) {

@@ -15,6 +15,8 @@ public record SettlementFormResponse(
                 List<Long> defaultParticipantIds,
         @Schema(description = "요청한 참여자가 결제자로 기록한, 취소하지 않은 정산 건")
                 List<SettlementResponse> settlements,
+        @Schema(description = "settlements의 카드 결제 총액 합계 (원, 취소하지 않은 정산 건만)") long totalAmountSum,
+        @Schema(description = "settlements의 받을 금액 합계 (원, 취소하지 않은 정산 건만)") long receivableAmountSum,
         @Schema(description = "모임의 개인정보를 파기할 예정 시각 (모든 분담금이 끝나면 앞당겨짐)") LocalDateTime deletesAt) {
     public static SettlementFormResponse from(SettlementFormResult result) {
         return new SettlementFormResponse(
@@ -25,6 +27,8 @@ public record SettlementFormResponse(
                 result.participants().stream().map(SettlementParticipantResponse::from).toList(),
                 result.defaultParticipantIds(),
                 result.settlements().stream().map(SettlementResponse::from).toList(),
+                result.totalAmountSum(),
+                result.receivableAmountSum(),
                 result.deletesAt());
     }
 }

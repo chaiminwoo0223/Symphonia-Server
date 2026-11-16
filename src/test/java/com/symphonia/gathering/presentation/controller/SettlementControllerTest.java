@@ -112,7 +112,10 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.settlements[0].id").value(settlement.getId()))
                         .andExpect(jsonPath("$.data.settlements[0].roundId").value(roundId()))
                         .andExpect(jsonPath("$.data.settlements[0].roundNumber").value(1))
-                        .andExpect(jsonPath("$.data.settlements[0].payerAmount").value(3_334));
+                        .andExpect(jsonPath("$.data.settlements[0].payerAmount").value(3_334))
+                        .andExpect(jsonPath("$.data.settlements[0].receivableAmount").value(6_666))
+                        .andExpect(jsonPath("$.data.totalAmountSum").value(10_000))
+                        .andExpect(jsonPath("$.data.receivableAmountSum").value(6_666));
             }
         }
 
@@ -184,6 +187,7 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.payerParticipantId").value(payer.getId()))
                         .andExpect(jsonPath("$.data.totalAmount").value(10_000))
                         .andExpect(jsonPath("$.data.payerAmount").value(4_475))
+                        .andExpect(jsonPath("$.data.receivableAmount").value(5_525))
                         .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
                         .andExpect(jsonPath("$.data.shares[0].amount").value(1_050))
                         .andExpect(jsonPath("$.data.shares[0].fixed").value(true))

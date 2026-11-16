@@ -94,6 +94,9 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
         List<Settlement> shareSettlements =
                 settlementRepository.findAllByShareParticipantId(participantId);
         Gathering gathering = findGatheringByParticipantId(participantId);
+        // 차수의 참여자 이름은 모임의 취소하지 않은 정산 건 인원으로 구한다. 모임을 읽은 뒤 참여한 사람은 이름을 구할 수 없어 건너뛴다.
+        List<Settlement> gatheringSettlements =
+                settlementRepository.findAllByGatheringId(gathering.getId());
         Map<Long, List<Settlement>> settlementsByPayerId =
                 shareSettlements.stream()
                         .collect(
@@ -119,7 +122,9 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                                                 findPayerBankAccount(
                                                         bankAccountsByPayerId, entry.getKey()),
                                                 entry.getValue(),
-                                                participantId))
+                                                participantId,
+                                                gathering,
+                                                gatheringSettlements))
                         .sorted(Comparator.comparing(result -> !result.hasUnpaidShares()))
                         .toList();
 
