@@ -46,13 +46,14 @@ public enum GatheringPolicy {
         }
     }
 
-    // 마지막 차수의 다음 번호까지만 추가할 수 있어 번호가 빈틈없이 이어진다. 그 번호가 상한을 넘으면 추가할 수 없다.
+    // 상한을 넘는 번호는 얼마나 건너뛰었든 상한 초과가 원인이라 먼저 거절한다. 상한 안에서는 마지막 차수의 다음 번호까지만
+    // 추가할 수 있어 번호가 빈틈없이 이어진다.
     public static void validateRoundNumber(int requestedNumber, int lastRoundNumber) {
-        if (requestedNumber > lastRoundNumber + 1) {
-            throw new InvalidGatheringRoundNumberException();
-        }
         if (requestedNumber > MAX_ROUND_COUNT) {
             throw new GatheringRoundCountExceedsLimitException();
+        }
+        if (requestedNumber > lastRoundNumber + 1) {
+            throw new InvalidGatheringRoundNumberException();
         }
     }
 
