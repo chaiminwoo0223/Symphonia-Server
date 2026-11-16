@@ -47,6 +47,10 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
         LinkedParticipantResult linkedParticipant =
                 getLinkedParticipantUseCase.getLinkedParticipant(linkToken);
         Long participantId = linkedParticipant.participantId();
+        // 정산 건을 모임보다 먼저 읽는다. 읽은 정산 건의 차수는 그 정산 건을 저장하기 전에 커밋되어 있고 차수는 지우지 않으므로,
+        // 뒤에 읽는 모임에는 그 차수가 반드시 들어 있다.
+        List<Settlement> payerSettlements =
+                settlementRepository.findAllByPayerParticipantId(participantId);
         Gathering gathering = findGatheringByParticipantId(participantId);
         boolean recordable = GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now);
         List<Long> defaultParticipantIds =
@@ -68,7 +72,7 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                         .map(SettlementParticipantResult::from)
                         .toList(),
                 defaultParticipantIds,
-                settlementRepository.findAllByPayerParticipantId(participantId).stream()
+                payerSettlements.stream()
                         .map(
                                 settlement ->
                                         SettlementResult.of(
@@ -85,9 +89,13 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
         LinkedParticipantResult linkedParticipant =
                 getLinkedParticipantUseCase.getLinkedParticipant(linkToken);
         Long participantId = linkedParticipant.participantId();
+        // 정산 건을 모임보다 먼저 읽는다. 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 참여자는 지우지 않으므로,
+        // 뒤에 읽는 모임에는 그 결제자가 반드시 들어 있다.
+        List<Settlement> shareSettlements =
+                settlementRepository.findAllByShareParticipantId(participantId);
         Gathering gathering = findGatheringByParticipantId(participantId);
         Map<Long, List<Settlement>> settlementsByPayerId =
-                settlementRepository.findAllByShareParticipantId(participantId).stream()
+                shareSettlements.stream()
                         .collect(
                                 Collectors.groupingBy(
                                         Settlement::getPayerParticipantId,
