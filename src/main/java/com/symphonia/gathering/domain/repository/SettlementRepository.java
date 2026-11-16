@@ -24,7 +24,7 @@ public interface SettlementRepository {
     List<Settlement> findAllByShareParticipantIdAndPayerForUpdate(
             Long participantId, Long payerParticipantId);
 
-    // 취소한 정산 건까지 모임의 정산 건을 모두 찾는다. 모임의 파기 시각을 정하는 데 쓴다.
+    // 취소한 정산 건까지 모임의 정산 건을 모두 찾는다. 모임의 파기 시각을 정하고, 분담금 화면에서 차수의 참여자 이름을 구하는 데 쓴다.
     List<Settlement> findAllByGatheringId(Long gatheringId);
 
     // 취소한 정산 건까지 여러 모임의 정산 건을 한 번에 찾는다. 파기 스윕이 파기할 모임을 고르는 데 쓴다.

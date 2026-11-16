@@ -58,6 +58,8 @@ class SettlementQueryServiceTest extends UnitTest {
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
+    // 모임을 읽은 뒤에 참여해서 읽은 모임의 참여자에 없는 참여자다.
+    private static final Long NEWCOMER_ID = 23L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
@@ -288,6 +290,57 @@ class SettlementQueryServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("한 결제자가 여러 차수에서 결제한 정산 건의 총액과 받을 금액을 각각 더해 반환한다")
+            void shouldSumTotalAndReceivableAmountsAcrossRounds() {
+                // given
+                Settlement firstRoundSettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.FIRST.getId(),
+                                PAYER_ID,
+                                PARTICIPANT_IDS);
+                Settlement secondRoundSettlement =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.SECOND.getId(),
+                                PAYER_ID,
+                                PARTICIPANT_IDS);
+                givenForm(
+                        OPEN_PERIOD_OPENED_AT,
+                        secondRoundSettlement,
+                        true,
+                        List.of(firstRoundSettlement, secondRoundSettlement));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.totalAmountSum()).isEqualTo(30_000L);
+                assertThat(result.receivableAmountSum()).isEqualTo(19_998L);
+            }
+
+            @Test
+            @DisplayName("정산 건마다 총액에서 결제자 분담액을 뺀 받을 금액을 담아 반환한다")
+            void shouldReturnReceivableAmountOfSettlement() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.settlements())
+                        .extracting(
+                                SettlementResult::payerAmount, SettlementResult::receivableAmount)
+                        .containsExactly(tuple(3_334L, 6_666L));
+            }
+
+            @Test
             @DisplayName("정산 건이 속한 차수의 id와 번호를 담아 반환한다")
             void shouldReturnRoundOfSettlement() {
                 // given
@@ -310,6 +363,25 @@ class SettlementQueryServiceTest extends UnitTest {
                                 tuple(
                                         GatheringRoundFixture.SECOND.getId(),
                                         GatheringRoundFixture.SECOND.getNumber()));
+            }
+        }
+
+        @Nested
+        @DisplayName("요청한 참여자가 결제자로 기록한 정산 건이 없는 경우")
+        class WhenNoPayerSettlements {
+
+            @Test
+            @DisplayName("총액과 받을 금액의 합계를 0으로 반환한다")
+            void shouldReturnZeroSums() {
+                // given
+                givenForm(OPEN_PERIOD_OPENED_AT, null, true, List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.totalAmountSum()).isZero();
+                assertThat(result.receivableAmountSum()).isZero();
             }
         }
 
@@ -618,6 +690,158 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("같은 차수에 다른 결제자의 정산 건이 있는 경우")
+        class WhenRoundHasOtherSettlements {
+
+            @Test
+            @DisplayName("본인이 인원이 아닌 정산 건까지 합쳐 그 차수 참여자의 이름을 참여한 순서대로 반환한다")
+            void shouldReturnUnionOfRoundParticipantNames() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement otherSettlement =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                List.of(PARK_ID, PAYER_ID));
+                givenShares(List.of(mySettlement), List.of(otherSettlement, mySettlement));
+
+                // when
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
+
+                // then
+                assertThat(result.getFirst().shares())
+                        .singleElement()
+                        .extracting(ShareBreakdownResult::roundParticipantNames)
+                        .isEqualTo(
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName(),
+                                        ParticipantFixture.PARK.getName()));
+            }
+
+            @Test
+            @DisplayName("취소한 정산 건에만 있는 참여자의 이름은 담지 않는다")
+            void shouldExcludeParticipantsOfCancelledSettlements() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement cancelledSettlement =
+                        SettlementFixture.SECOND_ROUND.createCancelled(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                List.of(PARK_ID, PAYER_ID));
+                givenShares(List.of(mySettlement), List.of(cancelledSettlement, mySettlement));
+
+                // when
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
+
+                // then
+                assertThat(result.getFirst().shares())
+                        .singleElement()
+                        .extracting(ShareBreakdownResult::roundParticipantNames)
+                        .isEqualTo(
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName()));
+            }
+
+            @Test
+            @DisplayName("모임에 참여하지 않은 id가 정산 건 인원에 있으면 건너뛰고 나머지 이름만 반환한다")
+            void shouldSkipParticipantIdsNotInGathering() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement settlementOfNewcomer =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                List.of(PARK_ID, NEWCOMER_ID));
+                givenShares(List.of(mySettlement), List.of(settlementOfNewcomer, mySettlement));
+
+                // when
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
+
+                // then
+                assertThat(result.getFirst().shares())
+                        .singleElement()
+                        .extracting(ShareBreakdownResult::roundParticipantNames)
+                        .isEqualTo(
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName(),
+                                        ParticipantFixture.PARK.getName()));
+            }
+
+            @Test
+            @DisplayName("다른 차수의 정산 건 인원은 섞지 않고 차수마다 따로 반환한다")
+            void shouldReturnParticipantNamesPerRound() {
+                // given
+                Settlement firstRoundSettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.FIRST.getId(),
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement secondRoundSettlement =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.SECOND.getId(),
+                                PARK_ID,
+                                List.of(PARK_ID, LEE_ID));
+                givenShares(firstRoundSettlement, secondRoundSettlement);
+
+                // when
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
+
+                // then
+                assertThat(result)
+                        .flatExtracting(PayerSharesResult::shares)
+                        .extracting(
+                                ShareBreakdownResult::roundNumber,
+                                ShareBreakdownResult::roundParticipantNames)
+                        .containsExactlyInAnyOrder(
+                                tuple(
+                                        1,
+                                        List.of(
+                                                ParticipantFixture.KIM.getName(),
+                                                ParticipantFixture.LEE.getName())),
+                                tuple(
+                                        2,
+                                        List.of(
+                                                ParticipantFixture.LEE.getName(),
+                                                ParticipantFixture.PARK.getName())));
+            }
+        }
+
+        @Nested
         @DisplayName("결제자가 금액을 지정한 정산 건인 경우")
         class WhenAmountFixed {
 
@@ -645,6 +869,12 @@ class SettlementQueryServiceTest extends UnitTest {
                         .isEqualTo(
                                 new ShareBreakdownResult(
                                         SETTLEMENT_ID,
+                                        ROUND_ID,
+                                        GatheringRoundFixture.FIRST.getNumber(),
+                                        List.of(
+                                                ParticipantFixture.KIM.getName(),
+                                                ParticipantFixture.LEE.getName(),
+                                                ParticipantFixture.PARK.getName()),
                                         SettlementFixture.DINNER.getTotalAmount(),
                                         3,
                                         true,
@@ -655,11 +885,18 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         private void givenShares(Settlement... settlements) {
+            givenShares(List.of(settlements), List.of(settlements));
+        }
+
+        // 모임의 정산 건에는 LEE가 분담금을 내지 않는 정산 건과 취소한 정산 건도 들어 있을 수 있다.
+        private void givenShares(
+                List<Settlement> settlements, List<Settlement> gatheringSettlements) {
             givenParticipant(LEE_ID);
             given(gatheringRepository.findByParticipantId(LEE_ID))
                     .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
-            given(settlementRepository.findAllByShareParticipantId(LEE_ID))
-                    .willReturn(List.of(settlements));
+            given(settlementRepository.findAllByShareParticipantId(LEE_ID)).willReturn(settlements);
+            given(settlementRepository.findAllByGatheringId(GATHERING_ID))
+                    .willReturn(gatheringSettlements);
             given(participantBankAccountRepository.findAllByParticipantIds(any(), eq(GATHERING_ID)))
                     .willReturn(
                             List.of(

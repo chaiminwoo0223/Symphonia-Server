@@ -183,6 +183,91 @@ class ShareCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("같은 차수에 다른 결제자의 정산 건이 있는 경우")
+        class WhenRoundHasOtherSettlements {
+
+            @Test
+            @DisplayName("본인이 인원이 아닌 정산 건까지 합쳐 그 차수 참여자의 이름을 참여한 순서대로 담아 반환한다")
+            void shouldReturnUnionOfRoundParticipantNames() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement otherSettlement =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                List.of(PARK_ID, PAYER_ID));
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(mySettlement);
+                givenGatheringSettlements(otherSettlement, mySettlement);
+                givenGatheringWithPayerBankAccount();
+                givenSaveReturnsSettlement();
+
+                // when
+                PayerSharesResult result = shareCommandService.markSent(command());
+
+                // then
+                assertThat(result.shares())
+                        .singleElement()
+                        .extracting(ShareBreakdownResult::roundParticipantNames)
+                        .isEqualTo(
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName(),
+                                        ParticipantFixture.PARK.getName()));
+            }
+
+            @Test
+            @DisplayName("취소한 정산 건에만 있는 참여자의 이름은 담지 않는다")
+            void shouldExcludeParticipantsOfCancelledSettlements() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement cancelledSettlement =
+                        SettlementFixture.SECOND_ROUND.createCancelled(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                List.of(PARK_ID, PAYER_ID));
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(mySettlement);
+                givenGatheringSettlements(cancelledSettlement, mySettlement);
+                givenGatheringWithPayerBankAccount();
+                givenSaveReturnsSettlement();
+
+                // when
+                PayerSharesResult result = shareCommandService.markSent(command());
+
+                // then
+                assertThat(result.shares())
+                        .singleElement()
+                        .extracting(
+                                ShareBreakdownResult::roundId,
+                                ShareBreakdownResult::roundNumber,
+                                ShareBreakdownResult::roundParticipantNames)
+                        .containsExactly(
+                                ROUND_ID,
+                                GatheringRoundFixture.FIRST.getNumber(),
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName()));
+            }
+        }
+
+        @Nested
         @DisplayName("이미 보냄이나 확인 완료인 분담금이 있는 경우")
         class WhenSharesAlreadySent {
 
@@ -268,6 +353,12 @@ class ShareCommandServiceTest extends UnitTest {
 
         private MarkSharesSentCommand command() {
             return new MarkSharesSentCommand(LINK_TOKEN, PAYER_ID);
+        }
+
+        // 모임의 정산 건에는 LEE가 분담금을 내지 않는 정산 건과 취소한 정산 건도 들어 있을 수 있다.
+        private void givenGatheringSettlements(Settlement... settlements) {
+            given(settlementRepository.findAllByGatheringId(GATHERING_ID))
+                    .willReturn(List.of(settlements));
         }
 
         private void givenSharedSettlements(Settlement... settlements) {
@@ -449,6 +540,7 @@ class ShareCommandServiceTest extends UnitTest {
                         .containsExactly(
                                 tuple(LEE_ID, ShareStatus.CONFIRMED),
                                 tuple(PARK_ID, ShareStatus.UNPAID));
+                assertThat(result.receivableAmount()).isEqualTo(6_666L);
                 assertThat(result.confirmedAmount()).isEqualTo(3_333L);
                 assertThat(result.sentAmount()).isZero();
             }

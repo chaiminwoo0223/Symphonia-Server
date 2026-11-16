@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
@@ -96,6 +97,14 @@ public class Gathering {
                 .filter(round -> roundId.equals(round.getId()))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    // 참여한 순서대로 이름을 돌려준다. 이 모임의 참여자가 아닌 id는 건너뛴다.
+    public List<String> getParticipantNames(Set<Long> participantIds) {
+        return participants.stream()
+                .filter(participant -> participantIds.contains(participant.getId()))
+                .map(Participant::getName)
+                .toList();
     }
 
     public List<Participant> getParticipants() {

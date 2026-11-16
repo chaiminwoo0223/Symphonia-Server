@@ -1,5 +1,6 @@
 package com.symphonia.gathering.presentation.controller;
 
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -102,6 +103,15 @@ class ShareControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.payers[0].shares[0].settlementId")
                                         .value(dinner.getId()))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].roundNumber").value(1))
+                        .andExpect(jsonPath("$.data.payers[0].shares[0].roundId").isNumber())
+                        .andExpect(
+                                jsonPath("$.data.payers[0].shares[0].roundParticipantNames")
+                                        .value(
+                                                contains(
+                                                        ParticipantFixture.KIM.getName(),
+                                                        ParticipantFixture.LEE.getName(),
+                                                        ParticipantFixture.PARK.getName())))
                         .andExpect(jsonPath("$.data.payers[0].shares[0].totalAmount").value(10_000))
                         .andExpect(jsonPath("$.data.payers[0].shares[0].headcount").value(3))
                         .andExpect(jsonPath("$.data.payers[0].shares[0].fixed").value(false))

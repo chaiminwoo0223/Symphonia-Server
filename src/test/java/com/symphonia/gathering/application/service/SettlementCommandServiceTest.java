@@ -360,6 +360,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                 tuple(LEE_ID, 3_000L, false, ShareStatus.UNPAID),
                                 tuple(PARK_ID, 3_000L, false, ShareStatus.UNPAID));
                 assertThat(result.payerAmount()).isEqualTo(3_000L);
+                assertThat(result.receivableAmount()).isEqualTo(6_000L);
             }
 
             @Test
