@@ -253,6 +253,24 @@ class RoundCommandServiceTest extends UnitTest {
                 thenGatheringNotSaved();
             }
         }
+
+        @Nested
+        @DisplayName("번호를 건너뛰면서 상한도 넘는 번호를 요청한 경우")
+        class WhenRoundNumberSkipsPastLimit {
+
+            @Test
+            @DisplayName("건너뜀보다 상한 초과를 우선해 예외를 던지고 모임을 저장하지 않는다")
+            void shouldThrowGatheringRoundCountExceedsLimitException() {
+                // given
+                int limit = GatheringPolicy.MAX_ROUND_COUNT;
+                givenGatheringOfParticipant(OPEN_PERIOD_OPENED_AT, List.of(first()));
+
+                // when & then
+                assertThatThrownBy(() -> roundCommandService.add(command(limit + 1)))
+                        .isInstanceOf(GatheringRoundCountExceedsLimitException.class);
+                thenGatheringNotSaved();
+            }
+        }
     }
 
     private AddRoundCommand command(int roundNumber) {
