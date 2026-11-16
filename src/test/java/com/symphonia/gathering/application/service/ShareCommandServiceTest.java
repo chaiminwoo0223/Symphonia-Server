@@ -225,6 +225,36 @@ class ShareCommandServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("읽는 사이에 모임의 정산 건에서 본인 정산 건이 빠져도 본인 정산 건 인원의 이름은 담는다")
+            void shouldIncludeOwnSettlementParticipantsWhenMissingFromGatheringSettlements() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(mySettlement);
+                givenGatheringSettlements();
+                givenGatheringWithPayerBankAccount();
+                givenSaveReturnsSettlement();
+
+                // when
+                PayerSharesResult result = shareCommandService.markSent(command());
+
+                // then
+                assertThat(result.shares())
+                        .singleElement()
+                        .extracting(ShareBreakdownResult::roundParticipantNames)
+                        .isEqualTo(
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName()));
+            }
+
+            @Test
             @DisplayName("취소한 정산 건에만 있는 참여자의 이름은 담지 않는다")
             void shouldExcludeParticipantsOfCancelledSettlements() {
                 // given
