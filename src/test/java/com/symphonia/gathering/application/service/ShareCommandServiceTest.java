@@ -706,10 +706,9 @@ class ShareCommandServiceTest extends UnitTest {
                         GatheringRoundFixture.SECOND.create()));
     }
 
-    // confirm과 revert는 응답에 차수 번호를 담으려고 요청한 참여자(결제자)의 모임을 읽는다.
+    // confirm과 revert는 응답에 차수 번호를 담으려고 정산 건이 속한 모임을 읽는다.
     private void givenGatheringOfPayer() {
-        given(gatheringRepository.findByParticipantId(PAYER_ID))
-                .willReturn(Optional.of(gathering()));
+        given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.of(gathering()));
     }
 
     private void givenParticipant(Long participantId) {
