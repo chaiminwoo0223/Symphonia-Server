@@ -17,6 +17,7 @@ import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
 import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
@@ -43,6 +44,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -61,6 +63,7 @@ class SettlementCommandServiceTest extends UnitTest {
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
+    private static final Long LATE_JOINER_ID = 23L;
     private static final Long OUTSIDER_ID = 99L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
@@ -488,6 +491,116 @@ class SettlementCommandServiceTest extends UnitTest {
             }
         }
 
+        @Nested
+        @DisplayName("같은 차수에 결제자가 다른 정산 건을 카드 분할로 기록하는 경우")
+        class WhenSplitPaymentInSameRound {
+
+            @Test
+            @DisplayName("첫 결제자의 정산 건은 고른 차수의 id와 번호를 반환한다")
+            void shouldReturnRoundWhenFirstPayerRecords() {
+                // given
+                givenRecordableGathering(PAYER_ID, PARTICIPANT_IDS);
+                givenSaveReturnsSettlement();
+                RecordSettlementCommand command =
+                        command(SECOND_ROUND_ID, 6_000L, List.of(PAYER_ID, LEE_ID), Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.payerParticipantId()).isEqualTo(PAYER_ID);
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+            }
+
+            @Test
+            @DisplayName("다른 결제자의 정산 건도 같은 차수의 id와 번호를 반환한다")
+            void shouldReturnSameRoundWhenOtherPayerRecords() {
+                // given
+                givenRecordableGathering(LEE_ID, PARTICIPANT_IDS);
+                givenSaveReturnsSettlement();
+                RecordSettlementCommand command =
+                        command(SECOND_ROUND_ID, 4_000L, List.of(LEE_ID, PARK_ID), Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.payerParticipantId()).isEqualTo(LEE_ID);
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+            }
+        }
+
+        @Nested
+        @DisplayName("이전 차수보다 적은 인원으로 기록하는 경우")
+        class WhenParticipantsFewerThanPreviousRound {
+
+            @Test
+            @DisplayName("고른 차수의 번호와 그 인원 기준으로 만든 분담금을 반환한다")
+            void shouldCalculateSharesOfSelectedParticipants() {
+                // given
+                List<Long> gatheringParticipantIds = participantIds(10);
+                List<Long> roundParticipantIds =
+                        List.of(
+                                gatheringParticipantIds.get(0),
+                                gatheringParticipantIds.get(3),
+                                gatheringParticipantIds.get(5),
+                                gatheringParticipantIds.get(8));
+                givenRecordableGathering(PAYER_ID, gatheringParticipantIds);
+                givenSaveReturnsSettlement();
+                RecordSettlementCommand command =
+                        command(SECOND_ROUND_ID, 10_000L, roundParticipantIds, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+                assertThat(result.shares())
+                        .extracting(
+                                SettlementShareResult::participantId, SettlementShareResult::amount)
+                        .containsExactly(
+                                tuple(roundParticipantIds.get(1), 2_500L),
+                                tuple(roundParticipantIds.get(2), 2_500L),
+                                tuple(roundParticipantIds.get(3), 2_500L));
+                assertThat(result.payerAmount()).isEqualTo(2_500L);
+            }
+        }
+
+        @Nested
+        @DisplayName("이전 차수를 기록한 뒤에 모임에 합류한 참여자를 인원에 넣는 경우")
+        class WhenParticipantJoinedAfterPreviousRound {
+
+            @Test
+            @DisplayName("예외 없이 합류한 참여자의 분담금을 포함해 저장한다")
+            void shouldSaveSettlementWithLateJoiner() {
+                // given
+                givenRecordableGathering(
+                        PAYER_ID, List.of(PAYER_ID, LEE_ID, PARK_ID, LATE_JOINER_ID));
+                givenSaveReturnsSettlement();
+                RecordSettlementCommand command =
+                        command(
+                                SECOND_ROUND_ID,
+                                9_000L,
+                                List.of(PAYER_ID, LEE_ID, LATE_JOINER_ID),
+                                Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                then(settlementRepository).should().save(any(Settlement.class));
+                assertThat(result.shares())
+                        .extracting(
+                                SettlementShareResult::participantId, SettlementShareResult::amount)
+                        .containsExactly(tuple(LEE_ID, 3_000L), tuple(LATE_JOINER_ID, 3_000L));
+            }
+        }
+
         private RecordSettlementCommand command(
                 long totalAmount, List<Long> participantIds, Map<Long, Long> fixedAmounts) {
             return command(ROUND_ID, totalAmount, participantIds, fixedAmounts);
@@ -503,9 +616,25 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private void givenRecordableGathering() {
-            givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-            given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                    .willReturn(true);
+            givenRecordableGathering(PAYER_ID, PARTICIPANT_IDS);
+        }
+
+        // 결제자가 계좌를 등록했고 모임의 참여자가 gatheringParticipantIds인 기록 가능한 모임이다.
+        private void givenRecordableGathering(Long payerId, List<Long> gatheringParticipantIds) {
+            givenParticipant(payerId);
+            given(gatheringRepository.findByParticipantId(payerId))
+                    .willReturn(
+                            Optional.of(
+                                    gathering(
+                                            OPEN_PERIOD_OPENED_AT,
+                                            ParticipantFixture.createWithIds(
+                                                    gatheringParticipantIds))));
+            given(participantBankAccountRepository.existsByParticipantId(payerId)).willReturn(true);
+        }
+
+        // 결제자 id(20)부터 1씩 늘어나는 count명의 참여자 id다.
+        private List<Long> participantIds(int count) {
+            return LongStream.range(PAYER_ID, PAYER_ID + count).boxed().toList();
         }
     }
 
@@ -941,13 +1070,14 @@ class SettlementCommandServiceTest extends UnitTest {
     }
 
     private Gathering gathering(LocalDateTime openedAt) {
+        return gathering(openedAt, ParticipantFixture.createWithIds(PARTICIPANT_IDS));
+    }
+
+    private Gathering gathering(LocalDateTime openedAt, List<Participant> participants) {
         return GatheringFixture.FRIDAY_DINNER.createWithRounds(
                 GATHERING_ID,
                 openedAt,
-                List.of(
-                        ParticipantFixture.KIM.createWithId(PAYER_ID),
-                        ParticipantFixture.LEE.createWithId(LEE_ID),
-                        ParticipantFixture.PARK.createWithId(PARK_ID)),
+                participants,
                 List.of(
                         GatheringRoundFixture.FIRST.create(),
                         GatheringRoundFixture.SECOND.create()));
