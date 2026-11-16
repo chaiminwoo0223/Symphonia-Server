@@ -763,6 +763,33 @@ class SettlementQueryServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("읽는 사이에 모임의 정산 건에서 본인 정산 건이 빠져도 본인 정산 건 인원의 이름은 담는다")
+            void shouldIncludeOwnSettlementParticipantsWhenMissingFromGatheringSettlements() {
+                // given
+                Settlement mySettlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                givenShares(List.of(mySettlement), List.of());
+
+                // when
+                List<PayerSharesResult> result =
+                        settlementQueryService.getShares(LINK_TOKEN).payers();
+
+                // then
+                assertThat(result.getFirst().shares())
+                        .singleElement()
+                        .extracting(ShareBreakdownResult::roundParticipantNames)
+                        .isEqualTo(
+                                List.of(
+                                        ParticipantFixture.KIM.getName(),
+                                        ParticipantFixture.LEE.getName()));
+            }
+
+            @Test
             @DisplayName("모임에 참여하지 않은 id가 정산 건 인원에 있으면 건너뛰고 나머지 이름만 반환한다")
             void shouldSkipParticipantIdsNotInGathering() {
                 // given
