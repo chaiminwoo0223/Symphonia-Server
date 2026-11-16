@@ -4,6 +4,7 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import java.util.Optional;
 
 public interface GatheringRepository {
+    // 새 차수를 넣는 쿼리가 트랜잭션을 요구하므로, 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
     Gathering save(Gathering gathering);
 
     Optional<Gathering> findById(Long gatheringId);
