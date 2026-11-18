@@ -16,16 +16,20 @@ public enum MemberPolicy {
     }
 
     // 소셜 닉네임은 우리가 정한 길이를 지키지 않으므로 가입을 거절하지 않고 잘라서 저장한다.
-    // 이모지 같은 서로게이트 쌍이 반으로 잘리지 않게 하고, 길이는 @Size와 같은 UTF-16 단위로 센다.
+    // 길이는 @Size와 같은 UTF-16 단위로 센다.
     public static String truncateNickname(String nickname) {
         if (nickname.length() <= MAX_NICKNAME_LENGTH) {
             return nickname;
         }
-        int end = MAX_NICKNAME_LENGTH;
-        if (Character.isHighSurrogate(nickname.charAt(end - 1))) {
-            end--;
-        }
 
-        return nickname.substring(0, end);
+        return nickname.substring(0, cutIndex(nickname));
+    }
+
+    // 자르는 위치가 이모지 같은 서로게이트 쌍의 한가운데이면 그 쌍 앞에서 자른다.
+    private static int cutIndex(String nickname) {
+        boolean splitsSurrogatePair =
+                Character.isHighSurrogate(nickname.charAt(MAX_NICKNAME_LENGTH - 1));
+
+        return splitsSurrogatePair ? MAX_NICKNAME_LENGTH - 1 : MAX_NICKNAME_LENGTH;
     }
 }
