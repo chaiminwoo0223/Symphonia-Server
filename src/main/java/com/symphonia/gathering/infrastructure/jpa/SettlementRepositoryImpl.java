@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -54,12 +55,18 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                                         settlement))
                 .orElseGet(
                         () ->
-                                toDomain(
-                                        settlementJpaRepository
-                                                .findByPayerParticipantIdAndClientRequestId(
-                                                        settlement.getPayerParticipantId(),
-                                                        settlement.getClientRequestId())
-                                                .orElseThrow()));
+                                findByPayerParticipantIdAndClientRequestId(
+                                                settlement.getPayerParticipantId(),
+                                                settlement.getClientRequestId())
+                                        .orElseThrow());
+    }
+
+    @Override
+    public Optional<Settlement> findByPayerParticipantIdAndClientRequestId(
+            Long payerParticipantId, UUID clientRequestId) {
+        return settlementJpaRepository
+                .findByPayerParticipantIdAndClientRequestId(payerParticipantId, clientRequestId)
+                .map(this::toDomain);
     }
 
     @Override
