@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.symphonia.RedisRepositoryTest;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
+import com.symphonia.common.crypto.Sha256;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Import(BlacklistAccessTokenRepositoryImpl.class)
 class BlacklistAccessTokenRepositoryImplTest extends RedisRepositoryTest {
@@ -19,6 +21,7 @@ class BlacklistAccessTokenRepositoryImplTest extends RedisRepositoryTest {
 
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
     @Autowired private BlacklistAccessTokenRedisRepository blacklistAccessTokenRedisRepository;
+    @Autowired private StringRedisTemplate redisTemplate;
 
     @Nested
     @DisplayName("save 메서드는")
@@ -42,6 +45,18 @@ class BlacklistAccessTokenRepositoryImplTest extends RedisRepositoryTest {
 
             // then
             assertThat(blacklistAccessTokenRedisRepository.existsById(ACCESS_TOKEN)).isFalse();
+        }
+
+        @Test
+        @DisplayName("남은 시간이 0초여도 키가 만료되도록 최소 1초를 적용한다")
+        void shouldApplyMinimumTtlWhenRemainingTimeIsZero() {
+            // when
+            blacklistAccessTokenRepository.save(ACCESS_TOKEN, MEMBER_ID, 0L);
+
+            // then
+            Long ttl =
+                    redisTemplate.getExpire("blacklist_access_token:" + Sha256.hash(ACCESS_TOKEN));
+            assertThat(ttl).isPositive();
         }
     }
 

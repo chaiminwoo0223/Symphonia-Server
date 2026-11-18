@@ -60,6 +60,11 @@ public class JwtAccessTokenProvider implements AccessTokenProvider {
     }
 
     @Override
+    public long getExpirationTime() {
+        return accessTokenProperties.expirationTime();
+    }
+
+    @Override
     public boolean validate(String accessToken) {
         try {
             parse(accessToken);

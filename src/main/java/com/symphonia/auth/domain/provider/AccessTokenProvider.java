@@ -9,5 +9,7 @@ public interface AccessTokenProvider {
 
     long getRemainingTime(String accessToken);
 
+    long getExpirationTime();
+
     boolean validate(String accessToken);
 }
