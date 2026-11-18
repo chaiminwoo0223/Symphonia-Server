@@ -7,6 +7,7 @@ import com.symphonia.gathering.domain.vo.SplitMethod;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public enum SettlementFixture {
                 gatheringId,
                 roundId,
                 createSplitMethod(payerParticipantId, participantIds),
+                UUID.randomUUID(),
                 recordedAt);
     }
 

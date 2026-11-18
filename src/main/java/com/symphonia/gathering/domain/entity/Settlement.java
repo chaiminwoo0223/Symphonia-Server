@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -31,11 +32,17 @@ public class Settlement {
     private List<SettlementShare> shares;
     private LocalDateTime recordedAt;
     private LocalDateTime cancelledAt;
+    // 같은 기록 요청을 다시 보냈는지 가리는 클라이언트의 요청 id다. 결제자마다 한 번만 쓰이고, 기존 정산 건은 null이다.
+    private UUID clientRequestId;
     // 정산 건을 읽은 뒤 다른 요청이 바꿨는지 저장할 때 확인하는 애그리거트 버전이다. 새 정산 건은 null이다.
     private Long version;
 
     public static Settlement record(
-            Long gatheringId, Long roundId, SplitMethod splitMethod, LocalDateTime now) {
+            Long gatheringId,
+            Long roundId,
+            SplitMethod splitMethod,
+            UUID clientRequestId,
+            LocalDateTime now) {
         return Settlement.builder()
                 .gatheringId(gatheringId)
                 .roundId(roundId)
@@ -43,6 +50,7 @@ public class Settlement {
                 .totalAmount(splitMethod.totalAmount())
                 .shares(splitMethod.shares())
                 .recordedAt(now)
+                .clientRequestId(clientRequestId)
                 .build();
     }
 

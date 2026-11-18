@@ -8,6 +8,10 @@ import java.util.Optional;
 public interface SettlementRepository {
     Settlement save(Settlement settlement);
 
+    // 같은 결제자가 같은 요청 id로 기록한 정산 건이 이미 있으면 새로 저장하지 않고 그 정산 건을 돌려준다. 정산 건 기록에만 쓴다.
+    // 동시에 같은 요청이 오면 늦은 요청은 먼저 저장한 요청이 커밋한 뒤 그 정산 건을 읽는다.
+    Settlement saveIfAbsent(Settlement settlement);
+
     Optional<Settlement> findById(Long settlementId);
 
     // 취소한 정산 건은 빼고 가장 나중에 만든 정산 건을 찾는다. 다음 정산 건의 인원 기본값으로 쓴다.

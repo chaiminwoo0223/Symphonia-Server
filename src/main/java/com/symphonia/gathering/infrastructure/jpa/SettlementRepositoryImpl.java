@@ -29,14 +29,37 @@ public class SettlementRepositoryImpl implements SettlementRepository {
         SettlementJpaEntity savedSettlement = saveWithVersionCheck(settlement);
         Long settlementId = savedSettlement.getId();
         settlementShareJpaRepository.deleteAllBySettlementId(settlementId);
-        List<SettlementShareJpaEntity> savedShares =
-                settlementShareJpaRepository.saveAll(
-                        settlement.getShares().stream()
-                                .map(share -> SettlementShareJpaEntity.from(share, settlementId))
-                                .toList());
 
-        return savedSettlement.toDomain(
-                savedShares.stream().map(SettlementShareJpaEntity::toDomain).toList());
+        return saveShares(savedSettlement, settlement);
+    }
+
+    // 정산 건 행은 요청 id 충돌 없이 넣었을 때만 만들어진다. 새 정산 건이라 지울 분담금과 버전 충돌이 없어 버전을 더 올리지 않는다.
+    // 충돌하면 먼저 저장한 요청이 커밋한 정산 건을 읽는다. 충돌이 났다는 것은 그 행이 이미 커밋됐다는 뜻이다.
+    @Override
+    public Settlement saveIfAbsent(Settlement settlement) {
+        return settlementJpaRepository
+                .insertIfAbsent(
+                        settlement.getGatheringId(),
+                        settlement.getRoundId(),
+                        settlement.getPayerParticipantId(),
+                        settlement.getTotalAmount(),
+                        settlement.getRecordedAt(),
+                        settlement.getClientRequestId())
+                .map(
+                        settlementId ->
+                                saveShares(
+                                        settlementJpaRepository
+                                                .findById(settlementId)
+                                                .orElseThrow(),
+                                        settlement))
+                .orElseGet(
+                        () ->
+                                toDomain(
+                                        settlementJpaRepository
+                                                .findByPayerParticipantIdAndClientRequestId(
+                                                        settlement.getPayerParticipantId(),
+                                                        settlement.getClientRequestId())
+                                                .orElseThrow()));
     }
 
     @Override
@@ -96,7 +119,7 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     // 다른 요청이 먼저 바꾼 정산 건이면 버전이 달라 저장이 실패한다.
     // 커밋 시점에 실패하면 이 메서드가 예외를 바꿀 수 없으므로 바로 flush한다.
     // 분담금 행만 바뀌면 정산 건 행이 그대로라 Hibernate가 버전을 올리지 않으므로, 저장할 때마다 버전을 올린다.
-    // 새 정산 건도 같은 경로로 버전을 올린다. 저장 경로를 새 정산 건과 기존 정산 건으로 나누지 않기 위해서다.
+    // 이 메서드로 저장하는 새 정산 건도 같은 경로로 버전을 올린다. 정산 건 기록은 요청 id 충돌을 가려야 해서 saveIfAbsent로 따로 저장한다.
     // OPTIMISTIC_FORCE_INCREMENT는 커밋할 때 버전을 올리므로, 바로 올리는 PESSIMISTIC_FORCE_INCREMENT를 쓴다.
     private SettlementJpaEntity saveWithVersionCheck(Settlement settlement) {
         try {
@@ -107,6 +130,18 @@ public class SettlementRepositoryImpl implements SettlementRepository {
         } catch (ObjectOptimisticLockingFailureException | OptimisticLockException e) {
             throw new SettlementConflictException();
         }
+    }
+
+    private Settlement saveShares(SettlementJpaEntity savedSettlement, Settlement settlement) {
+        Long settlementId = savedSettlement.getId();
+        List<SettlementShareJpaEntity> savedShares =
+                settlementShareJpaRepository.saveAll(
+                        settlement.getShares().stream()
+                                .map(share -> SettlementShareJpaEntity.from(share, settlementId))
+                                .toList());
+
+        return savedSettlement.toDomain(
+                savedShares.stream().map(SettlementShareJpaEntity::toDomain).toList());
     }
 
     private Settlement toDomain(SettlementJpaEntity settlementEntity) {

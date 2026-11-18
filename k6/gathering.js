@@ -69,6 +69,14 @@ function dataOf(response, expectedStatus, step) {
     return response.json().data;
 }
 
+// 정산 건 기록 요청마다 새 요청 id가 필요하다. 요청 id의 형식만 UUID라 난수로 만든 v4 형식을 쓴다.
+function uuidV4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+        const random = Math.floor(Math.random() * 16);
+        return (char === 'x' ? random : (random & 0x3) | 0x8).toString(16);
+    });
+}
+
 // 휴대폰은 모임 안에서 중복되지 않아야 하므로 순번으로 번호를 만든다.
 function phoneNumberOf(sequence) {
     return `010${String(sequence).padStart(8, '0')}`;
@@ -137,6 +145,8 @@ export function setup() {
         http.post(
             `${BASE_URL}/api/v1/settlements`,
             JSON.stringify({
+                clientRequestId: uuidV4(),
+                roundId: form.rounds[0].id,
                 totalAmount: 30 * 31250,
                 participantIds: participants.map((participant) => participant.id),
                 fixedAmounts: [],

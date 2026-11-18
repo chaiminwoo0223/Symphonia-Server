@@ -25,6 +25,7 @@ import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
@@ -383,6 +384,195 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                         roundId,
                         SettlementFixture.SECOND_ROUND.createSplitMethod(kimId, participantIds),
                         LocalDateTime.now());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("saveIfAbsent 메서드는")
+    class SaveIfAbsent {
+
+        @Nested
+        @DisplayName("처음 보는 요청 id인 경우")
+        class WhenClientRequestIdIsNew {
+
+            @Test
+            @DisplayName("정산 건과 분담금을 저장하고 요청 id를 담아 조회할 때 그대로 돌려준다")
+            void shouldSaveSettlementWithSharesAndClientRequestId() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.create(
+                                gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
+
+                // when
+                Settlement saved = settlementRepository.saveIfAbsent(settlement);
+
+                // then
+                clearPersistenceContext();
+                Settlement reloaded = settlementRepository.findById(saved.getId()).orElseThrow();
+                assertThat(reloaded.getClientRequestId())
+                        .isEqualTo(settlement.getClientRequestId());
+                assertThat(reloaded.getRoundId()).isEqualTo(roundId);
+                assertThat(reloaded.getTotalAmount())
+                        .isEqualTo(SettlementFixture.DINNER.getTotalAmount());
+                assertThat(reloaded.getShares())
+                        .extracting(SettlementShare::getParticipantId, SettlementShare::getAmount)
+                        .containsExactly(tuple(leeId, 3_333L), tuple(parkId, 3_333L));
+            }
+
+            @Test
+            @DisplayName("감사 시각 컬럼을 기록 시각으로 채운다")
+            void shouldFillAuditTimestampsWithRecordedAt() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.create(
+                                gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
+
+                // when
+                Settlement saved = settlementRepository.saveIfAbsent(settlement);
+
+                // then
+                assertThat(
+                                jdbcTemplate.queryForObject(
+                                        "SELECT created_at FROM settlement WHERE id = ?",
+                                        LocalDateTime.class,
+                                        saved.getId()))
+                        .isEqualTo(settlement.getRecordedAt());
+            }
+
+            @Test
+            @DisplayName("저장한 정산 건을 이어서 바꿔 저장해도 버전 충돌이 나지 않는다")
+            void shouldSaveChangeOfSavedSettlementWithoutConflict() {
+                // given
+                Settlement saved =
+                        settlementRepository.saveIfAbsent(
+                                SettlementFixture.DINNER.create(
+                                        gatheringId,
+                                        roundId,
+                                        kimId,
+                                        List.of(kimId, leeId, parkId)));
+                saved.markShareSent(leeId, LocalDateTime.now());
+
+                // when
+                Settlement changed = settlementRepository.save(saved);
+
+                // then
+                assertThat(changed.hasSentShares()).isTrue();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 결제자가 같은 요청 id로 이미 저장한 경우")
+        class WhenSameClientRequestIdSaved {
+
+            @Test
+            @DisplayName("새로 저장하지 않고 처음 저장한 정산 건을 반환한다")
+            void shouldReturnFirstSettlementWithoutSavingAgain() {
+                // given
+                Settlement first =
+                        settlementRepository.saveIfAbsent(
+                                SettlementFixture.DINNER.create(
+                                        gatheringId,
+                                        roundId,
+                                        kimId,
+                                        List.of(kimId, leeId, parkId)));
+                Settlement retry =
+                        Settlement.record(
+                                gatheringId,
+                                secondRoundId,
+                                SettlementFixture.SECOND_ROUND.createSplitMethod(
+                                        kimId, List.of(kimId, leeId)),
+                                first.getClientRequestId(),
+                                LocalDateTime.now());
+
+                // when
+                Settlement result = settlementRepository.saveIfAbsent(retry);
+
+                // then
+                assertThat(result.getId()).isEqualTo(first.getId());
+                assertThat(result.getRoundId()).isEqualTo(roundId);
+                assertThat(result.getTotalAmount())
+                        .isEqualTo(SettlementFixture.DINNER.getTotalAmount());
+                assertThat(settlementRepository.findAllByGatheringId(gatheringId)).hasSize(1);
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 결제자가 같은 요청 id로 저장하는 경우")
+        class WhenSameClientRequestIdFromOtherPayer {
+
+            @Test
+            @DisplayName("결제자마다 요청 id를 따로 보므로 두 정산 건을 모두 저장한다")
+            void shouldSaveBothSettlements() {
+                // given
+                Settlement first =
+                        settlementRepository.saveIfAbsent(
+                                SettlementFixture.DINNER.create(
+                                        gatheringId,
+                                        roundId,
+                                        kimId,
+                                        List.of(kimId, leeId, parkId)));
+                Settlement otherPayer =
+                        Settlement.record(
+                                gatheringId,
+                                roundId,
+                                SettlementFixture.DINNER.createSplitMethod(
+                                        leeId, List.of(leeId, kimId)),
+                                first.getClientRequestId(),
+                                LocalDateTime.now());
+
+                // when
+                Settlement result = settlementRepository.saveIfAbsent(otherPayer);
+
+                // then
+                assertThat(result.getId()).isNotEqualTo(first.getId());
+                assertThat(settlementRepository.findAllByGatheringId(gatheringId)).hasSize(2);
+            }
+        }
+
+        // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
+        @Nested
+        @DisplayName("두 요청이 같은 요청 id로 동시에 저장하는 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenSavedConcurrently {
+
+            @AfterEach
+            void tearDown() {
+                deleteGatheringRows();
+            }
+
+            @Test
+            @DisplayName("정산 건을 하나만 두고 두 요청 모두 예외 없이 같은 정산 건을 반환받는다")
+            void shouldKeepSingleSettlementAndReturnSameSettlement() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.create(
+                                gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
+                CountDownLatch ready = new CountDownLatch(2);
+                List<Long> savedIds = new CopyOnWriteArrayList<>();
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () -> savedIds.add(saveIfAbsentAfterBothReady(settlement, ready)),
+                                () -> savedIds.add(saveIfAbsentAfterBothReady(settlement, ready)));
+
+                // then
+                assertThat(failures).isEmpty();
+                List<Settlement> stored = settlementRepository.findAllByGatheringId(gatheringId);
+                assertThat(stored).hasSize(1);
+                assertThat(savedIds).hasSize(2).containsOnly(stored.getFirst().getId());
+                assertThat(stored.getFirst().getShares()).hasSize(2);
+            }
+
+            // 두 요청이 같은 순간에 저장을 시작하도록 맞춘다.
+            private Long saveIfAbsentAfterBothReady(Settlement settlement, CountDownLatch ready) {
+                return transactionTemplate.execute(
+                        _ -> {
+                            ready.countDown();
+                            await(ready);
+                            return settlementRepository.saveIfAbsent(settlement).getId();
+                        });
             }
         }
     }
