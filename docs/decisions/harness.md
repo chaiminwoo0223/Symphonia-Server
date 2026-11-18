@@ -39,3 +39,5 @@
 **(2026-11-08 결정, 이슈 #178)**: `test-validator`와 `domain-scaffolder`는 `model: sonnet`을 지정한다. 진단 절차와 골격 생성이 정해져 있어 깊은 판단이 필요 없고, 응답이 빠르기 때문이다. `code-reviewer`는 판단형 항목만 보도록 체크리스트를 줄이되 모델은 바꾸지 않았다. 리뷰 품질을 낮추지 않기 위해서다.
 
 **(2026-11-08 확인, 이슈 #178)**: 프로젝트 설정으로 끌 MCP 서버는 없다. 저장소에 `.mcp.json`이 없고, 켜져 있는 MCP는 사용자 수준의 claude.ai 커넥터와 Chrome 확장이다. 이 도구들은 세션에서 deferred 상태라 컨텍스트에는 이름만 실려 끄더라도 줄어드는 토큰이 작다. 프로젝트 `.mcp.json`을 추가하게 되면 쓰지 않는 서버를 `disabledMcpjsonServers`로 끈다.
+
+**(2026-11-18 결정, 이슈 #174)**: `architecture/gathering.md`에서 모임 페어링과 익명 피드백 절을 `architecture/gathering-pairing.md`로 나눴다. 인원 기본값 규칙을 한 줄 더하자 `gathering.md`가 10,033자가 되어 하위 문서 한도 10,000자를 넘었고, 같은 이슈의 뒤 단계에서 약 900자가 더 늘어날 예정이었기 때문이다. 문구를 줄여 한도에 맞추는 안은 택하지 않았다. 이미 밀도가 높은 문서라 규칙이 빠질 위험이 있고, 단계마다 다시 한도에 걸리기 때문이다. 한도를 올리는 안도 택하지 않았다. 스킬이 읽히는 토큰이 늘어나기 때문이다. 나눈 기준은 주제다. 피드백 절은 `pairing`의 집계와 이어지는 규칙이라 정산 규칙과 따로 읽어도 된다. 절의 내용은 원문 그대로 옮겼고 `architecture/SKILL.md`의 하위 문서 표, `description`, `design-decision` 스킬의 표, `.coderabbit.yaml`의 `filePatterns`에 새 문서를 더했다. 근거를 담는 `docs/decisions/gathering.md`는 그대로 한 파일이다.

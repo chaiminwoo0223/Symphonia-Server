@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -112,7 +112,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 |---|---|
 | [`persistence.md`](persistence.md) | 엔티티와 `*JpaEntity` 매핑, `db/migration`, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때. 맛 값을 계산하는 규칙표(`FlavorRule`, `WineFlavorRule`, `AnjuRule`)와 `Drink`, `DrinkStyle` 분리도 여기 있다 |
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`), `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표(`anju-serving-richness.csv`)도 여기 있다 |
-| [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, 익명 페어링 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
+| [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, API 경로를 바꿀 때 |
+| [`gathering-pairing.md`](gathering-pairing.md) | 모임 페어링과 참여자의 익명 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
 | [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 안주의 맛집 검색어를 바꿀 때 |
 
 ## 메시지 큐
