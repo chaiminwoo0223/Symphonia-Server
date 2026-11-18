@@ -19,7 +19,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 | 도메인 | 책임 |
 |---|---|
 | `member` | 회원. 탈퇴 시 `application.event`의 `MemberDeletedEvent` 발행 |
-| `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰과 액세스 토큰 블랙리스트 |
+| `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰, 액세스 토큰 블랙리스트, 탈퇴한 회원 id |
 | `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`)와 그 맛, 분류 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
 | `gathering` | 모임, 참여, 정산 건과 분담금 상태 |
@@ -41,7 +41,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `domain`과 `application`은 `common`만 참조하고 `global`은 참조하지 않는다. `global`은 Spring 설정과 필터 wiring 목적으로만 `common`을 참조한다.
 - `global`은 wiring 목적으로 도메인 `presentation`의 `*Endpoints`(URL 경로 문자열 상수 클래스)를 참조할 수 있다. `*Request`, `*Response`, `*Api`, `*Controller`는 참조하지 않는다.
 - `*Endpoints`가 경로의 단일 소스다. `*Api`는 매핑 애노테이션에 같은 도메인의 `*Endpoints` 상수를 넣는다(예: `@PostMapping(AuthEndpoints.LOGIN)`). 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 완성한 전체 경로를 쓴다.
-- `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`)와 에러 코드(`AuthErrorCode`)를 참조할 수 있다. 구현체와 `infrastructure`는 참조하지 않는다.
+- `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`, `WithdrawnMemberRepository`)와 에러 코드(`AuthErrorCode`)를 참조할 수 있다. 구현체와 `infrastructure`는 참조하지 않는다.
 - 토큰 Provider도 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. 인터페이스가 기본 이름을 갖고, 구현체 이름에 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
 
 ## 계층별 역할
@@ -94,6 +94,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 - 부수효과가 실패했을 때 원본 작업도 함께 실패해야 하면 원본 도메인의 `@CommandService` 안에서 대상 도메인의 `*UseCase`를 부른다. 두 작업이 한 트랜잭션에서 함께 커밋되거나 함께 롤백된다. Controller에서 UseCase를 차례로 부르면 앞 UseCase가 먼저 커밋되므로 이렇게 조율하지 않는다.
 - 원본이 커밋된 뒤에만 의미가 있고 실패해도 원본을 되돌릴 이유가 없는 후속 정리라면 `@TransactionalEventListener(phase = AFTER_COMMIT)` 도메인 이벤트로 분리한다(예: 회원 삭제 뒤 로그아웃 처리).
+- 원본과 같은 DB를 바꾸고 원본과 함께 롤백돼야 하는 후속 처리는 `@TransactionalEventListener(phase = BEFORE_COMMIT)` 리스너로 한다(예: 회원 삭제 때 `pairing_feedback` 익명화). 커밋 뒤 리스너의 DB 쓰기는 이미 끝난 트랜잭션에 참여해 반영되지 않는다.
+- `AFTER_COMMIT` 리스너가 실패해도 API 응답은 바뀌지 않는다. Spring이 ERROR 로그만 남기고 응답은 원본 그대로다.
 - 이벤트 이름은 `<Entity><과거분사>Event`(예: `MemberDeletedEvent`)다. 구독자에게 필요한 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다.
 - 이벤트는 발행하는 도메인의 `application.event`에 정의하고, `@CommandService` 구현체 안에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다. 트랜잭션 밖에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
 - 구독은 구독하는 도메인의 `application.listener`에 `@Component` 클래스로 두고, 대상 도메인의 `*UseCase`에 위임만 한다.
@@ -139,7 +141,9 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - 액세스 토큰과 리프레시 토큰은 모두 응답 바디로 전달하고, 재발급과 로그아웃은 리프레시 토큰을 요청 바디로 받는다. 쿠키는 쓰지 않는다. 재발급의 빈 토큰은 요청 DTO의 `@NotBlank`로 400이다.
 - CORS는 `allowCredentials`를 켜지 않고 허용 오리진을 명시한다. 와일드카드(`*`)는 쓰지 않는다. 인증 정보를 브라우저가 자동으로 붙이지 않으므로 CSRF 토큰은 두지 않는다.
 - 로그아웃은 인증 없이 호출할 수 있고, 토큰이 없거나 만료돼도 204를 반환한다. 요청 바디의 리프레시 토큰 하나를 `consume`으로 지우고, 필터가 인증한 유효한 액세스 토큰만 블랙리스트에 올린다.
-- 회원 탈퇴는 `MemberDeletedEventListener`가 `ForceRevokeUseCase`로 리프레시 토큰을 모두 지우고 `LogoutUseCase`로 액세스 토큰을 블랙리스트에 올린다.
+- 회원 탈퇴는 `MemberDeletedEventListener`가 `BlockWithdrawnMemberUseCase`로 탈퇴한 회원 id를 액세스 토큰 유효시간만큼 Redis에 남기고, `ForceRevokeUseCase`로 리프레시 토큰을 모두 지우고, `LogoutUseCase`로 요청한 액세스 토큰을 블랙리스트에 올린다. 필터는 탈퇴한 회원 id의 액세스 토큰을 인증하지 않는다.
+- 블랙리스트 TTL은 최소 1초다. 0이면 Redis 키가 만료되지 않고 남는다.
+- 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)다. 수정 요청이 넘으면 400이고, 가입 시 소셜 닉네임이 넘으면 거절하지 않고 잘라서 저장한다.
 - `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"`를 넣는다. `GlobalExceptionHandler`의 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다.
 - 앱 단 rate limit은 두지 않는다. 대량 요청 방어는 LB/WAF가 맡는다.
 - 클라이언트 IP는 감사 로그(`AuditLogRecorder`)에만 쓴다. `server.forward-headers-strategy: native`와 `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES`)로 신뢰 프록시의 `X-Forwarded-For`만 반영하고, 어디서든 `HttpServletRequest.getRemoteAddr()`로 구한다. 별도 IP 추출 유틸과 테스트는 두지 않는다.

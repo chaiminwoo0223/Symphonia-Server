@@ -35,8 +35,10 @@
 - 참여 요청은 동의 여부와 버전을 함께 보낸다. `GatheringPolicy.validateConsent`가 동의하지 않았으면 `ConsentRequiredException`(400), 버전이 다르면 `OutdatedConsentVersionException`(400)으로 거절한다. Request의 Bean Validation으로 검사하지 않는다.
 - 한 모임의 참여자는 최대 50명(`GatheringPolicy.MAX_PARTICIPANT_COUNT`)이다. 모임을 만든 회원도 참여 화면으로 참여해야 한 명으로 센다. 참여자가 50명이면 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)이고, 이미 참여한 휴대폰 검사 뒤에 검사한다. 참여 화면 조회는 가득 찬 모임을 참여 불가로 알린다. 서로 다른 휴대폰의 참여가 동시에 오면 인원 확인과 저장 사이에서 경합해 최종 인원이 50명을 넘을 수 있으므로, 50명은 보장된 상한이 아니다.
 - 같은 휴대폰의 중복 참여를 막는다. 동시 참여는 `(gathering_id, phone_number_hmac)` unique 제약으로 막고, `GatheringRepositoryImpl`이 위반을 `GatheringPolicy.validateNotJoined`의 예외로 바꾼다.
-- 참여 화면은 참여 토큰으로 모임 이름과 참여 가능 여부를 먼저 조회한다.
+- 참여 화면은 참여 토큰으로 모임 이름, 참여 가능 여부(`joinable`), 사유(`joinClosedReason`: `PERIOD_EXPIRED`, `PARTICIPANT_LIMIT_REACHED`)를 먼저 조회한다. 둘 다면 `PERIOD_EXPIRED`다.
 - 참여 토큰은 모임 생성 후 48시간까지 유효하다. 모임을 만든 회원은 참여 QR을 재발급할 수 있고, 재발급하면 기존 토큰은 무효다. 참여 기간이 끝난 모임은 재발급하지 않는다.
+- 참여 토큰 발급 응답은 참여 기간이 끝나는 `expiresAt`을 담는다.
+- 모임장이 탈퇴해도 모임은 자동 파기까지 유지한다.
 - `GatheringRepositoryImpl.save`는 id가 없는 새 참여자만 INSERT하고 기존 참여자 행을 다시 쓰지 않는다.
 
 ## 분담 방식
