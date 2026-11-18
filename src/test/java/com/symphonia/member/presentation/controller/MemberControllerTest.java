@@ -123,12 +123,12 @@ class MemberControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("닉네임이 최대 길이를 넘는 경우")
-        class WhenNicknameTooLong {
+        @DisplayName("닉네임이 최대 길이와 같은 경우")
+        class WhenNicknameHasMaxLength {
 
             @Test
-            @DisplayName("최대 길이와 같으면 200을 반환한다")
-            void shouldReturnOkWhenNicknameHasMaxLength() throws Exception {
+            @DisplayName("200을 반환한다")
+            void shouldReturnOk() throws Exception {
                 // given
                 String token = authenticateMember().token();
                 UpdateMemberRequest request = new UpdateMemberRequest("가".repeat(20));
@@ -141,9 +141,14 @@ class MemberControllerTest extends IntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isOk());
             }
+        }
+
+        @Nested
+        @DisplayName("닉네임이 최대 길이를 1자 넘는 경우")
+        class WhenNicknameTooLong {
 
             @Test
-            @DisplayName("최대 길이를 1자 넘으면 400을 반환한다")
+            @DisplayName("400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
                 String token = authenticateMember().token();
@@ -246,7 +251,7 @@ class MemberControllerTest extends IntegrationTest {
         @Test
         @DisplayName("멤버 삭제가 커밋되면 다른 기기에서 발급한 액세스 토큰으로도 인증되지 않는다")
         void shouldRejectAccessTokenOfOtherDeviceWhenCommitted() throws Exception {
-            // given
+            // given: 한 기기가 탈퇴를 커밋한 상태
             Member member = memberHelper.save(MemberFixture.KAKAO);
             String requestAccessToken =
                     authHelper.generateAccessToken(
