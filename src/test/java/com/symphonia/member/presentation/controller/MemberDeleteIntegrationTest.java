@@ -13,6 +13,7 @@ import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import com.symphonia.pairing.application.usecase.AnonymizePairingFeedbackUseCase;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,9 @@ class MemberDeleteIntegrationTest extends IntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @MockitoBean private BlockWithdrawnMemberUseCase blockWithdrawnMemberUseCase;
+
+    // 실제 익명화는 그대로 두고, 실패하는 경우에만 예외를 던지게 한다.
+    @MockitoSpyBean private AnonymizePairingFeedbackUseCase anonymizePairingFeedbackUseCase;
 
     private final List<Long> insertedFeedbackIds = new ArrayList<>();
 
@@ -75,6 +80,37 @@ class MemberDeleteIntegrationTest extends IntegrationTest {
                             Long.class,
                             feedbackId);
             assertThat(memberId).isNull();
+        }
+
+        @Nested
+        @DisplayName("피드백 익명화가 실패하는 경우")
+        class WhenAnonymizationFails {
+
+            @Test
+            @Transactional(propagation = Propagation.NOT_SUPPORTED)
+            @DisplayName("회원 삭제도 함께 롤백한다")
+            void shouldRollBackMemberDeletion() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String accessToken =
+                        authHelper.generateAccessToken(
+                                String.valueOf(member.getId()), member.getRole().name());
+                willThrow(new IllegalStateException("익명화 실패"))
+                        .given(anonymizePairingFeedbackUseCase)
+                        .anonymize(any());
+
+                // when
+                mockMvc.perform(
+                                delete("/api/v1/members/me")
+                                        .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                authHelper.bearerHeader(accessToken)))
+                        .andExpect(status().isInternalServerError());
+
+                // then
+                assertThat(memberRepository.findById(member.getId())).isPresent();
+                memberRepository.delete(member);
+            }
         }
 
         @Nested

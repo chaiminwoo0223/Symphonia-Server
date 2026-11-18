@@ -251,7 +251,7 @@ class MemberControllerTest extends IntegrationTest {
         @Test
         @DisplayName("멤버 삭제가 커밋되면 다른 기기에서 발급한 액세스 토큰으로도 인증되지 않는다")
         void shouldRejectAccessTokenOfOtherDeviceWhenCommitted() throws Exception {
-            // given: 한 기기가 탈퇴를 커밋한 상태
+            // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
             String requestAccessToken =
                     authHelper.generateAccessToken(
@@ -260,6 +260,8 @@ class MemberControllerTest extends IntegrationTest {
             String otherDeviceAccessToken =
                     authHelper.generateAccessToken(
                             String.valueOf(member.getId()), Role.ROLE_ADMIN.name());
+
+            // when
             mockMvc.perform(
                             delete("/api/v1/members/me")
                                     .header(
@@ -269,7 +271,7 @@ class MemberControllerTest extends IntegrationTest {
             TestTransaction.flagForCommit();
             TestTransaction.end();
 
-            // when & then
+            // then
             mockMvc.perform(
                             get("/api/v1/members/me")
                                     .header(
