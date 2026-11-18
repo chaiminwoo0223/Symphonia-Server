@@ -66,6 +66,7 @@ class ShareCommandServiceTest extends UnitTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
     private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
     private static final LocalDateTime OPENED_AT = NOW.minusHours(1);
+    private static final LocalDateTime STATUS_CHANGED_AT = NOW.minusMinutes(30);
 
     private ShareCommandService shareCommandService;
 
@@ -460,13 +461,9 @@ class ShareCommandServiceTest extends UnitTest {
                 // given
                 givenParticipant(PAYER_ID);
                 Settlement settlement =
-                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                ROUND_ID,
-                                PAYER_ID,
-                                PARTICIPANT_IDS,
-                                ShareStatus.CONFIRMED);
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
+                settlement.confirmShare(LEE_ID, STATUS_CHANGED_AT);
                 givenSettlement(settlement);
                 givenGatheringOfPayer();
                 ConfirmShareCommand command = command(LEE_ID);
@@ -479,7 +476,8 @@ class ShareCommandServiceTest extends UnitTest {
                         .extracting(
                                 SettlementShareResult::participantId, SettlementShareResult::status)
                         .contains(tuple(LEE_ID, ShareStatus.CONFIRMED));
-                assertThat(settlement.getShareOf(LEE_ID).getStatusChangedAt()).isNull();
+                assertThat(settlement.getShareOf(LEE_ID).getStatusChangedAt())
+                        .isEqualTo(STATUS_CHANGED_AT);
                 thenSettlementNotSaved();
             }
         }
@@ -703,6 +701,8 @@ class ShareCommandServiceTest extends UnitTest {
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
+                settlement.confirmShare(LEE_ID, STATUS_CHANGED_AT.minusMinutes(1));
+                settlement.revertShareToUnpaid(LEE_ID, STATUS_CHANGED_AT);
                 givenSettlement(settlement);
                 givenGatheringOfPayer();
                 RevertShareCommand command = command();
@@ -715,7 +715,8 @@ class ShareCommandServiceTest extends UnitTest {
                         .extracting(
                                 SettlementShareResult::participantId, SettlementShareResult::status)
                         .contains(tuple(LEE_ID, ShareStatus.UNPAID));
-                assertThat(settlement.getShareOf(LEE_ID).getStatusChangedAt()).isNull();
+                assertThat(settlement.getShareOf(LEE_ID).getStatusChangedAt())
+                        .isEqualTo(STATUS_CHANGED_AT);
                 thenSettlementNotSaved();
             }
         }

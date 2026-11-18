@@ -89,6 +89,32 @@ class ParticipantControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("참여자가 49명인 모임인 경우")
+        class WhenParticipantCountJustBelowLimit {
+
+            @Test
+            @DisplayName("50번째 참여를 받아 201을 반환한다")
+            void shouldJoinFiftiethParticipant() throws Exception {
+                // given
+                Gathering gathering = gatheringHelper.join(saveGathering(), 49);
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
+                JoinGatheringRequest request =
+                        joinRequest(
+                                ParticipantFixture.KIM.getName(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated());
+            }
+        }
+
+        @Nested
         @DisplayName("참여자가 50명인 모임인 경우")
         class WhenParticipantCountAtLimit {
 
@@ -96,9 +122,7 @@ class ParticipantControllerTest extends IntegrationTest {
             @DisplayName("GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT 코드와 함께 400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
-                Gathering gathering =
-                        gatheringHelper.join(
-                                saveGathering(), GatheringPolicy.MAX_PARTICIPANT_COUNT);
+                Gathering gathering = gatheringHelper.join(saveGathering(), 50);
                 String joinToken = gatheringHelper.issueJoinToken(gathering);
                 JoinGatheringRequest request =
                         joinRequest(
