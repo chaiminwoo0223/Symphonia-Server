@@ -312,6 +312,35 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("anonymizeByMemberId 메서드는")
+    class AnonymizeByMemberId {
+
+        @Test
+        @DisplayName("그 회원의 피드백만 회원 id를 비우고 다른 회원의 피드백은 그대로 둔다")
+        void shouldAnonymizeOnlyFeedbacksOfMember() {
+            // given
+            Long otherAnjuId = savedAnjuId(AnjuFixture.DRIED_SNACK);
+            saveFeedback(MEMBER_ID, drinkId, anjuId, PairingRating.DISLIKE);
+            saveFeedback(MEMBER_ID, drinkId, otherAnjuId, PairingRating.LIKE);
+            saveFeedback(OTHER_MEMBER_ID, drinkId, anjuId, PairingRating.LIKE);
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            pairingFeedbackRepository.anonymizeByMemberId(MEMBER_ID);
+
+            // then
+            entityManager.clear();
+            List<PairingFeedbackJpaEntity> feedbacks = pairingFeedbackJpaRepository.findAll();
+            assertThat(feedbacks)
+                    .extracting(PairingFeedbackJpaEntity::getMemberId)
+                    .containsExactlyInAnyOrder(null, null, OTHER_MEMBER_ID);
+            assertThat(pairingFeedbackRepository.findDislikedCombinationsByMemberId(MEMBER_ID))
+                    .isEmpty();
+        }
+    }
+
     private Long savedAnjuId(AnjuFixture anju) {
         return anjuJpaRepository.save(AnjuJpaEntity.from(anju.create())).getId();
     }

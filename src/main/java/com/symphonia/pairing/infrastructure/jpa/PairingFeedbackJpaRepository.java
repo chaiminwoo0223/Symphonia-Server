@@ -37,6 +37,16 @@ public interface PairingFeedbackJpaRepository
             @Param("rating") String rating,
             @Param("now") LocalDateTime now);
 
+    // member_id가 NULL인 행은 (member_id, drink_id, anju_id) 유니크 인덱스에서 서로 다른 값으로 보여 충돌하지 않는다.
+    @Modifying
+    @Query(
+            """
+            UPDATE PairingFeedbackJpaEntity feedback
+            SET feedback.memberId = NULL
+            WHERE feedback.memberId = :memberId
+            """)
+    void anonymizeByMemberId(@Param("memberId") Long memberId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query(
             """
