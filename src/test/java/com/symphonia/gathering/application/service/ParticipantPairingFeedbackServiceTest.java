@@ -9,6 +9,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.SubmitParticipantPairingFeedbackCommand;
 import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
+import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringPairingConflictException;
 import com.symphonia.gathering.domain.exception.GatheringPairingNotFoundException;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
@@ -27,6 +28,7 @@ import com.symphonia.pairing.domain.vo.PairingRating;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -140,73 +142,101 @@ class ParticipantPairingFeedbackServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("정산에서 돈이 오가지 않은 참여자인 경우")
-        class WhenMoneyNotMoved {
+        @DisplayName("참여한 정산 건이 없는 경우")
+        class WhenNoSettlements {
 
             @Test
-            @DisplayName("정산 건이 없으면 예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
-            void shouldThrowSentShareRequiredExceptionWhenNoSettlements() {
+            @DisplayName("예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
+            void shouldThrowSentShareRequiredException() {
                 // given
                 givenGatheringPairing();
-                given(settlementRepository.findAllByPayerParticipantId(PARTICIPANT_ID))
-                        .willReturn(List.of());
-                given(settlementRepository.findAllByShareParticipantId(PARTICIPANT_ID))
-                        .willReturn(List.of());
+                givenSettlements(List.of(), List.of());
 
                 // when & then
                 assertThatThrownBy(() -> participantPairingFeedbackService.submit(command()))
                         .isInstanceOf(SentShareRequiredException.class);
-                then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
-                then(submitAnonymousPairingFeedbackUseCase).shouldHaveNoInteractions();
+                thenNothingSubmitted();
             }
+        }
+
+        @Nested
+        @DisplayName("본인 분담금이 미입금인 경우")
+        class WhenShareUnpaid {
 
             @Test
-            @DisplayName("본인 분담금이 미입금이면 예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
-            void shouldThrowSentShareRequiredExceptionWhenShareUnpaid() {
+            @DisplayName("예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
+            void shouldThrowSentShareRequiredException() {
                 // given
                 givenGatheringPairing();
-                given(settlementRepository.findAllByPayerParticipantId(PARTICIPANT_ID))
-                        .willReturn(List.of());
-                given(settlementRepository.findAllByShareParticipantId(PARTICIPANT_ID))
-                        .willReturn(
-                                List.of(
-                                        SettlementFixture.DINNER.createWithFirstShareStatus(
-                                                SETTLEMENT_ID,
-                                                GATHERING_ID,
-                                                ROUND_ID,
-                                                OTHER_PARTICIPANT_ID,
-                                                List.of(OTHER_PARTICIPANT_ID, PARTICIPANT_ID),
-                                                ShareStatus.UNPAID)));
+                givenSettlements(
+                        List.of(),
+                        List.of(
+                                SettlementFixture.DINNER.createWithFirstShareStatus(
+                                        SETTLEMENT_ID,
+                                        GATHERING_ID,
+                                        ROUND_ID,
+                                        OTHER_PARTICIPANT_ID,
+                                        List.of(OTHER_PARTICIPANT_ID, PARTICIPANT_ID),
+                                        ShareStatus.UNPAID)));
 
                 // when & then
                 assertThatThrownBy(() -> participantPairingFeedbackService.submit(command()))
                         .isInstanceOf(SentShareRequiredException.class);
-                then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
-                then(submitAnonymousPairingFeedbackUseCase).shouldHaveNoInteractions();
+                thenNothingSubmitted();
             }
+        }
+
+        // 0원 분담금은 확인 완료로 시작하지만 돈이 오가지 않는다. 0원으로 지정한 가짜 참여자가 보내지 않고 통과하지 못하게 막는다.
+        @Nested
+        @DisplayName("본인 분담금이 0원인 경우")
+        class WhenShareAmountZero {
 
             @Test
-            @DisplayName("결제자는 다른 참여자의 분담금이 모두 미입금이면 예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
-            void shouldThrowSentShareRequiredExceptionWhenPayerReceivedNothing() {
+            @DisplayName("확인 완료로 시작했어도 예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
+            void shouldThrowSentShareRequiredException() {
                 // given
                 givenGatheringPairing();
-                given(settlementRepository.findAllByPayerParticipantId(PARTICIPANT_ID))
-                        .willReturn(
-                                List.of(
-                                        SettlementFixture.DINNER.createWithId(
-                                                SETTLEMENT_ID,
-                                                GATHERING_ID,
-                                                ROUND_ID,
-                                                PARTICIPANT_ID,
-                                                List.of(PARTICIPANT_ID, OTHER_PARTICIPANT_ID))));
-                given(settlementRepository.findAllByShareParticipantId(PARTICIPANT_ID))
-                        .willReturn(List.of());
+                givenSettlements(
+                        List.of(),
+                        List.of(
+                                SettlementFixture.DINNER.createWithFixedAmounts(
+                                        SETTLEMENT_ID,
+                                        GATHERING_ID,
+                                        ROUND_ID,
+                                        OTHER_PARTICIPANT_ID,
+                                        List.of(OTHER_PARTICIPANT_ID, PARTICIPANT_ID),
+                                        Map.of(PARTICIPANT_ID, 0L))));
 
                 // when & then
                 assertThatThrownBy(() -> participantPairingFeedbackService.submit(command()))
                         .isInstanceOf(SentShareRequiredException.class);
-                then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
-                then(submitAnonymousPairingFeedbackUseCase).shouldHaveNoInteractions();
+                thenNothingSubmitted();
+            }
+        }
+
+        @Nested
+        @DisplayName("결제자가 다른 참여자의 분담금을 받지 못한 경우")
+        class WhenPayerReceivedNothing {
+
+            @Test
+            @DisplayName("예외를 던지고 제출 표시와 피드백을 저장하지 않는다")
+            void shouldThrowSentShareRequiredException() {
+                // given
+                givenGatheringPairing();
+                givenSettlements(
+                        List.of(
+                                SettlementFixture.DINNER.createWithId(
+                                        SETTLEMENT_ID,
+                                        GATHERING_ID,
+                                        ROUND_ID,
+                                        PARTICIPANT_ID,
+                                        List.of(PARTICIPANT_ID, OTHER_PARTICIPANT_ID))),
+                        List.of());
+
+                // when & then
+                assertThatThrownBy(() -> participantPairingFeedbackService.submit(command()))
+                        .isInstanceOf(SentShareRequiredException.class);
+                thenNothingSubmitted();
             }
         }
 
@@ -314,6 +344,19 @@ class ParticipantPairingFeedbackServiceTest extends UnitTest {
         private SubmitParticipantPairingFeedbackCommand command() {
             return new SubmitParticipantPairingFeedbackCommand(
                     LINK_TOKEN, PAIRING.getDrinkId(), PAIRING.getAnjuId(), PairingRating.DISLIKE);
+        }
+
+        private void givenSettlements(
+                List<Settlement> payerSettlements, List<Settlement> shareSettlements) {
+            given(settlementRepository.findAllByPayerParticipantId(PARTICIPANT_ID))
+                    .willReturn(payerSettlements);
+            given(settlementRepository.findAllByShareParticipantId(PARTICIPANT_ID))
+                    .willReturn(shareSettlements);
+        }
+
+        private void thenNothingSubmitted() {
+            then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
+            then(submitAnonymousPairingFeedbackUseCase).shouldHaveNoInteractions();
         }
 
         // 다른 참여자가 결제한 정산 건에서 본인 분담금을 보낸 상태다.

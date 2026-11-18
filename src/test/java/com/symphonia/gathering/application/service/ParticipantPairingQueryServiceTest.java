@@ -23,6 +23,7 @@ import com.symphonia.gathering.fixture.GatheringPairingFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -115,12 +116,12 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("아직 피드백을 내지 않은 참여자인 경우")
-        class WhenFeedbackNotSubmitted {
+        @DisplayName("피드백을 내지 않았고 돈이 오가지 않은 참여자인 경우")
+        class WhenFeedbackNotSubmittedAndMoneyNotMoved {
 
             @Test
-            @DisplayName("모임 페어링의 카탈로그 이름과 피드백을 내지 않았다는 값을 반환하고, 돈이 오가지 않았으면 낼 수 없다고 알린다")
-            void shouldReturnParticipantPairingResultNotSubmittable() {
+            @DisplayName("모임 페어링의 카탈로그 이름과 함께 피드백을 내지 않았고 낼 수도 없다는 값을 반환한다")
+            void shouldReturnResultNotSubmittable() {
                 // given
                 givenCatalogReferences();
                 given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
@@ -133,10 +134,15 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
                 // then
                 assertThat(result).isEqualTo(expectedResult(false, false));
             }
+        }
+
+        @Nested
+        @DisplayName("피드백을 내지 않았고 본인 분담금을 보낸 참여자인 경우")
+        class WhenFeedbackNotSubmittedAndShareSent {
 
             @Test
-            @DisplayName("본인 분담금을 보냈으면 지금 낼 수 있다고 알린다")
-            void shouldReturnSubmittableWhenShareSent() {
+            @DisplayName("피드백을 내지 않았고 지금 낼 수 있다는 값을 반환한다")
+            void shouldReturnResultSubmittable() {
                 // given
                 givenCatalogReferences();
                 given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
@@ -158,6 +164,38 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
 
                 // then
                 assertThat(result).isEqualTo(expectedResult(false, true));
+            }
+        }
+
+        // 0원 분담금은 확인 완료로 시작하지만 돈이 오가지 않으므로 낼 수 없다.
+        @Nested
+        @DisplayName("피드백을 내지 않았고 본인 분담금이 0원인 참여자인 경우")
+        class WhenFeedbackNotSubmittedAndShareAmountZero {
+
+            @Test
+            @DisplayName("피드백을 내지 않았고 낼 수 없다는 값을 반환한다")
+            void shouldReturnResultNotSubmittable() {
+                // given
+                givenCatalogReferences();
+                given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
+                        .willReturn(false);
+                given(settlementRepository.findAllByShareParticipantId(PARTICIPANT_ID))
+                        .willReturn(
+                                List.of(
+                                        SettlementFixture.DINNER.createWithFixedAmounts(
+                                                SETTLEMENT_ID,
+                                                GATHERING_ID,
+                                                ROUND_ID,
+                                                OTHER_PARTICIPANT_ID,
+                                                List.of(OTHER_PARTICIPANT_ID, PARTICIPANT_ID),
+                                                Map.of(PARTICIPANT_ID, 0L))));
+
+                // when
+                ParticipantPairingResult result =
+                        participantPairingQueryService.getPairing(LINK_TOKEN);
+
+                // then
+                assertThat(result).isEqualTo(expectedResult(false, false));
             }
         }
 
