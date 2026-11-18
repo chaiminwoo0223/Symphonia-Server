@@ -180,6 +180,6 @@ export function getShares(data) {
 
     check(response, {
         '분담금 조회 상태 코드는 200이다': (res) => res.status === 200,
-        '결제자 묶음이 하나다': (res) => res.status === 200 && res.json().data.length === 1,
+        '결제자 묶음이 하나다': (res) => res.status === 200 && res.json().data.payers.length === 1,
     });
 }
