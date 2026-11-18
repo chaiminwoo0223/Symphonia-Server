@@ -128,7 +128,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(SettlementRecordingClosedException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -147,7 +147,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(GatheringRoundNotFoundException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -166,7 +166,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -186,7 +186,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(BankAccountRequiredException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -204,7 +204,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementAmountException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -218,7 +218,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementAmountException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -237,7 +237,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(FixedAmountExceedsTotalException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -254,7 +254,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(FixedAmountExceedsTotalException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -272,7 +272,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -286,7 +286,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -300,7 +300,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -314,7 +314,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -328,7 +328,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                thenSettlementNotRecorded();
             }
         }
 
@@ -627,20 +627,18 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenSameClientRequestIdRecorded {
 
             @Test
-            @DisplayName("그 정산 건과 그 차수를 반환한다")
-            void shouldReturnRecordedSettlementWithItsRound() {
+            @DisplayName("요청한 차수가 이 모임의 차수가 아니어도 처음 기록한 정산 건과 그 차수를 반환하고 저장하지 않는다")
+            void shouldReturnRecordedSettlementWithItsRoundWithoutValidatingRequest() {
                 // given
-                givenRecordableGathering();
-                Settlement recorded =
-                        SettlementFixture.SECOND_ROUND.createWithId(
-                                SETTLEMENT_ID,
-                                GATHERING_ID,
-                                SECOND_ROUND_ID,
-                                PAYER_ID,
-                                List.of(PAYER_ID, LEE_ID));
-                given(settlementRepository.saveIfAbsent(any(Settlement.class)))
-                        .willReturn(recorded);
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+                givenParticipant(PAYER_ID);
+                given(gatheringRepository.findByParticipantId(PAYER_ID))
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+                given(
+                                settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                                        PAYER_ID, CLIENT_REQUEST_ID))
+                        .willReturn(Optional.of(recordedSecondRoundSettlement()));
+                RecordSettlementCommand command =
+                        command(OTHER_GATHERING_ROUND_ID, 9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
                 SettlementResult result = settlementCommandService.record(command);
@@ -652,7 +650,76 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
                 assertThat(result.roundNumber())
                         .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+                then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
             }
+        }
+
+        @Nested
+        @DisplayName("저장하는 사이 같은 요청 id가 먼저 기록된 경우")
+        class WhenSameClientRequestIdRecordedConcurrently {
+
+            @Test
+            @DisplayName("먼저 기록된 정산 건과 그 차수를 반환한다")
+            void shouldReturnRecordedSettlementWithItsRound() {
+                // given
+                givenRecordableGathering();
+                given(settlementRepository.saveIfAbsent(any(Settlement.class)))
+                        .willReturn(recordedSecondRoundSettlement());
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.id()).isEqualTo(SETTLEMENT_ID);
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+            }
+
+            @Test
+            @DisplayName("먼저 읽은 모임에 없는 차수에 기록됐으면 모임을 다시 읽어 그 차수를 반환한다")
+            void shouldReadGatheringAgainWhenRoundMissingInSnapshot() {
+                // given
+                givenParticipant(PAYER_ID);
+                given(gatheringRepository.findByParticipantId(PAYER_ID))
+                        .willReturn(
+                                Optional.of(
+                                        GatheringFixture.FRIDAY_DINNER.createWithRounds(
+                                                GATHERING_ID,
+                                                OPEN_PERIOD_OPENED_AT,
+                                                ParticipantFixture.createWithIds(PARTICIPANT_IDS),
+                                                List.of(GatheringRoundFixture.FIRST.create()))));
+                given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
+                        .willReturn(true);
+                given(settlementRepository.saveIfAbsent(any(Settlement.class)))
+                        .willReturn(recordedSecondRoundSettlement());
+                given(gatheringRepository.findById(GATHERING_ID))
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+            }
+        }
+
+        // 요청 id로 기록된 정산 건을 먼저 찾으므로, 저장소를 아예 부르지 않았는지가 아니라 저장하지 않았는지를 확인한다.
+        private void thenSettlementNotRecorded() {
+            then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
+        }
+
+        private Settlement recordedSecondRoundSettlement() {
+            return SettlementFixture.SECOND_ROUND.createWithId(
+                    SETTLEMENT_ID,
+                    GATHERING_ID,
+                    SECOND_ROUND_ID,
+                    PAYER_ID,
+                    List.of(PAYER_ID, LEE_ID));
         }
 
         private RecordSettlementCommand command(

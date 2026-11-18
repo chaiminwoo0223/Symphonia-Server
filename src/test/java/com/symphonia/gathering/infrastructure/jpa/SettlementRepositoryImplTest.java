@@ -584,6 +584,49 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findByPayerParticipantIdAndClientRequestId 메서드는")
+    class FindByPayerParticipantIdAndClientRequestId {
+
+        @Test
+        @DisplayName("같은 결제자가 같은 요청 id로 기록한 정산 건을 분담금과 함께 찾는다")
+        void shouldFindSettlementOfPayerWithShares() {
+            // given
+            Settlement saved =
+                    settlementRepository.saveIfAbsent(
+                            SettlementFixture.DINNER.create(
+                                    gatheringId, roundId, kimId, List.of(kimId, leeId, parkId)));
+
+            // when
+            Optional<Settlement> result =
+                    settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                            kimId, saved.getClientRequestId());
+
+            // then
+            assertThat(result).isPresent();
+            assertThat(result.get().getId()).isEqualTo(saved.getId());
+            assertThat(result.get().getShares()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("다른 결제자의 같은 요청 id는 찾지 못한다")
+        void shouldReturnEmptyWhenOtherPayer() {
+            // given
+            Settlement saved =
+                    settlementRepository.saveIfAbsent(
+                            SettlementFixture.DINNER.create(
+                                    gatheringId, roundId, kimId, List.of(kimId, leeId, parkId)));
+
+            // when
+            Optional<Settlement> result =
+                    settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                            leeId, saved.getClientRequestId());
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("findLatestByGatheringId 메서드는")
     class FindLatestByGatheringId {
 

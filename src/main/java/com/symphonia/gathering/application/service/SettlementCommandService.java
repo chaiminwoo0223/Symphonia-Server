@@ -20,6 +20,7 @@ import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.SplitMethod;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
 // 정산 건은 결제자가 개인 링크 토큰으로 기록하고 수정하고 취소한다. 요청한 참여자가 곧 결제자다.
@@ -40,6 +41,13 @@ public class SettlementCommandService
                 gatheringRepository
                         .findByParticipantId(participantId)
                         .orElseThrow(GatheringNotFoundException::new);
+        // 같은 요청 id로 다시 온 요청은 내용이 달라도 처음 기록한 정산 건을 돌려주므로, 차수와 인원 검증보다 먼저 찾는다.
+        Optional<Settlement> recordedSettlement =
+                settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                        participantId, command.clientRequestId());
+        if (recordedSettlement.isPresent()) {
+            return toResult(recordedSettlement.get(), gathering);
+        }
         LocalDateTime now = LocalDateTime.now(clock);
         SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
         SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
@@ -61,11 +69,10 @@ public class SettlementCommandService
                         splitMethod,
                         command.clientRequestId(),
                         now);
-        // 같은 요청 id로 다시 온 요청이면 처음 기록한 정산 건이 돌아오므로, 차수도 그 정산 건의 차수를 쓴다.
+        // 먼저 찾은 뒤에 같은 요청 id가 동시에 기록됐으면 먼저 기록한 정산 건이 돌아오므로, 차수도 그 정산 건의 차수를 쓴다.
         Settlement savedSettlement = settlementRepository.saveIfAbsent(settlement);
 
-        return SettlementResult.of(
-                savedSettlement, gathering.getRound(savedSettlement.getRoundId()));
+        return toResult(savedSettlement, gathering);
     }
 
     @Override
@@ -110,6 +117,18 @@ public class SettlementCommandService
 
     private Long findParticipantId(String linkToken) {
         return getLinkedParticipantUseCase.getLinkedParticipant(linkToken).participantId();
+    }
+
+    // 처음 읽은 모임 뒤에 다른 요청이 차수를 더하고 그 차수에 기록했다면 정산 건의 차수가 처음 읽은 모임에 없다. 그때는 모임을 다시 읽는다.
+    private SettlementResult toResult(Settlement settlement, Gathering gathering) {
+        Gathering currentGathering =
+                gathering.hasRound(settlement.getRoundId())
+                        ? gathering
+                        : gatheringRepository
+                                .findById(settlement.getGatheringId())
+                                .orElseThrow(GatheringNotFoundException::new);
+
+        return SettlementResult.of(settlement, currentGathering.getRound(settlement.getRoundId()));
     }
 
     private Settlement findSettlement(Long settlementId) {
