@@ -38,7 +38,9 @@ public class GatheringQueryService implements GetGatheringUseCase, GetExpiredGat
                 gatheringRepository
                         .findById(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
-        boolean joinable = GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now);
+        boolean joinable =
+                GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now)
+                        && GatheringPolicy.isParticipantAddable(gathering.getParticipants().size());
 
         return GatheringResult.of(
                 gathering.getName(),

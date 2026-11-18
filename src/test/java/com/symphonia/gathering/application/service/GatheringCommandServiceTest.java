@@ -26,6 +26,7 @@ import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
+import com.symphonia.gathering.domain.exception.GatheringParticipantCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
@@ -48,6 +49,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -466,6 +469,50 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("참여자가 이미 50명인 경우")
+        class WhenParticipantCountAtLimit {
+
+            @Test
+            @DisplayName("예외를 던지고 참여자와 개인 링크 토큰을 저장하지 않는다")
+            void shouldThrowGatheringParticipantCountExceedsLimitException() {
+                // given
+                givenJoinableGathering(participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT));
+                JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.join(command))
+                        .isInstanceOf(GatheringParticipantCountExceedsLimitException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("참여자가 50명인데 같은 휴대폰으로 다시 참여하는 경우")
+        class WhenPhoneNumberAlreadyJoinedAtLimit {
+
+            @Test
+            @DisplayName("상한 초과가 아니라 이미 참여했다는 예외를 던진다")
+            void shouldThrowParticipantAlreadyJoinedException() {
+                // given
+                List<Participant> participants =
+                        Stream.concat(
+                                        Stream.of(
+                                                ParticipantFixture.KIM.createWithId(
+                                                        PARTICIPANT_ID)),
+                                        participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT - 1)
+                                                .stream())
+                                .toList();
+                givenJoinableGathering(participants);
+                JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.join(command))
+                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
         @DisplayName("휴대폰 형식이 틀린 경우")
         class WhenPhoneNumberInvalid {
 
@@ -486,6 +533,34 @@ class GatheringCommandServiceTest extends UnitTest {
                 assertThatThrownBy(() -> gatheringCommandService.join(command))
                         .isInstanceOf(InvalidPhoneNumberException.class);
                 thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("참여자가 49명이라 50번째로 참여하는 경우")
+        class WhenParticipantCountJustBelowLimit {
+
+            @Test
+            @DisplayName("참여자를 더해 저장한다")
+            void shouldSaveParticipant() {
+                // given
+                givenJoinableGathering(participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT - 1));
+                given(gatheringRepository.save(any(Gathering.class)))
+                        .willReturn(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID,
+                                        OPEN_PERIOD_OPENED_AT,
+                                        List.of(
+                                                ParticipantFixture.KIM.createWithId(
+                                                        PARTICIPANT_ID))));
+                given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
+                JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when
+                gatheringCommandService.join(command);
+
+                // then
+                then(gatheringRepository).should().save(any(Gathering.class));
             }
         }
 
@@ -525,6 +600,13 @@ class GatheringCommandServiceTest extends UnitTest {
                 assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
                 assertThat(result.linkToken()).isEqualTo(LINK_TOKEN);
             }
+        }
+
+        // 참여하려는 김철수의 휴대폰과 겹치지 않도록 모두 이영희로 만든다. id만 서로 다르다.
+        private List<Participant> participantsOf(int count) {
+            return LongStream.rangeClosed(1, count)
+                    .mapToObj(ParticipantFixture.LEE::createWithId)
+                    .toList();
         }
 
         private JoinGatheringCommand command(String consentVersion) {

@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
@@ -14,11 +15,13 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRetentionFixture;
+import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -139,7 +142,57 @@ class GatheringQueryServiceTest extends UnitTest {
             }
         }
 
+        @Nested
+        @DisplayName("참여자가 49명이라 한 명 더 참여할 수 있는 경우")
+        class WhenParticipantsJustBelowLimit {
+
+            @Test
+            @DisplayName("참여 가능으로 표시한다")
+            void shouldReturnJoinableResult() {
+                // given
+                givenGatheringOpenedAt(
+                        OPEN_PERIOD_OPENED_AT,
+                        participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT - 1));
+
+                // when
+                GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
+
+                // then
+                assertThat(result.joinable()).isTrue();
+            }
+        }
+
+        @Nested
+        @DisplayName("참여자가 50명이라 가득 찬 경우")
+        class WhenParticipantsAtLimit {
+
+            @Test
+            @DisplayName("참여 불가로 표시한다")
+            void shouldReturnNotJoinableResult() {
+                // given
+                givenGatheringOpenedAt(
+                        OPEN_PERIOD_OPENED_AT,
+                        participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT));
+
+                // when
+                GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
+
+                // then
+                assertThat(result.joinable()).isFalse();
+            }
+        }
+
+        private List<Participant> participantsOf(int count) {
+            return ParticipantFixture.createWithIds(
+                    LongStream.rangeClosed(1, count).boxed().toList());
+        }
+
         private void givenGatheringOpenedAt(LocalDateTime openedAt) {
+            givenGatheringOpenedAt(openedAt, List.of());
+        }
+
+        private void givenGatheringOpenedAt(
+                LocalDateTime openedAt, List<Participant> participants) {
             given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                     .willReturn(Optional.of(GATHERING_ID));
             givenRetention(GatheringRetentionFixture.RETAINED);
@@ -147,7 +200,7 @@ class GatheringQueryServiceTest extends UnitTest {
                     .willReturn(
                             Optional.of(
                                     GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
-                                            GATHERING_ID, openedAt)));
+                                            GATHERING_ID, openedAt, participants)));
         }
 
         private void givenRetention(GatheringRetentionFixture retention) {

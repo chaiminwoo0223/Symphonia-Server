@@ -14,8 +14,8 @@ const JWT_SECRET = __ENV.JWT_SECRET;
 
 // 모임 하나에 처음부터 있는 참여자 수다. 한 모임의 참여자는 수십 명 수준이라는 #124 결정의 전제를 따른다.
 const INITIAL_PARTICIPANT_COUNT = 30;
-// 측정하는 동안 같은 모임에 더 참여하는 인원이다. 참여가 끝나면 모임의 참여자는 80명이 된다.
-const JOIN_COUNT = 50;
+// 측정하는 동안 같은 모임에 더 참여하는 인원이다. 참여가 끝나면 모임의 참여자는 상한(50명)에 이른다.
+const JOIN_COUNT = 20;
 // host_member_id는 member를 FK로 참조하지 않아, 서명한 토큰의 회원 id만 있으면 모임을 열 수 있다.
 const HOST_MEMBER_ID = '1';
 

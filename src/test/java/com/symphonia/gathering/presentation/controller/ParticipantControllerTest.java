@@ -89,6 +89,40 @@ class ParticipantControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("참여자가 50명인 모임인 경우")
+        class WhenParticipantCountAtLimit {
+
+            @Test
+            @DisplayName("GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Gathering gathering =
+                        gatheringHelper.join(
+                                saveGathering(), GatheringPolicy.MAX_PARTICIPANT_COUNT);
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
+                JoinGatheringRequest request =
+                        joinRequest(
+                                ParticipantFixture.KIM.getName(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode
+                                                        .GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
         @DisplayName("개인정보 수집 및 이용에 동의하지 않은 경우")
         class WhenConsentNotAgreed {
 
