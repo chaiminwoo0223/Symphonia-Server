@@ -1,7 +1,7 @@
 package com.symphonia.auth.application.service;
 
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
+import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.provider.AccessTokenProvider;
@@ -37,7 +37,7 @@ class BlockWithdrawnMemberServiceTest extends UnitTest {
             blockWithdrawnMemberService.block(MEMBER_ID);
 
             // then
-            verify(withdrawnMemberRepository).save(MEMBER_ID, ACCESS_TOKEN_EXPIRATION_TIME);
+            then(withdrawnMemberRepository).should().save(MEMBER_ID, ACCESS_TOKEN_EXPIRATION_TIME);
         }
     }
 }

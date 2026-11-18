@@ -6,7 +6,7 @@ public enum MemberPolicy {
     ;
 
     // member.nickname 컬럼은 255자이지만, 화면에 그대로 보여 주는 값이라 더 짧게 제한한다.
-    // UpdateMemberRequest.nickname의 @Size와 같은 값이다.
+    // UpdateMemberRequest.nickname의 @Size(max)는 리터럴이라 이 값을 바꿀 때 함께 바꾼다.
     public static final int MAX_NICKNAME_LENGTH = 20;
 
     public static void validateNotDuplicated(boolean exists) {

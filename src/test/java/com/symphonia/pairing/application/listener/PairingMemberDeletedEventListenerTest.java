@@ -15,6 +15,8 @@ import org.mockito.Mock;
 class PairingMemberDeletedEventListenerTest extends UnitTest {
 
     private static final Long MEMBER_ID = 1L;
+    private static final String ACCESS_TOKEN = "access-token";
+    private static final String IP = "127.0.0.1";
 
     @InjectMocks private PairingMemberDeletedEventListener pairingMemberDeletedEventListener;
 
@@ -28,8 +30,7 @@ class PairingMemberDeletedEventListenerTest extends UnitTest {
         @DisplayName("멤버 삭제 이벤트를 받으면 탈퇴한 회원의 피드백을 익명화한다")
         void shouldAnonymizeFeedbacksWhenMemberDeletedEventReceived() {
             // given
-            MemberDeletedEvent event =
-                    MemberDeletedEvent.of(MEMBER_ID, "access-token", "127.0.0.1");
+            MemberDeletedEvent event = MemberDeletedEvent.of(MEMBER_ID, ACCESS_TOKEN, IP);
 
             // when
             pairingMemberDeletedEventListener.handle(event);

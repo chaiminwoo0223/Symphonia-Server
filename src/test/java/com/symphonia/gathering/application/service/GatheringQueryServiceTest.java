@@ -131,7 +131,7 @@ class GatheringQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("참여 불가로 표시하고 사유를 기간 만료로 알린다")
-            void shouldReturnNotJoinableResult() {
+            void shouldReturnPeriodExpiredReason() {
                 // given
                 givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
 
@@ -171,7 +171,7 @@ class GatheringQueryServiceTest extends UnitTest {
 
             @Test
             @DisplayName("참여 불가로 표시하고 사유를 인원 초과로 알린다")
-            void shouldReturnNotJoinableResult() {
+            void shouldReturnParticipantLimitReachedReason() {
                 // given
                 givenGatheringOpenedAt(
                         OPEN_PERIOD_OPENED_AT,
