@@ -14,6 +14,7 @@ import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -69,7 +70,7 @@ public class GatheringHelper {
         for (int index = 0; index < count; index++) {
             gathering.join(
                     "참여자" + index,
-                    new PhoneNumber("0109000%04d".formatted(index)),
+                    new PhoneNumber(String.format(Locale.ROOT, "0109000%04d", index)),
                     GatheringPolicy.CONSENT_VERSION,
                     LocalDateTime.now());
         }

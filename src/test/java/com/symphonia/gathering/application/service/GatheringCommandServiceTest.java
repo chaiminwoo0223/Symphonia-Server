@@ -541,10 +541,10 @@ class GatheringCommandServiceTest extends UnitTest {
         class WhenParticipantCountJustBelowLimit {
 
             @Test
-            @DisplayName("참여자를 더해 저장한다")
+            @DisplayName("기존 49명을 유지하고 요청한 휴대폰의 참여자를 더해 50명으로 저장한다")
             void shouldSaveParticipant() {
                 // given
-                givenJoinableGathering(participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT - 1));
+                givenJoinableGathering(participantsOf(49));
                 given(gatheringRepository.save(any(Gathering.class)))
                         .willReturn(
                                 GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
@@ -560,7 +560,12 @@ class GatheringCommandServiceTest extends UnitTest {
                 gatheringCommandService.join(command);
 
                 // then
-                then(gatheringRepository).should().save(any(Gathering.class));
+                ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
+                then(gatheringRepository).should().save(captor.capture());
+                List<Participant> saved = captor.getValue().getParticipants();
+                assertThat(saved).hasSize(50);
+                assertThat(saved.getLast().getPhoneNumber())
+                        .isEqualTo(new PhoneNumber(ParticipantFixture.KIM.getPhoneNumber()));
             }
         }
 
