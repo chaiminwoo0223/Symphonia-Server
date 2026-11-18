@@ -26,6 +26,7 @@ import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,6 +38,8 @@ import org.springframework.test.web.servlet.ResultActions;
 class SettlementControllerTest extends IntegrationTest {
 
     private static final String MASKED_KIM_PHONE_NUMBER = "010-****-5678";
+    private static final UUID CLIENT_REQUEST_ID =
+            UUID.fromString("0b6c1a52-6f4e-4d0a-9d52-7a1f3c1e8b11");
 
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
@@ -169,6 +172,7 @@ class SettlementControllerTest extends IntegrationTest {
                 settlementHelper.registerBankAccount(gathering, payer);
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID,
                                 roundId(),
                                 10_000L,
                                 participantIds(),
@@ -208,7 +212,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
-                                roundId(), 10_000L, participantIds(), List.of());
+                                CLIENT_REQUEST_ID, roundId(), 10_000L, participantIds(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -216,6 +220,57 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.code")
                                         .value(GatheringErrorCode.BANK_ACCOUNT_REQUIRED.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("요청 id가 없는 경우")
+        class WhenClientRequestIdMissing {
+
+            @Test
+            @DisplayName("clientRequestId 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                RecordSettlementRequest request =
+                        new RecordSettlementRequest(
+                                null, roundId(), 10_000L, participantIds(), List.of());
+
+                // when & then
+                performRecord(request)
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("clientRequestId"));
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 요청 id로 이미 기록한 경우")
+        class WhenSameClientRequestIdRecorded {
+
+            @Test
+            @DisplayName("정산 건을 새로 만들지 않고 처음 기록한 정산 건을 담아 201을 반환한다")
+            void shouldReturnRecordedSettlement() throws Exception {
+                // given
+                settlementHelper.registerBankAccount(gathering, payer);
+                Settlement recorded =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+                RecordSettlementRequest request =
+                        new RecordSettlementRequest(
+                                recorded.getClientRequestId(),
+                                roundId(),
+                                20_000L,
+                                participantIds(),
+                                List.of());
+
+                // when & then
+                performRecord(request)
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").value(recorded.getId()))
+                        .andExpect(
+                                jsonPath("$.data.totalAmount")
+                                        .value(SettlementFixture.DINNER.getTotalAmount()));
             }
         }
 
@@ -228,7 +283,8 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(null, 10_000L, participantIds(), List.of());
+                        new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID, null, 10_000L, participantIds(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -250,7 +306,11 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
-                                otherGatheringRoundId(), 10_000L, participantIds(), List.of());
+                                CLIENT_REQUEST_ID,
+                                otherGatheringRoundId(),
+                                10_000L,
+                                participantIds(),
+                                List.of());
 
                 // when & then
                 performRecord(request)
@@ -272,7 +332,8 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(roundId(), 0L, participantIds(), List.of());
+                        new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID, roundId(), 0L, participantIds(), List.of());
 
                 // when & then
                 performRecord(request)
@@ -294,7 +355,11 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
-                                roundId(), 100_000_001L, participantIds(), List.of());
+                                CLIENT_REQUEST_ID,
+                                roundId(),
+                                100_000_001L,
+                                participantIds(),
+                                List.of());
 
                 // when & then
                 performRecord(request)
@@ -316,6 +381,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID,
                                 roundId(),
                                 10_000L,
                                 participantIds(),
@@ -343,6 +409,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID,
                                 roundId(),
                                 10_000L,
                                 participantIds(),
@@ -370,6 +437,7 @@ class SettlementControllerTest extends IntegrationTest {
                 // given
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID,
                                 roundId(),
                                 10_000L,
                                 participantIds(),
@@ -398,7 +466,8 @@ class SettlementControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 RecordSettlementRequest request =
-                        new RecordSettlementRequest(roundId(), 10_000L, List.of(), List.of());
+                        new RecordSettlementRequest(
+                                CLIENT_REQUEST_ID, roundId(), 10_000L, List.of(), List.of());
 
                 // when & then
                 performRecord(request)

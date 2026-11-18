@@ -1,9 +1,11 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -11,6 +13,30 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEntity, Long> {
+    // 같은 결제자와 요청 id의 정산 건이 이미 있으면 넣지 않고 빈 값을 돌려준다. 동시에 같은 요청이 오면 늦은 요청은 먼저 넣은 요청이 커밋한 뒤에 빈 값을 받는다.
+    // 감사 시각 컬럼은 기록 시각으로 채운다. 이 쿼리는 JPA 엔티티를 거치지 않아 감사 리스너가 값을 넣지 못한다.
+    @Query(
+            value =
+                    """
+                    INSERT INTO settlement
+                        (gathering_id, round_id, payer_participant_id, total_amount, recorded_at,
+                         client_request_id, version, created_at, updated_at)
+                    VALUES (:gatheringId, :roundId, :payerParticipantId, :totalAmount, :recordedAt,
+                            :clientRequestId, 0, :recordedAt, :recordedAt)
+                    ON CONFLICT (payer_participant_id, client_request_id) DO NOTHING
+                    RETURNING id
+                    """,
+            nativeQuery = true)
+    Optional<Long> insertIfAbsent(
+            @Param("gatheringId") Long gatheringId,
+            @Param("roundId") Long roundId,
+            @Param("payerParticipantId") Long payerParticipantId,
+            @Param("totalAmount") long totalAmount,
+            @Param("recordedAt") LocalDateTime recordedAt,
+            @Param("clientRequestId") UUID clientRequestId);
+
+    Optional<SettlementJpaEntity> findByPayerParticipantIdAndClientRequestId(
+            Long payerParticipantId, UUID clientRequestId);
 
     Optional<SettlementJpaEntity> findFirstByGatheringIdAndCancelledAtIsNullOrderByIdDesc(
             Long gatheringId);

@@ -44,6 +44,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -67,6 +68,8 @@ class SettlementCommandServiceTest extends UnitTest {
     private static final Long OUTSIDER_ID = 99L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final String LINK_TOKEN = "link-token";
+    private static final UUID CLIENT_REQUEST_ID =
+            UUID.fromString("0b6c1a52-6f4e-4d0a-9d52-7a1f3c1e8b11");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
     private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
 
@@ -338,7 +341,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSaveSettlementWithCalculatedShares() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -346,7 +349,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // then
                 ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
-                then(settlementRepository).should().save(captor.capture());
+                then(settlementRepository).should().saveIfAbsent(captor.capture());
                 assertThat(captor.getValue().getGatheringId()).isEqualTo(GATHERING_ID);
                 assertThat(result.payerParticipantId()).isEqualTo(PAYER_ID);
                 assertThat(result.totalAmount()).isEqualTo(9_000L);
@@ -368,7 +371,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSaveSettlementOfRound() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(SECOND_ROUND_ID, 9_000L, PARTICIPANT_IDS, Map.of());
 
@@ -377,7 +380,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // then
                 ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
-                then(settlementRepository).should().save(captor.capture());
+                then(settlementRepository).should().saveIfAbsent(captor.capture());
                 assertThat(captor.getValue().getRoundId()).isEqualTo(SECOND_ROUND_ID);
                 assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
                 assertThat(result.roundNumber())
@@ -389,7 +392,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSaveZeroFixedShareAsConfirmed() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(10_000L, PARTICIPANT_IDS, Map.of(PARK_ID, 0L));
 
@@ -418,7 +421,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSplitEquallyWhenDivisible() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command = command(10_050L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -436,7 +439,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldRoundEqualShareDownAndAttributeRemainderToPayer() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command = command(10_001L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -454,7 +457,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldKeepFixedAmountUnrounded() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(10_000L, PARTICIPANT_IDS, Map.of(LEE_ID, 1_050L));
 
@@ -477,7 +480,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldAttributeRemainingAmountToPayerWhenOthersFixed() {
                 // given
                 givenRecordableGathering();
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(10_000L, PARTICIPANT_IDS, Map.of(LEE_ID, 3_333L, PARK_ID, 0L));
 
@@ -501,7 +504,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldReturnRoundWhenFirstPayerRecords() {
                 // given
                 givenRecordableGathering(PAYER_ID, PARTICIPANT_IDS);
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(SECOND_ROUND_ID, 6_000L, List.of(PAYER_ID, LEE_ID), Map.of());
 
@@ -520,7 +523,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldReturnSameRoundWhenOtherPayerRecords() {
                 // given
                 givenRecordableGathering(LEE_ID, PARTICIPANT_IDS);
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(SECOND_ROUND_ID, 4_000L, List.of(LEE_ID, PARK_ID), Map.of());
 
@@ -551,7 +554,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                 gatheringParticipantIds.get(5),
                                 gatheringParticipantIds.get(8));
                 givenRecordableGathering(PAYER_ID, gatheringParticipantIds);
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(SECOND_ROUND_ID, 10_000L, roundParticipantIds, Map.of());
 
@@ -582,7 +585,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 givenRecordableGathering(
                         PAYER_ID, List.of(PAYER_ID, LEE_ID, PARK_ID, LATE_JOINER_ID));
-                givenSaveReturnsSettlement();
+                givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(
                                 SECOND_ROUND_ID,
@@ -594,11 +597,61 @@ class SettlementCommandServiceTest extends UnitTest {
                 SettlementResult result = settlementCommandService.record(command);
 
                 // then
-                then(settlementRepository).should().save(any(Settlement.class));
+                then(settlementRepository).should().saveIfAbsent(any(Settlement.class));
                 assertThat(result.shares())
                         .extracting(
                                 SettlementShareResult::participantId, SettlementShareResult::amount)
                         .containsExactly(tuple(LEE_ID, 3_000L), tuple(LATE_JOINER_ID, 3_000L));
+            }
+        }
+
+        @Nested
+        @DisplayName("요청 id로 정산 건을 기록하는 경우")
+        class WhenClientRequestIdGiven {
+
+            @Test
+            @DisplayName("요청 id를 담아 정산 건을 저장한다")
+            void shouldSaveSettlementWithClientRequestId() {
+                // given
+                givenRecordableGathering();
+                givenSaveIfAbsentReturnsSettlement();
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                settlementCommandService.record(command);
+
+                // then
+                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+                then(settlementRepository).should().saveIfAbsent(captor.capture());
+                assertThat(captor.getValue().getClientRequestId()).isEqualTo(CLIENT_REQUEST_ID);
+            }
+
+            @Test
+            @DisplayName("같은 요청 id로 이미 기록한 정산 건이 있으면 그 정산 건과 그 차수를 반환한다")
+            void shouldReturnRecordedSettlementWhenSameRequestIdRecorded() {
+                // given
+                givenRecordableGathering();
+                Settlement recorded =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                SECOND_ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                given(settlementRepository.saveIfAbsent(any(Settlement.class)))
+                        .willReturn(recorded);
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.id()).isEqualTo(SETTLEMENT_ID);
+                assertThat(result.totalAmount())
+                        .isEqualTo(SettlementFixture.SECOND_ROUND.getTotalAmount());
+                assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
+                assertThat(result.roundNumber())
+                        .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
             }
         }
 
@@ -613,7 +666,12 @@ class SettlementCommandServiceTest extends UnitTest {
                 List<Long> participantIds,
                 Map<Long, Long> fixedAmounts) {
             return new RecordSettlementCommand(
-                    LINK_TOKEN, roundId, totalAmount, participantIds, fixedAmounts);
+                    LINK_TOKEN,
+                    CLIENT_REQUEST_ID,
+                    roundId,
+                    totalAmount,
+                    participantIds,
+                    fixedAmounts);
         }
 
         private void givenRecordableGathering() {
@@ -1102,6 +1160,11 @@ class SettlementCommandServiceTest extends UnitTest {
 
     private void givenSettlement(Settlement settlement) {
         given(settlementRepository.findById(SETTLEMENT_ID)).willReturn(Optional.of(settlement));
+    }
+
+    private void givenSaveIfAbsentReturnsSettlement() {
+        given(settlementRepository.saveIfAbsent(any(Settlement.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
     }
 
     private void givenSaveReturnsSettlement() {

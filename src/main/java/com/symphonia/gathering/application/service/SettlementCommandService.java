@@ -55,10 +55,17 @@ public class SettlementCommandService
                         command.fixedAmounts());
 
         Settlement settlement =
-                Settlement.record(gathering.getId(), command.roundId(), splitMethod, now);
-        Settlement savedSettlement = settlementRepository.save(settlement);
+                Settlement.record(
+                        gathering.getId(),
+                        command.roundId(),
+                        splitMethod,
+                        command.clientRequestId(),
+                        now);
+        // 같은 요청 id로 다시 온 요청이면 처음 기록한 정산 건이 돌아오므로, 차수도 그 정산 건의 차수를 쓴다.
+        Settlement savedSettlement = settlementRepository.saveIfAbsent(settlement);
 
-        return SettlementResult.of(savedSettlement, gathering.getRound(command.roundId()));
+        return SettlementResult.of(
+                savedSettlement, gathering.getRound(savedSettlement.getRoundId()));
     }
 
     @Override

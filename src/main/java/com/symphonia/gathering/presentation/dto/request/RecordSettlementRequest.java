@@ -10,9 +10,15 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public record RecordSettlementRequest(
+        @NotNull
+                @Schema(
+                        description =
+                                "기록 요청마다 클라이언트가 만드는 UUID. 같은 값으로 다시 보내면 정산 건을 새로 만들지 않고 처음 기록한 정산 건을 돌려준다")
+                UUID clientRequestId,
         @NotNull @Schema(description = "정산 건이 속한 차수의 ID") Long roundId,
         @Positive @Max(100_000_000) @Schema(description = "카드 결제 총액 (원)") long totalAmount,
         @NotEmpty @Schema(description = "결제자를 포함한 정산 건 인원의 참여자 ID")
@@ -29,7 +35,12 @@ public record RecordSettlementRequest(
 
     public RecordSettlementCommand toCommand(String linkToken) {
         return new RecordSettlementCommand(
-                linkToken, roundId, totalAmount, participantIds, toFixedAmountMap());
+                linkToken,
+                clientRequestId,
+                roundId,
+                totalAmount,
+                participantIds,
+                toFixedAmountMap());
     }
 
     private Map<Long, Long> toFixedAmountMap() {

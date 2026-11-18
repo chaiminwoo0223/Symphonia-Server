@@ -26,7 +26,9 @@ public interface SettlementApi {
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
 
     @PostMapping(SettlementEndpoints.RECORD)
-    @Operation(summary = "정산 건 기록", description = "정산 건을 기록하고 분담액을 계산합니다.")
+    @Operation(
+            summary = "정산 건 기록",
+            description = "정산 건을 기록하고 분담액을 계산합니다. 같은 요청 id로 다시 보내면 새로 만들지 않고 처음 기록한 정산 건을 돌려줍니다.")
     ResponseEntity<StandardResponse<SettlementResponse>> record(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken,
             @Valid @RequestBody RecordSettlementRequest request);

@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,6 +45,8 @@ public class SettlementJpaEntity extends BaseTimeEntity {
 
     private LocalDateTime cancelledAt;
 
+    private UUID clientRequestId;
+
     @Version private Long version;
 
     public static SettlementJpaEntity from(Settlement settlement) {
@@ -55,6 +58,7 @@ public class SettlementJpaEntity extends BaseTimeEntity {
                 .totalAmount(settlement.getTotalAmount())
                 .recordedAt(settlement.getRecordedAt())
                 .cancelledAt(settlement.getCancelledAt())
+                .clientRequestId(settlement.getClientRequestId())
                 .version(settlement.getVersion())
                 .build();
     }
@@ -70,6 +74,7 @@ public class SettlementJpaEntity extends BaseTimeEntity {
                 .shares(shares)
                 .recordedAt(recordedAt)
                 .cancelledAt(cancelledAt)
+                .clientRequestId(clientRequestId)
                 .version(version)
                 .build();
     }
