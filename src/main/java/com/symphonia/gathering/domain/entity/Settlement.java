@@ -67,11 +67,16 @@ public class Settlement {
     }
 
     // 보낸 돈이 기록 없이 사라지지 않게, 보낸 분담금이 있으면 취소를 막는다.
-    public void cancel(LocalDateTime now) {
-        validateNotCancelled();
+    // 이미 취소했으면 같은 요청을 다시 보낸 것이라 취소 시각을 그대로 두고 false를 돌려준다. 바꿨으면 true다.
+    public boolean cancel(LocalDateTime now) {
+        if (isCancelled()) {
+            return false;
+        }
         validateNoSentShares();
 
         cancelledAt = now;
+
+        return true;
     }
 
     public void markShareSent(Long participantId, LocalDateTime now) {
@@ -79,14 +84,20 @@ public class Settlement {
         replaceShare(getShareOf(participantId).sent(now));
     }
 
-    public void confirmShare(Long participantId, LocalDateTime now) {
+    // 이미 확인 완료인 분담금이면 바꾸지 않고 false를 돌려준다. 바꿨으면 true다.
+    public boolean confirmShare(Long participantId, LocalDateTime now) {
         validateNotCancelled();
-        replaceShare(getShareOf(participantId).confirmed(now));
+        SettlementShare share = getShareOf(participantId);
+
+        return replaceShareIfChanged(share, share.confirmed(now));
     }
 
-    public void revertShareToUnpaid(Long participantId, LocalDateTime now) {
+    // 이미 미입금인 분담금이면 바꾸지 않고 false를 돌려준다. 바꿨으면 true다.
+    public boolean revertShareToUnpaid(Long participantId, LocalDateTime now) {
         validateNotCancelled();
-        replaceShare(getShareOf(participantId).unpaid(now));
+        SettlementShare share = getShareOf(participantId);
+
+        return replaceShareIfChanged(share, share.unpaid(now));
     }
 
     // 취소하지 않은 정산 건에 아직 내지 않은 분담금이 있으면 정산이 끝나지 않은 것이다. 모임의 파기 시각을 정하는 데 쓴다(#128).
@@ -150,6 +161,15 @@ public class Settlement {
 
     public List<SettlementShare> getShares() {
         return List.copyOf(shares);
+    }
+
+    private boolean replaceShareIfChanged(SettlementShare share, SettlementShare changedShare) {
+        if (share.hasStatus(changedShare.getStatus())) {
+            return false;
+        }
+        replaceShare(changedShare);
+
+        return true;
     }
 
     // 분담금은 상태가 바뀐 새 분담금으로 돌아오므로, 같은 참여자의 분담금을 그 분담금으로 갈아 끼운다.

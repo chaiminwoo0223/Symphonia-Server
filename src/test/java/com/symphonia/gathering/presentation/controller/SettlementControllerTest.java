@@ -691,8 +691,8 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenSettlementCancelled {
 
             @Test
-            @DisplayName("SETTLEMENT_ALREADY_CANCELLED 코드와 함께 409를 반환한다")
-            void shouldReturnConflict() throws Exception {
+            @DisplayName("같은 요청을 다시 보낸 것으로 보고 200을 반환한다")
+            void shouldReturnOk() throws Exception {
                 // given
                 Settlement settlement =
                         settlementHelper.cancel(
@@ -705,12 +705,7 @@ class SettlementControllerTest extends IntegrationTest {
                                                 "/api/v1/settlements/{settlementId}/cancel",
                                                 settlement.getId())
                                         .header("X-Link-Token", payerLinkToken))
-                        .andExpect(status().isConflict())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(
-                                                GatheringErrorCode.SETTLEMENT_ALREADY_CANCELLED
-                                                        .getCode()));
+                        .andExpect(status().isOk());
             }
         }
     }
@@ -773,8 +768,8 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenShareConfirmed {
 
             @Test
-            @DisplayName("SHARE_ALREADY_CONFIRMED 코드와 함께 409를 반환한다")
-            void shouldReturnConflict() throws Exception {
+            @DisplayName("같은 요청을 다시 보낸 것으로 보고 확인 완료인 현재 상태를 담아 200을 반환한다")
+            void shouldReturnOk() throws Exception {
                 // given
                 Settlement settlement =
                         settlementHelper.confirm(
@@ -783,12 +778,9 @@ class SettlementControllerTest extends IntegrationTest {
 
                 // when & then
                 performConfirm(settlement, lee, payerLinkToken)
-                        .andExpect(status().isConflict())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(
-                                                GatheringErrorCode.SHARE_ALREADY_CONFIRMED
-                                                        .getCode()));
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
+                        .andExpect(jsonPath("$.data.shares[0].status").value("CONFIRMED"));
             }
         }
 
@@ -865,18 +857,17 @@ class SettlementControllerTest extends IntegrationTest {
         class WhenShareUnpaid {
 
             @Test
-            @DisplayName("SHARE_ALREADY_UNPAID 코드와 함께 409를 반환한다")
-            void shouldReturnConflict() throws Exception {
+            @DisplayName("같은 요청을 다시 보낸 것으로 보고 미입금인 현재 상태를 담아 200을 반환한다")
+            void shouldReturnOk() throws Exception {
                 // given
                 Settlement settlement =
                         settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
 
                 // when & then
                 performRevert(settlement, lee, payerLinkToken)
-                        .andExpect(status().isConflict())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(GatheringErrorCode.SHARE_ALREADY_UNPAID.getCode()));
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.shares[0].participantId").value(lee.getId()))
+                        .andExpect(jsonPath("$.data.shares[0].status").value("UNPAID"));
             }
         }
 

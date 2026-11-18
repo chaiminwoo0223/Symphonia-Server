@@ -1023,17 +1023,21 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenSettlementCancelled {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowSettlementAlreadyCancelledException() {
+            @DisplayName("같은 요청을 다시 보낸 것으로 보고 취소 시각을 바꾸거나 정산 건을 저장하지 않고 끝낸다")
+            void shouldDoNothingWhenAlreadyCancelled() {
                 // given
                 givenParticipant(PAYER_ID);
-                givenSettlement(
+                Settlement settlement =
                         SettlementFixture.DINNER.createCancelled(
-                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
+                LocalDateTime cancelledAt = settlement.getCancelledAt();
+                givenSettlement(settlement);
 
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.cancel(command()))
-                        .isInstanceOf(SettlementAlreadyCancelledException.class);
+                // when
+                settlementCommandService.cancel(command());
+
+                // then
+                assertThat(settlement.getCancelledAt()).isEqualTo(cancelledAt);
                 thenSettlementNotSaved();
             }
         }

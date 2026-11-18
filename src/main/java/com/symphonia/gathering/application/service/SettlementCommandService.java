@@ -102,8 +102,10 @@ public class SettlementCommandService
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
         LocalDateTime now = LocalDateTime.now(clock);
-        settlement.cancel(now);
-        settlementRepository.save(settlement);
+        // 이미 취소한 정산 건이면 저장하지 않는다. 다시 보낸 요청이 버전을 올려 다른 요청과 충돌하지 않게 하기 위해서다.
+        if (settlement.cancel(now)) {
+            settlementRepository.save(settlement);
+        }
     }
 
     private Long findParticipantId(String linkToken) {

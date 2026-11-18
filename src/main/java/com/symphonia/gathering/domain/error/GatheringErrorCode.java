@@ -49,7 +49,6 @@ public enum GatheringErrorCode implements ErrorCode {
             HttpStatus.CONFLICT, "돈을 보낸 참여자가 있는 정산 건은 수정하거나 취소할 수 없습니다. 분담금을 먼저 미입금으로 되돌려 주세요."),
     SHARE_ALREADY_SENT(HttpStatus.CONFLICT, "이미 보냈다고 알린 분담금입니다."),
     SHARE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확인 완료한 분담금입니다."),
-    SHARE_ALREADY_UNPAID(HttpStatus.CONFLICT, "이미 미입금인 분담금입니다."),
     ZERO_SHARE_STATUS_UNCHANGEABLE(
             HttpStatus.CONFLICT, "0원 분담금은 상태를 바꿀 수 없습니다. 금액이 잘못됐으면 정산 건을 수정해 주세요."),
 

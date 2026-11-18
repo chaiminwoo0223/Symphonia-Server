@@ -77,9 +77,10 @@ public class ShareCommandService
         Settlement settlement = findSettlement(command.settlementId());
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
-        settlement.confirmShare(command.participantId(), LocalDateTime.now(clock));
+        boolean changed =
+                settlement.confirmShare(command.participantId(), LocalDateTime.now(clock));
 
-        return toResult(settlementRepository.save(settlement));
+        return toResult(changed ? settlementRepository.save(settlement) : settlement);
     }
 
     @Override
@@ -88,9 +89,10 @@ public class ShareCommandService
         Settlement settlement = findSettlement(command.settlementId());
         SettlementPolicy.validatePayer(settlement.getPayerParticipantId(), participantId);
 
-        settlement.revertShareToUnpaid(command.participantId(), LocalDateTime.now(clock));
+        boolean changed =
+                settlement.revertShareToUnpaid(command.participantId(), LocalDateTime.now(clock));
 
-        return toResult(settlementRepository.save(settlement));
+        return toResult(changed ? settlementRepository.save(settlement) : settlement);
     }
 
     private Long findParticipantId(String linkToken) {
