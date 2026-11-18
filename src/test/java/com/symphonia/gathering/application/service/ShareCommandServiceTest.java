@@ -25,8 +25,6 @@ import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
-import com.symphonia.gathering.domain.exception.ShareAlreadyConfirmedException;
-import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
@@ -457,23 +455,31 @@ class ShareCommandServiceTest extends UnitTest {
         class WhenShareConfirmed {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareAlreadyConfirmedException() {
+            @DisplayName("같은 요청을 다시 보낸 것으로 보고 정산 건을 저장하지 않고 확인 완료인 현재 상태를 반환한다")
+            void shouldReturnCurrentSettlementWithoutSaving() {
                 // given
                 givenParticipant(PAYER_ID);
-                givenSettlement(
+                Settlement settlement =
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
                                 ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
-                                ShareStatus.CONFIRMED));
+                                ShareStatus.CONFIRMED);
+                givenSettlement(settlement);
+                givenGatheringOfPayer();
                 ConfirmShareCommand command = command(LEE_ID);
 
-                // when & then
-                assertThatThrownBy(() -> shareCommandService.confirm(command))
-                        .isInstanceOf(ShareAlreadyConfirmedException.class);
+                // when
+                SettlementResult result = shareCommandService.confirm(command);
+
+                // then
+                assertThat(result.shares())
+                        .extracting(
+                                SettlementShareResult::participantId, SettlementShareResult::status)
+                        .contains(tuple(LEE_ID, ShareStatus.CONFIRMED));
+                assertThat(settlement.getShareOf(LEE_ID).getStatusChangedAt()).isNull();
                 thenSettlementNotSaved();
             }
         }
@@ -690,18 +696,26 @@ class ShareCommandServiceTest extends UnitTest {
         class WhenShareUnpaid {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowShareAlreadyUnpaidException() {
+            @DisplayName("같은 요청을 다시 보낸 것으로 보고 정산 건을 저장하지 않고 미입금인 현재 상태를 반환한다")
+            void shouldReturnCurrentSettlementWithoutSaving() {
                 // given
                 givenParticipant(PAYER_ID);
-                givenSettlement(
+                Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
+                givenSettlement(settlement);
+                givenGatheringOfPayer();
                 RevertShareCommand command = command();
 
-                // when & then
-                assertThatThrownBy(() -> shareCommandService.revert(command))
-                        .isInstanceOf(ShareAlreadyUnpaidException.class);
+                // when
+                SettlementResult result = shareCommandService.revert(command);
+
+                // then
+                assertThat(result.shares())
+                        .extracting(
+                                SettlementShareResult::participantId, SettlementShareResult::status)
+                        .contains(tuple(LEE_ID, ShareStatus.UNPAID));
+                assertThat(settlement.getShareOf(LEE_ID).getStatusChangedAt()).isNull();
                 thenSettlementNotSaved();
             }
         }

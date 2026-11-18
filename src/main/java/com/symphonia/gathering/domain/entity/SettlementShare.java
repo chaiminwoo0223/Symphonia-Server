@@ -2,7 +2,6 @@ package com.symphonia.gathering.domain.entity;
 
 import com.symphonia.gathering.domain.exception.ShareAlreadyConfirmedException;
 import com.symphonia.gathering.domain.exception.ShareAlreadySentException;
-import com.symphonia.gathering.domain.exception.ShareAlreadyUnpaidException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import java.time.LocalDateTime;
@@ -63,20 +62,20 @@ public class SettlementShare {
     }
 
     // 결제자가 보냄을 확인하거나 직접 받은 돈을 처리하므로, 미입금과 보냄 모두 확인 완료가 될 수 있다.
+    // 이미 확인 완료이면 같은 요청을 다시 보낸 것이라 바꾸지 않고 이 분담금을 그대로 돌려준다. 상태를 바꾼 시각도 그대로 남는다.
     public SettlementShare confirmed(LocalDateTime now) {
         validateAmountNotZero();
-        validateNotConfirmed();
 
-        return withStatus(ShareStatus.CONFIRMED, now);
+        return status == ShareStatus.CONFIRMED ? this : withStatus(ShareStatus.CONFIRMED, now);
     }
 
     // 결제자가 "아직 안 들어왔어요"로 보냄을 되돌린다.
     // 받은 돈을 돌려주고 정산 건을 취소할 수 있도록 확인 완료도 미입금으로 되돌릴 수 있다.
+    // 이미 미입금이면 같은 요청을 다시 보낸 것이라 바꾸지 않고 이 분담금을 그대로 돌려준다.
     public SettlementShare unpaid(LocalDateTime now) {
         validateAmountNotZero();
-        validateNotUnpaid();
 
-        return withStatus(ShareStatus.UNPAID, now);
+        return status == ShareStatus.UNPAID ? this : withStatus(ShareStatus.UNPAID, now);
     }
 
     // 생일인 사람처럼 낼 돈이 없는 0원 분담금은 받을 것도 없으므로 확인 완료로 시작한다.
@@ -116,12 +115,6 @@ public class SettlementShare {
     private void validateAmountNotZero() {
         if (amount == 0) {
             throw new ZeroShareStatusUnchangeableException();
-        }
-    }
-
-    private void validateNotUnpaid() {
-        if (status == ShareStatus.UNPAID) {
-            throw new ShareAlreadyUnpaidException();
         }
     }
 }
