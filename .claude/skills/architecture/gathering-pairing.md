@@ -9,6 +9,7 @@
 - 정산에서 돈이 오간 참여자만 피드백을 낼 수 있다. 취소하지 않은 정산 건에서 0원이 아닌 본인 분담금이 보냄이나 확인 완료인 참여자와, 다른 참여자가 0원이 아닌 분담금을 보냄이나 확인 완료로 낸 결제자다. 0원 분담금의 참여자는 낼 수 없다. 아니면 400(`SENT_SHARE_REQUIRED`)이다.
 - 검사 순서는 모임 페어링 조회, 대상 조합 일치, 낼 수 있는 참여자, 이미 낸 참여자 순이다. 이미 낸 참여자가 그 사이 모임의 페어링이 바뀌었거나 낼 조건을 잃었다면 이미 냈다는 409 대신 그 오류를 받는다.
 - 피드백은 익명이다. `pairing_feedback.member_id`는 nullable이고, 모임을 만든 회원의 피드백도 익명으로 받는다. 피드백은 참여자를 참조하지 않는다.
+- 회원이 탈퇴하면 그 회원이 낸 `pairing_feedback`은 지우지 않고 `member_id`만 NULL로 바꾼다. `MemberDeletedEvent`를 `BEFORE_COMMIT`으로 구독하는 `PairingMemberDeletedEventListener`가 처리해, 실패하면 탈퇴도 롤백된다.
 - 피드백 제출 자격 판정은 분담금 되돌리기, 모임장의 페어링 변경과 직렬화하지 않는다. 같은 순간에 겹치면 자격을 잃은 직후의 제출이나 바뀐 페어링에 붙은 제출이 하나 생길 수 있다.
 - 피드백은 참여자마다 한 번만 받는다. 제출 표시는 `participant_pairing_feedback`에 `ON CONFLICT DO NOTHING`으로 넣고, 넣지 못하면 409(`PAIRING_FEEDBACK_ALREADY_SUBMITTED`)다. 제출 표시는 참여자와 함께 파기된다. 평점은 바꿀 수 없다.
 - 정산 페이지는 `GET /api/v1/participants/pairing`으로 술과 안주의 id와 이름, 제출 여부, 지금 낼 수 있는지(`feedbackSubmittable`)를 받는다. 제출한 참여자는 정산 건을 읽지 않고 낼 수 없다고 알린다. 안주 id는 정산 페이지가 맛집 조회(`place`)에 쓴다. 이름은 읽을 때 catalog의 `GetCatalogReferencesUseCase`로 조회하고, 모임에 복사해 두지 않는다. 고른 페어링이 없거나 카탈로그에서 대상이 사라졌으면 404다.

@@ -22,13 +22,23 @@
 
 ## 보안 필터의 auth domain 참조
 
-**(2026-10-29 결정, 이슈 #147)**: `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 타입을 참조할 수 있다. 필터는 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`)를, 핸들러는 에러 코드(`AuthErrorCode`)를 참조한다. 요청의 토큰을 검증해 인증 정보를 채우고 인증 실패를 응답하는 것은 보안 wiring 목적이기 때문이다. 구현체(`JwtAccessTokenProvider` 등)와 `infrastructure` 패키지는 참조하지 않는다. 토큰 Provider도 Repository처럼 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. gathering의 `GatheringTokenProvider`와 같은 구조다. 인터페이스가 기본 이름을 갖고, 구현체 이름에는 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
+**(2026-10-29 결정, 이슈 #147)**: `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 타입을 참조할 수 있다. 필터는 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`, `WithdrawnMemberRepository`(#201에서 추가))를, 핸들러는 에러 코드(`AuthErrorCode`)를 참조한다. 요청의 토큰을 검증해 인증 정보를 채우고 인증 실패를 응답하는 것은 보안 wiring 목적이기 때문이다. 구현체(`JwtAccessTokenProvider` 등)와 `infrastructure` 패키지는 참조하지 않는다. 토큰 Provider도 Repository처럼 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. gathering의 `GatheringTokenProvider`와 같은 구조다. 인터페이스가 기본 이름을 갖고, 구현체 이름에는 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
 
 ## 로그아웃
 
 **로그아웃 (2026-11-01 결정, 이슈 #156)**: 로그아웃은 이 기기의 세션만 끊고, 토큰이 없거나 만료돼도 204를 반환한다. 그래서 `LOGOUT`은 인증 없이 호출할 수 있고, 쿠키의 리프레시 토큰 하나를 `consume`으로 지운다. 액세스 토큰은 필터가 인증한 유효한 토큰일 때만 블랙리스트에 올린다. 이전에는 로그아웃에 인증이 필요해서, 액세스 토큰이 만료되면 401이 나고 리프레시 토큰이 남았다. 쿠키 `Path`도 재발급 엔드포인트라 로그아웃 요청에 쿠키가 실리지 않았다. 사용자가 로그아웃을 눌렀을 때 오류를 보여 주지 않고, 누른 기기만 끊는 것이 일반적인 기대이기 때문이다. 만료된 액세스 토큰을 로그아웃에서만 허용하는 안은 택하지 않았다. `AccessTokenProvider`에 만료를 무시하는 파싱이 생기고, 오래전에 유출된 토큰으로도 세션을 끊을 수 있기 때문이다. 회원 탈퇴는 모든 기기를 끊어야 하므로 `MemberDeletedEventListener`가 `ForceRevokeUseCase`로 회원의 리프레시 토큰을 모두 지우고 `LogoutUseCase`로 액세스 토큰을 블랙리스트에 올린다. 이미 발급된 옛 `Path` 쿠키는 처리하지 않았다. 결정 시점에 운영 배포가 없었기 때문이다.
 
 **(2026-11-15 결정, 이슈 #181)**: 위 문단의 쿠키 전제는 리프레시 토큰을 요청 바디로 받으면서 없어졌다. 로그아웃은 이제 바디의 리프레시 토큰 하나를 `consume`으로 지우고, 본문이 없거나 토큰이 없어도 204를 반환하는 규칙은 그대로다. 쿠키 `Path` 문제는 쿠키를 제거하면서 함께 사라졌다.
+
+## 탈퇴한 회원의 액세스 토큰
+
+**(2026-11-18 결정, 이슈 #201)**: 회원이 탈퇴하면 탈퇴한 회원 id를 액세스 토큰 유효시간(7200초)만큼 Redis에 남기고, 필터가 이 id의 액세스 토큰을 인증하지 않는다. 이전에는 탈퇴를 요청한 기기의 토큰만 블랙리스트에 올라 다른 기기의 토큰이 최대 2시간 유효했고, 필터가 회원 존재를 확인하지 않아 그 토큰으로 `POST /api/v1/gatherings`를 호출하면 존재하지 않는 회원이 모임장인 모임이 만들어졌다. 요청마다 DB로 회원 존재를 확인하는 안은 택하지 않았다. 기존 블랙리스트와 같은 Redis 방식이면 요청당 DB 조회가 늘지 않고 구조도 같기 때문이다. 필터가 요청마다 Redis를 한 번 더 조회한다.
+
+**(2026-11-18 결정, 이슈 #201)**: 블랙리스트에 전달하는 남은 시간이 0초가 될 수 있다. `@TimeToLive`가 0이면 Redis 키가 만료되지 않고 남는 것을 테스트로 재현했다. 그래서 `BlacklistAccessTokenRepositoryImpl.save`가 최소 1초를 적용한다.
+
+**(2026-11-18 결정, 이슈 #201)**: 탈퇴 리스너(`AFTER_COMMIT`)가 실패해도 API는 500이 아니라 204를 반환한다. 테스트로 확인한 실제 동작이다. 회원 삭제는 이미 커밋됐고 Spring이 `TransactionSynchronization.afterCompletion threw exception`을 ERROR로 남길 뿐이다. 응답 처리는 바꾸지 않고 테스트로 고정했다. 한계는 탈퇴한 회원 id를 남기는 Redis 쓰기가 실패하면 다른 기기의 액세스 토큰이 최대 2시간 유효하고, 알림 없이 Spring의 ERROR 로그만 남는다는 점이다. 이 실패가 관측되면 알림이나 재시도를 도입한다.
+
+**(2026-11-18 결정, 이슈 #201)**: 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)다. `member.nickname` 컬럼은 255자라 `UpdateMemberRequest.nickname`에 길이 제한이 없으면 컬럼을 넘는 값에서 500이 날 수 있었다. 카카오 닉네임 한도와 기존 요청의 `@Size(max = 20)` 관례를 따랐다. 가입 시 소셜 닉네임이 넘으면 가입을 거절하지 않고 잘라서 저장한다. 소셜 쪽 길이는 우리가 정할 수 없어 거절하면 가입할 수 없는 회원이 생기기 때문이다. 길이는 `@Size`와 같은 UTF-16 단위로 세고, 자르는 위치가 이모지 한가운데이면 이모지를 통째로 버린다.
 
 ## 401 응답 헤더
 
