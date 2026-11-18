@@ -16,4 +16,7 @@ public interface PairingFeedbackRepository {
 
     // 회원이 싫어요를 남긴 음료×안주 조합이다. 추천에서 제외할 조합을 구할 때 쓴다.
     Set<CombinationId> findDislikedCombinationsByMemberId(Long memberId);
+
+    // 회원이 낸 모든 피드백의 회원 id를 비워 익명 피드백으로 만든다.
+    void anonymizeByMemberId(Long memberId);
 }

@@ -55,4 +55,9 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
                 pairingFeedbackJpaRepository.findCombinationsByMemberIdAndRating(
                         memberId, PairingRating.DISLIKE));
     }
+
+    @Override
+    public void anonymizeByMemberId(Long memberId) {
+        pairingFeedbackJpaRepository.anonymizeByMemberId(memberId);
+    }
 }
