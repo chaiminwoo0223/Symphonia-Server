@@ -47,6 +47,21 @@ class JwtAccessTokenProviderTest extends UnitTest {
     }
 
     @Nested
+    @DisplayName("getExpirationTime 메서드는")
+    class GetExpirationTime {
+
+        @Test
+        @DisplayName("설정된 액세스 토큰 유효시간을 반환한다.")
+        void shouldReturnConfiguredExpirationTime() {
+            // when
+            long expirationTime = accessTokenProvider.getExpirationTime();
+
+            // then
+            assertThat(expirationTime).isEqualTo(EXPIRATION_TIME);
+        }
+    }
+
+    @Nested
     @DisplayName("getMemberId 메서드는")
     class GetMemberId {
 

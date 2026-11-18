@@ -8,12 +8,18 @@ import org.springframework.stereotype.Repository;
 @Repository
 @RequiredArgsConstructor
 public class BlacklistAccessTokenRepositoryImpl implements BlacklistAccessTokenRepository {
+    // @TimeToLive가 0이면 Redis 키에 만료가 걸리지 않고 영구히 남는다.
+    private static final long MIN_TTL_SECONDS = 1L;
+
     private final BlacklistAccessTokenRedisRepository blacklistAccessTokenRedisRepository;
 
     @Override
     public void save(String accessToken, String memberId, Long expirationTime) {
         BlacklistAccessToken blacklistAccessToken =
-                BlacklistAccessToken.of(Sha256.hash(accessToken), memberId, expirationTime);
+                BlacklistAccessToken.of(
+                        Sha256.hash(accessToken),
+                        memberId,
+                        Math.max(expirationTime, MIN_TTL_SECONDS));
 
         blacklistAccessTokenRedisRepository.save(blacklistAccessToken);
     }

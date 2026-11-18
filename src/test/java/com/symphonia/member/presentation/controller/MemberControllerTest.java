@@ -15,6 +15,7 @@ import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.member.application.event.MemberDeletedEvent;
 import com.symphonia.member.domain.entity.Member;
+import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import com.symphonia.member.presentation.dto.request.UpdateMemberRequest;
@@ -199,6 +200,38 @@ class MemberControllerTest extends IntegrationTest {
             // then
             assertThat(blacklistAccessTokenRepository.isBlacklisted(accessToken)).isTrue();
             assertThat(refreshTokenRepository.findMemberIdByValue(refreshToken)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("멤버 삭제가 커밋되면 다른 기기에서 발급한 액세스 토큰으로도 인증되지 않는다")
+        void shouldRejectAccessTokenOfOtherDeviceWhenCommitted() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String requestAccessToken =
+                    authHelper.generateAccessToken(
+                            String.valueOf(member.getId()), member.getRole().name());
+            // 같은 초에 같은 클레임으로 발급하면 요청한 토큰과 값이 같아져 블랙리스트에 걸리므로 권한을 달리한다.
+            String otherDeviceAccessToken =
+                    authHelper.generateAccessToken(
+                            String.valueOf(member.getId()), Role.ROLE_ADMIN.name());
+            mockMvc.perform(
+                            delete("/api/v1/members/me")
+                                    .header(
+                                            HttpHeaders.AUTHORIZATION,
+                                            authHelper.bearerHeader(requestAccessToken)))
+                    .andExpect(status().isNoContent());
+            TestTransaction.flagForCommit();
+            TestTransaction.end();
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/members/me")
+                                    .header(
+                                            HttpHeaders.AUTHORIZATION,
+                                            authHelper.bearerHeader(otherDeviceAccessToken)))
+                    .andExpect(status().isUnauthorized());
+            assertThat(blacklistAccessTokenRepository.isBlacklisted(otherDeviceAccessToken))
+                    .isFalse();
         }
 
         @Nested

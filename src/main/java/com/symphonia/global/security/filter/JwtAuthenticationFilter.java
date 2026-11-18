@@ -2,6 +2,7 @@ package com.symphonia.global.security.filter;
 
 import com.symphonia.auth.domain.provider.AccessTokenProvider;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
+import com.symphonia.auth.domain.repository.WithdrawnMemberRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final AccessTokenProvider accessTokenProvider;
     private final BlacklistAccessTokenRepository blacklistAccessTokenRepository;
+    private final WithdrawnMemberRepository withdrawnMemberRepository;
 
     @Override
     protected void doFilterInternal(
@@ -43,7 +45,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isValidToken(String accessToken) {
         return accessTokenProvider.validate(accessToken)
-                && !blacklistAccessTokenRepository.isBlacklisted(accessToken);
+                && !blacklistAccessTokenRepository.isBlacklisted(accessToken)
+                && !withdrawnMemberRepository.isWithdrawn(
+                        accessTokenProvider.getMemberId(accessToken));
     }
 
     private void setAuthentication(String accessToken) {
