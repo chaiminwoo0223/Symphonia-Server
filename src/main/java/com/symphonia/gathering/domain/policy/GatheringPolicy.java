@@ -37,8 +37,8 @@ public enum GatheringPolicy {
         return now.isBefore(recordingClosesAt(openedAt));
     }
 
-    public static boolean isParticipantAddable(int participantCount) {
-        return participantCount < MAX_PARTICIPANT_COUNT;
+    public static boolean isParticipantLimitReached(int participantCount) {
+        return participantCount >= MAX_PARTICIPANT_COUNT;
     }
 
     // 참여할 때 검증하는 순서와 같게 기간을 먼저 보므로, 둘 다 해당하면 기간 만료로 알린다.
@@ -47,7 +47,7 @@ public enum GatheringPolicy {
         if (!isWithinRecordingPeriod(openedAt, now)) {
             return Optional.of(JoinClosedReason.PERIOD_EXPIRED);
         }
-        if (!isParticipantAddable(participantCount)) {
+        if (isParticipantLimitReached(participantCount)) {
             return Optional.of(JoinClosedReason.PARTICIPANT_LIMIT_REACHED);
         }
 
@@ -65,7 +65,7 @@ public enum GatheringPolicy {
     }
 
     public static void validateParticipantAddable(int participantCount) {
-        if (!isParticipantAddable(participantCount)) {
+        if (isParticipantLimitReached(participantCount)) {
             throw new GatheringParticipantCountExceedsLimitException();
         }
     }
