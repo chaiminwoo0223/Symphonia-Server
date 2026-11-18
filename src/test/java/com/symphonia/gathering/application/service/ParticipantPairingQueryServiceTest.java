@@ -17,8 +17,12 @@ import com.symphonia.gathering.domain.exception.GatheringPairingNotFoundExceptio
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
+import com.symphonia.gathering.domain.repository.SettlementRepository;
+import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringPairingFixture;
+import com.symphonia.gathering.fixture.SettlementFixture;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,6 +34,10 @@ import org.mockito.Mock;
 class ParticipantPairingQueryServiceTest extends UnitTest {
 
     private static final Long PARTICIPANT_ID = 20L;
+    private static final Long OTHER_PARTICIPANT_ID = 21L;
+    private static final Long GATHERING_ID = 10L;
+    private static final Long ROUND_ID = 1L;
+    private static final Long SETTLEMENT_ID = 40L;
     private static final String LINK_TOKEN = "link-token";
     private static final LocalDateTime DELETES_AT = LocalDateTime.of(2026, 11, 5, 18, 0);
     private static final GatheringPairingFixture PAIRING = GatheringPairingFixture.FRIEND_CASUAL;
@@ -41,6 +49,7 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
     @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
+    @Mock private SettlementRepository settlementRepository;
     @Mock private GetCatalogReferencesUseCase getCatalogReferencesUseCase;
 
     @Nested
@@ -110,8 +119,8 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
         class WhenFeedbackNotSubmitted {
 
             @Test
-            @DisplayName("모임 페어링의 카탈로그 이름과 피드백을 내지 않았다는 값을 반환한다")
-            void shouldReturnParticipantPairingResultNotSubmitted() {
+            @DisplayName("모임 페어링의 카탈로그 이름과 피드백을 내지 않았다는 값을 반환하고, 돈이 오가지 않았으면 낼 수 없다고 알린다")
+            void shouldReturnParticipantPairingResultNotSubmittable() {
                 // given
                 givenCatalogReferences();
                 given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
@@ -122,7 +131,33 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
                         participantPairingQueryService.getPairing(LINK_TOKEN);
 
                 // then
-                assertThat(result).isEqualTo(expectedResult(false));
+                assertThat(result).isEqualTo(expectedResult(false, false));
+            }
+
+            @Test
+            @DisplayName("본인 분담금을 보냈으면 지금 낼 수 있다고 알린다")
+            void shouldReturnSubmittableWhenShareSent() {
+                // given
+                givenCatalogReferences();
+                given(participantPairingFeedbackRepository.existsByParticipantId(PARTICIPANT_ID))
+                        .willReturn(false);
+                given(settlementRepository.findAllByShareParticipantId(PARTICIPANT_ID))
+                        .willReturn(
+                                List.of(
+                                        SettlementFixture.DINNER.createWithFirstShareStatus(
+                                                SETTLEMENT_ID,
+                                                GATHERING_ID,
+                                                ROUND_ID,
+                                                OTHER_PARTICIPANT_ID,
+                                                List.of(OTHER_PARTICIPANT_ID, PARTICIPANT_ID),
+                                                ShareStatus.SENT)));
+
+                // when
+                ParticipantPairingResult result =
+                        participantPairingQueryService.getPairing(LINK_TOKEN);
+
+                // then
+                assertThat(result).isEqualTo(expectedResult(false, true));
             }
         }
 
@@ -131,7 +166,7 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
         class WhenFeedbackAlreadySubmitted {
 
             @Test
-            @DisplayName("모임 페어링의 카탈로그 이름과 피드백을 냈다는 값을 반환한다")
+            @DisplayName("모임 페어링의 카탈로그 이름과 피드백을 냈다는 값을 반환하고 정산 건을 읽지 않는다")
             void shouldReturnParticipantPairingResultSubmitted() {
                 // given
                 givenCatalogReferences();
@@ -143,16 +178,20 @@ class ParticipantPairingQueryServiceTest extends UnitTest {
                         participantPairingQueryService.getPairing(LINK_TOKEN);
 
                 // then
-                assertThat(result).isEqualTo(expectedResult(true));
+                assertThat(result).isEqualTo(expectedResult(true, false));
+                then(settlementRepository).shouldHaveNoInteractions();
             }
         }
 
-        private ParticipantPairingResult expectedResult(boolean feedbackSubmitted) {
+        private ParticipantPairingResult expectedResult(
+                boolean feedbackSubmitted, boolean feedbackSubmittable) {
             return new ParticipantPairingResult(
+                    PAIRING.getDrinkId(),
                     CATALOG_REFERENCES.drinkName(),
                     PAIRING.getAnjuId(),
                     CATALOG_REFERENCES.anjuName(),
-                    feedbackSubmitted);
+                    feedbackSubmitted,
+                    feedbackSubmittable);
         }
 
         private CatalogReferencesQuery catalogReferencesQuery() {

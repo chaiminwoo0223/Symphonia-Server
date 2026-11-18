@@ -115,6 +115,20 @@ public class Settlement {
                 .max(LocalDateTime::compareTo);
     }
 
+    // 취소하지 않은 정산 건에서 참여자의 돈이 오갔는지다. 결제자는 돈을 받은 분담금이 있으면, 다른 참여자는 본인 분담금이 미입금이 아니면 오간 것이다.
+    // 0원 분담금은 확인 완료로 시작해 낼 돈이 없는 참여자도 오간 것으로 본다.
+    public boolean isSettledFor(Long participantId) {
+        if (isCancelled()) {
+            return false;
+        }
+        if (payerParticipantId.equals(participantId)) {
+            return shares.stream().anyMatch(SettlementShare::isSent);
+        }
+
+        return shares.stream()
+                .anyMatch(share -> share.isOwnedBy(participantId) && !share.isUnpaid());
+    }
+
     public boolean hasUnpaidShareOf(Long participantId) {
         return getShareOf(participantId).isUnpaid();
     }

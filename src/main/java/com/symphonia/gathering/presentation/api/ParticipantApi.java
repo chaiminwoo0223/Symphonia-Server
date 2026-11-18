@@ -36,14 +36,16 @@ public interface ParticipantApi {
     @GetMapping(ParticipantEndpoints.PAIRING)
     @Operation(
             summary = "모임 페어링 조회",
-            description = "모임에서 고른 페어링과 피드백을 남겼는지를 조회합니다. 고른 페어링이 없으면 404를 반환합니다.")
+            description = "모임에서 고른 페어링과 피드백을 남겼는지, 지금 남길 수 있는지를 조회합니다. 고른 페어링이 없으면 404를 반환합니다.")
     ResponseEntity<StandardResponse<ParticipantPairingResponse>> getPairing(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
 
     @PostMapping(ParticipantEndpoints.PAIRING_FEEDBACK)
     @Operation(
             summary = "페어링 피드백 남기기",
-            description = "모임에서 고른 페어링에 익명 피드백을 남깁니다. 참여자마다 한 번만 남길 수 있습니다.")
+            description =
+                    "모임에서 고른 페어링에 익명 피드백을 남깁니다. 참여자마다 한 번만, 분담금을 보내거나 받은 뒤에 남길 수 있습니다."
+                            + " 요청한 술과 안주가 모임의 페어링과 다르면 409를 반환하니 모임 페어링 조회를 다시 불러와 주세요.")
     ResponseEntity<StandardResponse<Void>> submitPairingFeedback(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken,
             @Valid @RequestBody SubmitParticipantPairingFeedbackRequest request);

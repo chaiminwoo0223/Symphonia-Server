@@ -8,8 +8,10 @@ import com.symphonia.gathering.application.dto.result.ParticipantPairingResult;
 import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.application.usecase.GetParticipantPairingUseCase;
 import com.symphonia.gathering.domain.exception.GatheringPairingNotFoundException;
+import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
+import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringPairing;
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +23,7 @@ public class ParticipantPairingQueryService implements GetParticipantPairingUseC
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringPairingRepository gatheringPairingRepository;
     private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
+    private final SettlementRepository settlementRepository;
     private final GetCatalogReferencesUseCase getCatalogReferencesUseCase;
 
     @Override
@@ -36,9 +39,17 @@ public class ParticipantPairingQueryService implements GetParticipantPairingUseC
                         CatalogReferencesQuery.of(
                                 gatheringPairing.drinkId(), gatheringPairing.anjuId()));
 
+        boolean feedbackSubmitted =
+                participantPairingFeedbackRepository.existsByParticipantId(participantId);
+        // 이미 낸 참여자는 낼 수 있는지 볼 필요가 없어 정산 건을 읽지 않는다.
+        boolean feedbackSubmittable =
+                !feedbackSubmitted
+                        && SettlementPolicy.isPairingFeedbackSubmittable(
+                                participantId,
+                                settlementRepository.findAllByPayerParticipantId(participantId),
+                                settlementRepository.findAllByShareParticipantId(participantId));
+
         return ParticipantPairingResult.of(
-                gatheringPairing.anjuId(),
-                catalogReferences,
-                participantPairingFeedbackRepository.existsByParticipantId(participantId));
+                gatheringPairing, catalogReferences, feedbackSubmitted, feedbackSubmittable);
     }
 }

@@ -23,7 +23,9 @@ import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringPairingFixture;
 import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
+import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
+import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RegisterBankAccountRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
@@ -48,6 +50,7 @@ class ParticipantControllerTest extends IntegrationTest {
     private static final String HYPHENATED_ACCOUNT_NUMBER = "1234-5678-9012";
 
     @Autowired private GatheringHelper gatheringHelper;
+    @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private CatalogHelper catalogHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
@@ -259,7 +262,7 @@ class ParticipantControllerTest extends IntegrationTest {
         class WhenPairingChosen {
 
             @Test
-            @DisplayName("인증 없이도 술 이름, 안주 ID와 이름, 피드백을 내지 않았다는 값을 담아 200을 반환한다")
+            @DisplayName("인증 없이도 술과 안주의 ID와 이름, 피드백을 내지 않았고 아직 낼 수 없다는 값을 담아 200을 반환한다")
             void shouldReturnPairing() throws Exception {
                 // given
                 GatheringPairing chosen = choosePairing(gathering);
@@ -269,12 +272,35 @@ class ParticipantControllerTest extends IntegrationTest {
                                 get("/api/v1/participants/pairing")
                                         .header("X-Link-Token", linkToken))
                         .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.drinkId").value(chosen.drinkId().intValue()))
                         .andExpect(jsonPath("$.data.drinkName").value(DrinkFixture.SOJU.getName()))
                         .andExpect(jsonPath("$.data.anjuId").value(chosen.anjuId().intValue()))
                         .andExpect(
                                 jsonPath("$.data.anjuName")
                                         .value(AnjuFixture.GOLBAENGI_MUCHIM.getName()))
-                        .andExpect(jsonPath("$.data.feedbackSubmitted").value(false));
+                        .andExpect(jsonPath("$.data.feedbackSubmitted").value(false))
+                        .andExpect(jsonPath("$.data.feedbackSubmittable").value(false));
+            }
+
+            @Test
+            @DisplayName("본인 분담금을 보낸 참여자면 지금 낼 수 있다는 값을 담아 200을 반환한다")
+            void shouldReturnFeedbackSubmittableWhenShareSent() throws Exception {
+                // given
+                Gathering joined = gatheringHelper.join(gathering, ParticipantFixture.LEE);
+                choosePairing(joined);
+                Participant payer = joined.getParticipants().get(1);
+                settlementHelper.registerBankAccount(joined, payer);
+                settlementHelper.markSent(
+                        settlementHelper.record(SettlementFixture.DINNER, joined, payer),
+                        participant);
+
+                // when & then
+                mockMvc.perform(
+                                get("/api/v1/participants/pairing")
+                                        .header("X-Link-Token", linkToken))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.feedbackSubmitted").value(false))
+                        .andExpect(jsonPath("$.data.feedbackSubmittable").value(true));
             }
 
             @Test
@@ -320,14 +346,28 @@ class ParticipantControllerTest extends IntegrationTest {
 
         private Participant participant;
         private String linkToken;
+        private String unpaidParticipantLinkToken;
         private GatheringPairing pairing;
 
+        // 김이 낼 몫을 보냈고 박은 아직 보내지 않은 정산 건을 이가 결제자로 기록한 모임이다.
         @BeforeEach
         void setUp() {
-            Gathering gathering = gatheringHelper.join(saveGathering(), ParticipantFixture.KIM);
+            Gathering gathering =
+                    gatheringHelper.join(
+                            saveGathering(),
+                            ParticipantFixture.KIM,
+                            ParticipantFixture.LEE,
+                            ParticipantFixture.PARK);
             participant = gathering.getParticipants().get(0);
+            Participant payer = gathering.getParticipants().get(1);
             linkToken = gatheringHelper.issueLinkToken(participant);
+            unpaidParticipantLinkToken =
+                    gatheringHelper.issueLinkToken(gathering.getParticipants().get(2));
             pairing = choosePairing(gathering);
+            settlementHelper.registerBankAccount(gathering, payer);
+            settlementHelper.markSent(
+                    settlementHelper.record(SettlementFixture.DINNER, gathering, payer),
+                    participant);
         }
 
         @Nested
@@ -339,7 +379,8 @@ class ParticipantControllerTest extends IntegrationTest {
             void shouldSubmitPairingFeedback() throws Exception {
                 // given
                 SubmitParticipantPairingFeedbackRequest request =
-                        new SubmitParticipantPairingFeedbackRequest(PairingRating.LIKE);
+                        new SubmitParticipantPairingFeedbackRequest(
+                                pairing.drinkId(), pairing.anjuId(), PairingRating.LIKE);
 
                 // when & then
                 mockMvc.perform(
@@ -380,7 +421,8 @@ class ParticipantControllerTest extends IntegrationTest {
                 // given
                 gatheringHelper.markPairingFeedbackSubmitted(participant);
                 SubmitParticipantPairingFeedbackRequest request =
-                        new SubmitParticipantPairingFeedbackRequest(PairingRating.LIKE);
+                        new SubmitParticipantPairingFeedbackRequest(
+                                pairing.drinkId(), pairing.anjuId(), PairingRating.LIKE);
 
                 // when & then
                 mockMvc.perform(
@@ -399,6 +441,84 @@ class ParticipantControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("참여자가 본 조합이 모임의 페어링과 다른 경우")
+        class WhenPairingChanged {
+
+            @Test
+            @DisplayName("GATHERING_PAIRING_CONFLICT 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                SubmitParticipantPairingFeedbackRequest request =
+                        new SubmitParticipantPairingFeedbackRequest(
+                                pairing.drinkId(), pairing.anjuId() + 1, PairingRating.LIKE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/pairing/feedback")
+                                        .header("X-Link-Token", linkToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.GATHERING_PAIRING_CONFLICT
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("낼 몫을 아직 보내지 않은 참여자인 경우")
+        class WhenShareNotSent {
+
+            @Test
+            @DisplayName("SENT_SHARE_REQUIRED 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                SubmitParticipantPairingFeedbackRequest request =
+                        new SubmitParticipantPairingFeedbackRequest(
+                                pairing.drinkId(), pairing.anjuId(), PairingRating.LIKE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/pairing/feedback")
+                                        .header("X-Link-Token", unpaidParticipantLinkToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.SENT_SHARE_REQUIRED.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("술이나 안주 ID가 빠진 경우")
+        class WhenCombinationMissing {
+
+            @Test
+            @DisplayName("drinkId 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                SubmitParticipantPairingFeedbackRequest request =
+                        new SubmitParticipantPairingFeedbackRequest(
+                                null, pairing.anjuId(), PairingRating.LIKE);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/pairing/feedback")
+                                        .header("X-Link-Token", linkToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("drinkId"));
+            }
+        }
+
+        @Nested
         @DisplayName("평가값이 빠진 경우")
         class WhenRatingMissing {
 
@@ -407,7 +527,8 @@ class ParticipantControllerTest extends IntegrationTest {
             void shouldReturnBadRequest() throws Exception {
                 // given
                 SubmitParticipantPairingFeedbackRequest request =
-                        new SubmitParticipantPairingFeedbackRequest(null);
+                        new SubmitParticipantPairingFeedbackRequest(
+                                pairing.drinkId(), pairing.anjuId(), null);
 
                 // when & then
                 mockMvc.perform(

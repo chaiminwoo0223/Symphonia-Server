@@ -3,6 +3,7 @@ package com.symphonia.gathering.domain.policy;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
+import com.symphonia.gathering.domain.exception.GatheringPairingConflictException;
 import com.symphonia.gathering.domain.exception.GatheringRoundClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.InvalidGatheringRoundNumberException;
@@ -84,6 +85,13 @@ public enum GatheringPolicy {
     public static void validatePairingChangeable(LocalDateTime openedAt, LocalDateTime now) {
         if (!isWithinRecordingPeriod(openedAt, now)) {
             throw new GatheringPairingClosedException();
+        }
+    }
+
+    // 참여자가 피드백 카드를 보는 동안 모임장이 페어링을 바꾸면, 참여자가 보지 못한 조합에 평점이 붙는다.
+    public static void validatePairingNotChanged(boolean sameCombination) {
+        if (!sameCombination) {
+            throw new GatheringPairingConflictException();
         }
     }
 
