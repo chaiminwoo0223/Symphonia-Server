@@ -337,6 +337,23 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenRecordable {
 
             @Test
+            @DisplayName("요청 id를 담아 정산 건을 저장한다")
+            void shouldSaveSettlementWithClientRequestId() {
+                // given
+                givenRecordableGathering();
+                givenSaveIfAbsentReturnsSettlement();
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                settlementCommandService.record(command);
+
+                // then
+                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+                then(settlementRepository).should().saveIfAbsent(captor.capture());
+                assertThat(captor.getValue().getClientRequestId()).isEqualTo(CLIENT_REQUEST_ID);
+            }
+
+            @Test
             @DisplayName("결제자를 뺀 참여자의 분담금을 미입금으로 계산해 저장하고 반환한다")
             void shouldSaveSettlementWithCalculatedShares() {
                 // given
@@ -606,29 +623,12 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("요청 id로 정산 건을 기록하는 경우")
-        class WhenClientRequestIdGiven {
+        @DisplayName("같은 요청 id로 이미 기록한 정산 건이 있는 경우")
+        class WhenSameClientRequestIdRecorded {
 
             @Test
-            @DisplayName("요청 id를 담아 정산 건을 저장한다")
-            void shouldSaveSettlementWithClientRequestId() {
-                // given
-                givenRecordableGathering();
-                givenSaveIfAbsentReturnsSettlement();
-                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
-
-                // when
-                settlementCommandService.record(command);
-
-                // then
-                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
-                then(settlementRepository).should().saveIfAbsent(captor.capture());
-                assertThat(captor.getValue().getClientRequestId()).isEqualTo(CLIENT_REQUEST_ID);
-            }
-
-            @Test
-            @DisplayName("같은 요청 id로 이미 기록한 정산 건이 있으면 그 정산 건과 그 차수를 반환한다")
-            void shouldReturnRecordedSettlementWhenSameRequestIdRecorded() {
+            @DisplayName("그 정산 건과 그 차수를 반환한다")
+            void shouldReturnRecordedSettlementWithItsRound() {
                 // given
                 givenRecordableGathering();
                 Settlement recorded =
@@ -1024,7 +1024,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("같은 요청을 다시 보낸 것으로 보고 취소 시각을 바꾸거나 정산 건을 저장하지 않고 끝낸다")
-            void shouldDoNothingWhenAlreadyCancelled() {
+            void shouldKeepCancelledAtWithoutSaving() {
                 // given
                 givenParticipant(PAYER_ID);
                 Settlement settlement =

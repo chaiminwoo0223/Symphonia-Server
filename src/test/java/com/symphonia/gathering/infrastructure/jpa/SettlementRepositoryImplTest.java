@@ -438,6 +438,12 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                         LocalDateTime.class,
                                         saved.getId()))
                         .isEqualTo(settlement.getRecordedAt());
+                assertThat(
+                                jdbcTemplate.queryForObject(
+                                        "SELECT updated_at FROM settlement WHERE id = ?",
+                                        LocalDateTime.class,
+                                        saved.getId()))
+                        .isEqualTo(settlement.getRecordedAt());
             }
 
             @Test
