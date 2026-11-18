@@ -1,5 +1,6 @@
 package com.symphonia.member.domain.entity;
 
+import com.symphonia.member.domain.policy.MemberPolicy;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +28,7 @@ public class Member {
             SocialProvider socialProvider) {
         return Member.builder()
                 .socialId(socialId)
-                .nickname(nickname)
+                .nickname(MemberPolicy.truncateNickname(nickname))
                 .email(email)
                 .profileImage(profileImage)
                 .role(Role.ROLE_MEMBER)
