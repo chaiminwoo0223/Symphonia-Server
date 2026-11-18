@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 // 정산 건과 모임, 계좌를 함께 봐야 하는 검증과 계산이다. 검증은 Service가 Settlement의 상태를 바꾸기 전에 호출한다.
 public enum SettlementPolicy {
@@ -79,6 +80,15 @@ public enum SettlementPolicy {
                                 Collectors.flatMapping(
                                         settlement -> settlement.getParticipantIds().stream(),
                                         Collectors.toCollection(HashSet::new))));
+    }
+
+    // 직전 정산 건의 결제자가 다른 사람이면 인원에 요청한 참여자가 없을 수 있다. 결제자는 항상 인원에 들어가므로 빠졌으면 뒤에 더한다.
+    public static List<Long> getDefaultParticipantIds(
+            List<Long> latestParticipantIds, Long payerParticipantId) {
+        return latestParticipantIds.contains(payerParticipantId)
+                ? latestParticipantIds
+                : Stream.concat(latestParticipantIds.stream(), Stream.of(payerParticipantId))
+                        .toList();
     }
 
     public static void validatePayer(Long payerParticipantId, Long participantId) {

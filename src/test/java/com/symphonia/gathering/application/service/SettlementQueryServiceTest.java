@@ -217,6 +217,32 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("직전 정산 건의 인원에 요청한 참여자가 없는 경우")
+        class WhenLatestSettlementExcludesRequester {
+
+            @Test
+            @DisplayName("직전 정산 건의 인원 뒤에 요청한 참여자를 더해 인원 기본값으로 반환한다")
+            void shouldAppendRequesterToDefaultParticipants() {
+                // given
+                Settlement latest =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                LEE_ID,
+                                List.of(LEE_ID, PARK_ID));
+                givenForm(OPEN_PERIOD_OPENED_AT, latest, false, List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+
+                // then
+                assertThat(result.defaultParticipantIds())
+                        .containsExactly(LEE_ID, PARK_ID, PAYER_ID);
+            }
+        }
+
+        @Nested
         @DisplayName("직전 정산 건이 이전 차수보다 적은 인원으로 기록된 경우")
         class WhenLatestSettlementHasFewerParticipants {
 
