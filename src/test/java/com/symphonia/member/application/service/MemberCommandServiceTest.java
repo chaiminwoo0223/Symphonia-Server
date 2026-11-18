@@ -107,6 +107,63 @@ class MemberCommandServiceTest extends UnitTest {
                 assertThat(result.role()).isEqualTo(kakaoMember.getRole());
                 assertThat(result.socialProvider()).isEqualTo(kakaoMember.getSocialProvider());
             }
+
+            @Test
+            @DisplayName("소셜 닉네임이 최대 길이를 넘으면 가입을 거절하지 않고 잘라서 저장한다.")
+            void shouldSaveTruncatedNicknameWhenSocialNicknameTooLong() {
+                // given
+                CreateMemberCommand longNicknameCommand =
+                        new CreateMemberCommandFixture(MemberFixture.KAKAO)
+                                .nickname("가".repeat(21))
+                                .build();
+                given(memberRepository.save(any(Member.class))).willReturn(kakaoMember);
+
+                // when
+                memberCommandService.create(longNicknameCommand);
+
+                // then
+                ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
+                then(memberRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getNickname()).isEqualTo("가".repeat(20));
+            }
+
+            @Test
+            @DisplayName("최대 길이와 같은 소셜 닉네임은 그대로 저장한다.")
+            void shouldSaveNicknameAsIsWhenNicknameHasMaxLength() {
+                // given
+                CreateMemberCommand maxLengthCommand =
+                        new CreateMemberCommandFixture(MemberFixture.KAKAO)
+                                .nickname("가".repeat(20))
+                                .build();
+                given(memberRepository.save(any(Member.class))).willReturn(kakaoMember);
+
+                // when
+                memberCommandService.create(maxLengthCommand);
+
+                // then
+                ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
+                then(memberRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getNickname()).isEqualTo("가".repeat(20));
+            }
+
+            @Test
+            @DisplayName("자르는 위치가 이모지 한가운데이면 이모지를 통째로 버린다.")
+            void shouldDropWholeEmojiWhenCutPointSplitsSurrogatePair() {
+                // given
+                CreateMemberCommand emojiCommand =
+                        new CreateMemberCommandFixture(MemberFixture.KAKAO)
+                                .nickname("가".repeat(19) + "😀")
+                                .build();
+                given(memberRepository.save(any(Member.class))).willReturn(kakaoMember);
+
+                // when
+                memberCommandService.create(emojiCommand);
+
+                // then
+                ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
+                then(memberRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getNickname()).isEqualTo("가".repeat(19));
+            }
         }
     }
 

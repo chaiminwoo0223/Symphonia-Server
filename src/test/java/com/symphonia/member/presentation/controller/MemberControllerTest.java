@@ -123,6 +123,47 @@ class MemberControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("닉네임이 최대 길이를 넘는 경우")
+        class WhenNicknameTooLong {
+
+            @Test
+            @DisplayName("최대 길이와 같으면 200을 반환한다")
+            void shouldReturnOkWhenNicknameHasMaxLength() throws Exception {
+                // given
+                String token = authenticateMember().token();
+                UpdateMemberRequest request = new UpdateMemberRequest("가".repeat(20));
+
+                // when & then
+                mockMvc.perform(
+                                patch("/api/v1/members/me")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isOk());
+            }
+
+            @Test
+            @DisplayName("최대 길이를 1자 넘으면 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String token = authenticateMember().token();
+                UpdateMemberRequest request = new UpdateMemberRequest("가".repeat(21));
+
+                // when & then
+                mockMvc.perform(
+                                patch("/api/v1/members/me")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("nickname"));
+            }
+        }
+
+        @Nested
         @DisplayName("닉네임이 빈 값인 경우")
         class WhenNicknameBlank {
 
