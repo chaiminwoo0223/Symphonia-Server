@@ -12,8 +12,10 @@ import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
 import com.symphonia.gathering.domain.exception.PairingFeedbackAlreadySubmittedException;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.vo.JoinClosedReason;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public enum GatheringPolicy {
     ;
@@ -37,6 +39,19 @@ public enum GatheringPolicy {
 
     public static boolean isParticipantAddable(int participantCount) {
         return participantCount < MAX_PARTICIPANT_COUNT;
+    }
+
+    // 참여할 때 검증하는 순서와 같게 기간을 먼저 보므로, 둘 다 해당하면 기간 만료로 알린다.
+    public static Optional<JoinClosedReason> findJoinClosedReason(
+            LocalDateTime openedAt, LocalDateTime now, int participantCount) {
+        if (!isWithinRecordingPeriod(openedAt, now)) {
+            return Optional.of(JoinClosedReason.PERIOD_EXPIRED);
+        }
+        if (!isParticipantAddable(participantCount)) {
+            return Optional.of(JoinClosedReason.PARTICIPANT_LIMIT_REACHED);
+        }
+
+        return Optional.empty();
     }
 
     public static LocalDateTime recordingClosesAt(LocalDateTime openedAt) {

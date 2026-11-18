@@ -12,6 +12,7 @@ import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
+import com.symphonia.gathering.domain.vo.JoinClosedReason;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,13 +39,14 @@ public class GatheringQueryService implements GetGatheringUseCase, GetExpiredGat
                 gatheringRepository
                         .findById(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
-        boolean joinable =
-                GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now)
-                        && GatheringPolicy.isParticipantAddable(gathering.getParticipants().size());
+        JoinClosedReason joinClosedReason =
+                GatheringPolicy.findJoinClosedReason(
+                                gathering.getOpenedAt(), now, gathering.getParticipants().size())
+                        .orElse(null);
 
         return GatheringResult.of(
                 gathering.getName(),
-                joinable,
+                joinClosedReason,
                 GatheringPolicy.CONSENT_VERSION,
                 retention.deletesAt());
     }

@@ -2,6 +2,7 @@ package com.symphonia.gathering.presentation.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -71,7 +72,8 @@ class GatheringControllerTest extends IntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.gatheringId").isNumber())
-                        .andExpect(jsonPath("$.data.joinToken").isNotEmpty());
+                        .andExpect(jsonPath("$.data.joinToken").isNotEmpty())
+                        .andExpect(jsonPath("$.data.expiresAt").isNotEmpty());
             }
         }
 
@@ -183,7 +185,8 @@ class GatheringControllerTest extends IntegrationTest {
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.data.gatheringId").value(gathering.getId()))
                         .andExpect(jsonPath("$.data.joinToken").isNotEmpty())
-                        .andExpect(jsonPath("$.data.joinToken").value(not(oldJoinToken)));
+                        .andExpect(jsonPath("$.data.joinToken").value(not(oldJoinToken)))
+                        .andExpect(jsonPath("$.data.expiresAt").isNotEmpty());
             }
         }
 
@@ -389,6 +392,7 @@ class GatheringControllerTest extends IntegrationTest {
                     .andExpect(
                             jsonPath("$.data.name").value(GatheringFixture.FRIDAY_DINNER.getName()))
                     .andExpect(jsonPath("$.data.joinable").value(true))
+                    .andExpect(jsonPath("$.data.joinClosedReason").value(nullValue()))
                     .andExpect(
                             jsonPath("$.data.consentVersion")
                                     .value(GatheringPolicy.CONSENT_VERSION))

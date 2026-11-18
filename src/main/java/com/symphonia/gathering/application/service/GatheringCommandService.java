@@ -54,7 +54,7 @@ public class GatheringCommandService
         Gathering savedGathering = gatheringRepository.save(gathering);
         command.findPairing().ifPresent(pairing -> savePairing(savedGathering.getId(), pairing));
 
-        return issueJoinToken(savedGathering.getId());
+        return issueJoinToken(savedGathering);
     }
 
     // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
@@ -69,7 +69,7 @@ public class GatheringCommandService
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
         GatheringPolicy.validateJoinable(gathering.getOpenedAt(), now);
 
-        return issueJoinToken(gathering.getId());
+        return issueJoinToken(gathering);
     }
 
     @Override
@@ -121,11 +121,14 @@ public class GatheringCommandService
     }
 
     // 모임마다 참여 토큰은 하나라서, 새로 발급하면 기존 토큰은 무효가 된다.
-    private GatheringJoinTokenResult issueJoinToken(Long gatheringId) {
+    private GatheringJoinTokenResult issueJoinToken(Gathering gathering) {
         String joinToken = gatheringTokenProvider.generate();
-        gatheringJoinTokenRepository.save(joinToken, gatheringId);
+        gatheringJoinTokenRepository.save(joinToken, gathering.getId());
 
-        return GatheringJoinTokenResult.of(gatheringId, joinToken);
+        return GatheringJoinTokenResult.of(
+                gathering.getId(),
+                joinToken,
+                GatheringPolicy.recordingClosesAt(gathering.getOpenedAt()));
     }
 
     private void validateRetained(
