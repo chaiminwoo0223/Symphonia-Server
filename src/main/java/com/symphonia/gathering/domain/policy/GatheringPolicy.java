@@ -4,6 +4,7 @@ import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
 import com.symphonia.gathering.domain.exception.GatheringPairingConflictException;
+import com.symphonia.gathering.domain.exception.GatheringParticipantCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.GatheringRoundClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.InvalidGatheringRoundNumberException;
@@ -26,8 +27,16 @@ public enum GatheringPolicy {
     // 참여자 누구나 차수를 추가할 수 있어서, 빈 차수가 무제한 쌓이지 않도록 한 모임의 차수 수를 제한한다.
     public static final int MAX_ROUND_COUNT = 10;
 
+    // 참여 QR을 가진 사람은 누구나 참여할 수 있어서, 가짜 참여로 참여자가 끝없이 늘지 않도록 한 모임의 참여자 수를 제한한다.
+    // 정산 API는 호출마다 참여자 전원의 이름과 휴대폰을 복호화하므로 참여자가 늘면 모든 정산 요청이 느려진다.
+    public static final int MAX_PARTICIPANT_COUNT = 50;
+
     public static boolean isWithinRecordingPeriod(LocalDateTime openedAt, LocalDateTime now) {
         return now.isBefore(recordingClosesAt(openedAt));
+    }
+
+    public static boolean isParticipantAddable(int participantCount) {
+        return participantCount < MAX_PARTICIPANT_COUNT;
     }
 
     public static LocalDateTime recordingClosesAt(LocalDateTime openedAt) {
@@ -37,6 +46,12 @@ public enum GatheringPolicy {
     public static void validateJoinable(LocalDateTime openedAt, LocalDateTime now) {
         if (!isWithinRecordingPeriod(openedAt, now)) {
             throw new GatheringJoinClosedException();
+        }
+    }
+
+    public static void validateParticipantAddable(int participantCount) {
+        if (!isParticipantAddable(participantCount)) {
+            throw new GatheringParticipantCountExceedsLimitException();
         }
     }
 

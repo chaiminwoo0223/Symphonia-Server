@@ -64,6 +64,19 @@ public class GatheringHelper {
         return gatheringRepository.save(gathering);
     }
 
+    // 서로 다른 휴대폰의 참여자를 count명 더해 저장한다. 참여자 수 상한을 확인하는 데 쓴다.
+    public Gathering join(Gathering gathering, int count) {
+        for (int index = 0; index < count; index++) {
+            gathering.join(
+                    "참여자" + index,
+                    new PhoneNumber("0109000%04d".formatted(index)),
+                    GatheringPolicy.CONSENT_VERSION,
+                    LocalDateTime.now());
+        }
+
+        return gatheringRepository.save(gathering);
+    }
+
     // 저장소에는 해시만 남으므로, 요청에 쓸 원본 개인 링크 토큰을 돌려준다.
     public String issueLinkToken(Participant participant) {
         String linkToken = gatheringTokenProvider.generate();

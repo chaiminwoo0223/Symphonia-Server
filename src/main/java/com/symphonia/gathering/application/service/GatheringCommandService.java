@@ -88,6 +88,7 @@ public class GatheringCommandService
         GatheringPolicy.validateJoinable(gathering.getOpenedAt(), now);
         GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
         GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
+        GatheringPolicy.validateParticipantAddable(gathering.getParticipants().size());
 
         gathering.join(command.name(), phoneNumber, command.consentVersion(), now);
         Gathering savedGathering = gatheringRepository.save(gathering);
