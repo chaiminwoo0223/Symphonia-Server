@@ -8,6 +8,7 @@ import com.symphonia.gathering.domain.exception.GatheringRoundNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.OutdatedBankAccountConsentVersionException;
+import com.symphonia.gathering.domain.exception.SentShareRequiredException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import java.time.LocalDateTime;
@@ -89,6 +90,21 @@ public enum SettlementPolicy {
                 ? latestParticipantIds
                 : Stream.concat(latestParticipantIds.stream(), Stream.of(payerParticipantId))
                         .toList();
+    }
+
+    // 정산에서 돈이 오간 참여자만 페어링 피드백을 낼 수 있다. 결제자가 기록한 정산 건과 분담금이 있는 정산 건을 함께 본다.
+    public static boolean isPairingFeedbackSubmittable(
+            Long participantId,
+            List<Settlement> payerSettlements,
+            List<Settlement> shareSettlements) {
+        return Stream.concat(payerSettlements.stream(), shareSettlements.stream())
+                .anyMatch(settlement -> settlement.isSettledFor(participantId));
+    }
+
+    public static void validatePairingFeedbackSubmittable(boolean submittable) {
+        if (!submittable) {
+            throw new SentShareRequiredException();
+        }
     }
 
     public static void validatePayer(Long payerParticipantId, Long participantId) {

@@ -11,4 +11,8 @@ public record GatheringPairing(
             Long drinkId, Long anjuId, RelationshipType relationshipType, MoodType moodType) {
         return new GatheringPairing(drinkId, anjuId, relationshipType, moodType);
     }
+
+    public boolean isCombinationOf(Long drinkId, Long anjuId) {
+        return this.drinkId.equals(drinkId) && this.anjuId.equals(anjuId);
+    }
 }

@@ -25,6 +25,7 @@ public enum GatheringErrorCode implements ErrorCode {
     GATHERING_ROUND_COUNT_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "한 모임에 추가할 수 있는 차수를 넘었습니다."),
     INVALID_GATHERING_ROUND_NUMBER(
             HttpStatus.BAD_REQUEST, "마지막 차수의 다음 차수까지만 추가할 수 있습니다. 기록 화면을 다시 불러와 주세요."),
+    SENT_SHARE_REQUIRED(HttpStatus.BAD_REQUEST, "분담금을 보내거나 받은 뒤에 피드백을 남길 수 있습니다."),
 
     // 403
     NOT_GATHERING_HOST(HttpStatus.FORBIDDEN, "모임을 만든 회원만 요청할 수 있습니다."),
@@ -43,6 +44,7 @@ public enum GatheringErrorCode implements ErrorCode {
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
     BANK_ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 계좌를 등록한 참여자입니다."),
     PAIRING_FEEDBACK_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 페어링 피드백을 남긴 참여자입니다."),
+    GATHERING_PAIRING_CONFLICT(HttpStatus.CONFLICT, "모임의 페어링이 바뀌었습니다. 다시 불러와 주세요."),
     SETTLEMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 취소한 정산 건입니다."),
     SETTLEMENT_CONFLICT(HttpStatus.CONFLICT, "다른 요청이 먼저 정산 건을 바꿨습니다. 다시 불러와 주세요."),
     SETTLEMENT_SHARES_SENT(

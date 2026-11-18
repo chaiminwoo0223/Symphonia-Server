@@ -6,8 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 
 public record SubmitParticipantPairingFeedbackRequest(
+        @NotNull @Schema(description = "참여자가 본 술 ID. 모임 페어링 조회 응답의 drinkId") Long drinkId,
+        @NotNull @Schema(description = "참여자가 본 안주 ID. 모임 페어링 조회 응답의 anjuId") Long anjuId,
         @NotNull @Schema(description = "평가값") PairingRating rating) {
     public SubmitParticipantPairingFeedbackCommand toCommand(String linkToken) {
-        return new SubmitParticipantPairingFeedbackCommand(linkToken, rating);
+        return new SubmitParticipantPairingFeedbackCommand(linkToken, drinkId, anjuId, rating);
     }
 }

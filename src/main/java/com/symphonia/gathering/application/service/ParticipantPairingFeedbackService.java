@@ -6,8 +6,10 @@ import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.application.usecase.SubmitParticipantPairingFeedbackUseCase;
 import com.symphonia.gathering.domain.exception.GatheringPairingNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
+import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
+import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.GatheringPairing;
 import com.symphonia.pairing.application.usecase.SubmitAnonymousPairingFeedbackUseCase;
 import java.time.Clock;
@@ -22,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 public class ParticipantPairingFeedbackService implements SubmitParticipantPairingFeedbackUseCase {
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringPairingRepository gatheringPairingRepository;
+    private final SettlementRepository settlementRepository;
     private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final SubmitAnonymousPairingFeedbackUseCase submitAnonymousPairingFeedbackUseCase;
     private final Clock clock;
@@ -36,6 +39,14 @@ public class ParticipantPairingFeedbackService implements SubmitParticipantPairi
                 gatheringPairingRepository
                         .findByParticipantId(participantId)
                         .orElseThrow(GatheringPairingNotFoundException::new);
+        // 참여자가 본 조합과 지금 모임의 페어링이 다르면 제출 표시를 남기기 전에 거절해, 참여자가 다시 불러온 조합에 낼 수 있게 한다.
+        GatheringPolicy.validatePairingNotChanged(
+                gatheringPairing.isCombinationOf(command.drinkId(), command.anjuId()));
+        SettlementPolicy.validatePairingFeedbackSubmittable(
+                SettlementPolicy.isPairingFeedbackSubmittable(
+                        participantId,
+                        settlementRepository.findAllByPayerParticipantId(participantId),
+                        settlementRepository.findAllByShareParticipantId(participantId)));
         // 다시 내는 요청과 동시에 내는 요청 모두 표시를 넣지 못하므로, 표시를 넣은 결과 하나로 중복 제출을 막는다.
         boolean marked =
                 participantPairingFeedbackRepository.markSubmittedIfAbsent(
