@@ -57,6 +57,10 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                 settlementRepository
                         .findLatestByGatheringId(gathering.getId())
                         .map(Settlement::getParticipantIds)
+                        .map(
+                                latestParticipantIds ->
+                                        SettlementPolicy.getDefaultParticipantIds(
+                                                latestParticipantIds, participantId))
                         .orElseGet(
                                 () ->
                                         gathering.getParticipants().stream()
