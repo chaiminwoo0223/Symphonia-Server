@@ -13,6 +13,7 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
+import com.symphonia.gathering.domain.vo.JoinClosedReason;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
@@ -114,6 +115,7 @@ class GatheringQueryServiceTest extends UnitTest {
                 // then
                 assertThat(result.name()).isEqualTo(GatheringFixture.FRIDAY_DINNER.getName());
                 assertThat(result.joinable()).isTrue();
+                assertThat(result.joinClosedReason()).isNull();
                 assertThat(result.consentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
                 assertThat(result.deletesAt())
                         .isEqualTo(
@@ -128,7 +130,7 @@ class GatheringQueryServiceTest extends UnitTest {
         class WhenRecordingPeriodClosed {
 
             @Test
-            @DisplayName("참여 불가로 표시한다")
+            @DisplayName("참여 불가로 표시하고 사유를 기간 만료로 알린다")
             void shouldReturnNotJoinableResult() {
                 // given
                 givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
@@ -138,6 +140,7 @@ class GatheringQueryServiceTest extends UnitTest {
 
                 // then
                 assertThat(result.joinable()).isFalse();
+                assertThat(result.joinClosedReason()).isEqualTo(JoinClosedReason.PERIOD_EXPIRED);
                 assertThat(result.consentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
             }
         }
@@ -167,7 +170,7 @@ class GatheringQueryServiceTest extends UnitTest {
         class WhenParticipantsAtLimit {
 
             @Test
-            @DisplayName("참여 불가로 표시한다")
+            @DisplayName("참여 불가로 표시하고 사유를 인원 초과로 알린다")
             void shouldReturnNotJoinableResult() {
                 // given
                 givenGatheringOpenedAt(
@@ -179,6 +182,29 @@ class GatheringQueryServiceTest extends UnitTest {
 
                 // then
                 assertThat(result.joinable()).isFalse();
+                assertThat(result.joinClosedReason())
+                        .isEqualTo(JoinClosedReason.PARTICIPANT_LIMIT_REACHED);
+            }
+        }
+
+        @Nested
+        @DisplayName("참여 기간이 끝났고 참여자도 가득 찬 경우")
+        class WhenPeriodClosedAndParticipantsAtLimit {
+
+            @Test
+            @DisplayName("참여할 때 먼저 검증하는 기간 만료를 사유로 알린다")
+            void shouldReturnPeriodExpiredReason() {
+                // given
+                givenGatheringOpenedAt(
+                        CLOSED_PERIOD_OPENED_AT,
+                        participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT));
+
+                // when
+                GatheringResult result = gatheringQueryService.getByJoinToken(JOIN_TOKEN);
+
+                // then
+                assertThat(result.joinable()).isFalse();
+                assertThat(result.joinClosedReason()).isEqualTo(JoinClosedReason.PERIOD_EXPIRED);
             }
         }
 

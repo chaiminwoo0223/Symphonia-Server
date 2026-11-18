@@ -135,6 +135,23 @@ class GatheringCommandServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("참여 토큰의 만료 시각으로 모임을 연 지 48시간이 되는 시각을 반환한다")
+            void shouldReturnExpiresAtAfterRecordingPeriod() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                givenSavedGathering(fixture);
+                OpenGatheringCommand command =
+                        new OpenGatheringCommand(
+                                fixture.getHostMemberId(), fixture.getName(), null);
+
+                // when
+                GatheringJoinTokenResult result = gatheringCommandService.open(command);
+
+                // then
+                assertThat(result.expiresAt()).isEqualTo(NOW.plusHours(48));
+            }
+
+            @Test
             @DisplayName("Clock의 현재 시각을 모임을 연 시각으로 저장한다")
             void shouldSaveGatheringOpenedAtCurrentTime() {
                 // given
@@ -345,6 +362,23 @@ class GatheringCommandServiceTest extends UnitTest {
                 then(gatheringJoinTokenRepository).should().save(NEW_JOIN_TOKEN, GATHERING_ID);
                 assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
                 assertThat(result.joinToken()).isEqualTo(NEW_JOIN_TOKEN);
+            }
+
+            @Test
+            @DisplayName("재발급한 참여 토큰의 만료 시각으로 모임을 연 지 48시간이 되는 시각을 반환한다")
+            void shouldReturnExpiresAtAfterRecordingPeriod() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+                given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
+                ReissueJoinTokenCommand command =
+                        ReissueJoinTokenCommand.of(
+                                GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
+
+                // when
+                GatheringJoinTokenResult result = gatheringCommandService.reissue(command);
+
+                // then
+                assertThat(result.expiresAt()).isEqualTo(OPEN_PERIOD_OPENED_AT.plusHours(48));
             }
         }
     }
