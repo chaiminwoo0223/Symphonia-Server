@@ -17,7 +17,7 @@ public record RecordSettlementRequest(
         @NotNull
                 @Schema(
                         description =
-                                "기록 요청마다 클라이언트가 만드는 UUID. 같은 값으로 다시 보내면 정산 건을 새로 만들지 않고 처음 기록한 정산 건을 돌려준다")
+                                "기록 요청마다 클라이언트가 만드는 UUID. 같은 결제자와 같은 값으로 다시 보내면 정산 건을 새로 만들지 않고 처음 기록한 정산 건을 돌려준다. 결제자가 다르면 같은 값이어도 새 정산 건을 만든다")
                 UUID clientRequestId,
         @NotNull @Schema(description = "결제자로 지정한 참여자 ID") Long payerParticipantId,
         @NotNull @Schema(description = "정산 건이 속한 차수의 ID") Long roundId,
