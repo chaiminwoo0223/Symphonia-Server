@@ -8,7 +8,9 @@ import com.symphonia.gathering.application.dto.query.GetGatheringParticipantsQue
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.usecase.AddRoundUseCase;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
@@ -17,11 +19,13 @@ import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.application.usecase.ReissueParticipantLinkTokenUseCase;
 import com.symphonia.gathering.application.usecase.RemoveParticipantUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
+import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
+import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +39,7 @@ public class GatheringController implements GatheringApi {
     private final OpenGatheringUseCase openGatheringUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
     private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
+    private final AddRoundUseCase addRoundUseCase;
     private final GetGatheringUseCase getGatheringUseCase;
     private final GetGatheringParticipantsUseCase getGatheringParticipantsUseCase;
     private final RemoveParticipantUseCase removeParticipantUseCase;
@@ -68,6 +73,17 @@ public class GatheringController implements GatheringApi {
         chooseGatheringPairingUseCase.choose(request.toChooseCommand(memberId, gatheringId));
 
         return ResponseEntity.status(HttpStatus.OK).body(StandardResponse.success(HttpStatus.OK));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<GatheringRoundResponse>> addRound(
+            String memberId, Long gatheringId, AddRoundRequest request) {
+        GatheringRoundResult result =
+                addRoundUseCase.add(request.toCommand(Long.parseLong(memberId), gatheringId));
+        GatheringRoundResponse response = GatheringRoundResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(StandardResponse.success(HttpStatus.CREATED, response));
     }
 
     @Override

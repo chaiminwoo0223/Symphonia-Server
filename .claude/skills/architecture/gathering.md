@@ -18,7 +18,7 @@
 - 차수(`GatheringRound`)는 술자리 단위이고 `Gathering`이 가진다. 정산 건은 차수 하나에 속하고, 한 차수에 정산 건이 여러 개일 수 있다.
 - 차수 번호는 1부터 빈틈없이 이어진다. 차수는 지우지 않는다.
 - `Gathering.open`이 모임을 열 때 1차를 만든다.
-- 참여자는 개인 링크 토큰으로 다음 차수를 추가한다(`POST /api/v1/rounds`, 본문 `roundNumber`). 모임장도 참여자로 들어가므로 같은 경로를 쓴다. `*Api`, `*Endpoints`, `*Controller`는 `Round` 단위로 둔다.
+- 모임을 만든 회원이 JWT로 다음 차수를 추가한다(`POST /gatherings/{gatheringId}/rounds`, 본문 `roundNumber`). `*Api`는 `GatheringApi`다. 파기 시각이 지난 모임은 404(`GATHERING_NOT_FOUND`)로, 모임을 만든 회원이 아니면 403(`NOT_GATHERING_HOST`)으로 거절한다.
 - 요청한 번호의 차수가 이미 있으면 새로 만들지 않고 그 차수를 돌려준다. 마지막 번호의 다음 번호보다 큰 번호는 400(`INVALID_GATHERING_ROUND_NUMBER`)으로 거절한다.
 - 동시 추가는 `(gathering_id, round_number)` unique 제약과 `ON CONFLICT DO NOTHING`으로 막고, 넣지 못하면 이미 있는 차수를 읽어 돌려준다.
 - 모임의 차수는 최대 10개(`GatheringPolicy.MAX_ROUND_COUNT`)이고, 상한을 넘는 번호는 건너뛴 번호보다 먼저 400(`GATHERING_ROUND_COUNT_EXCEEDS_LIMIT`)으로 거절한다.

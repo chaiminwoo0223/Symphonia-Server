@@ -10,20 +10,19 @@ import static org.mockito.Mockito.never;
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.AddRoundCommand;
 import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
-import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
-import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.GatheringRoundClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.InvalidGatheringRoundNumberException;
-import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
+import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
-import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -40,11 +39,10 @@ import org.mockito.Mock;
 class RoundCommandServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
-    private static final Long PARTICIPANT_ID = 20L;
     private static final Long SAVED_ROUND_ID = 900L;
-    private static final String LINK_TOKEN = "link-token";
+    private static final Long OTHER_MEMBER_ID = 99L;
+    private static final Long HOST_MEMBER_ID = GatheringFixture.FRIDAY_DINNER.getHostMemberId();
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
-    private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
 
     // 차수는 모임을 만든 지 48시간이 되는 순간부터 추가할 수 없다.
     // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
@@ -53,8 +51,8 @@ class RoundCommandServiceTest extends UnitTest {
 
     private RoundCommandService roundCommandService;
 
-    @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
 
     @BeforeEach
     void setUp() {
@@ -62,47 +60,92 @@ class RoundCommandServiceTest extends UnitTest {
                 Clock.fixed(
                         NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
         roundCommandService =
-                new RoundCommandService(getLinkedParticipantUseCase, gatheringRepository, clock);
+                new RoundCommandService(
+                        gatheringRepository, gatheringRetentionRepository, clock);
     }
 
     @Nested
     @DisplayName("add 메서드는")
     class Add {
 
-        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
         @Nested
-        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
-        class WhenLinkTokenNotFound {
+        @DisplayName("모임의 파기 시각이 없는 경우")
+        class WhenRetentionNotFound {
 
             @Test
             @DisplayName("예외를 던지고 모임을 읽지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
+            void shouldThrowGatheringNotFoundException() {
                 // given
-                given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
-                        .willThrow(new LinkTokenNotFoundException());
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(2)))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 2)))
+                        .isInstanceOf(GatheringNotFoundException.class);
                 then(gatheringRepository).shouldHaveNoInteractions();
             }
         }
 
         @Nested
-        @DisplayName("참여자의 모임이 없는 경우")
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 2)))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임이 없는 경우")
         class WhenGatheringNotFound {
 
             @Test
             @DisplayName("예외를 던지고 모임을 저장하지 않는다")
             void shouldThrowGatheringNotFoundException() {
                 // given
-                givenParticipant();
-                given(gatheringRepository.findByParticipantId(PARTICIPANT_ID))
-                        .willReturn(Optional.empty());
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(2)))
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 2)))
                         .isInstanceOf(GatheringNotFoundException.class);
+                thenGatheringNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 모임을 저장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
+
+                // when & then
+                assertThatThrownBy(() -> roundCommandService.add(command(OTHER_MEMBER_ID, 2)))
+                        .isInstanceOf(NotGatheringHostException.class);
+                thenGatheringNotSaved();
+            }
+
+            @Test
+            @DisplayName("이미 있는 번호를 요청해도 예외를 던진다")
+            void shouldThrowNotGatheringHostExceptionWhenRoundExists() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
+
+                // when & then
+                assertThatThrownBy(() -> roundCommandService.add(command(OTHER_MEMBER_ID, 1)))
+                        .isInstanceOf(NotGatheringHostException.class);
                 thenGatheringNotSaved();
             }
         }
@@ -115,10 +158,10 @@ class RoundCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 모임을 저장하지 않는다")
             void shouldThrowGatheringRoundClosedException() {
                 // given
-                givenGatheringOfParticipant(CLOSED_PERIOD_OPENED_AT, List.of(first()));
+                givenGathering(CLOSED_PERIOD_OPENED_AT, List.of(first()));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(2)))
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 2)))
                         .isInstanceOf(GatheringRoundClosedException.class);
                 thenGatheringNotSaved();
             }
@@ -127,10 +170,10 @@ class RoundCommandServiceTest extends UnitTest {
             @DisplayName("이미 있는 번호를 요청해도 예외를 던진다")
             void shouldThrowGatheringRoundClosedExceptionWhenRoundExists() {
                 // given
-                givenGatheringOfParticipant(CLOSED_PERIOD_OPENED_AT, List.of(first()));
+                givenGathering(CLOSED_PERIOD_OPENED_AT, List.of(first()));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(1)))
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 1)))
                         .isInstanceOf(GatheringRoundClosedException.class);
                 thenGatheringNotSaved();
             }
@@ -144,11 +187,11 @@ class RoundCommandServiceTest extends UnitTest {
             @DisplayName("다음 차수를 추가한다")
             void shouldAddNextRound() {
                 // given
-                givenGatheringOfParticipant(OPEN_PERIOD_OPENED_AT, List.of(first()));
+                givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
                 givenSaveAssignsRoundId();
 
                 // when
-                GatheringRoundResult result = roundCommandService.add(command(2));
+                GatheringRoundResult result = roundCommandService.add(command(HOST_MEMBER_ID, 2));
 
                 // then
                 assertThat(result.number()).isEqualTo(2);
@@ -163,11 +206,11 @@ class RoundCommandServiceTest extends UnitTest {
             @DisplayName("그 번호의 차수를 더해 저장하고, 저장된 차수의 id와 번호를 반환한다")
             void shouldSaveGatheringWithNewRound() {
                 // given
-                givenGatheringOfParticipant(OPEN_PERIOD_OPENED_AT, List.of(first()));
+                givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
                 givenSaveAssignsRoundId();
 
                 // when
-                GatheringRoundResult result = roundCommandService.add(command(2));
+                GatheringRoundResult result = roundCommandService.add(command(HOST_MEMBER_ID, 2));
 
                 // then
                 ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
@@ -184,12 +227,12 @@ class RoundCommandServiceTest extends UnitTest {
             void shouldAddRoundAtLimit() {
                 // given
                 int limit = GatheringPolicy.MAX_ROUND_COUNT;
-                givenGatheringOfParticipant(
+                givenGathering(
                         OPEN_PERIOD_OPENED_AT, GatheringRoundFixture.createUpTo(limit - 1));
                 givenSaveAssignsRoundId();
 
                 // when
-                GatheringRoundResult result = roundCommandService.add(command(limit));
+                GatheringRoundResult result = roundCommandService.add(command(HOST_MEMBER_ID, limit));
 
                 // then
                 assertThat(result.number()).isEqualTo(limit);
@@ -204,12 +247,12 @@ class RoundCommandServiceTest extends UnitTest {
             @DisplayName("새로 만들지 않고 저장하지 않으며 그 차수를 반환한다")
             void shouldReturnExistingRound() {
                 // given
-                givenGatheringOfParticipant(
+                givenGathering(
                         OPEN_PERIOD_OPENED_AT,
                         List.of(first(), GatheringRoundFixture.SECOND.create()));
 
                 // when
-                GatheringRoundResult result = roundCommandService.add(command(2));
+                GatheringRoundResult result = roundCommandService.add(command(HOST_MEMBER_ID, 2));
 
                 // then
                 thenGatheringNotSaved();
@@ -226,10 +269,10 @@ class RoundCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 모임을 저장하지 않는다")
             void shouldThrowInvalidGatheringRoundNumberException() {
                 // given
-                givenGatheringOfParticipant(OPEN_PERIOD_OPENED_AT, List.of(first()));
+                givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(3)))
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 3)))
                         .isInstanceOf(InvalidGatheringRoundNumberException.class);
                 thenGatheringNotSaved();
             }
@@ -244,11 +287,11 @@ class RoundCommandServiceTest extends UnitTest {
             void shouldThrowGatheringRoundCountExceedsLimitException() {
                 // given
                 int limit = GatheringPolicy.MAX_ROUND_COUNT;
-                givenGatheringOfParticipant(
+                givenGathering(
                         OPEN_PERIOD_OPENED_AT, GatheringRoundFixture.createUpTo(limit));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(limit + 1)))
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, limit + 1)))
                         .isInstanceOf(GatheringRoundCountExceedsLimitException.class);
                 thenGatheringNotSaved();
             }
@@ -263,32 +306,32 @@ class RoundCommandServiceTest extends UnitTest {
             void shouldThrowGatheringRoundCountExceedsLimitException() {
                 // given
                 int limit = GatheringPolicy.MAX_ROUND_COUNT;
-                givenGatheringOfParticipant(OPEN_PERIOD_OPENED_AT, List.of(first()));
+                givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(limit + 1)))
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, limit + 1)))
                         .isInstanceOf(GatheringRoundCountExceedsLimitException.class);
                 thenGatheringNotSaved();
             }
         }
     }
 
-    private AddRoundCommand command(int roundNumber) {
-        return new AddRoundCommand(LINK_TOKEN, roundNumber);
+    private AddRoundCommand command(Long memberId, int roundNumber) {
+        return new AddRoundCommand(memberId, GATHERING_ID, roundNumber);
     }
 
     private GatheringRound first() {
         return GatheringRoundFixture.FIRST.create();
     }
 
-    private void givenParticipant() {
-        given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
-                .willReturn(new LinkedParticipantResult(PARTICIPANT_ID, DELETES_AT));
+    private void givenRetention(GatheringRetentionFixture retention) {
+        given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
     }
 
-    private void givenGatheringOfParticipant(LocalDateTime openedAt, List<GatheringRound> rounds) {
-        givenParticipant();
-        given(gatheringRepository.findByParticipantId(PARTICIPANT_ID))
+    private void givenGathering(LocalDateTime openedAt, List<GatheringRound> rounds) {
+        givenRetention(GatheringRetentionFixture.RETAINED);
+        given(gatheringRepository.findById(GATHERING_ID))
                 .willReturn(Optional.of(gathering(openedAt, rounds)));
     }
 
@@ -322,9 +365,6 @@ class RoundCommandServiceTest extends UnitTest {
 
     private Gathering gathering(LocalDateTime openedAt, List<GatheringRound> rounds) {
         return GatheringFixture.FRIDAY_DINNER.createWithRounds(
-                GATHERING_ID,
-                openedAt,
-                List.of(ParticipantFixture.KIM.createWithId(PARTICIPANT_ID)),
-                rounds);
+                GATHERING_ID, openedAt, List.of(), rounds);
     }
 }
