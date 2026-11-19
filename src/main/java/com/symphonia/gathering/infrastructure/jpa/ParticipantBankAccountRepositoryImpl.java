@@ -52,6 +52,11 @@ public class ParticipantBankAccountRepositoryImpl implements ParticipantBankAcco
     }
 
     @Override
+    public void deleteByParticipantId(Long participantId) {
+        participantBankAccountJpaRepository.deleteByParticipantId(participantId);
+    }
+
+    @Override
     public void deleteAllByGatheringId(Long gatheringId) {
         participantBankAccountJpaRepository.deleteAllByGatheringId(gatheringId);
     }

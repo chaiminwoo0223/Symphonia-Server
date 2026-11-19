@@ -11,12 +11,15 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.exception.ParticipantInSettlementException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
+import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
@@ -38,6 +41,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Import({
     GatheringRepositoryImpl.class,
+    SettlementRepositoryImpl.class,
     GatheringDataKeyLoader.class,
     GatheringMasterKey.class,
     GatheringCryptoConfig.class
@@ -45,6 +49,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class GatheringRepositoryImplTest extends RepositoryTest {
 
     @Autowired private GatheringRepository gatheringRepository;
+    @Autowired private SettlementRepository settlementRepository;
     @Autowired private ParticipantJpaRepository participantJpaRepository;
     @Autowired private GatheringDataKeyJpaRepository gatheringDataKeyJpaRepository;
     @Autowired private GatheringRoundJpaRepository gatheringRoundJpaRepository;
@@ -428,6 +433,76 @@ class GatheringRepositoryImplTest extends RepositoryTest {
             gathering.addRound(GatheringRoundFixture.SECOND.getNumber());
 
             return gatheringRepository.save(gathering);
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteParticipant 메서드는")
+    class DeleteParticipant {
+
+        @Test
+        @DisplayName("참여자 한 명만 지우고 같은 모임의 다른 참여자는 남긴다")
+        void shouldDeleteOnlyParticipant() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            Long leeId = gathering.getParticipants().get(1).getId();
+
+            // when
+            gatheringRepository.deleteParticipant(kimId);
+
+            // then
+            clearPersistenceContext();
+            Gathering found = gatheringRepository.findById(gathering.getId()).orElseThrow();
+            assertThat(found.getParticipants())
+                    .extracting(Participant::getId)
+                    .containsExactly(leeId);
+        }
+
+        @Test
+        @DisplayName("정산 건의 결제자면 ParticipantInSettlementException이 발생한다")
+        void shouldThrowParticipantInSettlementExceptionWhenParticipantIsPayer() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            Long leeId = gathering.getParticipants().get(1).getId();
+            recordDinner(gathering, kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThatThrownBy(() -> gatheringRepository.deleteParticipant(kimId))
+                    .isInstanceOf(ParticipantInSettlementException.class);
+        }
+
+        @Test
+        @DisplayName("정산 건의 분담금 인원이면 ParticipantInSettlementException이 발생한다")
+        void shouldThrowParticipantInSettlementExceptionWhenParticipantHasShare() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            Long leeId = gathering.getParticipants().get(1).getId();
+            recordDinner(gathering, kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThatThrownBy(() -> gatheringRepository.deleteParticipant(leeId))
+                    .isInstanceOf(ParticipantInSettlementException.class);
+        }
+
+        private Gathering saveWithKimAndLee() {
+            return gatheringRepository.save(
+                    GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                            List.of(
+                                    ParticipantFixture.KIM.create(),
+                                    ParticipantFixture.LEE.create())));
+        }
+
+        private void recordDinner(
+                Gathering gathering, Long payerParticipantId, List<Long> participantIds) {
+            settlementRepository.save(
+                    SettlementFixture.DINNER.create(
+                            gathering.getId(),
+                            gathering.getRounds().getFirst().getId(),
+                            payerParticipantId,
+                            participantIds));
         }
     }
 

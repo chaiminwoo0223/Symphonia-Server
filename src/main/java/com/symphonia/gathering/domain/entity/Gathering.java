@@ -67,6 +67,11 @@ public class Gathering {
                 .anyMatch(participant -> participant.getPhoneNumber().equals(phoneNumber));
     }
 
+    public boolean hasParticipant(Long participantId) {
+        return participants.stream()
+                .anyMatch(participant -> participantId.equals(participant.getId()));
+    }
+
     public boolean hasParticipants(Collection<Long> participantIds) {
         return participants.stream()
                 .map(Participant::getId)

@@ -25,6 +25,11 @@ public class ParticipantLinkTokenRepositoryImpl implements ParticipantLinkTokenR
     }
 
     @Override
+    public void deleteAllByParticipantId(Long participantId) {
+        participantLinkTokenJpaRepository.deleteAllByParticipantId(participantId);
+    }
+
+    @Override
     public void deleteAllByGatheringId(Long gatheringId) {
         participantLinkTokenJpaRepository.deleteAllByGatheringId(gatheringId);
     }

@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface SettlementShareJpaRepository
         extends JpaRepository<SettlementShareJpaEntity, Long> {
+    boolean existsByParticipantId(Long participantId);
+
     List<SettlementShareJpaEntity> findAllBySettlementIdOrderById(Long settlementId);
 
     List<SettlementShareJpaEntity> findAllBySettlementIdInOrderById(List<Long> settlementIds);

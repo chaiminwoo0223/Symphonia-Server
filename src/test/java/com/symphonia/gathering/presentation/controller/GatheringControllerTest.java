@@ -3,6 +3,7 @@ package com.symphonia.gathering.presentation.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -19,11 +20,15 @@ import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.helper.CatalogHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringPairingFixture;
+import com.symphonia.gathering.fixture.ParticipantFixture;
+import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
+import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.member.domain.entity.Member;
@@ -42,6 +47,7 @@ import org.springframework.test.context.jdbc.Sql;
 class GatheringControllerTest extends IntegrationTest {
 
     @Autowired private GatheringHelper gatheringHelper;
+    @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
     @Autowired private CatalogHelper catalogHelper;
@@ -235,6 +241,349 @@ class GatheringControllerTest extends IntegrationTest {
                                         "/api/v1/gatherings/{gatheringId}/join-token",
                                         gathering.getId()))
                         .andExpect(status().isUnauthorized());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/gatherings/{gatheringId}/participants는")
+    class GetParticipants {
+
+        @Nested
+        @DisplayName("모임을 만든 회원의 요청인 경우")
+        class WhenMemberIsHost {
+
+            @Test
+            @DisplayName("참여자의 이름과 마스킹한 휴대폰을 개인 링크 토큰 없이 200으로 반환한다")
+            void shouldReturnParticipants() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.KIM,
+                                ParticipantFixture.LEE);
+
+                // when & then
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/gatherings/{gatheringId}/participants",
+                                                gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.length()").value(2))
+                        .andExpect(
+                                jsonPath("$.data[0].id")
+                                        .value(gathering.getParticipants().get(0).getId()))
+                        .andExpect(
+                                jsonPath("$.data[0].name").value(ParticipantFixture.KIM.getName()))
+                        .andExpect(jsonPath("$.data[0].maskedPhoneNumber").value("010-****-5678"))
+                        .andExpect(jsonPath("$.data[0].linkToken").doesNotExist())
+                        .andExpect(
+                                jsonPath("$.data[1].name").value(ParticipantFixture.LEE.getName()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId());
+
+                // when & then
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/gatherings/{gatheringId}/participants",
+                                                gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(
+                                get(
+                                        "/api/v1/gatherings/{gatheringId}/participants",
+                                        gathering.getId()))
+                        .andExpect(status().isUnauthorized());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/gatherings/{gatheringId}/participants/{participantId}는")
+    class RemoveParticipant {
+
+        @Nested
+        @DisplayName("정산 건에 없는 참여자를 모임을 만든 회원이 제거하는 경우")
+        class WhenParticipantRemovable {
+
+            @Test
+            @DisplayName("참여자와 개인 링크를 지우고 204를 반환한다")
+            void shouldRemoveParticipant() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.KIM,
+                                ParticipantFixture.LEE);
+                Participant kim = gathering.getParticipants().get(0);
+                String kimLinkToken = gatheringHelper.issueLinkToken(kim);
+
+                // when & then
+                mockMvc.perform(
+                                delete(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}",
+                                                gathering.getId(),
+                                                kim.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isNoContent());
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/gatherings/{gatheringId}/participants",
+                                                gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(jsonPath("$.data.length()").value(1))
+                        .andExpect(
+                                jsonPath("$.data[0].name").value(ParticipantFixture.LEE.getName()));
+                mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", kimLinkToken))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("취소한 정산 건의 인원인 참여자인 경우")
+        class WhenParticipantInCancelledSettlement {
+
+            @Test
+            @DisplayName("PARTICIPANT_IN_SETTLEMENT 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.KIM,
+                                ParticipantFixture.LEE);
+                Participant kim = gathering.getParticipants().get(0);
+                Participant lee = gathering.getParticipants().get(1);
+                settlementHelper.registerBankAccount(gathering, kim);
+                settlementHelper.cancel(
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, kim));
+
+                // when & then
+                mockMvc.perform(
+                                delete(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}",
+                                                gathering.getId(),
+                                                lee.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.PARTICIPANT_IN_SETTLEMENT
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임에 없는 참여자인 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("PARTICIPANT_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(
+                                delete(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}",
+                                                gathering.getId(),
+                                                Long.MAX_VALUE)
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.PARTICIPANT_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId()),
+                                ParticipantFixture.KIM);
+
+                // when & then
+                mockMvc.perform(
+                                delete(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}",
+                                                gathering.getId(),
+                                                gathering.getParticipants().getFirst().getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/gatherings/{gatheringId}/participants/{participantId}/link-token은")
+    class ReissueLinkToken {
+
+        @Nested
+        @DisplayName("모임을 만든 회원의 요청인 경우")
+        class WhenMemberIsHost {
+
+            @Test
+            @DisplayName("새 개인 링크 토큰과 함께 201을 반환하고 이전 링크는 무효가 된다")
+            void shouldReissueLinkToken() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.KIM);
+                Participant kim = gathering.getParticipants().getFirst();
+                String oldLinkToken = gatheringHelper.issueLinkToken(kim);
+
+                // when
+                String response =
+                        mockMvc.perform(
+                                        post(
+                                                        "/api/v1/gatherings/{gatheringId}/participants/{participantId}/link-token",
+                                                        gathering.getId(),
+                                                        kim.getId())
+                                                .header(HttpHeaders.AUTHORIZATION, token))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.data.id").value(kim.getId()))
+                                .andExpect(
+                                        jsonPath("$.data.maskedPhoneNumber").value("010-****-5678"))
+                                .andExpect(jsonPath("$.data.linkToken").value(not(oldLinkToken)))
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+
+                // then
+                String newLinkToken =
+                        objectMapper.readTree(response).at("/data/linkToken").asText();
+                mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", newLinkToken))
+                        .andExpect(status().isOk());
+                mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", oldLinkToken))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임에 없는 참여자인 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("PARTICIPANT_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}/link-token",
+                                                gathering.getId(),
+                                                Long.MAX_VALUE)
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.PARTICIPANT_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId()),
+                                ParticipantFixture.KIM);
+
+                // when & then
+                mockMvc.perform(
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}/link-token",
+                                                gathering.getId(),
+                                                gathering.getParticipants().getFirst().getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
             }
         }
     }

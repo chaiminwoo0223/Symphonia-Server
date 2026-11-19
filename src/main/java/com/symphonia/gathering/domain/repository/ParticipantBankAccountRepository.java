@@ -14,5 +14,8 @@ public interface ParticipantBankAccountRepository {
     List<ParticipantBankAccount> findAllByParticipantIds(
             Collection<Long> participantIds, Long gatheringId);
 
+    // 참여자의 계좌를 지운다. 등록하지 않은 참여자면 아무것도 하지 않는다.
+    void deleteByParticipantId(Long participantId);
+
     void deleteAllByGatheringId(Long gatheringId);
 }

@@ -258,6 +258,43 @@ class ParticipantBankAccountRepositoryImplTest extends RepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("deleteByParticipantId 메서드는")
+    class DeleteByParticipantId {
+
+        @Test
+        @DisplayName("그 참여자의 계좌만 지우고 같은 모임 다른 참여자의 계좌는 남긴다")
+        void shouldDeleteOnlyBankAccountOfParticipant() {
+            // given
+            participantBankAccountRepository.save(
+                    ParticipantBankAccountFixture.KOOKMIN.create(participantId), gatheringId);
+            participantBankAccountRepository.save(
+                    ParticipantBankAccountFixture.KOOKMIN.create(leeId), gatheringId);
+
+            // when
+            participantBankAccountRepository.deleteByParticipantId(participantId);
+
+            // then
+            assertThat(participantBankAccountRepository.existsByParticipantId(participantId))
+                    .isFalse();
+            assertThat(participantBankAccountRepository.existsByParticipantId(leeId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("계좌를 등록하지 않은 참여자면 아무것도 지우지 않는다")
+        void shouldDoNothingWhenBankAccountNotRegistered() {
+            // given
+            participantBankAccountRepository.save(
+                    ParticipantBankAccountFixture.KOOKMIN.create(leeId), gatheringId);
+
+            // when
+            participantBankAccountRepository.deleteByParticipantId(participantId);
+
+            // then
+            assertThat(participantBankAccountRepository.existsByParticipantId(leeId)).isTrue();
+        }
+    }
+
     // 테스트 트랜잭션 없이 커밋한 모임의 행을 외래 키 순서대로 지운다.
     private void deleteGatheringRows() {
         jdbcTemplate.update(

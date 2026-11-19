@@ -85,6 +85,17 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                 .flatMap(participant -> findById(participant.getGatheringId()));
     }
 
+    // 정산 건 기록과 동시에 오면 Service의 확인을 통과한 뒤 정산 건이 참여자를 참조해, 지울 때 제약 위반이 난다.
+    @Override
+    public void deleteParticipant(Long participantId) {
+        try {
+            participantJpaRepository.deleteParticipantById(participantId);
+        } catch (DataIntegrityViolationException e) {
+            GatheringPolicy.validateParticipantRemovable(isSettlementReferenceViolation(e));
+            throw e;
+        }
+    }
+
     @Override
     public void discardDataKey(Long gatheringId) {
         gatheringDataKeyJpaRepository.deleteAllByGatheringId(gatheringId);
@@ -111,6 +122,14 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     private boolean isPhoneNumberViolation(DataIntegrityViolationException e) {
         return e.getCause() instanceof ConstraintViolationException violation
                 && "uk_participant_phone_number".equalsIgnoreCase(violation.getConstraintName());
+    }
+
+    private boolean isSettlementReferenceViolation(DataIntegrityViolationException e) {
+        return e.getCause() instanceof ConstraintViolationException violation
+                && ("fk_settlement_payer_participant"
+                                .equalsIgnoreCase(violation.getConstraintName())
+                        || "fk_settlement_share_participant"
+                                .equalsIgnoreCase(violation.getConstraintName()));
     }
 
     private Gathering toDomain(GatheringJpaEntity gatheringEntity) {
