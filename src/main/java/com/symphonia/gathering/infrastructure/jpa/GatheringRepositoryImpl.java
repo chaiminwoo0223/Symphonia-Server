@@ -124,14 +124,6 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                 && "uk_participant_phone_number".equalsIgnoreCase(violation.getConstraintName());
     }
 
-    private boolean isSettlementReferenceViolation(DataIntegrityViolationException e) {
-        return e.getCause() instanceof ConstraintViolationException violation
-                && ("fk_settlement_payer_participant"
-                                .equalsIgnoreCase(violation.getConstraintName())
-                        || "fk_settlement_share_participant"
-                                .equalsIgnoreCase(violation.getConstraintName()));
-    }
-
     private Gathering toDomain(GatheringJpaEntity gatheringEntity) {
         Long gatheringId = gatheringEntity.getId();
 
@@ -158,5 +150,13 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                 .stream()
                 .map(GatheringRoundJpaEntity::toDomain)
                 .toList();
+    }
+
+    private boolean isSettlementReferenceViolation(DataIntegrityViolationException e) {
+        return e.getCause() instanceof ConstraintViolationException violation
+                && ("fk_settlement_payer_participant"
+                                .equalsIgnoreCase(violation.getConstraintName())
+                        || "fk_settlement_share_participant"
+                                .equalsIgnoreCase(violation.getConstraintName()));
     }
 }

@@ -340,7 +340,7 @@ class GatheringControllerTest extends IntegrationTest {
     class RemoveParticipant {
 
         @Nested
-        @DisplayName("정산 건에 없는 참여자를 모임을 만든 회원이 제거하는 경우")
+        @DisplayName("정산 건에 없는 참여자인 경우")
         class WhenParticipantRemovable {
 
             @Test
@@ -358,7 +358,7 @@ class GatheringControllerTest extends IntegrationTest {
                 Participant kim = gathering.getParticipants().get(0);
                 String kimLinkToken = gatheringHelper.issueLinkToken(kim);
 
-                // when & then
+                // when
                 mockMvc.perform(
                                 delete(
                                                 "/api/v1/gatherings/{gatheringId}/participants/{participantId}",
@@ -366,6 +366,8 @@ class GatheringControllerTest extends IntegrationTest {
                                                 kim.getId())
                                         .header(HttpHeaders.AUTHORIZATION, token))
                         .andExpect(status().isNoContent());
+
+                // then
                 mockMvc.perform(
                                 get(
                                                 "/api/v1/gatherings/{gatheringId}/participants",

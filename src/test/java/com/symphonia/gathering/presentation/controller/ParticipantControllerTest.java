@@ -93,8 +93,8 @@ class ParticipantControllerTest extends IntegrationTest {
         class WhenParticipantCountJustBelowLimit {
 
             @Test
-            @DisplayName("50번째 참여를 받아 201을 반환한다")
-            void shouldJoinFiftiethParticipant() throws Exception {
+            @DisplayName("20번째 참여를 받아 201을 반환한다")
+            void shouldJoinTwentiethParticipant() throws Exception {
                 // given
                 Gathering gathering =
                         gatheringHelper.join(
