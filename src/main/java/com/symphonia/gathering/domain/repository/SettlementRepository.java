@@ -19,10 +19,7 @@ public interface SettlementRepository {
 
     Optional<Settlement> findById(Long settlementId);
 
-    // 취소한 정산 건은 빼고 가장 나중에 만든 정산 건을 찾는다. 다음 정산 건의 인원 기본값으로 쓴다.
-    Optional<Settlement> findLatestByGatheringId(Long gatheringId);
-
-    // 결제자가 기록한 정산 건 중 취소하지 않은 것을 기록한 순서대로 찾는다. 결제자가 고치거나 취소할 정산 건을 고르는 데 쓴다.
+    // 결제자로 지정된 정산 건 중 취소하지 않은 것을 기록한 순서대로 찾는다. 결제자의 수금 화면을 보여 주는 데 쓴다.
     List<Settlement> findAllByPayerParticipantId(Long payerParticipantId);
 
     // 참여자의 분담금이 있는 정산 건 중 취소하지 않은 것을 기록한 순서대로 찾는다. 참여자가 보낼 분담금을 보여 주는 데 쓴다.

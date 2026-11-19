@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-// 결제자가 개인 링크에서 보는 수금 화면이다. 결제자가 기록한 취소하지 않은 정산 건을 참여자별로 묶고,
+// 결제자가 개인 링크에서 보는 수금 화면이다. 결제자로 지정된 취소하지 않은 정산 건을 참여자별로 묶는다.
 // 참여자는 처음 분담금이 나온 정산 건의 순서를 따른다. totalAmount는 모든 참여자의 totalAmount를 더한 값이다.
 // deletesAt은 모임의 개인정보를 파기할 시각이다. 번호와 금액을 언제까지 볼 수 있는지 안내하는 데 쓴다.
 public record PayerCollectionResult(

@@ -39,6 +39,14 @@ public class RoundCommandService implements AddRoundUseCase {
                 .orElseGet(() -> addRound(gathering, command.roundNumber()));
     }
 
+    // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
+    private void validateRetained(Long gatheringId, LocalDateTime now) {
+        gatheringRetentionRepository
+                .findByGatheringId(gatheringId)
+                .filter(retention -> !retention.isExpired(now))
+                .orElseThrow(GatheringNotFoundException::new);
+    }
+
     // 동시에 같은 번호를 추가했으면 저장은 먼저 넣은 쪽의 행을 남기므로, 저장 뒤 읽은 차수를 돌려준다.
     private GatheringRoundResult addRound(Gathering gathering, int roundNumber) {
         GatheringPolicy.validateRoundNumber(roundNumber, gathering.getLastRoundNumber());
@@ -47,13 +55,5 @@ public class RoundCommandService implements AddRoundUseCase {
         Gathering savedGathering = gatheringRepository.save(gathering);
 
         return savedGathering.findRound(roundNumber).map(GatheringRoundResult::from).orElseThrow();
-    }
-
-    // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
-    private void validateRetained(Long gatheringId, LocalDateTime now) {
-        gatheringRetentionRepository
-                .findByGatheringId(gatheringId)
-                .filter(retention -> !retention.isExpired(now))
-                .orElseThrow(GatheringNotFoundException::new);
     }
 }

@@ -3,10 +3,8 @@ package com.symphonia.gathering.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.query.GetSettlementFormQuery;
@@ -159,7 +157,7 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenMemberIsNotHost {
 
             @Test
-            @DisplayName("예외를 던지고 인원 기본값을 구하지 않는다")
+            @DisplayName("예외를 던지고 정산 건 조회 외에 추가 조회를 하지 않는다")
             void shouldThrowNotGatheringHostException() {
                 // given
                 givenRetention(GatheringRetentionFixture.RETAINED);
@@ -169,7 +167,8 @@ class SettlementQueryServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementQueryService.getForm(query(OTHER_MEMBER_ID)))
                         .isInstanceOf(NotGatheringHostException.class);
-                then(settlementRepository).should(never()).findLatestByGatheringId(any(Long.class));
+                then(settlementRepository).should().findAllByGatheringId(GATHERING_ID);
+                then(settlementRepository).shouldHaveNoMoreInteractions();
             }
         }
 
@@ -181,7 +180,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("모임의 파기 시각을 함께 반환한다")
             void shouldReturnDeletesAt() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -197,7 +196,6 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(
                         GatheringRetentionFixture.ABOUT_TO_EXPIRE,
                         gathering(OPEN_PERIOD_OPENED_AT),
-                        null,
                         List.of());
 
                 // when
@@ -216,7 +214,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("마스킹한 휴대폰을 담은 참여자 전원을 인원 기본값으로 하고 기록 가능으로 반환한다")
             void shouldReturnAllParticipantsAsDefault() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -246,7 +244,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("빈 차수를 포함한 모임의 차수를 번호 순서대로 모두 반환한다")
             void shouldReturnRoundsOfGathering() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -279,7 +277,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 LEE_ID,
                                 List.of(PAYER_ID, LEE_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of(latest));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(latest));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -299,13 +297,66 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 LEE_ID,
                                 List.of(LEE_ID, PARK_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of(latest));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(latest));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.defaultParticipantIds()).containsExactly(LEE_ID, PARK_ID);
+            }
+        }
+
+        @Nested
+        @DisplayName("마지막으로 기록한 정산 건이 취소된 경우")
+        class WhenLastSettlementCancelled {
+
+            @Test
+            @DisplayName("그 앞의 취소하지 않은 정산 건의 인원을 인원 기본값으로 반환한다")
+            void shouldReturnLastNotCancelledSettlementParticipantsAsDefault() {
+                // given
+                Settlement notCancelled =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID));
+                Settlement cancelled =
+                        SettlementFixture.SECOND_ROUND.createCancelled(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                LEE_ID,
+                                List.of(LEE_ID, PARK_ID));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(notCancelled, cancelled));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.defaultParticipantIds()).containsExactly(PAYER_ID, LEE_ID);
+            }
+
+            @Test
+            @DisplayName("취소하지 않은 정산 건이 없으면 참여자 전원을 인원 기본값으로 반환한다")
+            void shouldReturnAllParticipantsAsDefaultWhenAllCancelled() {
+                // given
+                Settlement cancelled =
+                        SettlementFixture.SECOND_ROUND.createCancelled(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                LEE_ID,
+                                List.of(LEE_ID, PARK_ID));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(cancelled));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.defaultParticipantIds())
+                        .containsExactly(PAYER_ID, LEE_ID, PARK_ID);
             }
         }
 
@@ -336,7 +387,6 @@ class SettlementQueryServiceTest extends UnitTest {
                         gathering(
                                 OPEN_PERIOD_OPENED_AT,
                                 ParticipantFixture.createWithIds(gatheringParticipantIds)),
-                        latest,
                         List.of(latest));
 
                 // when
@@ -373,7 +423,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 PARK_ID,
                                 List.of(PARK_ID, LEE_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, otherPaid, List.of(hostPaid, otherPaid));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(hostPaid, otherPaid));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -404,7 +454,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 PARK_ID,
                                 PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement, cancelled));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(settlement, cancelled));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -442,7 +492,6 @@ class SettlementQueryServiceTest extends UnitTest {
                                 PARTICIPANT_IDS);
                 givenForm(
                         OPEN_PERIOD_OPENED_AT,
-                        secondRoundSettlement,
                         List.of(firstRoundSettlement, secondRoundSettlement, cancelled));
 
                 // when
@@ -460,7 +509,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -483,7 +532,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 GatheringRoundFixture.SECOND.getId(),
                                 PAYER_ID,
                                 PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -506,7 +555,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("총액과 받을 금액의 합계를 0으로 반환한다")
             void shouldReturnZeroSums() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -525,7 +574,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("기록 불가로 표시한다")
             void shouldReturnNotRecordableForm() {
                 // given
-                givenForm(CLOSED_PERIOD_OPENED_AT, null, List.of());
+                givenForm(CLOSED_PERIOD_OPENED_AT, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
@@ -539,37 +588,23 @@ class SettlementQueryServiceTest extends UnitTest {
             return GetSettlementFormQuery.of(memberId, GATHERING_ID);
         }
 
-        // 모임에 정산 건이 없는 경우는 latestSettlement에 null을 넘긴다.
-        // gatheringSettlements는 취소한 정산 건까지 담을 수 있는 모임의 정산 건이다.
-        private void givenForm(
-                LocalDateTime openedAt,
-                Settlement latestSettlement,
-                List<Settlement> gatheringSettlements) {
-            givenForm(gathering(openedAt), latestSettlement, gatheringSettlements);
+        // gatheringSettlements는 취소한 정산 건까지 담을 수 있는 모임의 정산 건이고, 기록한 순서(id 순)로 넘긴다.
+        private void givenForm(LocalDateTime openedAt, List<Settlement> gatheringSettlements) {
+            givenForm(gathering(openedAt), gatheringSettlements);
         }
 
-        private void givenForm(
-                Gathering gathering,
-                Settlement latestSettlement,
-                List<Settlement> gatheringSettlements) {
-            givenForm(
-                    GatheringRetentionFixture.RETAINED,
-                    gathering,
-                    latestSettlement,
-                    gatheringSettlements);
+        private void givenForm(Gathering gathering, List<Settlement> gatheringSettlements) {
+            givenForm(GatheringRetentionFixture.RETAINED, gathering, gatheringSettlements);
         }
 
         private void givenForm(
                 GatheringRetentionFixture retention,
                 Gathering gathering,
-                Settlement latestSettlement,
                 List<Settlement> gatheringSettlements) {
             givenRetention(retention);
             given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.of(gathering));
             given(settlementRepository.findAllByGatheringId(GATHERING_ID))
                     .willReturn(gatheringSettlements);
-            given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
-                    .willReturn(Optional.ofNullable(latestSettlement));
         }
     }
 

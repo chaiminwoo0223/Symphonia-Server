@@ -55,7 +55,7 @@ public enum SettlementPolicy {
                                         Collectors.toCollection(HashSet::new))));
     }
 
-    // 정산에서 돈이 오간 참여자만 페어링 피드백을 낼 수 있다. 결제자가 기록한 정산 건과 분담금이 있는 정산 건을 함께 본다.
+    // 정산에서 돈이 오간 참여자만 페어링 피드백을 낼 수 있다. 결제자로 지정된 정산 건과 분담금이 있는 정산 건을 함께 본다.
     public static boolean isPairingFeedbackSubmittable(
             Long participantId,
             List<Settlement> payerSettlements,

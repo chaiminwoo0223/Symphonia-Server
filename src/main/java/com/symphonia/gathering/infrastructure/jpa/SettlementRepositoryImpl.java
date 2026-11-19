@@ -75,13 +75,6 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     }
 
     @Override
-    public Optional<Settlement> findLatestByGatheringId(Long gatheringId) {
-        return settlementJpaRepository
-                .findFirstByGatheringIdAndCancelledAtIsNullOrderByIdDesc(gatheringId)
-                .map(this::toDomain);
-    }
-
-    @Override
     public List<Settlement> findAllByPayerParticipantId(Long payerParticipantId) {
         return toDomains(
                 settlementJpaRepository.findAllByPayerParticipantIdAndCancelledAtIsNullOrderById(
