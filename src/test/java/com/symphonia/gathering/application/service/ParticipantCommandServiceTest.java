@@ -158,7 +158,7 @@ class ParticipantCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("모임을 만든 회원이 참여자의 링크를 재발급하는 경우")
+        @DisplayName("모임을 만든 회원의 요청인 경우")
         class WhenMemberIsHost {
 
             @Test
@@ -309,7 +309,7 @@ class ParticipantCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("정산 건에 없는 참여자를 모임을 만든 회원이 제거하는 경우")
+        @DisplayName("정산 건에 없는 참여자인 경우")
         class WhenParticipantRemovable {
 
             @Test
