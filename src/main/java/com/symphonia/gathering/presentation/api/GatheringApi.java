@@ -142,6 +142,8 @@ public interface GatheringApi {
                     모임 이름과 참여 가능 여부를 조회합니다. 참여할 수 없으면 joinClosedReason으로 사유(PERIOD_EXPIRED, PARTICIPANT_LIMIT_REACHED)를 알려 줍니다.
 
                     참여 화면에서 입력한 값(이름, 휴대폰 번호, 동의 여부)의 유지는 서버가 아니라 클라이언트가 처리합니다. 서버는 입력 중인 값을 저장하지 않습니다.
+
+                    참여 화면의 동의 안내문에는 이름과 휴대폰 번호가 정산 건의 결제자에게 전달된다는 목적(카카오톡 방 초대)과 이름이 같은 차수의 참여자에게 보인다는 목적을 담아야 합니다. 안내문을 바꾸면 consentVersion이 바뀌므로, 참여 요청에는 이 응답의 consentVersion을 그대로 보내야 합니다.
                     """)
     ResponseEntity<StandardResponse<GatheringResponse>> preview(
             @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken);
