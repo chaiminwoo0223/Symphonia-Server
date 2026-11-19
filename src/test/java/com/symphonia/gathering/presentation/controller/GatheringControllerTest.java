@@ -42,6 +42,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.ResultActions;
 
 @Sql("/sql/clear-catalog.sql")
 class GatheringControllerTest extends IntegrationTest {
@@ -503,25 +504,23 @@ class GatheringControllerTest extends IntegrationTest {
                 String oldLinkToken = gatheringHelper.issueLinkToken(kim);
 
                 // when
-                String response =
+                ResultActions actions =
                         mockMvc.perform(
-                                        post(
-                                                        "/api/v1/gatherings/{gatheringId}/participants/{participantId}/link-token",
-                                                        gathering.getId(),
-                                                        kim.getId())
-                                                .header(HttpHeaders.AUTHORIZATION, token))
-                                .andExpect(status().isCreated())
-                                .andExpect(jsonPath("$.data.id").value(kim.getId()))
-                                .andExpect(
-                                        jsonPath("$.data.maskedPhoneNumber").value("010-****-5678"))
-                                .andExpect(jsonPath("$.data.linkToken").value(not(oldLinkToken)))
-                                .andReturn()
-                                .getResponse()
-                                .getContentAsString();
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}/link-token",
+                                                gathering.getId(),
+                                                kim.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token));
 
                 // then
+                actions.andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").value(kim.getId()))
+                        .andExpect(jsonPath("$.data.maskedPhoneNumber").value("010-****-5678"));
                 String newLinkToken =
-                        objectMapper.readTree(response).at("/data/linkToken").asText();
+                        objectMapper
+                                .readTree(actions.andReturn().getResponse().getContentAsString())
+                                .at("/data/linkToken")
+                                .asText();
                 mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", newLinkToken))
                         .andExpect(status().isOk());
                 mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", oldLinkToken))
