@@ -1,7 +1,10 @@
 package com.symphonia.gathering.presentation.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,6 +22,7 @@ import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -194,6 +198,51 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(jsonPath("$.data.deletesAt").isNotEmpty())
                         .andExpect(jsonPath("$.data.totalAmount").value(0))
                         .andExpect(jsonPath("$.data.participants").isEmpty());
+            }
+        }
+
+        @Nested
+        @DisplayName("파기 시각이 지난 모임의 링크 토큰인 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName(
+                    "결제자로 지정된 정산 건이 있어도 참여자의 전체 휴대폰을 담지 않고 LINK_TOKEN_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFoundWithoutPhoneNumbers() throws Exception {
+                // given
+                Gathering expiredGathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER,
+                                        gathering.getHostMemberId(),
+                                        LocalDateTime.now().minusDays(30)),
+                                ParticipantFixture.KIM,
+                                ParticipantFixture.LEE,
+                                ParticipantFixture.PARK);
+                Participant expiredPayer = expiredGathering.getParticipants().get(0);
+                settlementHelper.record(SettlementFixture.DINNER, expiredGathering, expiredPayer);
+                String expiredPayerLinkToken = gatheringHelper.issueLinkToken(expiredPayer);
+
+                // when & then
+                performGetCollection(expiredPayerLinkToken)
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()))
+                        .andExpect(
+                                content()
+                                        .string(
+                                                not(
+                                                        containsString(
+                                                                ParticipantFixture.LEE
+                                                                        .getPhoneNumber()))))
+                        .andExpect(
+                                content()
+                                        .string(
+                                                not(
+                                                        containsString(
+                                                                ParticipantFixture.PARK
+                                                                        .getPhoneNumber()))));
             }
         }
 
