@@ -89,8 +89,8 @@ public class SettlementQueryService
         LinkedParticipantResult linkedParticipant =
                 getLinkedParticipantUseCase.getLinkedParticipant(linkToken);
         Long participantId = linkedParticipant.participantId();
-        // 정산 건을 모임보다 먼저 읽는다. 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 정산 건에 든 참여자는 지우지 않으므로,
-        // 뒤에 읽는 모임에는 그 결제자가 반드시 들어 있다.
+        // 정산 건을 모임보다 먼저 읽는다.
+        // 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 정산 건에 든 참여자는 지우지 않으므로, 뒤에 읽는 모임에는 그 결제자가 반드시 들어 있다.
         List<Settlement> shareSettlements =
                 settlementRepository.findAllByShareParticipantId(participantId);
         Gathering gathering = findGatheringByParticipantId(participantId);
