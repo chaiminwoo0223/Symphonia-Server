@@ -210,6 +210,27 @@ class ParticipantPairingFeedbackRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("deleteByParticipantId 메서드는")
+    class DeleteByParticipantId {
+
+        @Test
+        @DisplayName("그 참여자의 제출 표시만 지우고 같은 모임의 다른 참여자 표시는 남긴다")
+        void shouldDeleteSubmittedMarkOfParticipantOnly() {
+            // given
+            participantPairingFeedbackRepository.markSubmittedIfAbsent(participantId, SUBMITTED_AT);
+            participantPairingFeedbackRepository.markSubmittedIfAbsent(leeId, SUBMITTED_AT);
+
+            // when
+            participantPairingFeedbackRepository.deleteByParticipantId(participantId);
+
+            // then
+            assertThat(participantPairingFeedbackRepository.existsByParticipantId(participantId))
+                    .isFalse();
+            assertThat(participantPairingFeedbackRepository.existsByParticipantId(leeId)).isTrue();
+        }
+    }
+
+    @Nested
     @DisplayName("deleteAllByGatheringId 메서드는")
     class DeleteAllByGatheringId {
 

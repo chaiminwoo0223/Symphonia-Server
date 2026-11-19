@@ -79,6 +79,11 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public Optional<Gathering> findByIdForUpdate(Long gatheringId) {
+        return gatheringJpaRepository.findByIdForUpdate(gatheringId).map(this::toDomain);
+    }
+
+    @Override
     public Optional<Gathering> findByParticipantId(Long participantId) {
         return participantJpaRepository
                 .findById(participantId)

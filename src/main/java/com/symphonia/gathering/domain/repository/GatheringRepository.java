@@ -9,6 +9,10 @@ public interface GatheringRepository {
 
     Optional<Gathering> findById(Long gatheringId);
 
+    // 모임 행을 잠그고 읽는다. 같은 모임을 잠그는 다른 요청은 이 트랜잭션이 끝날 때까지 기다린다.
+    // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
+    Optional<Gathering> findByIdForUpdate(Long gatheringId);
+
     Optional<Gathering> findByParticipantId(Long participantId);
 
     // 참여자 한 명을 지운다. 참여자를 참조하는 개인 링크 토큰과 계좌를 먼저 지우고, 정산 건에 없는지 확인한 뒤에 부른다.

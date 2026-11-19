@@ -12,6 +12,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
@@ -21,6 +22,7 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
+import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRetentionFixture;
@@ -59,6 +61,7 @@ class ParticipantCommandServiceTest extends UnitTest {
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
+    @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
 
@@ -70,6 +73,7 @@ class ParticipantCommandServiceTest extends UnitTest {
                         gatheringRetentionRepository,
                         participantLinkTokenRepository,
                         participantBankAccountRepository,
+                        participantPairingFeedbackRepository,
                         settlementRepository,
                         gatheringTokenProvider,
                         Clock.fixed(
@@ -125,7 +129,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 개인 링크 토큰을 지우거나 저장하지 않는다")
             void shouldThrowNotGatheringHostException() {
                 // given
-                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenLockedGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
 
                 // when & then
                 assertThatThrownBy(
@@ -144,7 +148,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 개인 링크 토큰을 지우거나 저장하지 않는다")
             void shouldThrowParticipantNotFoundException() {
                 // given
-                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenLockedGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
                 ReissueParticipantLinkTokenCommand command =
                         ReissueParticipantLinkTokenCommand.of(
                                 HOST_MEMBER_ID, GATHERING_ID, OTHER_PARTICIPANT_ID);
@@ -165,7 +169,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("기존 개인 링크 토큰을 모두 지운 뒤 새 토큰을 저장하고 반환한다")
             void shouldReplaceLinkTokens() {
                 // given
-                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenLockedGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
                 given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
 
                 // when
@@ -195,7 +199,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("기록 기간과 관계없이 새 개인 링크 토큰을 저장하고 반환한다")
             void shouldReplaceLinkTokens() {
                 // given
-                givenGatheringWithParticipant(CLOSED_PERIOD_OPENED_AT);
+                givenLockedGatheringWithParticipant(CLOSED_PERIOD_OPENED_AT);
                 given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
 
                 // when
@@ -313,7 +317,7 @@ class ParticipantCommandServiceTest extends UnitTest {
         class WhenParticipantRemovable {
 
             @Test
-            @DisplayName("개인 링크 토큰, 계좌, 참여자 순서로 지운다")
+            @DisplayName("개인 링크 토큰, 계좌, 피드백 제출 표시, 참여자 순서로 지운다")
             void shouldDeleteReferencesBeforeParticipant() {
                 // given
                 givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
@@ -327,11 +331,15 @@ class ParticipantCommandServiceTest extends UnitTest {
                         inOrder(
                                 participantLinkTokenRepository,
                                 participantBankAccountRepository,
+                                participantPairingFeedbackRepository,
                                 gatheringRepository);
                 then(participantLinkTokenRepository)
                         .should(inOrder)
                         .deleteAllByParticipantId(PARTICIPANT_ID);
                 then(participantBankAccountRepository)
+                        .should(inOrder)
+                        .deleteByParticipantId(PARTICIPANT_ID);
+                then(participantPairingFeedbackRepository)
                         .should(inOrder)
                         .deleteByParticipantId(PARTICIPANT_ID);
                 then(gatheringRepository).should(inOrder).deleteParticipant(PARTICIPANT_ID);
@@ -364,6 +372,7 @@ class ParticipantCommandServiceTest extends UnitTest {
         private void thenNothingDeleted() {
             then(participantLinkTokenRepository).shouldHaveNoInteractions();
             then(participantBankAccountRepository).shouldHaveNoInteractions();
+            then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
             then(gatheringRepository).should(never()).deleteParticipant(anyLong());
         }
     }
@@ -371,14 +380,21 @@ class ParticipantCommandServiceTest extends UnitTest {
     private void givenGatheringWithParticipant(LocalDateTime openedAt) {
         givenRetention(GatheringRetentionFixture.RETAINED);
         given(gatheringRepository.findById(GATHERING_ID))
-                .willReturn(
-                        Optional.of(
-                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
-                                        GATHERING_ID,
-                                        openedAt,
-                                        List.of(
-                                                ParticipantFixture.KIM.createWithId(
-                                                        PARTICIPANT_ID)))));
+                .willReturn(Optional.of(gatheringWithParticipant(openedAt)));
+    }
+
+    // 재발급은 같은 모임의 다른 재발급과 겹치지 않도록 모임을 잠그고 읽는다.
+    private void givenLockedGatheringWithParticipant(LocalDateTime openedAt) {
+        givenRetention(GatheringRetentionFixture.RETAINED);
+        given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
+                .willReturn(Optional.of(gatheringWithParticipant(openedAt)));
+    }
+
+    private Gathering gatheringWithParticipant(LocalDateTime openedAt) {
+        return GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                GATHERING_ID,
+                openedAt,
+                List.of(ParticipantFixture.KIM.createWithId(PARTICIPANT_ID)));
     }
 
     private void givenRetention(GatheringRetentionFixture retention) {

@@ -15,6 +15,7 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
+import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -30,14 +31,21 @@ public class ParticipantCommandService
     private final GatheringRetentionRepository gatheringRetentionRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final ParticipantBankAccountRepository participantBankAccountRepository;
+    private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final SettlementRepository settlementRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
     private final Clock clock;
 
     // 개인 링크 토큰은 참여자마다 여러 개를 둘 수 있으므로, 새로 발급하기 전에 이전 토큰을 모두 지워 이전 링크를 무효로 만든다.
+    // 참여자에게는 토큰이 하나만 남아야 하는데 DB가 막지 않으므로, 모임 행을 잠가 같은 모임의 재발급을 차례로 처리한다.
     @Override
     public ParticipantResult reissue(ReissueParticipantLinkTokenCommand command) {
-        Gathering gathering = findManagedGathering(command.gatheringId(), command.memberId());
+        validateRetained(command.gatheringId());
+        Gathering gathering =
+                gatheringRepository
+                        .findByIdForUpdate(command.gatheringId())
+                        .orElseThrow(GatheringNotFoundException::new);
+        GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
         GatheringPolicy.validateParticipantExists(
                 gathering.hasParticipant(command.participantId()));
 
@@ -49,7 +57,8 @@ public class ParticipantCommandService
         return ParticipantResult.of(participant, linkToken);
     }
 
-    // 피드백 제출 표시는 분담금을 보내거나 받은 참여자만 남기므로, 정산 건 인원이 아닌 참여자에게는 없다.
+    // 피드백 제출 표시는 분담금을 보내거나 받은 참여자만 남기지만, 정산 건을 고쳐 참여자를 뺀 뒤에는 표시만 남을 수 있어 함께 지운다.
+    // 익명 피드백은 참여자와 이어져 있지 않으므로 지우지 않는다.
     @Override
     public void remove(RemoveParticipantCommand command) {
         Gathering gathering = findManagedGathering(command.gatheringId(), command.memberId());
@@ -60,16 +69,21 @@ public class ParticipantCommandService
 
         participantLinkTokenRepository.deleteAllByParticipantId(command.participantId());
         participantBankAccountRepository.deleteByParticipantId(command.participantId());
+        participantPairingFeedbackRepository.deleteByParticipantId(command.participantId());
         gatheringRepository.deleteParticipant(command.participantId());
     }
 
     // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
-    private Gathering findManagedGathering(Long gatheringId, Long memberId) {
+    private void validateRetained(Long gatheringId) {
         LocalDateTime now = LocalDateTime.now(clock);
         gatheringRetentionRepository
                 .findByGatheringId(gatheringId)
                 .filter(retention -> !retention.isExpired(now))
                 .orElseThrow(GatheringNotFoundException::new);
+    }
+
+    private Gathering findManagedGathering(Long gatheringId, Long memberId) {
+        validateRetained(gatheringId);
         Gathering gathering =
                 gatheringRepository
                         .findById(gatheringId)
