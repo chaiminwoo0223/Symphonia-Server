@@ -45,7 +45,7 @@ public enum GatheringErrorCode implements ErrorCode {
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
     BANK_ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 계좌를 등록한 참여자입니다."),
-    PARTICIPANT_IN_SETTLEMENT(HttpStatus.CONFLICT, "정산 건의 결제자나 인원인 참여자는 제거할 수 없습니다."),
+    PARTICIPANT_UNREMOVABLE(HttpStatus.CONFLICT, "정산 건의 결제자나 인원인 참여자는 제거할 수 없습니다."),
     PAIRING_FEEDBACK_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 페어링 피드백을 남긴 참여자입니다."),
     GATHERING_PAIRING_CONFLICT(HttpStatus.CONFLICT, "모임의 페어링이 바뀌었습니다. 다시 불러와 주세요."),
     SETTLEMENT_ALREADY_CANCELLED(HttpStatus.CONFLICT, "이미 취소한 정산 건입니다."),
