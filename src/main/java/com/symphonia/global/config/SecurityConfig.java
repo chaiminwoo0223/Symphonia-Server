@@ -53,6 +53,7 @@ public class SecurityConfig {
         ParticipantEndpoints.JOIN,
         ParticipantEndpoints.PAIRING,
         ParticipantEndpoints.PAIRING_FEEDBACK,
+        SettlementEndpoints.LIST,
         SettlementEndpoints.CONFIRM_SHARE,
         SettlementEndpoints.REVERT_SHARE,
         ShareEndpoints.LIST,

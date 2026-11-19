@@ -10,8 +10,11 @@ import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.query.GetSettlementFormQuery;
+import com.symphonia.gathering.application.dto.result.CollectionParticipantResult;
+import com.symphonia.gathering.application.dto.result.CollectionShareResult;
 import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
+import com.symphonia.gathering.application.dto.result.PayerCollectionResult;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
 import com.symphonia.gathering.application.dto.result.SettlementParticipantResult;
@@ -1028,6 +1031,233 @@ class SettlementQueryServiceTest extends UnitTest {
             given(settlementRepository.findAllByShareParticipantId(LEE_ID)).willReturn(settlements);
             given(settlementRepository.findAllByGatheringId(GATHERING_ID))
                     .willReturn(gatheringSettlements);
+        }
+    }
+
+    @Nested
+    @DisplayName("getCollection 메서드는")
+    class GetCollection {
+
+        // 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
+        @Nested
+        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
+        class WhenLinkTokenNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건과 모임을 읽지 않는다")
+            void shouldThrowLinkTokenNotFoundException() {
+                // given
+                given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
+                        .willThrow(new LinkTokenNotFoundException());
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getCollection(LINK_TOKEN))
+                        .isInstanceOf(LinkTokenNotFoundException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("링크 토큰이 가리키는 결제자가 기록한 정산 건이 있는 경우")
+        class WhenPayerSettlementsExist {
+
+            @Test
+            @DisplayName("참여자별로 묶어 이름과 전체 휴대폰, 차수별 금액, 참여자별 합계와 전체 합계를 반환한다")
+            void shouldGroupSharesByParticipant() {
+                // given
+                givenCollection(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.FIRST.getId(),
+                                PAYER_ID,
+                                PARTICIPANT_IDS),
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.SECOND.getId(),
+                                PAYER_ID,
+                                PARTICIPANT_IDS));
+
+                // when
+                PayerCollectionResult result = settlementQueryService.getCollection(LINK_TOKEN);
+
+                // then
+                assertThat(result.participants())
+                        .extracting(
+                                CollectionParticipantResult::participantId,
+                                CollectionParticipantResult::name,
+                                CollectionParticipantResult::phoneNumber,
+                                CollectionParticipantResult::totalAmount)
+                        .containsExactly(
+                                tuple(
+                                        LEE_ID,
+                                        ParticipantFixture.LEE.getName(),
+                                        ParticipantFixture.LEE.getPhoneNumber(),
+                                        9_999L),
+                                tuple(
+                                        PARK_ID,
+                                        ParticipantFixture.PARK.getName(),
+                                        ParticipantFixture.PARK.getPhoneNumber(),
+                                        9_999L));
+                assertThat(result.participants().getFirst().shares())
+                        .extracting(
+                                CollectionShareResult::settlementId,
+                                CollectionShareResult::roundId,
+                                CollectionShareResult::roundNumber,
+                                CollectionShareResult::amount,
+                                CollectionShareResult::status)
+                        .containsExactly(
+                                tuple(
+                                        SETTLEMENT_ID,
+                                        GatheringRoundFixture.FIRST.getId(),
+                                        GatheringRoundFixture.FIRST.getNumber(),
+                                        3_333L,
+                                        ShareStatus.UNPAID),
+                                tuple(
+                                        SECOND_SETTLEMENT_ID,
+                                        GatheringRoundFixture.SECOND.getId(),
+                                        GatheringRoundFixture.SECOND.getNumber(),
+                                        6_666L,
+                                        ShareStatus.UNPAID));
+                assertThat(result.totalAmount()).isEqualTo(19_998L);
+            }
+
+            @Test
+            @DisplayName("한 참여자가 여러 정산 건에 있으면 한 항목에 분담금을 정산 건마다 담는다")
+            void shouldPutSharesOfSameParticipantInOneEntry() {
+                // given
+                givenCollection(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS),
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, LEE_ID)));
+
+                // when
+                PayerCollectionResult result = settlementQueryService.getCollection(LINK_TOKEN);
+
+                // then
+                assertThat(result.participants())
+                        .extracting(
+                                CollectionParticipantResult::participantId,
+                                participant -> participant.shares().size(),
+                                CollectionParticipantResult::totalAmount)
+                        .containsExactly(tuple(LEE_ID, 2, 13_333L), tuple(PARK_ID, 1, 3_333L));
+                assertThat(result.participants().getFirst().shares())
+                        .extracting(CollectionShareResult::settlementId)
+                        .containsExactly(SETTLEMENT_ID, SECOND_SETTLEMENT_ID);
+            }
+
+            @Test
+            @DisplayName("참여자는 처음 분담금이 나온 정산 건의 순서로 담는다")
+            void shouldOrderParticipantsByFirstShare() {
+                // given
+                givenCollection(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                List.of(PAYER_ID, PARK_ID)),
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS));
+
+                // when
+                PayerCollectionResult result = settlementQueryService.getCollection(LINK_TOKEN);
+
+                // then
+                assertThat(result.participants())
+                        .extracting(CollectionParticipantResult::participantId)
+                        .containsExactly(PARK_ID, LEE_ID);
+            }
+
+            @Test
+            @DisplayName("0원 분담금 참여자도 확인 완료 상태로 담는다")
+            void shouldIncludeParticipantWithZeroShare() {
+                // given
+                givenCollection(
+                        SettlementFixture.DINNER.createWithFixedAmounts(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS,
+                                Map.of(LEE_ID, 0L)));
+
+                // when
+                PayerCollectionResult result = settlementQueryService.getCollection(LINK_TOKEN);
+
+                // then
+                assertThat(result.participants())
+                        .extracting(
+                                CollectionParticipantResult::participantId,
+                                CollectionParticipantResult::totalAmount)
+                        .containsExactly(tuple(LEE_ID, 0L), tuple(PARK_ID, 5_000L));
+                assertThat(result.participants().getFirst().shares())
+                        .extracting(CollectionShareResult::amount, CollectionShareResult::status)
+                        .containsExactly(tuple(0L, ShareStatus.CONFIRMED));
+                assertThat(result.totalAmount()).isEqualTo(5_000L);
+            }
+        }
+
+        @Nested
+        @DisplayName("결제자로 지정된 정산 건이 없는 경우")
+        class WhenNoPayerSettlements {
+
+            @Test
+            @DisplayName("빈 목록과 0원 합계를 반환한다")
+            void shouldReturnEmptyParticipants() {
+                // given
+                givenCollection();
+
+                // when
+                PayerCollectionResult result = settlementQueryService.getCollection(LINK_TOKEN);
+
+                // then
+                assertThat(result.participants()).isEmpty();
+                assertThat(result.totalAmount()).isZero();
+            }
+        }
+
+        @Nested
+        @DisplayName("링크 토큰 조회가 파기 시각을 돌려주는 경우")
+        class WhenLinkedParticipantFound {
+
+            @Test
+            @DisplayName("그 파기 시각을 그대로 반환한다")
+            void shouldReturnDeletesAtOfLinkedParticipant() {
+                // given
+                LocalDateTime deletesAt = NOW.plusDays(3);
+                given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
+                        .willReturn(new LinkedParticipantResult(PAYER_ID, deletesAt));
+                given(settlementRepository.findAllByPayerParticipantId(PAYER_ID))
+                        .willReturn(List.of());
+                given(gatheringRepository.findByParticipantId(PAYER_ID))
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+
+                // when
+                PayerCollectionResult result = settlementQueryService.getCollection(LINK_TOKEN);
+
+                // then
+                assertThat(result.deletesAt()).isEqualTo(deletesAt);
+            }
+        }
+
+        private void givenCollection(Settlement... settlements) {
+            givenParticipant(PAYER_ID);
+            given(settlementRepository.findAllByPayerParticipantId(PAYER_ID))
+                    .willReturn(List.of(settlements));
+            given(gatheringRepository.findByParticipantId(PAYER_ID))
+                    .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
         }
     }
 
