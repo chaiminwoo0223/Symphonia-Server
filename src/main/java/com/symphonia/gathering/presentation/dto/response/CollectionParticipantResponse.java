@@ -18,4 +18,10 @@ public record CollectionParticipantResponse(
                 result.totalAmount(),
                 result.shares().stream().map(CollectionShareResponse::from).toList());
     }
+
+    // 로그에 전체 번호가 남지 않게 번호를 뺀다.
+    @Override
+    public String toString() {
+        return "CollectionParticipantResponse[participantId=" + participantId + "]";
+    }
 }

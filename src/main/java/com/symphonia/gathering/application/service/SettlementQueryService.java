@@ -60,15 +60,11 @@ public class SettlementQueryService
         Gathering gathering = findGathering(query.gatheringId());
         GatheringPolicy.validateHost(gathering.getHostMemberId(), query.memberId());
         boolean recordable = GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now);
+        // settlements는 기록한 순서이므로 마지막 정산 건이 직전에 기록한 정산 건이다.
         List<Long> defaultParticipantIds =
-                settlementRepository
-                        .findLatestByGatheringId(gathering.getId())
-                        .map(Settlement::getParticipantIds)
-                        .orElseGet(
-                                () ->
-                                        gathering.getParticipants().stream()
-                                                .map(Participant::getId)
-                                                .toList());
+                settlements.isEmpty()
+                        ? gathering.getParticipants().stream().map(Participant::getId).toList()
+                        : settlements.getLast().getParticipantIds();
 
         return SettlementFormResult.of(
                 recordable,
@@ -93,7 +89,7 @@ public class SettlementQueryService
         LinkedParticipantResult linkedParticipant =
                 getLinkedParticipantUseCase.getLinkedParticipant(linkToken);
         Long participantId = linkedParticipant.participantId();
-        // 정산 건을 모임보다 먼저 읽는다. 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 참여자는 지우지 않으므로,
+        // 정산 건을 모임보다 먼저 읽는다. 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 정산 건에 든 참여자는 지우지 않으므로,
         // 뒤에 읽는 모임에는 그 결제자가 반드시 들어 있다.
         List<Settlement> shareSettlements =
                 settlementRepository.findAllByShareParticipantId(participantId);
@@ -126,7 +122,7 @@ public class SettlementQueryService
     }
 
     // 결제자는 모임장이 지정한 참여자이고 개인 링크 토큰으로 요청한다. 정산 건을 모임보다 먼저 읽는다.
-    // 읽은 정산 건의 참여자는 그 정산 건을 저장하기 전에 참여했고 참여자는 지우지 않으므로, 뒤에 읽는 모임에는 그 참여자가 반드시 들어 있다.
+    // 읽은 정산 건의 참여자는 그 정산 건을 저장하기 전에 참여했고 정산 건에 든 참여자는 지우지 않으므로, 뒤에 읽는 모임에는 그 참여자가 반드시 들어 있다.
     @Override
     public PayerCollectionResult getCollection(String linkToken) {
         LinkedParticipantResult linkedParticipant =

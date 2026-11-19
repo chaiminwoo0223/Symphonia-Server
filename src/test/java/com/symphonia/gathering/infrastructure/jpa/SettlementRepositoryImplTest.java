@@ -627,39 +627,6 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
-    @DisplayName("findLatestByGatheringId 메서드는")
-    class FindLatestByGatheringId {
-
-        @Test
-        @DisplayName("취소한 정산 건을 빼고 가장 나중에 만든 정산 건을 반환한다")
-        void shouldReturnLatestSettlementExcludingCancelled() {
-            // given
-            recordDinner(kimId, List.of(kimId, leeId, parkId));
-            Settlement latest = recordDinner(leeId, List.of(leeId, kimId));
-            cancel(recordDinner(kimId, List.of(kimId, parkId)));
-            clearPersistenceContext();
-
-            // when
-            Optional<Settlement> result = settlementRepository.findLatestByGatheringId(gatheringId);
-
-            // then
-            assertThat(result).isPresent();
-            assertThat(result.get().getId()).isEqualTo(latest.getId());
-            assertThat(result.get().getParticipantIds()).containsExactly(leeId, kimId);
-        }
-
-        @Test
-        @DisplayName("정산 건이 없으면 빈 Optional을 반환한다")
-        void shouldReturnEmptyWhenSettlementsNotExist() {
-            // when
-            Optional<Settlement> result = settlementRepository.findLatestByGatheringId(gatheringId);
-
-            // then
-            assertThat(result).isEmpty();
-        }
-    }
-
-    @Nested
     @DisplayName("findAllByPayerParticipantId 메서드는")
     class FindAllByPayerParticipantId {
 

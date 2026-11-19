@@ -739,6 +739,59 @@ class SettlementCommandServiceTest extends UnitTest {
                         .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
                 then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
             }
+
+            @Test
+            @DisplayName("기록 기간이 끝난 모임이어도 예외 없이 처음 기록한 정산 건을 반환하고 저장하지 않는다")
+            void shouldReturnRecordedSettlementWhenRecordingPeriodClosed() {
+                // given
+                givenGathering(CLOSED_PERIOD_OPENED_AT);
+                given(
+                                settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                                        PAYER_ID, CLIENT_REQUEST_ID))
+                        .willReturn(Optional.of(recordedSecondRoundSettlement()));
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                SettlementResult result = settlementCommandService.record(command);
+
+                // then
+                assertThat(result.id()).isEqualTo(SETTLEMENT_ID);
+                then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 결제자가 같은 요청 id로 기록하는 경우")
+        class WhenSameClientRequestIdFromOtherPayer {
+
+            @Test
+            @DisplayName("결제자와 요청 id의 짝으로 기록한 정산 건을 찾으므로 새 정산 건을 저장한다")
+            void shouldSaveSettlementWhenPayerDiffers() {
+                // given
+                givenRecordableGathering();
+                given(
+                                settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                                        LEE_ID, CLIENT_REQUEST_ID))
+                        .willReturn(Optional.empty());
+                givenSaveIfAbsentReturnsSettlement();
+                RecordSettlementCommand command =
+                        command(
+                                HOST_MEMBER_ID,
+                                LEE_ID,
+                                ROUND_ID,
+                                9_000L,
+                                PARTICIPANT_IDS,
+                                Map.of());
+
+                // when
+                settlementCommandService.record(command);
+
+                // then
+                ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
+                then(settlementRepository).should().saveIfAbsent(captor.capture());
+                assertThat(captor.getValue().getPayerParticipantId()).isEqualTo(LEE_ID);
+                assertThat(captor.getValue().getClientRequestId()).isEqualTo(CLIENT_REQUEST_ID);
+            }
         }
 
         @Nested

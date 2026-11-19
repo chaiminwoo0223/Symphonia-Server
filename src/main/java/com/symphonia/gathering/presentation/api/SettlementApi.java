@@ -19,7 +19,7 @@ public interface SettlementApi {
     @Operation(
             summary = "수금 화면 조회",
             description =
-                    "결제자가 기록된 자기 정산 건의 참여자 이름, 전체 휴대폰 번호, 차수별 받을 금액과 합계를 참여자별로 조회합니다. 카카오톡 방에 참여자를 초대하는 데 씁니다. 결제자로 지정된 정산 건이 없으면 빈 목록을 돌려줍니다.")
+                    "결제자로 지정된 자기 정산 건의 참여자 이름, 전체 휴대폰 번호, 차수별 받을 금액과 합계를 참여자별로 조회합니다. 카카오톡 방에 참여자를 초대하는 데 씁니다. 결제자로 지정된 정산 건이 없으면 빈 목록을 돌려줍니다.")
     ResponseEntity<StandardResponse<PayerCollectionResponse>> getCollection(
             @RequestHeader(GatheringHeaders.LINK_TOKEN) String linkToken);
 

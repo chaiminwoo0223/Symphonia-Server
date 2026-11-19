@@ -29,7 +29,7 @@ public enum GatheringPolicy {
     // 모임 생성 후 정산 건을 기록할 수 있는 기간이다. 이 기간이 지나 참여한 사람은 분담에 들어갈 수 없어 참여도 함께 막는다.
     public static final Duration RECORDING_PERIOD = Duration.ofHours(48);
 
-    // 참여자 누구나 차수를 추가할 수 있어서, 빈 차수가 무제한 쌓이지 않도록 한 모임의 차수 수를 제한한다.
+    // 빈 차수가 무제한 쌓이지 않도록 한 모임의 차수 수를 제한한다.
     public static final int MAX_ROUND_COUNT = 10;
 
     // 참여 QR을 가진 사람은 누구나 참여할 수 있어서, 가짜 참여로 참여자가 끝없이 늘지 않도록 한 모임의 참여자 수를 제한한다.

@@ -40,9 +40,6 @@ public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEnti
 
     boolean existsByPayerParticipantId(Long payerParticipantId);
 
-    Optional<SettlementJpaEntity> findFirstByGatheringIdAndCancelledAtIsNullOrderByIdDesc(
-            Long gatheringId);
-
     List<SettlementJpaEntity> findAllByPayerParticipantIdAndCancelledAtIsNullOrderById(
             Long payerParticipantId);
 
