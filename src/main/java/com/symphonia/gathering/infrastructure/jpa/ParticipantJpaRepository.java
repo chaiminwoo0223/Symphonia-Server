@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 public interface ParticipantJpaRepository extends JpaRepository<ParticipantJpaEntity, Long> {
     List<ParticipantJpaEntity> findAllByGatheringIdOrderById(Long gatheringId);
 
-    // 참조하는 행이 있으면 제약 위반으로 실패하므로, 부르는 쪽이 위반을 받아 처리한다.
+    // 참조하는 행이 있으면 제약 위반으로 실패하므로, 부르는 쪽이 참조하는 행을 먼저 지운다.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM ParticipantJpaEntity participant WHERE participant.id = :participantId")
     void deleteParticipantById(@Param("participantId") Long participantId);
