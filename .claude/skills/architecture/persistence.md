@@ -39,7 +39,7 @@
 
 - 동시에 들어온 요청 중 한 행만 남겨야 하는 INSERT는 행의 성격으로 방식을 나눈다.
 - 도메인 상태 없이 있는지만 뜻하는 기록용 행은 네이티브 `INSERT ... ON CONFLICT DO NOTHING`으로 넣고, 넣었는지를 boolean으로 돌려준다. 중복인지는 Service가 반환값으로 판단한다(예: `participant_pairing_feedback`, `pairing_feedback` 첫 제출).
-- 변환, 암호화, 연관이 있는 엔티티는 JPA `saveAndFlush`로 저장하고, 제약 위반을 제약 이름으로 구분해 도메인 예외로 바꾼다(예: 계좌, 회원 소셜 로그인, 참여자 휴대폰).
+- 변환, 암호화, 연관이 있는 엔티티는 JPA `saveAndFlush`로 저장하고, 제약 위반을 제약 이름으로 구분해 도메인 예외로 바꾼다(예: 회원 소셜 로그인, 참여자 휴대폰).
 
 ## 음료 모델
 

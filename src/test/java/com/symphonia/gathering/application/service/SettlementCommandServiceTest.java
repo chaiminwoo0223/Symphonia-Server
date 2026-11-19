@@ -19,7 +19,6 @@ import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
-import com.symphonia.gathering.domain.exception.BankAccountRequiredException;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
 import com.symphonia.gathering.domain.exception.GatheringRoundNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
@@ -31,7 +30,6 @@ import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
@@ -82,7 +80,6 @@ class SettlementCommandServiceTest extends UnitTest {
 
     @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
-    @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
 
     @BeforeEach
@@ -166,26 +163,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
                         .isInstanceOf(InvalidSettlementParticipantsException.class);
-                thenSettlementNotRecorded();
-            }
-        }
-
-        @Nested
-        @DisplayName("결제자가 계좌를 등록하지 않은 경우")
-        class WhenBankAccountNotRegistered {
-
-            @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowBankAccountRequiredException() {
-                // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
-                given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                        .willReturn(false);
-                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
-
-                // when & then
-                assertThatThrownBy(() -> settlementCommandService.record(command))
-                        .isInstanceOf(BankAccountRequiredException.class);
                 thenSettlementNotRecorded();
             }
         }
@@ -690,8 +667,6 @@ class SettlementCommandServiceTest extends UnitTest {
                                                 OPEN_PERIOD_OPENED_AT,
                                                 ParticipantFixture.createWithIds(PARTICIPANT_IDS),
                                                 List.of(GatheringRoundFixture.FIRST.create()))));
-                given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                        .willReturn(true);
                 given(settlementRepository.saveIfAbsent(any(Settlement.class)))
                         .willReturn(recordedSecondRoundSettlement());
                 given(gatheringRepository.findById(GATHERING_ID))
@@ -745,7 +720,7 @@ class SettlementCommandServiceTest extends UnitTest {
             givenRecordableGathering(PAYER_ID, PARTICIPANT_IDS);
         }
 
-        // 결제자가 계좌를 등록했고 모임의 참여자가 gatheringParticipantIds인 기록 가능한 모임이다.
+        // 모임의 참여자가 gatheringParticipantIds인 기록 가능한 모임이다.
         private void givenRecordableGathering(Long payerId, List<Long> gatheringParticipantIds) {
             givenParticipant(payerId);
             given(gatheringRepository.findByParticipantId(payerId))
@@ -755,7 +730,6 @@ class SettlementCommandServiceTest extends UnitTest {
                                             OPEN_PERIOD_OPENED_AT,
                                             ParticipantFixture.createWithIds(
                                                     gatheringParticipantIds))));
-            given(participantBankAccountRepository.existsByParticipantId(payerId)).willReturn(true);
         }
 
         // 결제자 id(20)부터 1씩 늘어나는 count명의 참여자 id다.
@@ -1251,7 +1225,6 @@ class SettlementCommandServiceTest extends UnitTest {
                 new SettlementCommandService(
                         getLinkedParticipantUseCase,
                         gatheringRepository,
-                        participantBankAccountRepository,
                         settlementRepository,
                         clock);
     }

@@ -95,7 +95,7 @@ function joinGathering(joinToken, consentVersion, sequence) {
     );
 }
 
-// 모임을 열고 참여자를 채운 뒤, 첫 참여자가 결제자로 계좌를 등록하고 참여자 전원의 정산 건을 기록한다.
+// 모임을 열고 참여자를 채운 뒤, 첫 참여자가 결제자로 참여자 전원의 정산 건을 기록한다.
 export function setup() {
     if (!JWT_SECRET) {
         fail('JWT_SECRET 환경변수가 필요하다. k6 run -e JWT_SECRET=... 로 넘긴다.');
@@ -126,20 +126,6 @@ export function setup() {
         http.get(`${BASE_URL}/api/v1/settlements/form`, { headers: { 'X-Link-Token': payerLinkToken } }),
         200,
         '기록 화면 조회',
-    );
-    dataOf(
-        http.post(
-            `${BASE_URL}/api/v1/participants/bank-account`,
-            JSON.stringify({
-                bankName: '국민은행',
-                accountNumber: '12345678901234',
-                consentAgreed: true,
-                consentVersion: form.bankAccountConsentVersion,
-            }),
-            jsonHeaders({ 'X-Link-Token': payerLinkToken }),
-        ),
-        201,
-        '계좌 등록',
     );
     dataOf(
         http.post(

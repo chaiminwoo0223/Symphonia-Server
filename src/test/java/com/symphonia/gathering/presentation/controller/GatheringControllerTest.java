@@ -403,7 +403,6 @@ class GatheringControllerTest extends IntegrationTest {
                                 ParticipantFixture.LEE);
                 Participant kim = gathering.getParticipants().get(0);
                 Participant lee = gathering.getParticipants().get(1);
-                settlementHelper.registerBankAccount(gathering, kim);
                 settlementHelper.cancel(
                         settlementHelper.record(SettlementFixture.DINNER, gathering, kim));
 

@@ -13,7 +13,6 @@ import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -56,7 +55,6 @@ class PurgeGatheringServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
-    @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private SettlementRepository settlementRepository;
@@ -325,14 +323,12 @@ class PurgeGatheringServiceTest extends UnitTest {
             InOrder inOrder =
                     inOrder(
                             participantLinkTokenRepository,
-                            participantBankAccountRepository,
                             participantPairingFeedbackRepository,
                             settlementRepository,
                             gatheringJoinTokenRepository,
                             gatheringPairingRepository,
                             gatheringRepository);
             inOrder.verify(participantLinkTokenRepository).deleteAllByGatheringId(GATHERING_ID);
-            inOrder.verify(participantBankAccountRepository).deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(participantPairingFeedbackRepository)
                     .deleteAllByGatheringId(GATHERING_ID);
             inOrder.verify(settlementRepository).deleteAllByGatheringId(GATHERING_ID);
@@ -375,7 +371,6 @@ class PurgeGatheringServiceTest extends UnitTest {
                         gatheringRepository,
                         gatheringJoinTokenRepository,
                         participantLinkTokenRepository,
-                        participantBankAccountRepository,
                         participantPairingFeedbackRepository,
                         gatheringPairingRepository,
                         settlementRepository,

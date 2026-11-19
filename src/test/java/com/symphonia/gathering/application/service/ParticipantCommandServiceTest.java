@@ -20,7 +20,6 @@ import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -60,7 +59,6 @@ class ParticipantCommandServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
-    @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     @Mock private SettlementRepository settlementRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
@@ -72,7 +70,6 @@ class ParticipantCommandServiceTest extends UnitTest {
                         gatheringRepository,
                         gatheringRetentionRepository,
                         participantLinkTokenRepository,
-                        participantBankAccountRepository,
                         participantPairingFeedbackRepository,
                         settlementRepository,
                         gatheringTokenProvider,
@@ -317,7 +314,7 @@ class ParticipantCommandServiceTest extends UnitTest {
         class WhenParticipantRemovable {
 
             @Test
-            @DisplayName("개인 링크 토큰, 계좌, 피드백 제출 표시, 참여자 순서로 지운다")
+            @DisplayName("개인 링크 토큰, 피드백 제출 표시, 참여자 순서로 지운다")
             void shouldDeleteReferencesBeforeParticipant() {
                 // given
                 givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
@@ -330,15 +327,11 @@ class ParticipantCommandServiceTest extends UnitTest {
                 InOrder inOrder =
                         inOrder(
                                 participantLinkTokenRepository,
-                                participantBankAccountRepository,
                                 participantPairingFeedbackRepository,
                                 gatheringRepository);
                 then(participantLinkTokenRepository)
                         .should(inOrder)
                         .deleteAllByParticipantId(PARTICIPANT_ID);
-                then(participantBankAccountRepository)
-                        .should(inOrder)
-                        .deleteByParticipantId(PARTICIPANT_ID);
                 then(participantPairingFeedbackRepository)
                         .should(inOrder)
                         .deleteByParticipantId(PARTICIPANT_ID);
@@ -371,7 +364,6 @@ class ParticipantCommandServiceTest extends UnitTest {
 
         private void thenNothingDeleted() {
             then(participantLinkTokenRepository).shouldHaveNoInteractions();
-            then(participantBankAccountRepository).shouldHaveNoInteractions();
             then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
             then(gatheringRepository).should(never()).deleteParticipant(anyLong());
         }

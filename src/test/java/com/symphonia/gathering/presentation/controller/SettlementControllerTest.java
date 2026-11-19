@@ -13,7 +13,6 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
-import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -79,7 +78,6 @@ class SettlementControllerTest extends IntegrationTest {
             @DisplayName("인증 없이도 마스킹한 휴대폰을 담은 참여자, 인원 기본값, 결제자로 기록한 정산 건을 담아 200을 반환한다")
             void shouldReturnSettlementForm() throws Exception {
                 // given
-                settlementHelper.registerBankAccount(gathering, payer);
                 Settlement settlement =
                         settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
 
@@ -90,10 +88,6 @@ class SettlementControllerTest extends IntegrationTest {
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.recordable").value(true))
                         .andExpect(jsonPath("$.data.deletesAt").isNotEmpty())
-                        .andExpect(jsonPath("$.data.bankAccountRegistered").value(true))
-                        .andExpect(
-                                jsonPath("$.data.bankAccountConsentVersion")
-                                        .value(SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION))
                         .andExpect(jsonPath("$.data.participants.length()").value(3))
                         .andExpect(
                                 jsonPath("$.data.participants[0].name")
@@ -169,7 +163,6 @@ class SettlementControllerTest extends IntegrationTest {
             @DisplayName("인증 없이도 정산 건을 기록하고 분담금을 담아 201을 반환한다")
             void shouldRecordSettlement() throws Exception {
                 // given
-                settlementHelper.registerBankAccount(gathering, payer);
                 RecordSettlementRequest request =
                         new RecordSettlementRequest(
                                 CLIENT_REQUEST_ID,
@@ -203,27 +196,6 @@ class SettlementControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("결제자가 계좌를 등록하지 않은 경우")
-        class WhenBankAccountNotRegistered {
-
-            @Test
-            @DisplayName("BANK_ACCOUNT_REQUIRED 코드와 함께 400을 반환한다")
-            void shouldReturnBadRequest() throws Exception {
-                // given
-                RecordSettlementRequest request =
-                        new RecordSettlementRequest(
-                                CLIENT_REQUEST_ID, roundId(), 10_000L, participantIds(), List.of());
-
-                // when & then
-                performRecord(request)
-                        .andExpect(status().isBadRequest())
-                        .andExpect(
-                                jsonPath("$.data.code")
-                                        .value(GatheringErrorCode.BANK_ACCOUNT_REQUIRED.getCode()));
-            }
-        }
-
-        @Nested
         @DisplayName("요청 id가 없는 경우")
         class WhenClientRequestIdMissing {
 
@@ -253,7 +225,6 @@ class SettlementControllerTest extends IntegrationTest {
             @DisplayName("정산 건을 새로 만들지 않고 처음 기록한 정산 건을 담아 201을 반환한다")
             void shouldReturnRecordedSettlement() throws Exception {
                 // given
-                settlementHelper.registerBankAccount(gathering, payer);
                 Settlement recorded =
                         settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
                 RecordSettlementRequest request =

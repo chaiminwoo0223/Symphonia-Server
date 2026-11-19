@@ -915,11 +915,6 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         jdbcTemplate.update("DELETE FROM settlement WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update("DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
         jdbcTemplate.update(
-                "DELETE FROM participant_bank_account WHERE participant_id IN ("
-                        + participantIds
-                        + ")",
-                gatheringId);
-        jdbcTemplate.update(
                 "DELETE FROM participant_link_token WHERE participant_id IN ("
                         + participantIds
                         + ")",

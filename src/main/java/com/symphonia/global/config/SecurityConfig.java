@@ -52,7 +52,6 @@ public class SecurityConfig {
         PlaceEndpoints.RECOMMEND,
         GatheringEndpoints.PREVIEW,
         ParticipantEndpoints.JOIN,
-        ParticipantEndpoints.REGISTER_BANK_ACCOUNT,
         ParticipantEndpoints.PAIRING,
         ParticipantEndpoints.PAIRING_FEEDBACK,
         RoundEndpoints.ADD,

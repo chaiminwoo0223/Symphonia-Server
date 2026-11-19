@@ -15,7 +15,6 @@ import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.SplitMethod;
 import java.time.Clock;
@@ -30,7 +29,6 @@ public class SettlementCommandService
         implements RecordSettlementUseCase, UpdateSettlementUseCase, CancelSettlementUseCase {
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringRepository gatheringRepository;
-    private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
     private final Clock clock;
 
@@ -53,8 +51,6 @@ public class SettlementCommandService
         SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
-        SettlementPolicy.validateBankAccountRegistered(
-                participantBankAccountRepository.existsByParticipantId(participantId));
         SplitMethod splitMethod =
                 SplitMethod.of(
                         command.totalAmount(),

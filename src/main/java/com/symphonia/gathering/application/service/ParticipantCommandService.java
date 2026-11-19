@@ -13,7 +13,6 @@ import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -30,7 +29,6 @@ public class ParticipantCommandService
     private final GatheringRepository gatheringRepository;
     private final GatheringRetentionRepository gatheringRetentionRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
-    private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final SettlementRepository settlementRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
@@ -68,7 +66,6 @@ public class ParticipantCommandService
                 settlementRepository.existsByParticipantId(command.participantId()));
 
         participantLinkTokenRepository.deleteAllByParticipantId(command.participantId());
-        participantBankAccountRepository.deleteByParticipantId(command.participantId());
         participantPairingFeedbackRepository.deleteByParticipantId(command.participantId());
         gatheringRepository.deleteParticipant(command.participantId());
     }
