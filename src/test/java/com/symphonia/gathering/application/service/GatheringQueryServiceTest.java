@@ -146,7 +146,7 @@ class GatheringQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("참여자가 49명이라 한 명 더 참여할 수 있는 경우")
+        @DisplayName("참여자가 19명이라 한 명 더 참여할 수 있는 경우")
         class WhenParticipantsJustBelowLimit {
 
             @Test
@@ -166,7 +166,7 @@ class GatheringQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("참여자가 50명이라 가득 찬 경우")
+        @DisplayName("참여자가 20명이라 가득 찬 경우")
         class WhenParticipantsAtLimit {
 
             @Test
