@@ -16,9 +16,7 @@ import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
-import com.symphonia.gathering.domain.vo.BankAccount;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,7 +29,6 @@ public class ShareCommandService
         implements MarkSharesSentUseCase, ConfirmShareUseCase, RevertShareUseCase {
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringRepository gatheringRepository;
-    private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
     private final Clock clock;
 
@@ -64,7 +61,6 @@ public class ShareCommandService
 
         return PayerSharesResult.of(
                 gathering.getParticipant(command.payerParticipantId()),
-                findPayerBankAccount(command.payerParticipantId(), gathering.getId()),
                 settlements,
                 participantId,
                 gathering,
@@ -97,16 +93,6 @@ public class ShareCommandService
 
     private Long findParticipantId(String linkToken) {
         return getLinkedParticipantUseCase.getLinkedParticipant(linkToken).participantId();
-    }
-
-    // 결제자는 계좌를 등록해야 정산 건을 기록할 수 있고 계좌는 모임을 파기할 때만 지우므로, 없으면 서버 버그라서 500으로 둔다.
-    private BankAccount findPayerBankAccount(Long payerParticipantId, Long gatheringId) {
-        return participantBankAccountRepository
-                .findAllByParticipantIds(List.of(payerParticipantId), gatheringId)
-                .stream()
-                .findFirst()
-                .orElseThrow()
-                .getBankAccount();
     }
 
     private Settlement findSettlement(Long settlementId) {

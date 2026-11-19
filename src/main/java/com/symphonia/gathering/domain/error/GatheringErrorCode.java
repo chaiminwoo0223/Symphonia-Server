@@ -11,11 +11,6 @@ public enum GatheringErrorCode implements ErrorCode {
     GATHERING_JOIN_CLOSED(HttpStatus.BAD_REQUEST, "참여 기간이 끝난 모임입니다."),
     CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "개인정보 수집 및 이용 동의가 필요합니다."),
     OUTDATED_CONSENT_VERSION(HttpStatus.BAD_REQUEST, "개인정보 수집 안내가 바뀌었습니다. 참여 화면을 다시 불러와 주세요."),
-    INVALID_BANK_ACCOUNT(HttpStatus.BAD_REQUEST, "계좌번호는 하이픈을 뺀 숫자 10~16자리로 입력해 주세요."),
-    BANK_ACCOUNT_CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "계좌를 정산 건 참여자에게 보여 주는 데 동의가 필요합니다."),
-    OUTDATED_BANK_ACCOUNT_CONSENT_VERSION(
-            HttpStatus.BAD_REQUEST, "계좌 입력 안내가 바뀌었습니다. 기록 화면을 다시 불러와 주세요."),
-    BANK_ACCOUNT_REQUIRED(HttpStatus.BAD_REQUEST, "정산 건을 기록하기 전에 결제자 계좌를 등록해 주세요."),
     SETTLEMENT_RECORDING_CLOSED(HttpStatus.BAD_REQUEST, "정산 건을 기록할 수 있는 기간이 끝난 모임입니다."),
     INVALID_SETTLEMENT_AMOUNT(HttpStatus.BAD_REQUEST, "총액은 0보다 크고, 지정 금액은 0 이상이어야 합니다."),
     FIXED_AMOUNT_EXCEEDS_TOTAL(HttpStatus.BAD_REQUEST, "지정 금액의 합이 총액보다 클 수 없습니다."),
@@ -44,7 +39,6 @@ public enum GatheringErrorCode implements ErrorCode {
 
     // 409
     PARTICIPANT_ALREADY_JOINED(HttpStatus.CONFLICT, "이미 이 모임에 참여한 휴대폰 번호입니다."),
-    BANK_ACCOUNT_ALREADY_REGISTERED(HttpStatus.CONFLICT, "이미 계좌를 등록한 참여자입니다."),
     PARTICIPANT_UNREMOVABLE(HttpStatus.CONFLICT, "정산 건의 결제자나 인원인 참여자는 제거할 수 없습니다."),
     PAIRING_FEEDBACK_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 페어링 피드백을 남긴 참여자입니다."),
     GATHERING_PAIRING_CONFLICT(HttpStatus.CONFLICT, "모임의 페어링이 바뀌었습니다. 다시 불러와 주세요."),

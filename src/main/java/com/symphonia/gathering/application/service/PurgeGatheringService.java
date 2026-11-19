@@ -6,7 +6,6 @@ import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -26,7 +25,6 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
-    private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final GatheringPairingRepository gatheringPairingRepository;
     private final SettlementRepository settlementRepository;
@@ -49,7 +47,6 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     @Override
     public void purge(Long gatheringId) {
         participantLinkTokenRepository.deleteAllByGatheringId(gatheringId);
-        participantBankAccountRepository.deleteAllByGatheringId(gatheringId);
         participantPairingFeedbackRepository.deleteAllByGatheringId(gatheringId);
         settlementRepository.deleteAllByGatheringId(gatheringId);
         gatheringJoinTokenRepository.deleteAllByGatheringId(gatheringId);

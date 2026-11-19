@@ -3,8 +3,6 @@ package com.symphonia.gathering.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -22,20 +20,16 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
-import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
-import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,7 +38,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 
 @DisplayName("SettlementQueryService 단위 테스트")
@@ -74,7 +67,6 @@ class SettlementQueryServiceTest extends UnitTest {
 
     @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
-    @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
 
     @BeforeEach
@@ -86,7 +78,6 @@ class SettlementQueryServiceTest extends UnitTest {
                 new SettlementQueryService(
                         getLinkedParticipantUseCase,
                         gatheringRepository,
-                        participantBankAccountRepository,
                         settlementRepository,
                         clock);
     }
@@ -122,7 +113,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("모임의 파기 시각을 함께 반환한다")
             void shouldReturnDeletesAt() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -137,19 +128,16 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenFirstSettlement {
 
             @Test
-            @DisplayName("마스킹한 휴대폰을 담은 참여자 전원을 인원 기본값으로 하고 기록 가능, 계좌 미등록, 현재 계좌 동의 버전을 반환한다")
+            @DisplayName("마스킹한 휴대폰을 담은 참여자 전원을 인원 기본값으로 하고 기록 가능으로 반환한다")
             void shouldReturnAllParticipantsAsDefault() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
 
                 // then
                 assertThat(result.recordable()).isTrue();
-                assertThat(result.bankAccountRegistered()).isFalse();
-                assertThat(result.bankAccountConsentVersion())
-                        .isEqualTo(SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION);
                 assertThat(result.participants())
                         .extracting(
                                 SettlementParticipantResult::id,
@@ -173,7 +161,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("빈 차수를 포함한 모임의 차수를 번호 순서대로 모두 반환한다")
             void shouldReturnRoundsOfGathering() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -206,7 +194,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 LEE_ID,
                                 List.of(PAYER_ID, LEE_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, latest, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -231,7 +219,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 LEE_ID,
                                 List.of(LEE_ID, PARK_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, latest, false, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -270,7 +258,6 @@ class SettlementQueryServiceTest extends UnitTest {
                                 OPEN_PERIOD_OPENED_AT,
                                 ParticipantFixture.createWithIds(gatheringParticipantIds)),
                         latest,
-                        false,
                         List.of());
 
                 // when
@@ -290,7 +277,7 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenPayerSettlementsExist {
 
             @Test
-            @DisplayName("계좌 등록 여부와 함께 그 정산 건을 분담금과 함께 반환한다")
+            @DisplayName("그 정산 건을 분담금과 함께 반환한다")
             void shouldReturnPayerSettlements() {
                 // given
                 Settlement settlement =
@@ -300,13 +287,12 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID, PARK_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
 
                 // then
-                assertThat(result.bankAccountRegistered()).isTrue();
                 assertThat(result.settlements()).hasSize(1);
                 SettlementResult settlementResult = result.settlements().getFirst();
                 assertThat(settlementResult.id()).isEqualTo(SETTLEMENT_ID);
@@ -336,7 +322,6 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(
                         OPEN_PERIOD_OPENED_AT,
                         secondRoundSettlement,
-                        true,
                         List.of(firstRoundSettlement, secondRoundSettlement));
 
                 // when
@@ -354,7 +339,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -377,7 +362,7 @@ class SettlementQueryServiceTest extends UnitTest {
                                 GatheringRoundFixture.SECOND.getId(),
                                 PAYER_ID,
                                 PARTICIPANT_IDS);
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, true, List.of(settlement));
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -400,7 +385,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("총액과 받을 금액의 합계를 0으로 반환한다")
             void shouldReturnZeroSums() {
                 // given
-                givenForm(OPEN_PERIOD_OPENED_AT, null, true, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -419,7 +404,7 @@ class SettlementQueryServiceTest extends UnitTest {
             @DisplayName("기록 불가로 표시한다")
             void shouldReturnNotRecordableForm() {
                 // given
-                givenForm(CLOSED_PERIOD_OPENED_AT, null, true, List.of());
+                givenForm(CLOSED_PERIOD_OPENED_AT, null, List.of());
 
                 // when
                 SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
@@ -433,24 +418,19 @@ class SettlementQueryServiceTest extends UnitTest {
         private void givenForm(
                 LocalDateTime openedAt,
                 Settlement latestSettlement,
-                boolean bankAccountRegistered,
                 List<Settlement> payerSettlements) {
-            givenForm(
-                    gathering(openedAt), latestSettlement, bankAccountRegistered, payerSettlements);
+            givenForm(gathering(openedAt), latestSettlement, payerSettlements);
         }
 
         private void givenForm(
                 Gathering gathering,
                 Settlement latestSettlement,
-                boolean bankAccountRegistered,
                 List<Settlement> payerSettlements) {
             givenParticipant(PAYER_ID);
             given(gatheringRepository.findByParticipantId(PAYER_ID))
                     .willReturn(Optional.of(gathering));
             given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
                     .willReturn(Optional.ofNullable(latestSettlement));
-            given(participantBankAccountRepository.existsByParticipantId(PAYER_ID))
-                    .willReturn(bankAccountRegistered);
             given(settlementRepository.findAllByPayerParticipantId(PAYER_ID))
                     .willReturn(payerSettlements);
         }
@@ -530,7 +510,7 @@ class SettlementQueryServiceTest extends UnitTest {
         class WhenSharesOfPayersExist {
 
             @Test
-            @DisplayName("결제자별로 묶어 결제자 이름과 계좌를 함께 반환한다")
+            @DisplayName("결제자별로 묶어 결제자 이름을 함께 반환한다")
             void shouldGroupSharesByPayer() {
                 // given
                 givenShares(
@@ -557,21 +537,10 @@ class SettlementQueryServiceTest extends UnitTest {
                 // then
                 assertThat(result)
                         .extracting(
-                                PayerSharesResult::payerParticipantId,
-                                PayerSharesResult::payerName,
-                                PayerSharesResult::bankName,
-                                PayerSharesResult::accountNumber)
+                                PayerSharesResult::payerParticipantId, PayerSharesResult::payerName)
                         .containsExactly(
-                                tuple(
-                                        PAYER_ID,
-                                        ParticipantFixture.KIM.getName(),
-                                        ParticipantBankAccountFixture.KOOKMIN.getBankName(),
-                                        ParticipantBankAccountFixture.KOOKMIN.getAccountNumber()),
-                                tuple(
-                                        PARK_ID,
-                                        ParticipantFixture.PARK.getName(),
-                                        ParticipantBankAccountFixture.KOOKMIN.getBankName(),
-                                        ParticipantBankAccountFixture.KOOKMIN.getAccountNumber()));
+                                tuple(PAYER_ID, ParticipantFixture.KIM.getName()),
+                                tuple(PARK_ID, ParticipantFixture.PARK.getName()));
                 assertThat(result.getFirst().shares())
                         .extracting(ShareBreakdownResult::settlementId)
                         .containsExactly(SETTLEMENT_ID, THIRD_SETTLEMENT_ID);
@@ -644,31 +613,6 @@ class SettlementQueryServiceTest extends UnitTest {
                 assertThat(result.getLast().shares())
                         .extracting(ShareBreakdownResult::amount, ShareBreakdownResult::status)
                         .containsExactly(tuple(0L, ShareStatus.CONFIRMED));
-            }
-
-            @Test
-            @DisplayName("결제자 계좌를 결제자마다 따로 읽지 않고 한 번에 읽는다")
-            void shouldReadPayerBankAccountsAtOnce() {
-                // given
-                givenShares(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS),
-                        SettlementFixture.SECOND_ROUND.createWithId(
-                                SECOND_SETTLEMENT_ID,
-                                GATHERING_ID,
-                                ROUND_ID,
-                                PARK_ID,
-                                PARTICIPANT_IDS));
-
-                // when
-                settlementQueryService.getShares(LINK_TOKEN);
-
-                // then
-                ArgumentCaptor<Collection<Long>> captor = ArgumentCaptor.captor();
-                then(participantBankAccountRepository)
-                        .should()
-                        .findAllByParticipantIds(captor.capture(), eq(GATHERING_ID));
-                assertThat(captor.getValue()).containsExactlyInAnyOrder(PAYER_ID, PARK_ID);
             }
         }
 
@@ -950,11 +894,6 @@ class SettlementQueryServiceTest extends UnitTest {
             given(settlementRepository.findAllByShareParticipantId(LEE_ID)).willReturn(settlements);
             given(settlementRepository.findAllByGatheringId(GATHERING_ID))
                     .willReturn(gatheringSettlements);
-            given(participantBankAccountRepository.findAllByParticipantIds(any(), eq(GATHERING_ID)))
-                    .willReturn(
-                            List.of(
-                                    ParticipantBankAccountFixture.KOOKMIN.create(PAYER_ID),
-                                    ParticipantBankAccountFixture.KOOKMIN.create(PARK_ID)));
         }
     }
 

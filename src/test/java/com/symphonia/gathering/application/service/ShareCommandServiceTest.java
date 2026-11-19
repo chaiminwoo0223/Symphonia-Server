@@ -27,12 +27,10 @@ import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledExcept
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
-import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
@@ -72,7 +70,6 @@ class ShareCommandServiceTest extends UnitTest {
 
     @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
-    @Mock private ParticipantBankAccountRepository participantBankAccountRepository;
     @Mock private SettlementRepository settlementRepository;
 
     @BeforeEach
@@ -121,7 +118,6 @@ class ShareCommandServiceTest extends UnitTest {
                         .isInstanceOf(SettlementShareNotFoundException.class);
                 thenSettlementNotSaved();
                 then(gatheringRepository).shouldHaveNoInteractions();
-                then(participantBankAccountRepository).shouldHaveNoInteractions();
             }
         }
 
@@ -130,7 +126,7 @@ class ShareCommandServiceTest extends UnitTest {
         class WhenSharesUnpaid {
 
             @Test
-            @DisplayName("요청한 참여자와 결제자로 정산 건을 잠가 읽고, 정산 건마다 분담금을 보냄으로 바꿔 저장해 결제자 계좌와 함께 반환한다")
+            @DisplayName("요청한 참여자와 결제자로 정산 건을 잠가 읽고, 정산 건마다 분담금을 보냄으로 바꿔 저장해 반환한다")
             void shouldSaveSentShareForEachSettlementOfPayer() {
                 // given
                 givenParticipant(LEE_ID);
@@ -143,7 +139,7 @@ class ShareCommandServiceTest extends UnitTest {
                                 ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID)));
-                givenGatheringWithPayerBankAccount();
+                givenGathering();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -160,10 +156,6 @@ class ShareCommandServiceTest extends UnitTest {
                         .containsExactly(SETTLEMENT_ID, THIRD_SETTLEMENT_ID);
                 assertThat(result.payerParticipantId()).isEqualTo(PAYER_ID);
                 assertThat(result.payerName()).isEqualTo(ParticipantFixture.KIM.getName());
-                assertThat(result.bankName())
-                        .isEqualTo(ParticipantBankAccountFixture.KOOKMIN.getBankName());
-                assertThat(result.accountNumber())
-                        .isEqualTo(ParticipantBankAccountFixture.KOOKMIN.getAccountNumber());
                 assertThat(result.unpaidAmount()).isZero();
                 assertThat(result.hasUnpaidShares()).isFalse();
                 assertThat(result.shares())
@@ -206,7 +198,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSharedSettlements(mySettlement);
                 givenGatheringSettlements(otherSettlement, mySettlement);
-                givenGatheringWithPayerBankAccount();
+                givenGathering();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -237,7 +229,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSharedSettlements(mySettlement);
                 givenGatheringSettlements();
-                givenGatheringWithPayerBankAccount();
+                givenGathering();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -274,7 +266,7 @@ class ShareCommandServiceTest extends UnitTest {
                 givenParticipant(LEE_ID);
                 givenSharedSettlements(mySettlement);
                 givenGatheringSettlements(cancelledSettlement, mySettlement);
-                givenGatheringWithPayerBankAccount();
+                givenGathering();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -326,7 +318,7 @@ class ShareCommandServiceTest extends UnitTest {
                                 ROUND_ID,
                                 PAYER_ID,
                                 PARTICIPANT_IDS));
-                givenGatheringWithPayerBankAccount();
+                givenGathering();
                 givenSaveReturnsSettlement();
 
                 // when
@@ -365,7 +357,7 @@ class ShareCommandServiceTest extends UnitTest {
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
-                givenGatheringWithPayerBankAccount();
+                givenGathering();
 
                 // when
                 PayerSharesResult result = shareCommandService.markSent(command());
@@ -397,13 +389,9 @@ class ShareCommandServiceTest extends UnitTest {
                     .willReturn(List.of(settlements));
         }
 
-        private void givenGatheringWithPayerBankAccount() {
+        private void givenGathering() {
             given(gatheringRepository.findByParticipantId(LEE_ID))
                     .willReturn(Optional.of(gathering()));
-            given(
-                            participantBankAccountRepository.findAllByParticipantIds(
-                                    List.of(PAYER_ID), GATHERING_ID))
-                    .willReturn(List.of(ParticipantBankAccountFixture.KOOKMIN.create(PAYER_ID)));
         }
     }
 
@@ -875,7 +863,6 @@ class ShareCommandServiceTest extends UnitTest {
                 new ShareCommandService(
                         getLinkedParticipantUseCase,
                         gatheringRepository,
-                        participantBankAccountRepository,
                         settlementRepository,
                         clock);
     }

@@ -13,7 +13,6 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.fixture.GatheringFixture;
-import com.symphonia.gathering.fixture.ParticipantBankAccountFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
@@ -57,8 +56,6 @@ class ShareControllerTest extends IntegrationTest {
         lee = gathering.getParticipants().get(1);
         park = gathering.getParticipants().get(2);
         leeLinkToken = gatheringHelper.issueLinkToken(lee);
-        settlementHelper.registerBankAccount(gathering, payer);
-        settlementHelper.registerBankAccount(gathering, park);
     }
 
     @Nested
@@ -70,7 +67,7 @@ class ShareControllerTest extends IntegrationTest {
         class WhenLinkTokenValid {
 
             @Test
-            @DisplayName("인증 없이도 결제자별로 묶은 분담금을 결제자 계좌, 계산 근거, 모임의 파기 예정 시각과 함께 담아 200을 반환한다")
+            @DisplayName("인증 없이도 결제자별로 묶은 분담금을 계산 근거, 모임의 파기 예정 시각과 함께 담아 200을 반환한다")
             void shouldReturnSharesGroupedByPayer() throws Exception {
                 // given
                 Settlement dinner =
@@ -89,14 +86,6 @@ class ShareControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.payers[0].payerName")
                                         .value(ParticipantFixture.KIM.getName()))
-                        .andExpect(
-                                jsonPath("$.data.payers[0].bankName")
-                                        .value(ParticipantBankAccountFixture.KOOKMIN.getBankName()))
-                        .andExpect(
-                                jsonPath("$.data.payers[0].accountNumber")
-                                        .value(
-                                                ParticipantBankAccountFixture.KOOKMIN
-                                                        .getAccountNumber()))
                         .andExpect(jsonPath("$.data.payers[0].unpaidAmount").value(3_333))
                         .andExpect(jsonPath("$.data.payers[0].hasUnpaidShares").value(true))
                         .andExpect(jsonPath("$.data.payers[0].shares.length()").value(1))
@@ -183,11 +172,6 @@ class ShareControllerTest extends IntegrationTest {
                 performMarkSent(new MarkSharesSentRequest(payer.getId()))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.payerParticipantId").value(payer.getId()))
-                        .andExpect(
-                                jsonPath("$.data.accountNumber")
-                                        .value(
-                                                ParticipantBankAccountFixture.KOOKMIN
-                                                        .getAccountNumber()))
                         .andExpect(jsonPath("$.data.unpaidAmount").value(0))
                         .andExpect(jsonPath("$.data.hasUnpaidShares").value(false))
                         .andExpect(jsonPath("$.data.shares[0].settlementId").value(dinner.getId()))

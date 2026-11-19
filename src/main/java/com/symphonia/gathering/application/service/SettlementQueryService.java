@@ -13,22 +13,18 @@ import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
 import com.symphonia.gathering.application.usecase.GetSharesUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
-import com.symphonia.gathering.domain.entity.ParticipantBankAccount;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
-import com.symphonia.gathering.domain.repository.ParticipantBankAccountRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
-import com.symphonia.gathering.domain.vo.BankAccount;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
@@ -37,7 +33,6 @@ import lombok.RequiredArgsConstructor;
 public class SettlementQueryService implements GetSettlementFormUseCase, GetSharesUseCase {
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringRepository gatheringRepository;
-    private final ParticipantBankAccountRepository participantBankAccountRepository;
     private final SettlementRepository settlementRepository;
     private final Clock clock;
 
@@ -69,8 +64,6 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
 
         return SettlementFormResult.of(
                 recordable,
-                participantBankAccountRepository.existsByParticipantId(participantId),
-                SettlementPolicy.BANK_ACCOUNT_CONSENT_VERSION,
                 gathering.getRounds().stream().map(GatheringRoundResult::from).toList(),
                 gathering.getParticipants().stream()
                         .map(SettlementParticipantResult::from)
@@ -87,7 +80,6 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
     }
 
     // 결제자별로 묶고 결제자 묶음은 처음 기록한 정산 건의 순서를 따른다. 보낼 분담금이 남은 결제자를 앞에 둔다.
-    // 결제자 계좌는 결제자마다 따로 읽지 않도록 한 번에 읽는다.
     @Override
     public SharesResult getShares(String linkToken) {
         LinkedParticipantResult linkedParticipant =
@@ -108,14 +100,6 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                                         Settlement::getPayerParticipantId,
                                         LinkedHashMap::new,
                                         Collectors.toList()));
-        Map<Long, BankAccount> bankAccountsByPayerId =
-                participantBankAccountRepository
-                        .findAllByParticipantIds(settlementsByPayerId.keySet(), gathering.getId())
-                        .stream()
-                        .collect(
-                                Collectors.toMap(
-                                        ParticipantBankAccount::getParticipantId,
-                                        ParticipantBankAccount::getBankAccount));
 
         List<PayerSharesResult> payers =
                 settlementsByPayerId.entrySet().stream()
@@ -123,8 +107,6 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                                 entry ->
                                         PayerSharesResult.of(
                                                 gathering.getParticipant(entry.getKey()),
-                                                findPayerBankAccount(
-                                                        bankAccountsByPayerId, entry.getKey()),
                                                 entry.getValue(),
                                                 participantId,
                                                 gathering,
@@ -139,11 +121,5 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
         return gatheringRepository
                 .findByParticipantId(participantId)
                 .orElseThrow(GatheringNotFoundException::new);
-    }
-
-    // 결제자는 계좌를 등록해야 정산 건을 기록할 수 있고 계좌는 모임을 파기할 때만 지우므로, 없으면 서버 버그라서 500으로 둔다.
-    private BankAccount findPayerBankAccount(
-            Map<Long, BankAccount> bankAccountsByPayerId, Long payerParticipantId) {
-        return Optional.ofNullable(bankAccountsByPayerId.get(payerParticipantId)).orElseThrow();
     }
 }

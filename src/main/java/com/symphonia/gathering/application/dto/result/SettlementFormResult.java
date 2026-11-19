@@ -12,8 +12,6 @@ import java.util.List;
 // deletesAt은 모임의 개인정보를 파기할 시각이다. 모든 분담금이 끝나면 앞당겨지고, 미입금으로 되돌리면 다시 늦춰진다.
 public record SettlementFormResult(
         boolean recordable,
-        boolean bankAccountRegistered,
-        String bankAccountConsentVersion,
         List<GatheringRoundResult> rounds,
         List<SettlementParticipantResult> participants,
         List<Long> defaultParticipantIds,
@@ -23,8 +21,6 @@ public record SettlementFormResult(
         LocalDateTime deletesAt) {
     public static SettlementFormResult of(
             boolean recordable,
-            boolean bankAccountRegistered,
-            String bankAccountConsentVersion,
             List<GatheringRoundResult> rounds,
             List<SettlementParticipantResult> participants,
             List<Long> defaultParticipantIds,
@@ -32,8 +28,6 @@ public record SettlementFormResult(
             LocalDateTime deletesAt) {
         return new SettlementFormResult(
                 recordable,
-                bankAccountRegistered,
-                bankAccountConsentVersion,
                 rounds,
                 participants,
                 defaultParticipantIds,
