@@ -12,6 +12,8 @@ import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
 import com.symphonia.gathering.domain.exception.PairingFeedbackAlreadySubmittedException;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.exception.ParticipantInSettlementException;
+import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.vo.JoinClosedReason;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -102,6 +104,19 @@ public enum GatheringPolicy {
     public static void validateNotJoined(boolean alreadyJoined) {
         if (alreadyJoined) {
             throw new ParticipantAlreadyJoinedException();
+        }
+    }
+
+    public static void validateParticipantExists(boolean exists) {
+        if (!exists) {
+            throw new ParticipantNotFoundException();
+        }
+    }
+
+    // 정산 건의 결제자나 분담금 인원은 취소한 정산 건이어도 분담금 행이 참여자를 가리키므로 지울 수 없다.
+    public static void validateParticipantRemovable(boolean inSettlement) {
+        if (inSettlement) {
+            throw new ParticipantInSettlementException();
         }
     }
 

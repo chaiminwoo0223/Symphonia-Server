@@ -7,6 +7,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface ParticipantBankAccountJpaRepository
         extends JpaRepository<ParticipantBankAccountJpaEntity, Long> {
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            "DELETE FROM ParticipantBankAccountJpaEntity bankAccount"
+                    + " WHERE bankAccount.participantId = :participantId")
+    void deleteByParticipantId(@Param("participantId") Long participantId);
+
     // 참여자 id를 따로 읽지 않고 서브쿼리로 넘겨, 참여자 수와 관계없이 한 번에 지운다.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(

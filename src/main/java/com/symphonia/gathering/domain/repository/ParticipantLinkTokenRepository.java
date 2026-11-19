@@ -8,6 +8,9 @@ public interface ParticipantLinkTokenRepository {
 
     Optional<Long> findParticipantIdByValue(String value);
 
+    // 참여자의 토큰을 모두 지운다. 개인 링크를 재발급하거나 참여자를 제거할 때 이전 링크를 무효로 만든다.
+    void deleteAllByParticipantId(Long participantId);
+
     // 모임 참여자의 토큰을 모두 지운다. 파기된 모임의 개인 링크는 이때 무효가 된다.
     void deleteAllByGatheringId(Long gatheringId);
 }

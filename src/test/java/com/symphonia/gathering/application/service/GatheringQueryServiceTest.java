@@ -6,9 +6,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.dto.query.GetGatheringParticipantsQuery;
+import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.domain.entity.Participant;
+import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
+import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
@@ -33,6 +37,10 @@ import org.mockito.Mock;
 class GatheringQueryServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
+    private static final Long HOST_MEMBER_ID = GatheringFixture.FRIDAY_DINNER.getHostMemberId();
+    private static final Long OTHER_MEMBER_ID = 99L;
+    private static final Long FIRST_PARTICIPANT_ID = 20L;
+    private static final Long SECOND_PARTICIPANT_ID = 21L;
     private static final String JOIN_TOKEN = "join-token";
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
 
@@ -228,10 +236,110 @@ class GatheringQueryServiceTest extends UnitTest {
                                     GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                                             GATHERING_ID, openedAt, participants)));
         }
+    }
 
-        private void givenRetention(GatheringRetentionFixture retention) {
-            given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
-                    .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
+    @Nested
+    @DisplayName("getParticipants 메서드는")
+    class GetParticipants {
+
+        @Nested
+        @DisplayName("모임이 존재하지 않는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던진다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(
+                                () -> gatheringQueryService.getParticipants(query(HOST_MEMBER_ID)))
+                        .isInstanceOf(GatheringNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(
+                                () -> gatheringQueryService.getParticipants(query(HOST_MEMBER_ID)))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던진다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGatheringWithParticipants();
+
+                // when & then
+                assertThatThrownBy(
+                                () -> gatheringQueryService.getParticipants(query(OTHER_MEMBER_ID)))
+                        .isInstanceOf(NotGatheringHostException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원인 경우")
+        class WhenMemberIsHost {
+
+            @Test
+            @DisplayName("참여한 순서대로 id, 이름, 마스킹한 휴대폰을 반환한다")
+            void shouldReturnMaskedParticipants() {
+                // given
+                givenGatheringWithParticipants();
+
+                // when
+                List<GatheringParticipantResult> result =
+                        gatheringQueryService.getParticipants(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result)
+                        .containsExactly(
+                                new GatheringParticipantResult(
+                                        FIRST_PARTICIPANT_ID,
+                                        ParticipantFixture.KIM.getName(),
+                                        "010-****-5678"),
+                                new GatheringParticipantResult(
+                                        SECOND_PARTICIPANT_ID,
+                                        ParticipantFixture.LEE.getName(),
+                                        "010-****-5432"));
+            }
+        }
+
+        private GetGatheringParticipantsQuery query(Long memberId) {
+            return GetGatheringParticipantsQuery.of(memberId, GATHERING_ID);
+        }
+
+        private void givenGatheringWithParticipants() {
+            givenRetention(GatheringRetentionFixture.RETAINED);
+            given(gatheringRepository.findById(GATHERING_ID))
+                    .willReturn(
+                            Optional.of(
+                                    GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                            GATHERING_ID,
+                                            OPEN_PERIOD_OPENED_AT,
+                                            List.of(
+                                                    ParticipantFixture.KIM.createWithId(
+                                                            FIRST_PARTICIPANT_ID),
+                                                    ParticipantFixture.LEE.createWithId(
+                                                            SECOND_PARTICIPANT_ID)))));
         }
     }
 
@@ -260,5 +368,10 @@ class GatheringQueryServiceTest extends UnitTest {
             // then
             assertThat(result).containsExactly(GATHERING_ID, discardedGatheringId);
         }
+    }
+
+    private void givenRetention(GatheringRetentionFixture retention) {
+        given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
     }
 }

@@ -1,8 +1,11 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.QueryService;
+import com.symphonia.gathering.application.dto.query.GetGatheringParticipantsQuery;
+import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
+import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
@@ -20,7 +23,10 @@ import lombok.RequiredArgsConstructor;
 
 @QueryService
 @RequiredArgsConstructor
-public class GatheringQueryService implements GetGatheringUseCase, GetExpiredGatheringsUseCase {
+public class GatheringQueryService
+        implements GetGatheringUseCase,
+                GetGatheringParticipantsUseCase,
+                GetExpiredGatheringsUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final GatheringRetentionRepository gatheringRetentionRepository;
@@ -49,6 +55,23 @@ public class GatheringQueryService implements GetGatheringUseCase, GetExpiredGat
                 joinClosedReason,
                 GatheringPolicy.CONSENT_VERSION,
                 retention.deletesAt());
+    }
+
+    // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
+    @Override
+    public List<GatheringParticipantResult> getParticipants(GetGatheringParticipantsQuery query) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        gatheringRetentionRepository
+                .findByGatheringId(query.gatheringId())
+                .filter(retention -> !retention.isExpired(now))
+                .orElseThrow(GatheringNotFoundException::new);
+        Gathering gathering =
+                gatheringRepository
+                        .findById(query.gatheringId())
+                        .orElseThrow(GatheringNotFoundException::new);
+        GatheringPolicy.validateHost(gathering.getHostMemberId(), query.memberId());
+
+        return gathering.getParticipants().stream().map(GatheringParticipantResult::from).toList();
     }
 
     // 가장 빨리 파기되는 모임도 기록 기간이 끝나고 7일 뒤에 파기되므로, 그보다 늦게 연 모임은 읽지 않는다.

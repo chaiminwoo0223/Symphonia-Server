@@ -844,6 +844,51 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("existsByParticipantId 메서드는")
+    class ExistsByParticipantId {
+
+        @Test
+        @DisplayName("정산 건의 결제자인 참여자면 true를 반환한다")
+        void shouldReturnTrueWhenParticipantIsPayer() {
+            // given
+            recordDinner(kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsByParticipantId(kimId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("정산 건의 분담금 인원인 참여자면 true를 반환한다")
+        void shouldReturnTrueWhenParticipantHasShare() {
+            // given
+            recordDinner(kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsByParticipantId(leeId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("취소한 정산 건의 인원인 참여자도 true를 반환한다")
+        void shouldReturnTrueWhenSettlementCancelled() {
+            // given
+            cancel(recordDinner(kimId, List.of(kimId, leeId)));
+
+            // when & then
+            assertThat(settlementRepository.existsByParticipantId(leeId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("어떤 정산 건에도 없는 참여자면 false를 반환한다")
+        void shouldReturnFalseWhenParticipantNotInAnySettlement() {
+            // given
+            recordDinner(kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsByParticipantId(parkId)).isFalse();
+        }
+    }
+
     private Settlement recordDinner(Long payerParticipantId, List<Long> participantIds) {
         return settlementRepository.save(
                 SettlementFixture.DINNER.create(

@@ -116,6 +116,12 @@ public class SettlementRepositoryImpl implements SettlementRepository {
         return toDomains(settlementJpaRepository.findAllByGatheringIdForUpdate(gatheringId));
     }
 
+    @Override
+    public boolean existsByParticipantId(Long participantId) {
+        return settlementJpaRepository.existsByPayerParticipantId(participantId)
+                || settlementShareJpaRepository.existsByParticipantId(participantId);
+    }
+
     // 정산 건을 참조하는 분담금을 먼저 지운다.
     @Override
     public void deleteAllByGatheringId(Long gatheringId) {

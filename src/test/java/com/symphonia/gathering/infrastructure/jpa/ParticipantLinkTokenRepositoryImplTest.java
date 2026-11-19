@@ -74,6 +74,39 @@ class ParticipantLinkTokenRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("deleteAllByParticipantId 메서드는")
+    class DeleteAllByParticipantId {
+
+        @Test
+        @DisplayName("그 참여자의 토큰을 모두 지우고 다른 참여자의 토큰은 남긴다")
+        void shouldDeleteOnlyTokensOfParticipant() {
+            // given
+            Long otherParticipantId =
+                    gatheringRepository
+                            .save(
+                                    GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                            List.of(ParticipantFixture.LEE.create())))
+                            .getParticipants()
+                            .getFirst()
+                            .getId();
+            participantLinkTokenRepository.save("first-token", participantId);
+            participantLinkTokenRepository.save("second-token", participantId);
+            participantLinkTokenRepository.save("other-token", otherParticipantId);
+
+            // when
+            participantLinkTokenRepository.deleteAllByParticipantId(participantId);
+
+            // then
+            assertThat(participantLinkTokenRepository.findParticipantIdByValue("first-token"))
+                    .isEmpty();
+            assertThat(participantLinkTokenRepository.findParticipantIdByValue("second-token"))
+                    .isEmpty();
+            assertThat(participantLinkTokenRepository.findParticipantIdByValue("other-token"))
+                    .contains(otherParticipantId);
+        }
+    }
+
+    @Nested
     @DisplayName("findParticipantIdByValue 메서드는")
     class FindParticipantIdByValue {
 
