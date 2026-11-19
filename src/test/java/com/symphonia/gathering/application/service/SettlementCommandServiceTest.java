@@ -12,27 +12,28 @@ import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.CancelSettlementCommand;
 import com.symphonia.gathering.application.dto.command.RecordSettlementCommand;
 import com.symphonia.gathering.application.dto.command.UpdateSettlementCommand;
-import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
-import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.FixedAmountExceedsTotalException;
+import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.GatheringRoundNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementAmountException;
 import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsException;
-import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
-import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
+import com.symphonia.gathering.domain.exception.NotGatheringHostException;
+import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
 import com.symphonia.gathering.domain.exception.SettlementNotFoundException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -55,6 +56,7 @@ import org.mockito.Mock;
 class SettlementCommandServiceTest extends UnitTest {
 
     private static final Long GATHERING_ID = 10L;
+    private static final Long OTHER_GATHERING_ID = 11L;
     private static final Long ROUND_ID = GatheringRoundFixture.FIRST.getId();
     private static final Long SECOND_ROUND_ID = GatheringRoundFixture.SECOND.getId();
     private static final Long OTHER_GATHERING_ROUND_ID = 999L;
@@ -64,12 +66,12 @@ class SettlementCommandServiceTest extends UnitTest {
     private static final Long PARK_ID = 22L;
     private static final Long LATE_JOINER_ID = 23L;
     private static final Long OUTSIDER_ID = 99L;
+    private static final Long HOST_MEMBER_ID = GatheringFixture.FRIDAY_DINNER.getHostMemberId();
+    private static final Long OTHER_MEMBER_ID = 99L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
-    private static final String LINK_TOKEN = "link-token";
     private static final UUID CLIENT_REQUEST_ID =
             UUID.fromString("0b6c1a52-6f4e-4d0a-9d52-7a1f3c1e8b11");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 29, 18, 0);
-    private static final LocalDateTime DELETES_AT = NOW.plusDays(7);
 
     // 기록 기간은 모임을 만든 지 48시간이 되는 순간 닫힌다.
     // 닫히기 1초 전과 닫히는 순간을 경계로 쓴다.
@@ -78,8 +80,8 @@ class SettlementCommandServiceTest extends UnitTest {
 
     private SettlementCommandService settlementCommandService;
 
-    @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private SettlementRepository settlementRepository;
 
     @BeforeEach
@@ -91,22 +93,110 @@ class SettlementCommandServiceTest extends UnitTest {
     @DisplayName("record 메서드는")
     class Record {
 
-        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
         @Nested
-        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
-        class WhenLinkTokenNotFound {
+        @DisplayName("모임의 파기 시각이 없는 경우")
+        class WhenRetentionNotFound {
 
             @Test
             @DisplayName("예외를 던지고 모임을 읽지 않으며 정산 건을 저장하지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
+            void shouldThrowGatheringNotFoundException() {
                 // given
-                givenLinkTokenNotFound();
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.record(command))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
+                        .isInstanceOf(GatheringNotFoundException.class);
                 then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.record(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임이 없는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
+                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.record(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                RecordSettlementCommand command =
+                        command(
+                                OTHER_MEMBER_ID,
+                                PAYER_ID,
+                                ROUND_ID,
+                                10_000L,
+                                PARTICIPANT_IDS,
+                                Map.of());
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.record(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("결제자가 이 모임의 참여자가 아닌 경우")
+        class WhenPayerNotInGathering {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowParticipantNotFoundException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                RecordSettlementCommand command =
+                        command(
+                                HOST_MEMBER_ID,
+                                OUTSIDER_ID,
+                                ROUND_ID,
+                                10_000L,
+                                List.of(OUTSIDER_ID, LEE_ID),
+                                Map.of());
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.record(command))
+                        .isInstanceOf(ParticipantNotFoundException.class);
                 then(settlementRepository).shouldHaveNoInteractions();
             }
         }
@@ -119,7 +209,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementRecordingClosedException() {
                 // given
-                givenGatheringOfPayer(CLOSED_PERIOD_OPENED_AT);
+                givenGathering(CLOSED_PERIOD_OPENED_AT);
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
                 // when & then
@@ -137,7 +227,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowGatheringRoundNotFoundException() {
                 // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 RecordSettlementCommand command =
                         command(OTHER_GATHERING_ROUND_ID, 10_000L, PARTICIPANT_IDS, Map.of());
 
@@ -156,7 +246,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowInvalidSettlementParticipantsException() {
                 // given
-                givenGatheringOfPayer(OPEN_PERIOD_OPENED_AT);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 RecordSettlementCommand command =
                         command(10_000L, List.of(PAYER_ID, OUTSIDER_ID), Map.of());
 
@@ -312,6 +402,23 @@ class SettlementCommandServiceTest extends UnitTest {
         @Nested
         @DisplayName("기록할 수 있는 경우")
         class WhenRecordable {
+
+            @Test
+            @DisplayName("모임의 파기 시각 1초 전이면 정산 건을 저장한다")
+            void shouldSaveSettlementWhenGatheringAboutToExpire() {
+                // given
+                givenRetention(GatheringRetentionFixture.ABOUT_TO_EXPIRE);
+                given(gatheringRepository.findById(GATHERING_ID))
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+                givenSaveIfAbsentReturnsSettlement();
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                settlementCommandService.record(command);
+
+                // then
+                then(settlementRepository).should().saveIfAbsent(any(Settlement.class));
+            }
 
             @Test
             @DisplayName("요청 id를 담아 정산 건을 저장한다")
@@ -497,7 +604,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("첫 결제자의 정산 건은 고른 차수의 id와 번호를 반환한다")
             void shouldReturnRoundWhenFirstPayerRecords() {
                 // given
-                givenRecordableGathering(PAYER_ID, PARTICIPANT_IDS);
+                givenRecordableGathering();
                 givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(SECOND_ROUND_ID, 6_000L, List.of(PAYER_ID, LEE_ID), Map.of());
@@ -516,10 +623,16 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("다른 결제자의 정산 건도 같은 차수의 id와 번호를 반환한다")
             void shouldReturnSameRoundWhenOtherPayerRecords() {
                 // given
-                givenRecordableGathering(LEE_ID, PARTICIPANT_IDS);
+                givenRecordableGathering();
                 givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
-                        command(SECOND_ROUND_ID, 4_000L, List.of(LEE_ID, PARK_ID), Map.of());
+                        command(
+                                HOST_MEMBER_ID,
+                                LEE_ID,
+                                SECOND_ROUND_ID,
+                                4_000L,
+                                List.of(LEE_ID, PARK_ID),
+                                Map.of());
 
                 // when
                 SettlementResult result = settlementCommandService.record(command);
@@ -547,7 +660,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                 gatheringParticipantIds.get(3),
                                 gatheringParticipantIds.get(5),
                                 gatheringParticipantIds.get(8));
-                givenRecordableGathering(PAYER_ID, gatheringParticipantIds);
+                givenRecordableGathering(gatheringParticipantIds);
                 givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(SECOND_ROUND_ID, 10_000L, roundParticipantIds, Map.of());
@@ -577,8 +690,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외 없이 합류한 참여자의 분담금을 포함해 저장한다")
             void shouldSaveSettlementWithLateJoiner() {
                 // given
-                givenRecordableGathering(
-                        PAYER_ID, List.of(PAYER_ID, LEE_ID, PARK_ID, LATE_JOINER_ID));
+                givenRecordableGathering(List.of(PAYER_ID, LEE_ID, PARK_ID, LATE_JOINER_ID));
                 givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command =
                         command(
@@ -607,9 +719,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("요청한 차수가 이 모임의 차수가 아니어도 처음 기록한 정산 건과 그 차수를 반환하고 저장하지 않는다")
             void shouldReturnRecordedSettlementWithItsRoundWithoutValidatingRequest() {
                 // given
-                givenParticipant(PAYER_ID);
-                given(gatheringRepository.findByParticipantId(PAYER_ID))
-                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 given(
                                 settlementRepository.findByPayerParticipantIdAndClientRequestId(
                                         PAYER_ID, CLIENT_REQUEST_ID))
@@ -658,19 +768,18 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("먼저 읽은 모임에 없는 차수에 기록됐으면 모임을 다시 읽어 그 차수를 반환한다")
             void shouldReadGatheringAgainWhenRoundMissingInSnapshot() {
                 // given
-                givenParticipant(PAYER_ID);
-                given(gatheringRepository.findByParticipantId(PAYER_ID))
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID))
                         .willReturn(
                                 Optional.of(
                                         GatheringFixture.FRIDAY_DINNER.createWithRounds(
                                                 GATHERING_ID,
                                                 OPEN_PERIOD_OPENED_AT,
                                                 ParticipantFixture.createWithIds(PARTICIPANT_IDS),
-                                                List.of(GatheringRoundFixture.FIRST.create()))));
+                                                List.of(GatheringRoundFixture.FIRST.create()))),
+                                Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
                 given(settlementRepository.saveIfAbsent(any(Settlement.class)))
                         .willReturn(recordedSecondRoundSettlement());
-                given(gatheringRepository.findById(GATHERING_ID))
-                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -707,8 +816,21 @@ class SettlementCommandServiceTest extends UnitTest {
                 long totalAmount,
                 List<Long> participantIds,
                 Map<Long, Long> fixedAmounts) {
+            return command(
+                    HOST_MEMBER_ID, PAYER_ID, roundId, totalAmount, participantIds, fixedAmounts);
+        }
+
+        private RecordSettlementCommand command(
+                Long memberId,
+                Long payerParticipantId,
+                Long roundId,
+                long totalAmount,
+                List<Long> participantIds,
+                Map<Long, Long> fixedAmounts) {
             return new RecordSettlementCommand(
-                    LINK_TOKEN,
+                    memberId,
+                    GATHERING_ID,
+                    payerParticipantId,
                     CLIENT_REQUEST_ID,
                     roundId,
                     totalAmount,
@@ -717,19 +839,14 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private void givenRecordableGathering() {
-            givenRecordableGathering(PAYER_ID, PARTICIPANT_IDS);
+            givenRecordableGathering(PARTICIPANT_IDS);
         }
 
         // 모임의 참여자가 gatheringParticipantIds인 기록 가능한 모임이다.
-        private void givenRecordableGathering(Long payerId, List<Long> gatheringParticipantIds) {
-            givenParticipant(payerId);
-            given(gatheringRepository.findByParticipantId(payerId))
-                    .willReturn(
-                            Optional.of(
-                                    gathering(
-                                            OPEN_PERIOD_OPENED_AT,
-                                            ParticipantFixture.createWithIds(
-                                                    gatheringParticipantIds))));
+        private void givenRecordableGathering(List<Long> gatheringParticipantIds) {
+            givenGathering(
+                    OPEN_PERIOD_OPENED_AT,
+                    ParticipantFixture.createWithIds(gatheringParticipantIds));
         }
 
         // 결제자 id(20)부터 1씩 늘어나는 count명의 참여자 id다.
@@ -742,23 +859,79 @@ class SettlementCommandServiceTest extends UnitTest {
     @DisplayName("update 메서드는")
     class Update {
 
-        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
         @Nested
-        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
-        class WhenLinkTokenNotFound {
+        @DisplayName("모임의 파기 시각이 없는 경우")
+        class WhenRetentionNotFound {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건과 모임을 읽지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
+            @DisplayName("예외를 던지고 모임과 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
                 // given
-                givenLinkTokenNotFound();
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
                 UpdateSettlementCommand command = command();
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.update(command))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
-                then(settlementRepository).shouldHaveNoInteractions();
+                        .isInstanceOf(GatheringNotFoundException.class);
                 then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임과 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+                UpdateSettlementCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.update(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임이 없는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
+                UpdateSettlementCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.update(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 읽거나 저장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                UpdateSettlementCommand command = command(OTHER_MEMBER_ID, ROUND_ID);
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.update(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
             }
         }
 
@@ -770,7 +943,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던진다")
             void shouldThrowSettlementNotFoundException() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 given(settlementRepository.findById(SETTLEMENT_ID)).willReturn(Optional.empty());
                 UpdateSettlementCommand command = command();
 
@@ -782,24 +955,27 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("요청한 참여자가 결제자가 아닌 경우")
-        class WhenParticipantIsNotPayer {
+        @DisplayName("다른 모임의 정산 건인 경우")
+        class WhenSettlementOfOtherGathering {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowNotSettlementPayerException() {
+            @DisplayName("정산 건이 없는 경우와 같게 예외를 던지고 저장하지 않는다")
+            void shouldThrowSettlementNotFoundException() {
                 // given
-                givenParticipant(LEE_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
+                                SETTLEMENT_ID,
+                                OTHER_GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS));
                 UpdateSettlementCommand command = command();
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.update(command))
-                        .isInstanceOf(NotSettlementPayerException.class);
+                        .isInstanceOf(SettlementNotFoundException.class);
                 thenSettlementNotSaved();
-                then(gatheringRepository).shouldHaveNoInteractions();
             }
         }
 
@@ -811,11 +987,10 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementRecordingClosedException() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(CLOSED_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(CLOSED_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -833,11 +1008,10 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowGatheringRoundNotFoundException() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command(OTHER_GATHERING_ROUND_ID);
 
                 // when & then
@@ -855,11 +1029,10 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementAlreadyCancelledException() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createCancelled(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -877,7 +1050,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementSharesSentException() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
@@ -886,7 +1059,6 @@ class SettlementCommandServiceTest extends UnitTest {
                                 PAYER_ID,
                                 PARTICIPANT_IDS,
                                 ShareStatus.SENT));
-                givenGathering(OPEN_PERIOD_OPENED_AT);
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -904,11 +1076,10 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("분담금을 다시 계산하고 기록 시각을 바꿔 저장한다")
             void shouldSaveRecalculatedSharesWithNewRecordedAt() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
                 UpdateSettlementCommand command = command();
 
@@ -927,14 +1098,35 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("정산 건의 결제자를 그대로 두고 그 결제자 기준으로 분담금을 계산한다")
+            void shouldKeepPayerOfSettlement() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenSettlement(
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, LEE_ID, PARTICIPANT_IDS));
+                givenSaveReturnsSettlement();
+                UpdateSettlementCommand command = command();
+
+                // when
+                SettlementResult result = settlementCommandService.update(command);
+
+                // then
+                assertThat(result.payerParticipantId()).isEqualTo(LEE_ID);
+                assertThat(result.shares())
+                        .extracting(
+                                SettlementShareResult::participantId, SettlementShareResult::amount)
+                        .containsExactly(tuple(PAYER_ID, 10_000L));
+            }
+
+            @Test
             @DisplayName("차수를 바꿔 저장하고, 새 차수의 id와 번호를 반환한다")
             void shouldSaveSettlementWithNewRound() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSaveReturnsSettlement();
                 UpdateSettlementCommand command = command(SECOND_ROUND_ID);
 
@@ -954,9 +1146,8 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("확인 완료 분담금이 0원뿐이면 돈이 오가지 않았으므로 분담금을 다시 계산해 저장한다")
             void shouldSaveRecalculatedSharesWhenOnlyZeroShareConfirmed() {
                 // given
-                givenParticipant(PAYER_ID);
-                givenSettlement(settlementWithZeroShare());
                 givenGathering(OPEN_PERIOD_OPENED_AT);
+                givenSettlement(settlementWithZeroShare());
                 givenSaveReturnsSettlement();
                 UpdateSettlementCommand command = command();
 
@@ -980,11 +1171,10 @@ class SettlementCommandServiceTest extends UnitTest {
                 // given
                 LocalDateTime now = LocalDateTime.of(2026, 10, 28, 20, 0);
                 givenNow(now);
-                givenParticipant(PAYER_ID);
+                givenGathering(now.minusHours(1));
                 givenSettlement(
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
-                givenGathering(now.minusHours(1));
                 givenSaveReturnsSettlement();
                 UpdateSettlementCommand command = command();
 
@@ -1001,18 +1191,18 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private UpdateSettlementCommand command(Long roundId) {
+            return command(HOST_MEMBER_ID, roundId);
+        }
+
+        private UpdateSettlementCommand command(Long memberId, Long roundId) {
             return new UpdateSettlementCommand(
-                    LINK_TOKEN,
+                    memberId,
+                    GATHERING_ID,
                     SETTLEMENT_ID,
                     roundId,
                     20_000L,
                     List.of(PAYER_ID, LEE_ID),
                     Map.of());
-        }
-
-        private void givenGathering(LocalDateTime openedAt) {
-            given(gatheringRepository.findById(GATHERING_ID))
-                    .willReturn(Optional.of(gathering(openedAt)));
         }
     }
 
@@ -1020,42 +1210,107 @@ class SettlementCommandServiceTest extends UnitTest {
     @DisplayName("cancel 메서드는")
     class Cancel {
 
-        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
         @Nested
-        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
-        class WhenLinkTokenNotFound {
+        @DisplayName("모임의 파기 시각이 없는 경우")
+        class WhenRetentionNotFound {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 읽지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
+            @DisplayName("예외를 던지고 모임과 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
                 // given
-                givenLinkTokenNotFound();
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
                 CancelSettlementCommand command = command();
 
                 // when & then
                 assertThatThrownBy(() -> settlementCommandService.cancel(command))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
                 then(settlementRepository).shouldHaveNoInteractions();
             }
         }
 
         @Nested
-        @DisplayName("요청한 참여자가 결제자가 아닌 경우")
-        class WhenParticipantIsNotPayer {
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowNotSettlementPayerException() {
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임과 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
                 // given
-                givenParticipant(LEE_ID);
-                givenSettlement(
-                        SettlementFixture.DINNER.createWithId(
-                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS));
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+                CancelSettlementCommand command = command();
 
                 // when & then
-                assertThatThrownBy(() -> settlementCommandService.cancel(command()))
-                        .isInstanceOf(NotSettlementPayerException.class);
+                assertThatThrownBy(() -> settlementCommandService.cancel(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 정산 건을 읽거나 저장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                CancelSettlementCommand command =
+                        CancelSettlementCommand.of(OTHER_MEMBER_ID, GATHERING_ID, SETTLEMENT_ID);
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.cancel(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("정산 건이 없는 경우")
+        class WhenSettlementNotFound {
+
+            @Test
+            @DisplayName("예외를 던진다")
+            void shouldThrowSettlementNotFoundException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                given(settlementRepository.findById(SETTLEMENT_ID)).willReturn(Optional.empty());
+                CancelSettlementCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.cancel(command))
+                        .isInstanceOf(SettlementNotFoundException.class);
                 thenSettlementNotSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 모임의 정산 건인 경우")
+        class WhenSettlementOfOtherGathering {
+
+            @Test
+            @DisplayName("정산 건이 없는 경우와 같게 예외를 던지고 저장하지 않는다")
+            void shouldThrowSettlementNotFoundException() {
+                // given
+                givenGathering(OPEN_PERIOD_OPENED_AT);
+                Settlement settlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID,
+                                OTHER_GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS);
+                givenSettlement(settlement);
+                CancelSettlementCommand command = command();
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.cancel(command))
+                        .isInstanceOf(SettlementNotFoundException.class);
+                thenSettlementNotSaved();
+                assertThat(settlement.isCancelled()).isFalse();
             }
         }
 
@@ -1067,7 +1322,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("같은 요청을 다시 보낸 것으로 보고 취소 시각을 바꾸거나 정산 건을 저장하지 않고 끝낸다")
             void shouldKeepCancelledAtWithoutSaving() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 Settlement settlement =
                         SettlementFixture.DINNER.createCancelled(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
@@ -1091,7 +1346,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementSharesSentException() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
@@ -1111,7 +1366,7 @@ class SettlementCommandServiceTest extends UnitTest {
             @DisplayName("0원보다 큰 확인 완료 분담금이 있으면 예외를 던지고 정산 건을 저장하지 않는다")
             void shouldThrowSettlementSharesSentExceptionWhenPositiveShareConfirmed() {
                 // given
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(
                         SettlementFixture.DINNER.createWithFirstShareStatus(
                                 SETTLEMENT_ID,
@@ -1133,20 +1388,19 @@ class SettlementCommandServiceTest extends UnitTest {
         class WhenCancellable {
 
             @Test
-            @DisplayName("기록 기간을 확인하지 않고 취소 시각을 채워 저장한다")
-            void shouldSaveCancelledSettlement() {
+            @DisplayName("기록 기간이 끝난 모임이어도 취소 시각을 채워 저장한다")
+            void shouldSaveCancelledSettlementEvenWhenRecordingPeriodClosed() {
                 // given
                 Settlement settlement =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
-                givenParticipant(PAYER_ID);
+                givenGathering(CLOSED_PERIOD_OPENED_AT);
                 givenSettlement(settlement);
 
                 // when
                 settlementCommandService.cancel(command());
 
                 // then
-                then(gatheringRepository).shouldHaveNoInteractions();
                 then(settlementRepository).should().save(settlement);
                 assertThat(settlement.isCancelled()).isTrue();
             }
@@ -1156,7 +1410,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSaveCancelledSettlementWhenOnlyZeroShareConfirmed() {
                 // given
                 Settlement settlement = settlementWithZeroShare();
-                givenParticipant(PAYER_ID);
+                givenGathering(OPEN_PERIOD_OPENED_AT);
                 givenSettlement(settlement);
 
                 // when
@@ -1169,7 +1423,7 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         private CancelSettlementCommand command() {
-            return CancelSettlementCommand.of(LINK_TOKEN, SETTLEMENT_ID);
+            return CancelSettlementCommand.of(HOST_MEMBER_ID, GATHERING_ID, SETTLEMENT_ID);
         }
     }
 
@@ -1187,20 +1441,19 @@ class SettlementCommandServiceTest extends UnitTest {
                         GatheringRoundFixture.SECOND.create()));
     }
 
-    private void givenParticipant(Long participantId) {
-        given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
-                .willReturn(new LinkedParticipantResult(participantId, DELETES_AT));
+    private void givenRetention(GatheringRetentionFixture retention) {
+        given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
     }
 
-    private void givenLinkTokenNotFound() {
-        given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
-                .willThrow(new LinkTokenNotFoundException());
+    private void givenGathering(LocalDateTime openedAt) {
+        givenGathering(openedAt, ParticipantFixture.createWithIds(PARTICIPANT_IDS));
     }
 
-    private void givenGatheringOfPayer(LocalDateTime openedAt) {
-        givenParticipant(PAYER_ID);
-        given(gatheringRepository.findByParticipantId(PAYER_ID))
-                .willReturn(Optional.of(gathering(openedAt)));
+    private void givenGathering(LocalDateTime openedAt, List<Participant> participants) {
+        givenRetention(GatheringRetentionFixture.RETAINED);
+        given(gatheringRepository.findById(GATHERING_ID))
+                .willReturn(Optional.of(gathering(openedAt, participants)));
     }
 
     private void givenSettlement(Settlement settlement) {
@@ -1223,8 +1476,8 @@ class SettlementCommandServiceTest extends UnitTest {
                         now.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
         settlementCommandService =
                 new SettlementCommandService(
-                        getLinkedParticipantUseCase,
                         gatheringRepository,
+                        gatheringRetentionRepository,
                         settlementRepository,
                         clock);
     }

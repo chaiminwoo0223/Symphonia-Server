@@ -5,15 +5,10 @@ public final class SettlementEndpoints {
 
     private SettlementEndpoints() {}
 
-    // 인증 없이 X-Link-Token 헤더의 개인 링크 토큰으로 요청한다. 정산 건을 기록한 참여자가 그 정산 건의 결제자다.
-    public static final String FORM = BASE + "/form";
-    public static final String RECORD = BASE;
-    public static final String UPDATE = BASE + "/{settlementId}";
+    private static final String SETTLEMENT = BASE + "/{settlementId}";
 
-    // 취소는 행을 지우지 않고 규칙이 있는 상태 변경이라서 DELETE 대신 도메인 명령으로 드러낸다.
-    public static final String CANCEL = UPDATE + "/cancel";
-
+    // 인증 없이 X-Link-Token 헤더의 개인 링크 토큰으로 요청한다. 모임장이 결제자로 지정한 참여자가 그 정산 건의 결제자다.
     // 결제자가 정산 건의 분담금 하나의 상태를 정정한다. 확인 완료는 보냄 확인과 직접 받은 돈 처리를 함께 다룬다.
-    public static final String CONFIRM_SHARE = UPDATE + "/shares/{participantId}/confirm";
-    public static final String REVERT_SHARE = UPDATE + "/shares/{participantId}/unpaid";
+    public static final String CONFIRM_SHARE = SETTLEMENT + "/shares/{participantId}/confirm";
+    public static final String REVERT_SHARE = SETTLEMENT + "/shares/{participantId}/unpaid";
 }
