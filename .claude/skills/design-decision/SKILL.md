@@ -24,6 +24,7 @@ description: Load when a design discussion among multiple viable alternatives co
 | 추천 점수, 후보 선정, Harmonize 규칙표, 추천 성능 | `architecture/pairing.md` | `pairing.md` |
 | 정산 모델, 개인정보 처리, 정산 API | `architecture/gathering.md` | `gathering.md` |
 | 모임 페어링, 익명 피드백 | `architecture/gathering-pairing.md` | `gathering.md` |
+| 참여자 상한, 모임장의 참여자 관리 | `architecture/gathering-participant.md` | `gathering.md` |
 | 예외, 에러 코드 | `error-handling` | `error-handling.md` |
 | 테스트 전략 | `testing` | `testing.md` |
 | 하네스(스킬, 훅, 스크립트, 에이전트) | `harness` | `harness.md` |

@@ -1,6 +1,6 @@
 # gathering 정산 규칙
 
-`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링과 익명 피드백 규칙은 `gathering-pairing.md`에 있다. 근거, 택하지 않은 안, 재검토 조건은 `docs/decisions/gathering.md`에 있다.
+`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링과 익명 피드백 규칙은 `gathering-pairing.md`, 참여자 상한과 모임장의 참여자 관리 규칙은 `gathering-participant.md`에 있다. 근거, 택하지 않은 안, 재검토 조건은 `docs/decisions/gathering.md`에 있다.
 
 ## 애그리거트와 application
 
@@ -27,19 +27,17 @@
 
 ## 참여와 동의
 
-- 참여자는 이름과 휴대폰을 필수로 입력한다. 술을 마시는지는 받지 않는다. 휴대폰은 중복 참여 방지와 마스킹 표시에만 쓴다.
+- 참여자는 이름과 휴대폰을 필수로 입력한다. 술을 마시는지는 받지 않는다. 휴대폰은 결제자가 참여자에게 정산을 요청하는 목적으로 수집하고, 중복 참여 방지에 쓴다. 응답에는 마스킹해서 보여 준다.
 - 결제자가 받는 수단은 계좌 하나다. 송금 링크와 휴대폰 송금은 두지 않는다. 현금은 직접 받음(`confirm`)으로 처리한다.
 - 계좌는 참여할 때 받지 않고, 참여자가 처음 정산 건의 결제자가 될 때 받는다.
 - 참여 화면에서는 수집 항목, 목적, 보유 기간(최대 30일), 동의를 거부할 권리와 불이익을 안내하고 필수 동의를 받는다. 결제자가 계좌를 입력할 때는 그 계좌를 정산 건의 참여자에게 보여 준다는 목적을 안내하고 따로 동의를 받는다. 참여 화면은 같은 차수의 참여자에게 이름이 보인다는 사실도 목적으로 안내한다.
 - 참여자는 동의 시각과 안내문 버전(`consent_version`)을 남긴다. 버전의 단일 소스는 `GatheringPolicy.CONSENT_VERSION`이고, 참여 화면 조회 응답에 담는다. 안내 문구를 바꾸면 이 상수도 바꾼다.
 - 참여 요청은 동의 여부와 버전을 함께 보낸다. `GatheringPolicy.validateConsent`가 동의하지 않았으면 `ConsentRequiredException`(400), 버전이 다르면 `OutdatedConsentVersionException`(400)으로 거절한다. Request의 Bean Validation으로 검사하지 않는다.
-- 한 모임의 참여자는 최대 50명(`GatheringPolicy.MAX_PARTICIPANT_COUNT`)이다. 모임을 만든 회원도 참여 화면으로 참여해야 한 명으로 센다. 참여자가 50명이면 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)이고, 이미 참여한 휴대폰 검사 뒤에 검사한다. 참여 화면 조회는 가득 찬 모임을 참여 불가로 알린다. 서로 다른 휴대폰의 참여가 동시에 오면 인원 확인과 저장 사이에서 경합해 최종 인원이 50명을 넘을 수 있으므로, 50명은 보장된 상한이 아니다.
 - 같은 휴대폰의 중복 참여를 막는다. 동시 참여는 `(gathering_id, phone_number_hmac)` unique 제약으로 막고, `GatheringRepositoryImpl`이 위반을 `GatheringPolicy.validateNotJoined`의 예외로 바꾼다.
 - 참여 화면은 참여 토큰으로 모임 이름, 참여 가능 여부(`joinable`), 사유(`joinClosedReason`: `PERIOD_EXPIRED`, `PARTICIPANT_LIMIT_REACHED`)를 먼저 조회한다. 둘 다면 `PERIOD_EXPIRED`다.
 - 참여 토큰은 모임 생성 후 48시간까지 유효하다. 모임을 만든 회원은 참여 QR을 재발급할 수 있고, 재발급하면 기존 토큰은 무효다. 참여 기간이 끝난 모임은 재발급하지 않는다.
 - 참여 토큰 발급 응답은 참여 기간이 끝나는 `expiresAt`을 담는다.
 - 모임장이 탈퇴해도 모임은 자동 파기까지 유지한다.
-- `GatheringRepositoryImpl.save`는 id가 없는 새 참여자만 INSERT하고 기존 참여자 행을 다시 쓰지 않는다.
 
 ## 분담 방식
 
