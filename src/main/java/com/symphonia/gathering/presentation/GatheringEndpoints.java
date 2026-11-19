@@ -11,6 +11,13 @@ public final class GatheringEndpoints {
     public static final String CHOOSE_PAIRING = BASE + "/{gatheringId}/pairing";
     public static final String ADD_ROUND = BASE + "/{gatheringId}/rounds";
 
+    // 모임을 연 회원이 정산 건을 기록하고, 고치고, 취소한다. 결제자는 기록할 때 지정한다.
+    public static final String SETTLEMENTS = BASE + "/{gatheringId}/settlements";
+    public static final String SETTLEMENT_FORM = SETTLEMENTS + "/form";
+    public static final String SETTLEMENT = SETTLEMENTS + "/{settlementId}";
+    // 취소는 행을 지우지 않고 규칙이 있는 상태 변경이라서 DELETE 대신 도메인 명령으로 드러낸다.
+    public static final String CANCEL_SETTLEMENT = SETTLEMENT + "/cancel";
+
     // 모임을 연 회원이 참여자 목록을 보고, 참여자를 제거하고, 개인 링크를 재발급한다.
     public static final String PARTICIPANTS = BASE + "/{gatheringId}/participants";
     public static final String PARTICIPANT = PARTICIPANTS + "/{participantId}";

@@ -6,11 +6,15 @@ import com.symphonia.gathering.presentation.GatheringHeaders;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
+import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
+import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
+import com.symphonia.gathering.presentation.dto.response.SettlementResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -63,6 +67,41 @@ public interface GatheringApi {
             @AuthenticationPrincipal String memberId,
             @PathVariable Long gatheringId,
             @Valid @RequestBody AddRoundRequest request);
+
+    @GetMapping(GatheringEndpoints.SETTLEMENT_FORM)
+    @Operation(
+            summary = "기록 화면 조회",
+            description =
+                    "정산 건 기록에 필요한 차수, 참여자, 인원 기본값, 기록한 정산 건을 조회합니다. 모임을 만든 회원만 할 수 있습니다. 인원 기본값은 직전에 기록한 정산 건의 인원이고, 첫 건이면 참여자 전원입니다.")
+    ResponseEntity<StandardResponse<SettlementFormResponse>> getSettlementForm(
+            @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
+
+    @PostMapping(GatheringEndpoints.SETTLEMENTS)
+    @Operation(
+            summary = "정산 건 기록",
+            description =
+                    "모임장이 정산 건을 기록하고 분담액을 계산합니다. 결제자는 payerParticipantId로 지정합니다. 같은 요청 id로 다시 보내면 새로 만들지 않고 처음 기록한 정산 건을 돌려줍니다.")
+    ResponseEntity<StandardResponse<SettlementResponse>> recordSettlement(
+            @AuthenticationPrincipal String memberId,
+            @PathVariable Long gatheringId,
+            @Valid @RequestBody RecordSettlementRequest request);
+
+    @PutMapping(GatheringEndpoints.SETTLEMENT)
+    @Operation(
+            summary = "정산 건 수정",
+            description = "돈을 보낸 참여자가 없는 정산 건을 수정합니다. 결제자는 바꿀 수 없으니, 결제자를 바꾸려면 취소하고 다시 기록합니다.")
+    ResponseEntity<StandardResponse<SettlementResponse>> updateSettlement(
+            @AuthenticationPrincipal String memberId,
+            @PathVariable Long gatheringId,
+            @PathVariable Long settlementId,
+            @Valid @RequestBody UpdateSettlementRequest request);
+
+    @PostMapping(GatheringEndpoints.CANCEL_SETTLEMENT)
+    @Operation(summary = "정산 건 취소", description = "입금한 참여자가 없는 정산 건을 취소합니다. 기록 기간이 지나도 취소할 수 있습니다.")
+    ResponseEntity<StandardResponse<Void>> cancelSettlement(
+            @AuthenticationPrincipal String memberId,
+            @PathVariable Long gatheringId,
+            @PathVariable Long settlementId);
 
     @GetMapping(GatheringEndpoints.PARTICIPANTS)
     @Operation(

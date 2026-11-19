@@ -3,10 +3,13 @@ package com.symphonia.gathering.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.dto.query.GetSettlementFormQuery;
 import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
@@ -19,11 +22,15 @@ import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
+import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
+import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.ShareStatus;
 import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
@@ -51,6 +58,8 @@ class SettlementQueryServiceTest extends UnitTest {
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
+    private static final Long HOST_MEMBER_ID = GatheringFixture.FRIDAY_DINNER.getHostMemberId();
+    private static final Long OTHER_MEMBER_ID = 99L;
     // 모임을 읽은 뒤에 참여해서 읽은 모임의 참여자에 없는 참여자다.
     private static final Long NEWCOMER_ID = 23L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
@@ -67,6 +76,7 @@ class SettlementQueryServiceTest extends UnitTest {
 
     @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
+    @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private SettlementRepository settlementRepository;
 
     @BeforeEach
@@ -78,6 +88,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 new SettlementQueryService(
                         getLinkedParticipantUseCase,
                         gatheringRepository,
+                        gatheringRetentionRepository,
                         settlementRepository,
                         clock);
     }
@@ -86,22 +97,76 @@ class SettlementQueryServiceTest extends UnitTest {
     @DisplayName("getForm 메서드는")
     class GetForm {
 
-        // 토큰이 없거나 모임의 파기 시각이 지났거나 데이터 키를 지운 경우다. 갈래별 판단은 ParticipantQueryServiceTest가 검증한다.
         @Nested
-        @DisplayName("개인 링크 토큰으로 참여자를 찾지 못한 경우")
-        class WhenLinkTokenNotFound {
+        @DisplayName("모임의 파기 시각이 없는 경우")
+        class WhenRetentionNotFound {
 
             @Test
-            @DisplayName("예외를 던지고 모임을 읽지 않는다")
-            void shouldThrowLinkTokenNotFoundException() {
+            @DisplayName("예외를 던지고 모임과 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
                 // given
-                given(getLinkedParticipantUseCase.getLinkedParticipant(LINK_TOKEN))
-                        .willThrow(new LinkTokenNotFoundException());
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
 
                 // when & then
-                assertThatThrownBy(() -> settlementQueryService.getForm(LINK_TOKEN))
-                        .isInstanceOf(LinkTokenNotFoundException.class);
+                assertThatThrownBy(() -> settlementQueryService.getForm(query(HOST_MEMBER_ID)))
+                        .isInstanceOf(GatheringNotFoundException.class);
                 then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임과 정산 건을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getForm(query(HOST_MEMBER_ID)))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임이 없는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던진다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getForm(query(HOST_MEMBER_ID)))
+                        .isInstanceOf(GatheringNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 인원 기본값을 구하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID))
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+
+                // when & then
+                assertThatThrownBy(() -> settlementQueryService.getForm(query(OTHER_MEMBER_ID)))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(settlementRepository).should(never()).findLatestByGatheringId(any(Long.class));
             }
         }
 
@@ -116,10 +181,27 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.deletesAt()).isEqualTo(DELETES_AT);
+            }
+
+            @Test
+            @DisplayName("파기 시각 1초 전이면 화면을 반환한다")
+            void shouldReturnFormWhenAboutToExpire() {
+                // given
+                givenForm(
+                        GatheringRetentionFixture.ABOUT_TO_EXPIRE,
+                        gathering(OPEN_PERIOD_OPENED_AT),
+                        null,
+                        List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.deletesAt()).isEqualTo(NOW.plusSeconds(1));
             }
         }
 
@@ -134,7 +216,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.recordable()).isTrue();
@@ -164,7 +246,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.rounds())
@@ -194,23 +276,18 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 LEE_ID,
                                 List.of(PAYER_ID, LEE_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of(latest));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.defaultParticipantIds()).containsExactly(LEE_ID, PAYER_ID);
             }
-        }
-
-        @Nested
-        @DisplayName("직전 정산 건의 인원에 요청한 참여자가 없는 경우")
-        class WhenLatestSettlementExcludesRequester {
 
             @Test
-            @DisplayName("직전 정산 건의 인원 뒤에 요청한 참여자를 더해 인원 기본값으로 반환한다")
-            void shouldAppendRequesterToDefaultParticipants() {
+            @DisplayName("직전 정산 건의 인원에 없는 참여자는 더하지 않는다")
+            void shouldNotAddParticipantsMissingFromLatestSettlement() {
                 // given
                 Settlement latest =
                         SettlementFixture.DINNER.createWithId(
@@ -219,14 +296,13 @@ class SettlementQueryServiceTest extends UnitTest {
                                 ROUND_ID,
                                 LEE_ID,
                                 List.of(LEE_ID, PARK_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of());
+                givenForm(OPEN_PERIOD_OPENED_AT, latest, List.of(latest));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
-                assertThat(result.defaultParticipantIds())
-                        .containsExactly(LEE_ID, PARK_ID, PAYER_ID);
+                assertThat(result.defaultParticipantIds()).containsExactly(LEE_ID, PARK_ID);
             }
         }
 
@@ -258,10 +334,10 @@ class SettlementQueryServiceTest extends UnitTest {
                                 OPEN_PERIOD_OPENED_AT,
                                 ParticipantFixture.createWithIds(gatheringParticipantIds)),
                         latest,
-                        List.of());
+                        List.of(latest));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.defaultParticipantIds())
@@ -273,37 +349,72 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("요청한 참여자가 결제자로 기록한 정산 건이 있는 경우")
-        class WhenPayerSettlementsExist {
+        @DisplayName("모임에 정산 건이 있는 경우")
+        class WhenSettlementsExist {
 
             @Test
-            @DisplayName("그 정산 건을 분담금과 함께 반환한다")
-            void shouldReturnPayerSettlements() {
+            @DisplayName("결제자와 관계없이 모임의 정산 건을 분담금과 함께 모두 반환한다")
+            void shouldReturnSettlementsOfAllPayers() {
                 // given
-                Settlement settlement =
+                Settlement hostPaid =
                         SettlementFixture.DINNER.createWithId(
                                 SETTLEMENT_ID,
                                 GATHERING_ID,
                                 ROUND_ID,
                                 PAYER_ID,
                                 List.of(PAYER_ID, LEE_ID, PARK_ID));
-                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
+                Settlement otherPaid =
+                        SettlementFixture.SECOND_ROUND.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                List.of(PARK_ID, LEE_ID));
+                givenForm(OPEN_PERIOD_OPENED_AT, otherPaid, List.of(hostPaid, otherPaid));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
-                assertThat(result.settlements()).hasSize(1);
-                SettlementResult settlementResult = result.settlements().getFirst();
-                assertThat(settlementResult.id()).isEqualTo(SETTLEMENT_ID);
-                assertThat(settlementResult.payerParticipantId()).isEqualTo(PAYER_ID);
-                assertThat(settlementResult.payerAmount()).isEqualTo(3_334L);
-                assertThat(settlementResult.shares()).hasSize(2);
+                assertThat(result.settlements())
+                        .extracting(
+                                SettlementResult::id,
+                                SettlementResult::payerParticipantId,
+                                settlementResult -> settlementResult.shares().size())
+                        .containsExactly(
+                                tuple(SETTLEMENT_ID, PAYER_ID, 2),
+                                tuple(SECOND_SETTLEMENT_ID, PARK_ID, 1));
+                assertThat(result.settlements().getFirst().payerAmount()).isEqualTo(3_334L);
             }
 
             @Test
-            @DisplayName("한 결제자가 여러 차수에서 결제한 정산 건의 총액과 받을 금액을 각각 더해 반환한다")
-            void shouldSumTotalAndReceivableAmountsAcrossRounds() {
+            @DisplayName("취소한 정산 건은 담지 않는다")
+            void shouldExcludeCancelledSettlements() {
+                // given
+                Settlement settlement =
+                        SettlementFixture.DINNER.createWithId(
+                                SETTLEMENT_ID, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
+                Settlement cancelled =
+                        SettlementFixture.SECOND_ROUND.createCancelled(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PARK_ID,
+                                PARTICIPANT_IDS);
+                givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement, cancelled));
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.settlements())
+                        .extracting(SettlementResult::id)
+                        .containsExactly(SETTLEMENT_ID);
+            }
+
+            @Test
+            @DisplayName("모임 전체 정산 건의 총액과 받을 금액을 각각 더해 반환하고 취소한 정산 건은 더하지 않는다")
+            void shouldSumTotalAndReceivableAmountsOfGathering() {
                 // given
                 Settlement firstRoundSettlement =
                         SettlementFixture.DINNER.createWithId(
@@ -319,13 +430,20 @@ class SettlementQueryServiceTest extends UnitTest {
                                 GatheringRoundFixture.SECOND.getId(),
                                 PAYER_ID,
                                 PARTICIPANT_IDS);
+                Settlement cancelled =
+                        SettlementFixture.SECOND_ROUND.createCancelled(
+                                THIRD_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                GatheringRoundFixture.SECOND.getId(),
+                                PARK_ID,
+                                PARTICIPANT_IDS);
                 givenForm(
                         OPEN_PERIOD_OPENED_AT,
                         secondRoundSettlement,
-                        List.of(firstRoundSettlement, secondRoundSettlement));
+                        List.of(firstRoundSettlement, secondRoundSettlement, cancelled));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.totalAmountSum()).isEqualTo(30_000L);
@@ -342,7 +460,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.settlements())
@@ -365,7 +483,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(OPEN_PERIOD_OPENED_AT, settlement, List.of(settlement));
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.settlements())
@@ -378,8 +496,8 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("요청한 참여자가 결제자로 기록한 정산 건이 없는 경우")
-        class WhenNoPayerSettlements {
+        @DisplayName("모임에 정산 건이 없는 경우")
+        class WhenNoSettlements {
 
             @Test
             @DisplayName("총액과 받을 금액의 합계를 0으로 반환한다")
@@ -388,7 +506,7 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(OPEN_PERIOD_OPENED_AT, null, List.of());
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.totalAmountSum()).isZero();
@@ -407,32 +525,48 @@ class SettlementQueryServiceTest extends UnitTest {
                 givenForm(CLOSED_PERIOD_OPENED_AT, null, List.of());
 
                 // when
-                SettlementFormResult result = settlementQueryService.getForm(LINK_TOKEN);
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
 
                 // then
                 assertThat(result.recordable()).isFalse();
             }
         }
 
+        private GetSettlementFormQuery query(Long memberId) {
+            return GetSettlementFormQuery.of(memberId, GATHERING_ID);
+        }
+
         // 모임에 정산 건이 없는 경우는 latestSettlement에 null을 넘긴다.
+        // gatheringSettlements는 취소한 정산 건까지 담을 수 있는 모임의 정산 건이다.
         private void givenForm(
                 LocalDateTime openedAt,
                 Settlement latestSettlement,
-                List<Settlement> payerSettlements) {
-            givenForm(gathering(openedAt), latestSettlement, payerSettlements);
+                List<Settlement> gatheringSettlements) {
+            givenForm(gathering(openedAt), latestSettlement, gatheringSettlements);
         }
 
         private void givenForm(
                 Gathering gathering,
                 Settlement latestSettlement,
-                List<Settlement> payerSettlements) {
-            givenParticipant(PAYER_ID);
-            given(gatheringRepository.findByParticipantId(PAYER_ID))
-                    .willReturn(Optional.of(gathering));
+                List<Settlement> gatheringSettlements) {
+            givenForm(
+                    GatheringRetentionFixture.RETAINED,
+                    gathering,
+                    latestSettlement,
+                    gatheringSettlements);
+        }
+
+        private void givenForm(
+                GatheringRetentionFixture retention,
+                Gathering gathering,
+                Settlement latestSettlement,
+                List<Settlement> gatheringSettlements) {
+            givenRetention(retention);
+            given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.of(gathering));
+            given(settlementRepository.findAllByGatheringId(GATHERING_ID))
+                    .willReturn(gatheringSettlements);
             given(settlementRepository.findLatestByGatheringId(GATHERING_ID))
                     .willReturn(Optional.ofNullable(latestSettlement));
-            given(settlementRepository.findAllByPayerParticipantId(PAYER_ID))
-                    .willReturn(payerSettlements);
         }
     }
 
@@ -895,6 +1029,11 @@ class SettlementQueryServiceTest extends UnitTest {
             given(settlementRepository.findAllByGatheringId(GATHERING_ID))
                     .willReturn(gatheringSettlements);
         }
+    }
+
+    private void givenRetention(GatheringRetentionFixture retention) {
+        given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                .willReturn(Optional.of(retention.create(GATHERING_ID, NOW)));
     }
 
     private void givenParticipant(Long participantId) {

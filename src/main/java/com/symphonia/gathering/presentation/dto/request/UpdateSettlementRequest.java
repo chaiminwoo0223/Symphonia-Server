@@ -17,7 +17,7 @@ public record UpdateSettlementRequest(
         @Positive @Max(100_000_000) @Schema(description = "카드 결제 총액 (원)") long totalAmount,
         @NotEmpty @Schema(description = "결제자를 포함한 정산 건 인원의 참여자 ID")
                 List<@NotNull Long> participantIds,
-        @NotNull @Schema(description = "결제자가 금액을 지정한 참여자와 그 금액. 없으면 빈 목록")
+        @NotNull @Schema(description = "모임장이 금액을 지정한 참여자와 그 금액. 없으면 빈 목록")
                 List<@Valid @NotNull FixedAmountRequest> fixedAmounts) {
     @AssertTrue(message = "같은 참여자의 금액을 두 번 지정할 수 없습니다.")
     @Schema(hidden = true)
@@ -27,9 +27,15 @@ public record UpdateSettlementRequest(
                         == fixedAmounts.size();
     }
 
-    public UpdateSettlementCommand toCommand(String linkToken, Long settlementId) {
+    public UpdateSettlementCommand toCommand(Long memberId, Long gatheringId, Long settlementId) {
         return new UpdateSettlementCommand(
-                linkToken, settlementId, roundId, totalAmount, participantIds, toFixedAmountMap());
+                memberId,
+                gatheringId,
+                settlementId,
+                roundId,
+                totalAmount,
+                participantIds,
+                toFixedAmountMap());
     }
 
     private Map<Long, Long> toFixedAmountMap() {

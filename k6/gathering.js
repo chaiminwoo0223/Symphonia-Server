@@ -95,18 +95,15 @@ function joinGathering(joinToken, consentVersion, sequence) {
     );
 }
 
-// 모임을 열고 참여자를 채운 뒤, 첫 참여자가 결제자로 참여자 전원의 정산 건을 기록한다.
+// 모임을 열고 참여자를 채운 뒤, 모임장이 첫 참여자를 결제자로 지정해 참여자 전원의 정산 건을 기록한다.
 export function setup() {
     if (!JWT_SECRET) {
         fail('JWT_SECRET 환경변수가 필요하다. k6 run -e JWT_SECRET=... 로 넘긴다.');
     }
 
-    const { joinToken } = dataOf(
-        http.post(
-            `${BASE_URL}/api/v1/gatherings`,
-            JSON.stringify({ name: 'K6 측정 모임' }),
-            jsonHeaders({ Authorization: `Bearer ${signAccessToken()}` }),
-        ),
+    const hostHeaders = jsonHeaders({ Authorization: `Bearer ${signAccessToken()}` });
+    const { gatheringId, joinToken } = dataOf(
+        http.post(`${BASE_URL}/api/v1/gatherings`, JSON.stringify({ name: 'K6 측정 모임' }), hostHeaders),
         201,
         '모임 열기',
     );
@@ -121,23 +118,23 @@ export function setup() {
         participants.push(dataOf(joinGathering(joinToken, consentVersion, sequence), 201, '참여'));
     }
 
-    const payerLinkToken = participants[0].linkToken;
     const form = dataOf(
-        http.get(`${BASE_URL}/api/v1/settlements/form`, { headers: { 'X-Link-Token': payerLinkToken } }),
+        http.get(`${BASE_URL}/api/v1/gatherings/${gatheringId}/settlements/form`, hostHeaders),
         200,
         '기록 화면 조회',
     );
     dataOf(
         http.post(
-            `${BASE_URL}/api/v1/settlements`,
+            `${BASE_URL}/api/v1/gatherings/${gatheringId}/settlements`,
             JSON.stringify({
                 clientRequestId: uuidV4(),
+                payerParticipantId: participants[0].id,
                 roundId: form.rounds[0].id,
                 totalAmount: INITIAL_PARTICIPANT_COUNT * 31250,
                 participantIds: participants.map((participant) => participant.id),
                 fixedAmounts: [],
             }),
-            jsonHeaders({ 'X-Link-Token': payerLinkToken }),
+            hostHeaders,
         ),
         201,
         '정산 건 기록',

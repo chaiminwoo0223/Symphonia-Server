@@ -1,6 +1,7 @@
 package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.QueryService;
+import com.symphonia.gathering.application.dto.query.GetSettlementFormQuery;
 import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.LinkedParticipantResult;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
@@ -16,9 +17,10 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
-import com.symphonia.gathering.domain.policy.SettlementPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
+import com.symphonia.gathering.domain.vo.GatheringRetention;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -33,29 +35,32 @@ import lombok.RequiredArgsConstructor;
 public class SettlementQueryService implements GetSettlementFormUseCase, GetSharesUseCase {
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringRepository gatheringRepository;
+    private final GatheringRetentionRepository gatheringRetentionRepository;
     private final SettlementRepository settlementRepository;
     private final Clock clock;
 
+    // 모임을 만든 회원이 정산 건을 기록하는 화면이다. 모임의 취소하지 않은 정산 건을 모두 담는다.
     @Override
-    public SettlementFormResult getForm(String linkToken) {
+    public SettlementFormResult getForm(GetSettlementFormQuery query) {
         LocalDateTime now = LocalDateTime.now(clock);
-        LinkedParticipantResult linkedParticipant =
-                getLinkedParticipantUseCase.getLinkedParticipant(linkToken);
-        Long participantId = linkedParticipant.participantId();
+        GatheringRetention retention =
+                gatheringRetentionRepository
+                        .findByGatheringId(query.gatheringId())
+                        .filter(found -> !found.isExpired(now))
+                        .orElseThrow(GatheringNotFoundException::new);
         // 정산 건을 모임보다 먼저 읽는다. 읽은 정산 건의 차수는 그 정산 건을 저장하기 전에 커밋되어 있고 차수는 지우지 않으므로,
         // 뒤에 읽는 모임에는 그 차수가 반드시 들어 있다.
-        List<Settlement> payerSettlements =
-                settlementRepository.findAllByPayerParticipantId(participantId);
-        Gathering gathering = findGatheringByParticipantId(participantId);
+        List<Settlement> settlements =
+                settlementRepository.findAllByGatheringId(query.gatheringId()).stream()
+                        .filter(settlement -> !settlement.isCancelled())
+                        .toList();
+        Gathering gathering = findGathering(query.gatheringId());
+        GatheringPolicy.validateHost(gathering.getHostMemberId(), query.memberId());
         boolean recordable = GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now);
         List<Long> defaultParticipantIds =
                 settlementRepository
                         .findLatestByGatheringId(gathering.getId())
                         .map(Settlement::getParticipantIds)
-                        .map(
-                                latestParticipantIds ->
-                                        SettlementPolicy.getDefaultParticipantIds(
-                                                latestParticipantIds, participantId))
                         .orElseGet(
                                 () ->
                                         gathering.getParticipants().stream()
@@ -69,14 +74,14 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                         .map(SettlementParticipantResult::from)
                         .toList(),
                 defaultParticipantIds,
-                payerSettlements.stream()
+                settlements.stream()
                         .map(
                                 settlement ->
                                         SettlementResult.of(
                                                 settlement,
                                                 gathering.getRound(settlement.getRoundId())))
                         .toList(),
-                linkedParticipant.deletesAt());
+                retention.deletesAt());
     }
 
     // 결제자별로 묶고 결제자 묶음은 처음 기록한 정산 건의 순서를 따른다. 보낼 분담금이 남은 결제자를 앞에 둔다.
@@ -115,6 +120,12 @@ public class SettlementQueryService implements GetSettlementFormUseCase, GetShar
                         .toList();
 
         return SharesResult.of(linkedParticipant.deletesAt(), payers);
+    }
+
+    private Gathering findGathering(Long gatheringId) {
+        return gatheringRepository
+                .findById(gatheringId)
+                .orElseThrow(GatheringNotFoundException::new);
     }
 
     private Gathering findGatheringByParticipantId(Long participantId) {

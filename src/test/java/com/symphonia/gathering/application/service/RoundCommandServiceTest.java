@@ -60,8 +60,7 @@ class RoundCommandServiceTest extends UnitTest {
                 Clock.fixed(
                         NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(), TimeConfig.SERVICE_ZONE);
         roundCommandService =
-                new RoundCommandService(
-                        gatheringRepository, gatheringRetentionRepository, clock);
+                new RoundCommandService(gatheringRepository, gatheringRetentionRepository, clock);
     }
 
     @Nested
@@ -227,12 +226,12 @@ class RoundCommandServiceTest extends UnitTest {
             void shouldAddRoundAtLimit() {
                 // given
                 int limit = GatheringPolicy.MAX_ROUND_COUNT;
-                givenGathering(
-                        OPEN_PERIOD_OPENED_AT, GatheringRoundFixture.createUpTo(limit - 1));
+                givenGathering(OPEN_PERIOD_OPENED_AT, GatheringRoundFixture.createUpTo(limit - 1));
                 givenSaveAssignsRoundId();
 
                 // when
-                GatheringRoundResult result = roundCommandService.add(command(HOST_MEMBER_ID, limit));
+                GatheringRoundResult result =
+                        roundCommandService.add(command(HOST_MEMBER_ID, limit));
 
                 // then
                 assertThat(result.number()).isEqualTo(limit);
@@ -287,11 +286,11 @@ class RoundCommandServiceTest extends UnitTest {
             void shouldThrowGatheringRoundCountExceedsLimitException() {
                 // given
                 int limit = GatheringPolicy.MAX_ROUND_COUNT;
-                givenGathering(
-                        OPEN_PERIOD_OPENED_AT, GatheringRoundFixture.createUpTo(limit));
+                givenGathering(OPEN_PERIOD_OPENED_AT, GatheringRoundFixture.createUpTo(limit));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, limit + 1)))
+                assertThatThrownBy(
+                                () -> roundCommandService.add(command(HOST_MEMBER_ID, limit + 1)))
                         .isInstanceOf(GatheringRoundCountExceedsLimitException.class);
                 thenGatheringNotSaved();
             }
@@ -309,7 +308,8 @@ class RoundCommandServiceTest extends UnitTest {
                 givenGathering(OPEN_PERIOD_OPENED_AT, List.of(first()));
 
                 // when & then
-                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, limit + 1)))
+                assertThatThrownBy(
+                                () -> roundCommandService.add(command(HOST_MEMBER_ID, limit + 1)))
                         .isInstanceOf(GatheringRoundCountExceedsLimitException.class);
                 thenGatheringNotSaved();
             }

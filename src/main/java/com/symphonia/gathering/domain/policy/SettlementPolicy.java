@@ -55,15 +55,6 @@ public enum SettlementPolicy {
                                         Collectors.toCollection(HashSet::new))));
     }
 
-    // 직전 정산 건의 결제자가 다른 사람이면 인원에 요청한 참여자가 없을 수 있다. 결제자는 항상 인원에 들어가므로 빠졌으면 뒤에 더한다.
-    public static List<Long> getDefaultParticipantIds(
-            List<Long> latestParticipantIds, Long payerParticipantId) {
-        return latestParticipantIds.contains(payerParticipantId)
-                ? latestParticipantIds
-                : Stream.concat(latestParticipantIds.stream(), Stream.of(payerParticipantId))
-                        .toList();
-    }
-
     // 정산에서 돈이 오간 참여자만 페어링 피드백을 낼 수 있다. 결제자가 기록한 정산 건과 분담금이 있는 정산 건을 함께 본다.
     public static boolean isPairingFeedbackSubmittable(
             Long participantId,
