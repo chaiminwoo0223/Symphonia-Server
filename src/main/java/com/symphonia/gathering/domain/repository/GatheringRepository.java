@@ -11,8 +11,7 @@ public interface GatheringRepository {
 
     Optional<Gathering> findByParticipantId(Long participantId);
 
-    // 참여자 한 명을 지운다. 참여자를 참조하는 개인 링크 토큰과 계좌를 먼저 지운 뒤에 부른다.
-    // 정산 건이 참여자를 참조하는 중이면 지우지 못하고 ParticipantUnremovableException을 던진다.
+    // 참여자 한 명을 지운다. 참여자를 참조하는 개인 링크 토큰과 계좌를 먼저 지우고, 정산 건에 없는지 확인한 뒤에 부른다.
     void deleteParticipant(Long participantId);
 
     // 모임별 데이터 키를 지워, 남은 행이나 백업에 암호문이 있어도 복호화할 수 없게 한다(#128).
