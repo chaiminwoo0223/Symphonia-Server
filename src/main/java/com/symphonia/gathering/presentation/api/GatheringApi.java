@@ -80,7 +80,7 @@ public interface GatheringApi {
     @Operation(
             summary = "정산 건 기록",
             description =
-                    "모임장이 정산 건을 기록하고 분담액을 계산합니다. 결제자는 payerParticipantId로 지정합니다. 같은 요청 id로 다시 보내면 새로 만들지 않고 처음 기록한 정산 건을 돌려줍니다.")
+                    "모임장이 정산 건을 기록하고 분담액을 계산합니다. 결제자는 payerParticipantId로 지정합니다. 같은 결제자와 같은 요청 id로 다시 보내면 새로 만들지 않고 처음 기록한 정산 건을 돌려줍니다. 요청 id가 같아도 결제자가 다르면 다른 요청으로 보고 새 정산 건을 만듭니다.")
     ResponseEntity<StandardResponse<SettlementResponse>> recordSettlement(
             @AuthenticationPrincipal String memberId,
             @PathVariable Long gatheringId,
