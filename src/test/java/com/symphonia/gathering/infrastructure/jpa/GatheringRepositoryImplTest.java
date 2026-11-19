@@ -519,6 +519,105 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findByIdForUpdate 메서드는")
+    class FindByIdForUpdate {
+
+        @Test
+        @DisplayName("존재하는 ID면 참여자의 이름과 휴대폰을 복호화한 모임을 반환한다")
+        void shouldReturnDecryptedGatheringWhenIdExists() {
+            // given
+            Gathering saved =
+                    gatheringRepository.save(
+                            GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                    List.of(ParticipantFixture.KIM.create())));
+            clearPersistenceContext();
+
+            // when
+            Optional<Gathering> result = gatheringRepository.findByIdForUpdate(saved.getId());
+
+            // then
+            assertThat(result).isPresent();
+            Participant participant = result.get().getParticipants().getFirst();
+            assertThat(participant.getName()).isEqualTo(ParticipantFixture.KIM.getName());
+            assertThat(participant.getPhoneNumber().value())
+                    .isEqualTo(ParticipantFixture.KIM.getPhoneNumber());
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 ID면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenIdNotExists() {
+            // when
+            Optional<Gathering> result = gatheringRepository.findByIdForUpdate(-1L);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+
+        // 두 트랜잭션이 실제로 겹쳐야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
+        @Nested
+        @DisplayName("두 요청이 같은 모임을 동시에 잠그고 읽는 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenLockedConcurrently {
+
+            private Long gatheringId;
+
+            @AfterEach
+            void tearDown() {
+                jdbcTemplate.update(
+                        "DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
+                jdbcTemplate.update(
+                        "DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
+                jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
+            }
+
+            @Test
+            @DisplayName("늦은 요청이 먼저 잡은 요청이 끝날 때까지 기다려 두 요청이 겹치지 않는다")
+            void shouldNotOverlapLockedSections() {
+                // given
+                gatheringId =
+                        transactionTemplate.execute(
+                                _ ->
+                                        gatheringRepository
+                                                .save(GatheringFixture.FRIDAY_DINNER.create())
+                                                .getId());
+                CountDownLatch ready = new CountDownLatch(2);
+                List<String> events = new CopyOnWriteArrayList<>();
+
+                // when
+                List<Throwable> failures =
+                        runConcurrently(
+                                () -> holdLock(ready, events), () -> holdLock(ready, events));
+
+                // then
+                assertThat(failures).isEmpty();
+                assertThat(events).containsExactly("enter", "exit", "enter", "exit");
+            }
+
+            // 잠금 구간 안에서 잠시 머물러, 잠금이 없다면 두 요청이 서로의 구간 안에 들어오게 한다.
+            private void holdLock(CountDownLatch ready, List<String> events) {
+                ready.countDown();
+                await(ready);
+                transactionTemplate.executeWithoutResult(
+                        _ -> {
+                            gatheringRepository.findByIdForUpdate(gatheringId).orElseThrow();
+                            events.add("enter");
+                            sleep(300);
+                            events.add("exit");
+                        });
+            }
+
+            private void sleep(long millis) {
+                try {
+                    Thread.sleep(millis);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("findByParticipantId 메서드는")
     class FindByParticipantId {
 

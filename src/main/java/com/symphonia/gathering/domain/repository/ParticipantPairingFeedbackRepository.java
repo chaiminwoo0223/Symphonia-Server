@@ -9,5 +9,7 @@ public interface ParticipantPairingFeedbackRepository {
 
     boolean existsByParticipantId(Long participantId);
 
+    void deleteByParticipantId(Long participantId);
+
     void deleteAllByGatheringId(Long gatheringId);
 }

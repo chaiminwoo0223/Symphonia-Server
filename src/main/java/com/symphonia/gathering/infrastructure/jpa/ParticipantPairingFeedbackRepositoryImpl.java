@@ -23,6 +23,11 @@ public class ParticipantPairingFeedbackRepositoryImpl
     }
 
     @Override
+    public void deleteByParticipantId(Long participantId) {
+        participantPairingFeedbackJpaRepository.deleteByParticipantId(participantId);
+    }
+
+    @Override
     public void deleteAllByGatheringId(Long gatheringId) {
         participantPairingFeedbackJpaRepository.deleteAllByGatheringId(gatheringId);
     }
