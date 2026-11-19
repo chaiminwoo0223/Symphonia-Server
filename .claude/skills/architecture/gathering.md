@@ -16,9 +16,8 @@
 ## 차수
 
 - 차수(`GatheringRound`)는 술자리 단위이고 `Gathering`이 가진다. 정산 건은 차수 하나에 속하고, 한 차수에 정산 건이 여러 개일 수 있다.
-- 차수 번호는 1부터 빈틈없이 이어진다. 차수는 지우지 않는다.
-- `Gathering.open`이 모임을 열 때 1차를 만든다.
-- 모임을 만든 회원이 JWT로 다음 차수를 추가한다(`POST /gatherings/{gatheringId}/rounds`, 본문 `roundNumber`). `*Api`는 `GatheringApi`다. 파기 시각이 지난 모임은 404(`GATHERING_NOT_FOUND`)로, 모임을 만든 회원이 아니면 403(`NOT_GATHERING_HOST`)으로 거절한다.
+- 차수 번호는 1부터 빈틈없이 이어진다. 차수는 지우지 않고, `Gathering.open`이 모임을 열 때 1차를 만든다.
+- 모임을 만든 회원이 JWT로 다음 차수를 추가한다(`POST /gatherings/{gatheringId}/rounds`, 본문 `roundNumber`).
 - 요청한 번호의 차수가 이미 있으면 새로 만들지 않고 그 차수를 돌려준다. 마지막 번호의 다음 번호보다 큰 번호는 400(`INVALID_GATHERING_ROUND_NUMBER`)으로 거절한다.
 - 동시 추가는 `(gathering_id, round_number)` unique 제약과 `ON CONFLICT DO NOTHING`으로 막고, 넣지 못하면 이미 있는 차수를 읽어 돌려준다.
 - 모임의 차수는 최대 10개(`GatheringPolicy.MAX_ROUND_COUNT`)이고, 상한을 넘는 번호는 건너뛴 번호보다 먼저 400(`GATHERING_ROUND_COUNT_EXCEEDS_LIMIT`)으로 거절한다.
@@ -50,8 +49,8 @@
 
 ## 정산 건 기록, 수정, 취소
 
-- 정산 건은 모임을 만든 회원이 JWT로 기록, 수정, 취소한다. 결제자는 기록할 때 요청 본문의 `payerParticipantId`로 지정하고, 그 모임의 참여자가 아니면 404(`PARTICIPANT_NOT_FOUND`)다. 모임장은 참여자가 아니어도 된다. 결제자는 수정으로 바꿀 수 없고, 바꾸려면 취소하고 다시 기록한다.
-- 기록, 수정, 취소는 파기 시각이 지난 모임을 404(`GATHERING_NOT_FOUND`)로, 모임을 만든 회원이 아니면 403(`NOT_GATHERING_HOST`)으로 거절한다. 다른 모임의 정산 건은 404(`SETTLEMENT_NOT_FOUND`)다.
+- 정산 건은 모임을 만든 회원이 JWT로 기록, 수정, 취소한다. 결제자는 기록할 때 본문의 `payerParticipantId`로 지정하고, 그 모임의 참여자가 아니면 404(`PARTICIPANT_NOT_FOUND`)다. 모임장은 참여자가 아니어도 된다. 결제자는 수정할 수 없고 취소 뒤 다시 기록한다.
+- 차수 추가와 정산 건 기록, 수정, 취소는 파기 시각이 지난 모임을 404(`GATHERING_NOT_FOUND`)로, 모임을 만든 회원이 아니면 403(`NOT_GATHERING_HOST`)으로 거절한다. 다른 모임의 정산 건은 404(`SETTLEMENT_NOT_FOUND`)다.
 - 정산 건은 모임 생성 후 48시간 안에만 기록할 수 있다.
 - 정산 건 기록 요청은 클라이언트가 만든 요청 id(`clientRequestId`, UUID)를 필수로 담는다. 같은 결제자가 같은 요청 id로 다시 보내면 새로 만들지 않고 처음 기록한 정산 건을 201로 돌려주고, 요청 내용이 달라도 처음 정산 건을 돌려준다. 이미 있는 정산 건은 차수, 인원, 기록 기간 검증보다 먼저 찾아 그대로 돌려준다.
 - 요청 id는 `settlement`의 `(payer_participant_id, client_request_id)` unique 제약과 `ON CONFLICT DO NOTHING`으로 가린다. 동시에 같은 요청이 오면 늦은 요청은 먼저 넣은 요청이 커밋한 뒤 그 정산 건을 읽는다.
@@ -60,7 +59,7 @@
 - 보낸 분담금이 있는 정산 건은 수정을 막는다(`SettlementSharesSentException`).
 - 취소는 기록 기간이 지나도 할 수 있다. 보낸 분담금이 있는 정산 건은 기간과 관계없이 취소할 수 없다. 결제자가 먼저 미입금으로 되돌리고 받은 돈은 직접 돌려준다.
 - 결제자가 더 내는 경우는 더 낼 금액만큼 총액을 줄여 기록한다.
-- 기록 화면 조회는 모임의 취소하지 않은 정산 건을 함께 돌려준다. 참여자에는 마스킹한 휴대폰을, 정산 건에는 확인 완료 금액과 보냄 금액과 자기 차수의 id와 번호를 담는다. 정산 건이 없는 빈 차수를 포함한 차수 목록(id, 번호)도 함께 담는다.
+- 기록 화면 조회는 모임의 취소하지 않은 정산 건을 함께 돌려준다. 참여자에는 마스킹한 휴대폰을, 정산 건에는 확인 완료 금액과 보냄 금액과 자기 차수의 id와 번호를 담는다. 정산 건이 없는 빈 차수를 포함한 차수 목록도 함께 담는다.
 - 기록 화면 응답에는 그 정산 건들의 총액 합계(`totalAmountSum`)와 받을 금액 합계(`receivableAmountSum`)도 담는다. 받을 금액은 총액에서 결제자 분담액을 뺀 값이다. 취소나 재기록 뒤에는 클라이언트가 기록 화면을 다시 조회한다.
 - 인원 규칙 위반은 모두 `INVALID_SETTLEMENT_PARTICIPANTS` 하나로 알린다.
 
@@ -89,9 +88,7 @@
 
 - 개인 링크는 취소하지 않은 정산 건의 본인 분담금을 상태와 함께 모두 보여 주고, 미입금이 남은 결제자를 앞에 둔다.
 - 계산 근거는 총액, 결제자를 포함한 인원, 본인 금액의 지정 여부, 본인 금액, 정산 건의 차수(id, 번호), 그 차수의 참여자 이름이다. 참여자 이름은 그 차수의 취소하지 않은 정산 건 인원의 합집합이다. 다른 참여자의 분담액, 남은 금액, 지정 금액의 합, 휴대폰은 보여 주지 않는다.
-- 결제자의 수금 화면(`GET /settlements`, `X-Link-Token`)은 그 결제자가 기록된 취소하지 않은 정산 건을 참여자별로 묶어 돌려준다. 참여자의 이름, 전체 휴대폰, 정산 건별 차수와 받을 금액과 상태(정산 건 id 포함), 참여자별 합계, 전체 합계, `deletesAt`을 담는다. 0원 분담금의 참여자도 담고, 결제자로 지정된 정산 건이 없으면 빈 목록이다. 파기 시각이 지난 모임은 다른 링크 토큰 API와 같이 404(`LINK_TOKEN_NOT_FOUND`)다.
-- 참여자 화면에는 결제자의 휴대폰을 보여 주지 않는다.
-- 결제자 현황은 마이페이지가 아니라 개인 링크의 수금 화면에 둔다.
+- 결제자의 수금 화면(`GET /settlements`)은 결제자가 기록된 취소하지 않은 정산 건을 참여자별로 묶는다. 참여자의 이름, 전체 휴대폰, 정산 건별 차수와 금액과 상태, 합계(참여자별, 전체), `deletesAt`을 담고 0원 분담금의 참여자도 담는다. 결제자로 지정된 정산 건이 없으면 빈 목록이고, 파기 시각이 지난 모임은 404(`LINK_TOKEN_NOT_FOUND`)다.
 
 ## 개인정보 암호화와 토큰
 
@@ -101,7 +98,7 @@
 - 참여 토큰과 개인 링크 토큰은 128비트 이상 무작위 값이고, DB에는 해시만 `gathering_join_token`, `participant_link_token` 테이블에 저장한다. 해싱은 `GatheringJoinTokenRepositoryImpl`, `ParticipantLinkTokenRepositoryImpl`이 하고, domain과 application은 원본 토큰만 다룬다.
 - 개인 링크 토큰은 참여 응답에서 발급하고, 모임을 파기할 때까지 유효하다. `participant_link_token`은 `participant_id`에 인덱스를 둔다.
 - 휴대폰 번호만으로 링크를 다시 주지 않는다.
-- 응답의 휴대폰은 마스킹하고 결제자의 수금 화면만 예외로 한다. 로그와 예외 메시지에는 개인정보를 넣지 않는다.
+- 응답의 휴대폰은 마스킹하고, 로그와 예외 메시지에는 개인정보를 넣지 않는다.
 
 ## 파기
 
@@ -116,7 +113,7 @@
 ## API 경로와 Api 분리
 
 - 참여 토큰과 개인 링크 토큰은 경로가 아니라 `X-Join-Token`, `X-Link-Token` 헤더로 받는다.
-- 경로는 자원 중심으로 둔다. 모임 열기는 `POST /gatherings`, 참여는 `POST /participants`, 정산 건 기록과 수정은 `POST /gatherings/{gatheringId}/settlements`와 `PUT /gatherings/{gatheringId}/settlements/{settlementId}`다. 모임장 전용 경로는 `/gatherings/{gatheringId}` 아래에 두고 `GatheringApi`가 맡는다. HTTP 메서드와 뜻이 겹치는 동사(`open`, `record`, `update`)는 경로에 쓰지 않는다.
+- 경로는 자원 중심으로 둔다. 모임 열기는 `POST /gatherings`, 참여는 `POST /participants`, 정산 건 기록과 수정은 `POST /gatherings/{gatheringId}/settlements`와 `PUT /gatherings/{gatheringId}/settlements/{settlementId}`다. 모임장 전용 경로는 `/gatherings/{gatheringId}` 아래 `GatheringApi`에 둔다. HTTP 메서드와 뜻이 겹치는 동사(`open`, `record`, `update`)는 경로에 쓰지 않는다.
 - 링크 토큰으로 부르는 API는 경로에 본인을 적지 않는다. `me`는 JWT로 인증한 회원(`/members/me`)에만 쓴다.
 - 취소는 `POST /gatherings/{gatheringId}/settlements/{settlementId}/cancel`, 기록 화면 조회는 `GET /gatherings/{gatheringId}/settlements/form`, 참여 토큰 재발급은 `POST /gatherings/{gatheringId}/join-token`이다. 페어링 추천은 `GET /pairings/recommendations`다. 인증 API(`/auth/login` 등)는 동사 경로를 유지한다.
 - 참여자 쪽 분담금 API는 `ShareApi`다. 조회는 `GET /shares`, "보냈어요"는 `POST /shares/sent`이고, 결제자는 요청 본문의 `payerParticipantId`로 고른다. 결제자의 정정은 `POST /settlements/{settlementId}/shares/{participantId}/confirm`과 `/unpaid`다.
