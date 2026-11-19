@@ -14,8 +14,8 @@ import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
-import com.symphonia.gathering.domain.exception.ParticipantInSettlementException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
+import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
@@ -296,14 +296,14 @@ class ParticipantCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 아무것도 지우지 않는다")
-            void shouldThrowParticipantInSettlementException() {
+            void shouldThrowParticipantUnremovableException() {
                 // given
                 givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
                 given(settlementRepository.existsByParticipantId(PARTICIPANT_ID)).willReturn(true);
 
                 // when & then
                 assertThatThrownBy(() -> participantCommandService.remove(command(HOST_MEMBER_ID)))
-                        .isInstanceOf(ParticipantInSettlementException.class);
+                        .isInstanceOf(ParticipantUnremovableException.class);
                 thenNothingDeleted();
             }
         }

@@ -389,7 +389,7 @@ class GatheringControllerTest extends IntegrationTest {
         class WhenParticipantInCancelledSettlement {
 
             @Test
-            @DisplayName("PARTICIPANT_IN_SETTLEMENT 코드와 함께 409를 반환한다")
+            @DisplayName("PARTICIPANT_UNREMOVABLE 코드와 함께 409를 반환한다")
             void shouldReturnConflict() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
@@ -417,7 +417,7 @@ class GatheringControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.code")
                                         .value(
-                                                GatheringErrorCode.PARTICIPANT_IN_SETTLEMENT
+                                                GatheringErrorCode.PARTICIPANT_UNREMOVABLE
                                                         .getCode()));
             }
         }

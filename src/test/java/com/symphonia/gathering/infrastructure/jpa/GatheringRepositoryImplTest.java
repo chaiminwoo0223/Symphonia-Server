@@ -11,7 +11,7 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
-import com.symphonia.gathering.domain.exception.ParticipantInSettlementException;
+import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -460,8 +460,8 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
-        @DisplayName("정산 건의 결제자면 ParticipantInSettlementException이 발생한다")
-        void shouldThrowParticipantInSettlementExceptionWhenParticipantIsPayer() {
+        @DisplayName("정산 건의 결제자면 ParticipantUnremovableException이 발생한다")
+        void shouldThrowParticipantUnremovableExceptionWhenParticipantIsPayer() {
             // given
             Gathering gathering = saveWithKimAndLee();
             Long kimId = gathering.getParticipants().get(0).getId();
@@ -470,12 +470,12 @@ class GatheringRepositoryImplTest extends RepositoryTest {
 
             // when & then
             assertThatThrownBy(() -> gatheringRepository.deleteParticipant(kimId))
-                    .isInstanceOf(ParticipantInSettlementException.class);
+                    .isInstanceOf(ParticipantUnremovableException.class);
         }
 
         @Test
-        @DisplayName("정산 건의 분담금 인원이면 ParticipantInSettlementException이 발생한다")
-        void shouldThrowParticipantInSettlementExceptionWhenParticipantHasShare() {
+        @DisplayName("정산 건의 분담금 인원이면 ParticipantUnremovableException이 발생한다")
+        void shouldThrowParticipantUnremovableExceptionWhenParticipantHasShare() {
             // given
             Gathering gathering = saveWithKimAndLee();
             Long kimId = gathering.getParticipants().get(0).getId();
@@ -484,7 +484,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
 
             // when & then
             assertThatThrownBy(() -> gatheringRepository.deleteParticipant(leeId))
-                    .isInstanceOf(ParticipantInSettlementException.class);
+                    .isInstanceOf(ParticipantUnremovableException.class);
         }
 
         private Gathering saveWithKimAndLee() {
