@@ -29,11 +29,13 @@ import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.gathering.helper.SettlementHelper;
+import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -722,6 +724,231 @@ class GatheringControllerTest extends IntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isUnauthorized());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/gatherings/{gatheringId}/rounds는")
+    class AddRound {
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 마지막 차수의 다음 번호를 요청한 경우")
+        class WhenNextRoundNumber {
+
+            @Test
+            @DisplayName("차수를 추가하고 그 차수의 id와 번호를 담아 201을 반환한다")
+            void shouldAddRound() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                performAddRound(gathering.getId(), token, new AddRoundRequest(2))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").isNumber())
+                        .andExpect(jsonPath("$.data.number").value(2));
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 있는 번호를 요청한 경우")
+        class WhenRoundAlreadyExists {
+
+            @Test
+            @DisplayName("새로 만들지 않고 그 차수의 id와 번호를 담아 201을 반환한다")
+            void shouldReturnExistingRound() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                performAddRound(gathering.getId(), token, new AddRoundRequest(1))
+                        .andExpect(status().isCreated())
+                        .andExpect(
+                                jsonPath("$.data.id")
+                                        .value(gathering.getRounds().getFirst().getId()))
+                        .andExpect(jsonPath("$.data.number").value(1));
+            }
+        }
+
+        @Nested
+        @DisplayName("차수 번호가 0인 경우")
+        class WhenRoundNumberNotPositive {
+
+            @Test
+            @DisplayName("roundNumber 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                performAddRound(gathering.getId(), token, new AddRoundRequest(0))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("roundNumber"));
+            }
+        }
+
+        @Nested
+        @DisplayName("마지막 차수의 다음 번호보다 큰 번호를 요청한 경우")
+        class WhenRoundNumberSkipsRound {
+
+            @Test
+            @DisplayName("INVALID_GATHERING_ROUND_NUMBER 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                performAddRound(gathering.getId(), token, new AddRoundRequest(3))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.INVALID_GATHERING_ROUND_NUMBER
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("차수가 이미 상한까지 있는 경우")
+        class WhenRoundCountAtLimit {
+
+            @Test
+            @DisplayName("GATHERING_ROUND_COUNT_EXCEEDS_LIMIT 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.addRoundsUpTo(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                GatheringPolicy.MAX_ROUND_COUNT);
+                AddRoundRequest request = new AddRoundRequest(GatheringPolicy.MAX_ROUND_COUNT + 1);
+
+                // when & then
+                performAddRound(gathering.getId(), token, request)
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode
+                                                        .GATHERING_ROUND_COUNT_EXCEEDS_LIMIT
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("GATHERING_ROUND_CLOSED 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(
+                                GatheringFixture.FRIDAY_DINNER,
+                                member.getId(),
+                                LocalDateTime.now().minusHours(48));
+
+                // when & then
+                performAddRound(gathering.getId(), token, new AddRoundRequest(2))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.GATHERING_ROUND_CLOSED.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId());
+
+                // when & then
+                performAddRound(gathering.getId(), token, new AddRoundRequest(2))
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("존재하지 않는 모임인 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("GATHERING_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+
+                // when & then
+                performAddRound(Long.MAX_VALUE, token, new AddRoundRequest(2))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.GATHERING_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings/{gatheringId}/rounds", gathering.getId())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        new AddRoundRequest(2))))
+                        .andExpect(status().isUnauthorized());
+            }
+        }
+
+        private ResultActions performAddRound(
+                Long gatheringId, String token, AddRoundRequest request) throws Exception {
+            return mockMvc.perform(
+                    post("/api/v1/gatherings/{gatheringId}/rounds", gatheringId)
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)));
         }
     }
 

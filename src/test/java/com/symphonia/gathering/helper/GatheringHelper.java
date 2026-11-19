@@ -30,9 +30,14 @@ public class GatheringHelper {
     private final GatheringTokenProvider gatheringTokenProvider;
 
     public Gathering save(GatheringFixture gatheringFixture, Long hostMemberId) {
+        return save(gatheringFixture, hostMemberId, LocalDateTime.now());
+    }
+
+    // 기록 기간처럼 모임을 연 시각으로 갈리는 규칙을 확인할 때 연 시각을 정해 저장한다.
+    public Gathering save(
+            GatheringFixture gatheringFixture, Long hostMemberId, LocalDateTime openedAt) {
         return gatheringRepository.save(
-                gatheringFixture.createWithHostMemberIdAndOpenedAt(
-                        hostMemberId, LocalDateTime.now()));
+                gatheringFixture.createWithHostMemberIdAndOpenedAt(hostMemberId, openedAt));
     }
 
     // 저장소에는 해시만 남으므로, 요청에 쓸 원본 참여 토큰을 돌려준다.

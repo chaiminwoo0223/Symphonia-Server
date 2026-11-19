@@ -3,11 +3,13 @@ package com.symphonia.gathering.presentation.api;
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.GatheringHeaders;
+import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
+import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,6 +53,16 @@ public interface GatheringApi {
             @AuthenticationPrincipal String memberId,
             @PathVariable Long gatheringId,
             @Valid @RequestBody GatheringPairingRequest request);
+
+    @PostMapping(GatheringEndpoints.ADD_ROUND)
+    @Operation(
+            summary = "차수 추가",
+            description =
+                    "모임에 다음 차수를 추가합니다. 모임을 만든 회원만 할 수 있고, 기록 기간(모임을 연 뒤 48시간) 안에만 할 수 있습니다. 요청한 번호의 차수가 이미 있으면 새로 만들지 않고 그 차수를 돌려줍니다. 마지막 차수의 다음 번호까지만 추가할 수 있습니다.")
+    ResponseEntity<StandardResponse<GatheringRoundResponse>> addRound(
+            @AuthenticationPrincipal String memberId,
+            @PathVariable Long gatheringId,
+            @Valid @RequestBody AddRoundRequest request);
 
     @GetMapping(GatheringEndpoints.PARTICIPANTS)
     @Operation(

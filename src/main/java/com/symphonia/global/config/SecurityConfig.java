@@ -3,7 +3,6 @@ package com.symphonia.global.config;
 import com.symphonia.auth.presentation.AuthEndpoints;
 import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.ParticipantEndpoints;
-import com.symphonia.gathering.presentation.RoundEndpoints;
 import com.symphonia.gathering.presentation.SettlementEndpoints;
 import com.symphonia.gathering.presentation.ShareEndpoints;
 import com.symphonia.global.config.properties.AccessTokenProperties;
@@ -54,7 +53,6 @@ public class SecurityConfig {
         ParticipantEndpoints.JOIN,
         ParticipantEndpoints.PAIRING,
         ParticipantEndpoints.PAIRING_FEEDBACK,
-        RoundEndpoints.ADD,
         SettlementEndpoints.FORM,
         SettlementEndpoints.RECORD,
         SettlementEndpoints.UPDATE,
