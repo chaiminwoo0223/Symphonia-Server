@@ -1094,7 +1094,7 @@ class SettlementQueryServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("링크 토큰이 가리키는 결제자가 기록한 정산 건이 있는 경우")
+        @DisplayName("링크 토큰이 가리키는 결제자로 지정된 정산 건이 있는 경우")
         class WhenPayerSettlementsExist {
 
             @Test

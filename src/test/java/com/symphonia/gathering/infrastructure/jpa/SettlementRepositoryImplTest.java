@@ -631,7 +631,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
     class FindAllByPayerParticipantId {
 
         @Test
-        @DisplayName("결제자가 기록한 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담금과 함께 반환한다")
+        @DisplayName("결제자로 지정된 정산 건 중 취소하지 않은 것을 기록한 순서대로 분담금과 함께 반환한다")
         void shouldReturnSettlementsWithSharesExcludingCancelled() {
             // given
             Settlement first = recordDinner(kimId, List.of(kimId, leeId, parkId));

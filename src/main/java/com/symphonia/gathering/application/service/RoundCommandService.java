@@ -13,7 +13,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 
-// 모임을 만든 회원만 차수를 추가한다. 참여자가 추가하면 모임장이 없던 자리의 정산 건에 모임장이 들어갈 수 있기 때문이다.
+// 모임을 만든 회원만 차수를 추가한다. 정산 건 기록과 같은 모임장 전용 흐름이다.
 @CommandService
 @RequiredArgsConstructor
 public class RoundCommandService implements AddRoundUseCase {

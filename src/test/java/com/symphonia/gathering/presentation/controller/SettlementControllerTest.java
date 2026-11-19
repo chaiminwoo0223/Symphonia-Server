@@ -149,7 +149,7 @@ class SettlementControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("다른 참여자가 결제자인 정산 건은 섞지 않고 본인이 기록한 정산 건만 담는다")
+            @DisplayName("다른 참여자가 결제자인 정산 건은 섞지 않고 결제자로 지정된 정산 건만 담는다")
             void shouldExcludeSettlementsOfOtherPayers() throws Exception {
                 // given
                 Settlement dinner =

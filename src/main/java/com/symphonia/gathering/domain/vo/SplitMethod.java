@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-// 분담 방식은 똑같이 나누기 하나다. 결제자가 금액을 지정한 참여자를 빼고, 나머지 참여자가 남은 금액을 똑같이 나눈다.
+// 분담 방식은 똑같이 나누기 하나다. 모임장이 금액을 지정한 참여자를 빼고, 나머지 참여자가 남은 금액을 똑같이 나눈다.
 // 결제자는 항상 인원에 들어가고, 결제자 분담액은 총액에서 다른 참여자의 분담액 합을 뺀 값이라 지정할 수 없다.
 public record SplitMethod(
         long totalAmount,
