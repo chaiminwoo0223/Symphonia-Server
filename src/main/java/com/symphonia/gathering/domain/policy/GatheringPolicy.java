@@ -31,7 +31,8 @@ public enum GatheringPolicy {
 
     // 참여 QR을 가진 사람은 누구나 참여할 수 있어서, 가짜 참여로 참여자가 끝없이 늘지 않도록 한 모임의 참여자 수를 제한한다.
     // 정산 API는 호출마다 참여자 전원의 이름과 휴대폰을 복호화하므로 참여자가 늘면 모든 정산 요청이 느려진다.
-    public static final int MAX_PARTICIPANT_COUNT = 50;
+    // 더치페이 모임이 20명을 넘는 경우는 드물다. 이미 넘은 모임은 줄이지 않고 새 참여만 막는다.
+    public static final int MAX_PARTICIPANT_COUNT = 20;
 
     public static boolean isWithinRecordingPeriod(LocalDateTime openedAt, LocalDateTime now) {
         return now.isBefore(recordingClosesAt(openedAt));
