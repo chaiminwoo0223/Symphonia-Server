@@ -13,6 +13,7 @@ import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenRespo
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
+import com.symphonia.gathering.presentation.dto.response.HostedGatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.RecordingExtensionResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
@@ -38,6 +39,14 @@ public interface GatheringApi {
     ResponseEntity<StandardResponse<GatheringJoinTokenResponse>> open(
             @AuthenticationPrincipal String memberId,
             @Valid @RequestBody OpenGatheringRequest request);
+
+    @GetMapping(GatheringEndpoints.LIST)
+    @Operation(
+            summary = "내 모임 목록",
+            description =
+                    "내가 연 모임을 최근에 연 순서로 돌려줍니다. 개인정보 파기 시각이 지난 모임은 담지 않습니다. 참여자는 이름과 휴대폰을 읽지 않고 수만 담습니다. 목록은 페이지로 나누지 않습니다. 파기 시각이 지나면 사라지고 모임은 최대 29일만 남으므로 길이가 제한됩니다.")
+    ResponseEntity<StandardResponse<List<HostedGatheringResponse>>> getHosted(
+            @AuthenticationPrincipal String memberId);
 
     @PostMapping(GatheringEndpoints.REISSUE)
     @Operation(

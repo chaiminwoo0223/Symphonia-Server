@@ -1,5 +1,6 @@
 package com.symphonia.gathering.infrastructure.jpa;
 
+import com.symphonia.gathering.domain.vo.HostedGathering;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +15,22 @@ public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity
     List<GatheringJpaEntity> findAllByOpenedAtLessThanEqualOrderById(LocalDateTime openedAt);
 
     List<GatheringJpaEntity> findAllByHostMemberIdOrderById(Long hostMemberId);
+
+    // 참여자는 복호화하지 않고 수만 센다.
+    @Query(
+            """
+            SELECT new com.symphonia.gathering.domain.vo.HostedGathering(
+                gathering.id,
+                gathering.name,
+                gathering.openedAt,
+                gathering.recordingExtended,
+                (SELECT COUNT(participant) FROM ParticipantJpaEntity participant
+                    WHERE participant.gatheringId = gathering.id))
+            FROM GatheringJpaEntity gathering
+            WHERE gathering.id IN :ids
+            ORDER BY gathering.id DESC
+            """)
+    List<HostedGathering> findAllHostedByIds(@Param("ids") List<Long> ids);
 
     // 다른 요청이 잠근 모임은 그 요청이 끝날 때까지 기다린다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
