@@ -31,7 +31,7 @@ description: Load when handling exceptions/errors. BusinessException 계층(공�
 BusinessException (common.exception, errorCode: ErrorCode)
 ├── BadRequestException / UnauthorizedException / ForbiddenException / NotFoundException / ConflictException / InternalServerException / ServiceUnavailableException (common.exception)
 │     ├── MemberNotFoundException 등: 도메인별 구체 예외 ({domain}/domain/exception)
-│     └── SocialTokenVerificationFailedException / SocialMemberInfoFetchFailedException: InternalServerException(500)을 상속하는 도메인별 구체 예외
+│     └── SocialTokenVerificationUnavailableException / PlaceSearchUnavailableException: ServiceUnavailableException(503)을 상속하는 도메인별 구체 예외
 └── (공통 7종 중에도 맞는 상태 코드가 없는 경우에만 도메인이 BusinessException을 직접 상속한다. 기본은 공통 7종 중 하나를 상속하는 것이다)
 ```
 
@@ -135,7 +135,7 @@ public enum MemberErrorCode implements ErrorCode {
   - 그 외 `ResponseEntityExceptionHandler`가 처리하는 나머지 예외는 `handleExceptionInternal`에서 500 `INTERNAL_SERVER_ERROR`로 공통 처리
 - **필드별 검증 에러는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 보고**한다. 여러 필드가 동시에 실패해도 각각 리포트된다.
 - 4xx는 `warn`, 5xx는 `error`(스택트레이스 포함)로 로깅한다. `ValidationExceptionHandler.handleExceptionInternal`(그 외 프레임워크 예외의 500 폴백 경로)도 이 원칙에 맞춰 `log.error(..., ex)`로 스택트레이스를 남긴다.
-  - 단, **`BusinessException`(서브클래스 포함)은 이 규칙의 예외**다. `GlobalExceptionHandler.handleBusinessException`은 상태와 무관하게 무조건 `warn`(스택트레이스 없음)으로 로깅한다 — `InternalServerException`을 상속한 500 도메인 예외(`SocialTokenVerificationFailedException` 등)도 마찬가지다. `BusinessException` 계열은 "코드가 의도를 갖고 명명한 실패"라 스택트레이스보다 어떤 도메인 실패인지가 중요하다는 전제이므로, 진짜 디버깅이 필요한, 도메인 코드로 명명할 의미가 없는 예상 못 한 500(버그, 알 수 없는 장애 등)은 `BusinessException` 계열로 감싸지 말고 그냥 던져서 catch-all의 `error` 로깅 경로를 타게 한다.
+  - 단, **`BusinessException`(서브클래스 포함)은 이 규칙의 예외**다. `GlobalExceptionHandler.handleBusinessException`은 상태와 무관하게 무조건 `warn`(스택트레이스 없음)으로 로깅한다 — `InternalServerException`을 상속한 500 도메인 예외(`GatheringEncryptionFailedException` 등)도 마찬가지다. `BusinessException` 계열은 "코드가 의도를 갖고 명명한 실패"라 스택트레이스보다 어떤 도메인 실패인지가 중요하다는 전제이므로, 진짜 디버깅이 필요한, 도메인 코드로 명명할 의미가 없는 예상 못 한 500(버그, 알 수 없는 장애 등)은 `BusinessException` 계열로 감싸지 말고 그냥 던져서 catch-all의 `error` 로깅 경로를 타게 한다.
 - `MethodArgumentNotValidException` 로그에는 예외 메시지 대신 실패한 필드 이름만 남긴다. 예외 메시지에 거부된 입력값(개인정보)이 들어 있다.
 
 ## 원칙
