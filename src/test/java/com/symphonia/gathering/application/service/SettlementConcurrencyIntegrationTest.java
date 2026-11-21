@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -91,7 +92,7 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
 
     @Nested
     @DisplayName("record 메서드는")
-    class Record {
+    class RecordSettlement {
 
         @Test
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -100,13 +101,19 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
             // given
             UUID clientRequestId = UUID.randomUUID();
             List<SettlementResult> results = new CopyOnWriteArrayList<>();
-            Runnable record =
-                    () ->
-                            results.add(
-                                    recordSettlementUseCase.record(recordCommand(clientRequestId)));
+            List<Runnable> records =
+                    IntStream.range(0, CONCURRENT_RECORDS)
+                            .<Runnable>mapToObj(
+                                    _ ->
+                                            () ->
+                                                    results.add(
+                                                            recordSettlementUseCase.record(
+                                                                    recordCommand(
+                                                                            clientRequestId))))
+                            .toList();
 
             // when
-            List<Throwable> failures = runConcurrently(record, record, record, record);
+            List<Throwable> failures = runConcurrently(records.toArray(Runnable[]::new));
 
             // then
             assertThat(failures).isEmpty();
@@ -152,7 +159,7 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
                             });
 
             // then
-            // 한 요청이 먼저 커밋되면 늦은 요청은 보낸 분담금이 있다는 거절이나 버전 충돌로 실패한다.
+            // 겹치면 늦은 요청이 보낸 분담금이 있다는 거절이나 버전 충돌로 실패할 수 있고, 수정이 먼저 끝난 뒤 시작한 보냈어요는 둘 다 성공한다.
             // 어느 요청이 이겼는지와 관계없이 최종 상태는 성공한 요청의 결과와 정확히 일치해야 한다.
             assertThat(failures)
                     .allSatisfy(
@@ -172,6 +179,10 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
         }
     }
 
+    private Participant participantOf(ParticipantFixture fixture) {
+        return gathering.getParticipant(new PhoneNumber(fixture.getPhoneNumber()));
+    }
+
     private RecordSettlementCommand recordCommand(UUID clientRequestId) {
         return new RecordSettlementCommand(
                 host.getId(),
@@ -184,6 +195,19 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
                 Map.of());
     }
 
+    private List<Long> participantIds() {
+        return gathering.getParticipants().stream().map(Participant::getId).toList();
+    }
+
+    private Long recordedId() {
+        return settlementsOfGathering().getFirst().getId();
+    }
+
+    private List<Settlement> settlementsOfGathering() {
+        return transactionTemplate.execute(
+                _ -> settlementRepository.findAllByGatheringId(gathering.getId()));
+    }
+
     // 인원은 그대로 두고 총액만 바꿔, 분담금 상태를 바꾸는 요청과 같은 분담금을 두고 겹치게 한다.
     private UpdateSettlementCommand updateCommand(Long settlementId, SettlementFixture fixture) {
         return new UpdateSettlementCommand(
@@ -194,23 +218,6 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
                 fixture.getTotalAmount(),
                 participantIds(),
                 Map.of());
-    }
-
-    private List<Long> participantIds() {
-        return gathering.getParticipants().stream().map(Participant::getId).toList();
-    }
-
-    private Participant participantOf(ParticipantFixture fixture) {
-        return gathering.getParticipant(new PhoneNumber(fixture.getPhoneNumber()));
-    }
-
-    private Long recordedId() {
-        return settlementsOfGathering().getFirst().getId();
-    }
-
-    private List<Settlement> settlementsOfGathering() {
-        return transactionTemplate.execute(
-                _ -> settlementRepository.findAllByGatheringId(gathering.getId()));
     }
 
     private Settlement findSettlement(Long settlementId) {
