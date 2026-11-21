@@ -5,7 +5,7 @@
 ## 참여자의 본인 확인과 입력 규칙
 
 - QR 참여(`POST /participants`)는 구글 ID 토큰(`googleIdToken`)을 필수로 받는다. 없으면 400, 유효하지 않으면 400(`INVALID_SOCIAL_TOKEN`)이다.
-- `JoinGatheringService`가 모임 행을 잠그기 전에 `auth`의 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽는다. 이메일, 이름, 사진, ID 토큰은 저장하지 않고 이메일도 보내지 않는다. 이메일이나 이름이 없는 토큰은 400(`SOCIAL_REQUIRED_INFO_MISSING`)이라 기본 로그인 범위로 로그인해야 한다. 구글 로그인은 본인 확인에만 쓰며 회원과 세션을 만들지 않는다.
+- `JoinGatheringService`(`@Service`)가 트랜잭션 밖에서 `auth`의 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽은 뒤, `JoinGatheringCommandService`(`@CommandService`)에 저장을 맡긴다. 검증 동안 DB 커넥션을 쥐지 않기 위해서다. 이메일, 이름, 사진, ID 토큰은 저장하지 않고 이메일도 보내지 않는다. 이메일이나 이름이 없는 토큰은 400(`SOCIAL_REQUIRED_INFO_MISSING`)이라 기본 로그인 범위로 로그인해야 한다. 구글 로그인은 본인 확인에만 쓰며 회원과 세션을 만들지 않는다.
 - 같은 구글 계정의 중복 참여는 휴대폰이 달라도 409(`PARTICIPANT_ALREADY_JOINED`)다. `participant.google_sub_hmac`에 모임별 HMAC(`"google:" + sub`)만 저장하고 `(gathering_id, google_sub_hmac)` unique 제약을 둔다.
 - 저장과 조회는 `ParticipantGoogleSubjectRepository`가 하고, 참여자를 저장한 뒤 값을 채운다. 모임 행 잠금 아래에서 검사하고, 동시 위반은 `ParticipantGoogleSubjectRepositoryImpl`이 `GatheringPolicy.validateNotJoined`의 예외로 바꾼다.
 - 모임장의 직접 참여(`POST /gatherings/{gatheringId}/participants`, JWT)는 구글 토큰 없이 참여하고 이 값은 NULL이다. 요청은 `JoinGatheringAsHostRequest`로 따로 받는다.
