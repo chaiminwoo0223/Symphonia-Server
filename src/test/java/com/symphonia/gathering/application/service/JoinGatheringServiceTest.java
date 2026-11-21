@@ -351,6 +351,69 @@ class JoinGatheringServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("010이 아닌 휴대폰으로 참여하는 경우")
+        class WhenPhoneNumberNotStartingWith010 {
+
+            @Test
+            @DisplayName("예외를 던지고 참여자와 개인 링크 토큰을 저장하지 않는다")
+            void shouldThrowInvalidPhoneNumberException() {
+                // given
+                givenJoinableGathering(List.of());
+                JoinGatheringCommand command =
+                        new JoinGatheringCommand(
+                                JOIN_TOKEN,
+                                GOOGLE_ID_TOKEN,
+                                ParticipantFixture.KIM.getName(),
+                                "011-234-5678",
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringService.join(command))
+                        .isInstanceOf(InvalidPhoneNumberException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("이름 앞뒤에 공백이 있는 경우")
+        class WhenNameHasSurroundingWhitespace {
+
+            @Test
+            @DisplayName("공백을 제거한 이름으로 참여자를 저장한다")
+            void shouldSaveStrippedName() {
+                // given
+                givenJoinableGathering(List.of());
+                given(gatheringRepository.save(any(Gathering.class)))
+                        .willReturn(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID,
+                                        OPEN_PERIOD_OPENED_AT,
+                                        List.of(
+                                                ParticipantFixture.KIM.createWithId(
+                                                        PARTICIPANT_ID))));
+                given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
+                JoinGatheringCommand command =
+                        new JoinGatheringCommand(
+                                JOIN_TOKEN,
+                                GOOGLE_ID_TOKEN,
+                                "  " + ParticipantFixture.KIM.getName() + "\t ",
+                                HYPHENATED_PHONE_NUMBER,
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when
+                joinGatheringService.join(command);
+
+                // then
+                ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
+                then(gatheringRepository).should().save(captor.capture());
+                assertThat(captor.getValue().getParticipants().getFirst().getName())
+                        .isEqualTo(ParticipantFixture.KIM.getName());
+            }
+        }
+
+        @Nested
         @DisplayName("참여자가 19명이라 20번째로 참여하는 경우")
         class WhenParticipantCountJustBelowLimit {
 
