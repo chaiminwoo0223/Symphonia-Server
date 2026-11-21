@@ -109,7 +109,7 @@ export default function () {
     const isSuccess = check(response, {
         '상태 코드는 200이다': (res) => res.status === 200,
         '응답 바디는 ok:true다': () => body !== null && body.ok === true,
-        'data.pairings는 배열이다': () => body !== null && body.data !== null && Array.isArray(body.data.pairings),
+        'data.pairings는 배열이다': () => body !== null && body.data != null && Array.isArray(body.data.pairings),
     });
 
     if (isSuccess) {

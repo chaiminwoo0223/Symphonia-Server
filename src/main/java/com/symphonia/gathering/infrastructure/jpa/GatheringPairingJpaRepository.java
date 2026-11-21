@@ -42,5 +42,5 @@ public interface GatheringPairingJpaRepository
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM GatheringPairingJpaEntity pairing WHERE pairing.gatheringId = :gatheringId")
-    void deleteByGatheringId(@Param("gatheringId") Long gatheringId);
+    int deleteByGatheringId(@Param("gatheringId") Long gatheringId);
 }

@@ -13,5 +13,6 @@ public interface GatheringPairingRepository {
     // 모임장이 마지막으로 고른 페어링이다. 모임을 파기하기 전에 선택 신호를 남길 때 쓴다.
     Optional<GatheringPairing> findByGatheringId(Long gatheringId);
 
-    void deleteByGatheringId(Long gatheringId);
+    // 이 호출이 지웠으면 true다. 다른 파기가 먼저 지웠다면 false다.
+    boolean deleteByGatheringId(Long gatheringId);
 }
