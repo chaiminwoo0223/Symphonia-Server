@@ -4,13 +4,16 @@ import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.exception.BusinessException;
 import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
+import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.GatheringPairingCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
+import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
@@ -37,7 +40,8 @@ public class GatheringCommandService
         implements OpenGatheringUseCase,
                 ReissueJoinTokenUseCase,
                 JoinGatheringUseCase,
-                ChooseGatheringPairingUseCase {
+                ChooseGatheringPairingUseCase,
+                ExtendRecordingUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
@@ -67,9 +71,30 @@ public class GatheringCommandService
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
-        GatheringPolicy.validateJoinable(gathering.getOpenedAt(), now);
+        GatheringPolicy.validateJoinable(gathering.getRecordingClosesAt(), now);
 
         return issueJoinToken(gathering);
+    }
+
+    // 연장은 한 번만 할 수 있다. 이미 연장한 모임에 다시 보낸 요청은 응답만 사라졌거나 버튼을 두 번 누른 것이므로, 바꾸지 않고 성공으로 돌려준다.
+    // 연장 여부는 모임을 저장하는 다른 요청이 옛 값으로 덮어쓰지 않도록 전용 쿼리로만 바꾼다.
+    @Override
+    public RecordingExtensionResult extend(ExtendRecordingCommand command) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        validateRetained(command.gatheringId(), now, GatheringNotFoundException::new);
+        Gathering gathering =
+                gatheringRepository
+                        .findById(command.gatheringId())
+                        .orElseThrow(GatheringNotFoundException::new);
+        GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
+
+        if (!gathering.isRecordingExtended()) {
+            GatheringPolicy.validateRecordingExtendable(gathering.getRecordingClosesAt(), now);
+            gathering.extendRecording();
+            gatheringRepository.markRecordingExtended(gathering.getId());
+        }
+
+        return RecordingExtensionResult.from(gathering);
     }
 
     @Override
@@ -85,7 +110,7 @@ public class GatheringCommandService
                         .findById(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
         PhoneNumber phoneNumber = PhoneNumber.from(command.phoneNumber());
-        GatheringPolicy.validateJoinable(gathering.getOpenedAt(), now);
+        GatheringPolicy.validateJoinable(gathering.getRecordingClosesAt(), now);
         GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
         GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
         GatheringPolicy.validateParticipantAddable(gathering.getParticipants().size());
@@ -109,7 +134,7 @@ public class GatheringCommandService
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
-        GatheringPolicy.validatePairingChangeable(gathering.getOpenedAt(), now);
+        GatheringPolicy.validatePairingChangeable(gathering.getRecordingClosesAt(), now);
 
         savePairing(gathering.getId(), command.pairing());
     }
@@ -126,9 +151,7 @@ public class GatheringCommandService
         gatheringJoinTokenRepository.save(joinToken, gathering.getId());
 
         return GatheringJoinTokenResult.of(
-                gathering.getId(),
-                joinToken,
-                GatheringPolicy.recordingClosesAt(gathering.getOpenedAt()));
+                gathering.getId(), joinToken, gathering.getRecordingClosesAt());
     }
 
     private void validateRetained(

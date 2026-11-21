@@ -19,8 +19,9 @@ import java.util.stream.Stream;
 public enum SettlementPolicy {
     ;
 
-    public static void validateRecordable(LocalDateTime gatheringOpenedAt, LocalDateTime now) {
-        if (!GatheringPolicy.isWithinRecordingPeriod(gatheringOpenedAt, now)) {
+    public static void validateRecordable(
+            LocalDateTime gatheringRecordingClosesAt, LocalDateTime now) {
+        if (!GatheringPolicy.isWithinRecordingPeriod(gatheringRecordingClosesAt, now)) {
             throw new SettlementRecordingClosedException();
         }
     }

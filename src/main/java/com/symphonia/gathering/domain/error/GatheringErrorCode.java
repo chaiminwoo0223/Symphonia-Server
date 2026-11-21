@@ -17,6 +17,8 @@ public enum GatheringErrorCode implements ErrorCode {
     INVALID_SETTLEMENT_PARTICIPANTS(HttpStatus.BAD_REQUEST, "정산 건 인원이나 지정 금액의 대상이 올바르지 않습니다."),
     GATHERING_PAIRING_CLOSED(HttpStatus.BAD_REQUEST, "페어링을 바꿀 수 있는 기간이 끝난 모임입니다."),
     GATHERING_ROUND_CLOSED(HttpStatus.BAD_REQUEST, "차수를 추가할 수 있는 기간이 끝난 모임입니다."),
+    GATHERING_RECORDING_EXTENSION_CLOSED(
+            HttpStatus.BAD_REQUEST, "기록 기간이 끝난 모임은 연장할 수 없습니다. 기간이 끝나기 전에 연장해 주세요."),
     GATHERING_ROUND_COUNT_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "한 모임에 추가할 수 있는 차수를 넘었습니다."),
     GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT(HttpStatus.BAD_REQUEST, "한 모임에 참여할 수 있는 인원을 넘었습니다."),
     INVALID_GATHERING_ROUND_NUMBER(

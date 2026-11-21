@@ -59,7 +59,8 @@ public class SettlementQueryService
                         .toList();
         Gathering gathering = findGathering(query.gatheringId());
         GatheringPolicy.validateHost(gathering.getHostMemberId(), query.memberId());
-        boolean recordable = GatheringPolicy.isWithinRecordingPeriod(gathering.getOpenedAt(), now);
+        boolean recordable =
+                GatheringPolicy.isWithinRecordingPeriod(gathering.getRecordingClosesAt(), now);
         // settlements는 기록한 순서이므로 마지막 정산 건이 직전에 기록한 정산 건이다.
         List<Long> defaultParticipantIds =
                 settlements.isEmpty()
@@ -68,6 +69,8 @@ public class SettlementQueryService
 
         return SettlementFormResult.of(
                 recordable,
+                gathering.getRecordingClosesAt(),
+                gathering.isRecordingExtended(),
                 gathering.getRounds().stream().map(GatheringRoundResult::from).toList(),
                 gathering.getParticipants().stream()
                         .map(SettlementParticipantResult::from)

@@ -584,8 +584,72 @@ class SettlementQueryServiceTest extends UnitTest {
             }
         }
 
+        @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("모임을 만든 지 48시간이 지나도 기록 가능으로 표시하고 연장한 기록 기간이 끝나는 시각을 담는다")
+            void shouldReturnRecordableFormWithExtendedClosesAt() {
+                // given
+                givenForm(extendedGathering(CLOSED_PERIOD_OPENED_AT), List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.recordable()).isTrue();
+                assertThat(result.recordingExtended()).isTrue();
+                assertThat(result.recordingClosesAt())
+                        .isEqualTo(CLOSED_PERIOD_OPENED_AT.plusHours(96));
+            }
+
+            @Test
+            @DisplayName("모임을 만든 지 96시간이 되면 기록 불가로 표시한다")
+            void shouldReturnNotRecordableFormAfterExtendedRecordingPeriod() {
+                // given
+                givenForm(extendedGathering(NOW.minusHours(96)), List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.recordable()).isFalse();
+            }
+        }
+
+        @Nested
+        @DisplayName("기록 기간을 연장하지 않은 모임인 경우")
+        class WhenRecordingNotExtended {
+
+            @Test
+            @DisplayName("연장하지 않았다고 표시하고 모임을 연 지 48시간이 되는 시각을 담는다")
+            void shouldReturnOriginalClosesAt() {
+                // given
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.recordingExtended()).isFalse();
+                assertThat(result.recordingClosesAt())
+                        .isEqualTo(OPEN_PERIOD_OPENED_AT.plusHours(48));
+            }
+        }
+
         private GetSettlementFormQuery query(Long memberId) {
             return GetSettlementFormQuery.of(memberId, GATHERING_ID);
+        }
+
+        private Gathering extendedGathering(LocalDateTime openedAt) {
+            return GatheringFixture.FRIDAY_DINNER.createExtendedWithRounds(
+                    GATHERING_ID,
+                    openedAt,
+                    ParticipantFixture.createWithIds(PARTICIPANT_IDS),
+                    List.of(
+                            GatheringRoundFixture.FIRST.create(),
+                            GatheringRoundFixture.SECOND.create()));
         }
 
         // gatheringSettlements는 취소한 정산 건까지 담을 수 있는 모임의 정산 건이고, 기록한 순서(id 순)로 넘긴다.

@@ -2,6 +2,7 @@ package com.symphonia.gathering.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.command.CancelSettlementCommand;
+import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
@@ -12,11 +13,13 @@ import com.symphonia.gathering.application.dto.result.GatheringParticipantResult
 import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.usecase.AddRoundUseCase;
 import com.symphonia.gathering.application.usecase.CancelSettlementUseCase;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
+import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
@@ -37,6 +40,7 @@ import com.symphonia.gathering.presentation.dto.response.GatheringParticipantRes
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
+import com.symphonia.gathering.presentation.dto.response.RecordingExtensionResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementResponse;
 import java.util.List;
@@ -52,6 +56,7 @@ public class GatheringController implements GatheringApi {
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
     private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
     private final AddRoundUseCase addRoundUseCase;
+    private final ExtendRecordingUseCase extendRecordingUseCase;
     private final GetSettlementFormUseCase getSettlementFormUseCase;
     private final RecordSettlementUseCase recordSettlementUseCase;
     private final UpdateSettlementUseCase updateSettlementUseCase;
@@ -100,6 +105,18 @@ public class GatheringController implements GatheringApi {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(StandardResponse.success(HttpStatus.CREATED, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<RecordingExtensionResponse>> extendRecording(
+            String memberId, Long gatheringId) {
+        RecordingExtensionResult result =
+                extendRecordingUseCase.extend(
+                        ExtendRecordingCommand.of(Long.parseLong(memberId), gatheringId));
+        RecordingExtensionResponse response = RecordingExtensionResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
     }
 
     @Override

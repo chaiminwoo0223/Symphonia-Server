@@ -1,5 +1,6 @@
 package com.symphonia.gathering.domain.entity;
 
+import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -24,6 +25,8 @@ public class Gathering {
     private String name;
     // 48시간 기록 기간이 시작되는 시각이다. 감사용 생성 시각과 달리 Clock의 시각으로 정한다.
     private LocalDateTime openedAt;
+    // 모임장이 기록 기간을 한 번 연장했는지다. 연장은 한 번만 할 수 있다.
+    private boolean recordingExtended;
     private List<Participant> participants;
     // 번호 순서로 정렬된 차수다. 모임을 열 때 1차가 생기므로 비어 있지 않다.
     private List<GatheringRound> rounds;
@@ -36,6 +39,14 @@ public class Gathering {
                 .participants(List.of())
                 .rounds(List.of(GatheringRound.first()))
                 .build();
+    }
+
+    public LocalDateTime getRecordingClosesAt() {
+        return GatheringPolicy.recordingClosesAt(openedAt, recordingExtended);
+    }
+
+    public void extendRecording() {
+        recordingExtended = true;
     }
 
     // 참여자 목록을 바깥에서 바꿀 수 없게, 참여할 때마다 기존 목록에 더한 새 불변 목록으로 바꾼다.

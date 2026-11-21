@@ -220,6 +220,43 @@ class SettlementCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("모임을 만든 지 48시간이 지나도 정산 건을 저장한다")
+            void shouldSaveSettlementAfterOriginalRecordingPeriod() {
+                // given
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID))
+                        .willReturn(Optional.of(extendedGathering(CLOSED_PERIOD_OPENED_AT)));
+                givenSaveIfAbsentReturnsSettlement();
+                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                settlementCommandService.record(command);
+
+                // then
+                then(settlementRepository).should().saveIfAbsent(any(Settlement.class));
+            }
+
+            @Test
+            @DisplayName("모임을 만든 지 96시간이 되면 예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowSettlementRecordingClosedExceptionAfterExtendedRecordingPeriod() {
+                // given
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findById(GATHERING_ID))
+                        .willReturn(Optional.of(extendedGathering(NOW.minusHours(96))));
+                RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
+
+                // when & then
+                assertThatThrownBy(() -> settlementCommandService.record(command))
+                        .isInstanceOf(SettlementRecordingClosedException.class);
+                thenSettlementNotRecorded();
+            }
+        }
+
+        @Nested
         @DisplayName("이 모임의 차수가 아닌 차수 id인 경우")
         class WhenRoundNotInGathering {
 
@@ -1489,6 +1526,16 @@ class SettlementCommandServiceTest extends UnitTest {
                 GATHERING_ID,
                 openedAt,
                 participants,
+                List.of(
+                        GatheringRoundFixture.FIRST.create(),
+                        GatheringRoundFixture.SECOND.create()));
+    }
+
+    private Gathering extendedGathering(LocalDateTime openedAt) {
+        return GatheringFixture.FRIDAY_DINNER.createExtendedWithRounds(
+                GATHERING_ID,
+                openedAt,
+                ParticipantFixture.createWithIds(PARTICIPANT_IDS),
                 List.of(
                         GatheringRoundFixture.FIRST.create(),
                         GatheringRoundFixture.SECOND.create()));

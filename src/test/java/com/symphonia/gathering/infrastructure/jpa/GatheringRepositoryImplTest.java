@@ -53,6 +53,69 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @Nested
+    @DisplayName("markRecordingExtended 메서드는")
+    class MarkRecordingExtended {
+
+        @Test
+        @DisplayName("새로 연 모임은 연장하지 않은 것으로 저장한다")
+        void shouldPersistNewGatheringAsNotExtended() {
+            // given
+            Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+            clearPersistenceContext();
+
+            // when & then
+            assertThat(
+                            gatheringRepository
+                                    .findById(saved.getId())
+                                    .orElseThrow()
+                                    .isRecordingExtended())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("연장했다고 표시하고 다시 읽으면 연장한 모임으로 반환한다")
+        void shouldPersistRecordingExtended() {
+            // given
+            Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+
+            // when
+            gatheringRepository.markRecordingExtended(saved.getId());
+
+            // then
+            clearPersistenceContext();
+            assertThat(
+                            gatheringRepository
+                                    .findById(saved.getId())
+                                    .orElseThrow()
+                                    .isRecordingExtended())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("연장하기 전에 읽은 모임을 이어서 저장해도 연장 여부를 되돌리지 않는다")
+        void shouldKeepRecordingExtendedWhenStaleGatheringSaved() {
+            // given
+            Gathering staleGathering =
+                    gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+            clearPersistenceContext();
+            gatheringRepository.markRecordingExtended(staleGathering.getId());
+            clearPersistenceContext();
+
+            // when
+            gatheringRepository.save(staleGathering);
+
+            // then
+            clearPersistenceContext();
+            assertThat(
+                            gatheringRepository
+                                    .findById(staleGathering.getId())
+                                    .orElseThrow()
+                                    .isRecordingExtended())
+                    .isTrue();
+        }
+    }
+
+    @Nested
     @DisplayName("save 메서드는")
     class Save {
 

@@ -59,6 +59,7 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
                                 GatheringRetention.of(
                                         gatheringEntity.getId(),
                                         gatheringEntity.getOpenedAt(),
+                                        gatheringEntity.isRecordingExtended(),
                                         settlementsByGatheringId.getOrDefault(
                                                 gatheringEntity.getId(), List.of()),
                                         !dataKeyGatheringIds.contains(gatheringEntity.getId())))
@@ -82,6 +83,7 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
         return GatheringRetention.of(
                 gatheringEntity.getId(),
                 gatheringEntity.getOpenedAt(),
+                gatheringEntity.isRecordingExtended(),
                 settlements,
                 !gatheringDataKeyJpaRepository.existsById(gatheringEntity.getId()));
     }

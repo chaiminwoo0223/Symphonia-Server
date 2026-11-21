@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.catalog.domain.entity.Anju;
@@ -743,6 +744,149 @@ class GatheringControllerTest extends IntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isUnauthorized());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("PUT /api/v1/gatherings/{gatheringId}/recording-extension은")
+    class ExtendRecording {
+
+        @Nested
+        @DisplayName("기록 기간이 끝나기 전에 모임을 만든 회원이 요청하는 경우")
+        class WhenMemberIsHost {
+
+            @Test
+            @DisplayName("기록 기간을 연장하고 연장한 기간이 끝나는 시각과 함께 200을 반환한다")
+            void shouldExtendRecording() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(
+                                GatheringFixture.FRIDAY_DINNER,
+                                member.getId(),
+                                LocalDateTime.now().minusHours(40));
+
+                // when & then
+                performExtendRecording(gathering.getId(), token)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.recordingClosesAt").isNotEmpty());
+                assertThat(isRecordingExtended(gathering.getId())).isTrue();
+            }
+
+            @Test
+            @DisplayName("이미 연장한 모임에 다시 요청해도 같은 시각과 함께 200을 반환한다")
+            void shouldReturnSameClosesAtWhenAlreadyExtended() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(
+                                GatheringFixture.FRIDAY_DINNER,
+                                member.getId(),
+                                LocalDateTime.now().minusHours(40));
+                String firstClosesAt =
+                        JsonPath.read(
+                                performExtendRecording(gathering.getId(), token)
+                                        .andReturn()
+                                        .getResponse()
+                                        .getContentAsString(),
+                                "$.data.recordingClosesAt");
+
+                // when & then
+                performExtendRecording(gathering.getId(), token)
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.recordingClosesAt").value(firstClosesAt));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("GATHERING_RECORDING_EXTENSION_CLOSED 코드와 함께 400을 반환하고 연장하지 않는다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(
+                                GatheringFixture.FRIDAY_DINNER,
+                                member.getId(),
+                                LocalDateTime.now().minusHours(48));
+
+                // when & then
+                performExtendRecording(gathering.getId(), token)
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode
+                                                        .GATHERING_RECORDING_EXTENSION_CLOSED
+                                                        .getCode()));
+                assertThat(isRecordingExtended(gathering.getId())).isFalse();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환하고 연장하지 않는다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId());
+
+                // when & then
+                performExtendRecording(gathering.getId(), token)
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+                assertThat(isRecordingExtended(gathering.getId())).isFalse();
+            }
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(
+                                put(
+                                        "/api/v1/gatherings/{gatheringId}/recording-extension",
+                                        gathering.getId()))
+                        .andExpect(status().isUnauthorized());
+            }
+        }
+
+        private ResultActions performExtendRecording(Long gatheringId, String token)
+                throws Exception {
+            return mockMvc.perform(
+                    put("/api/v1/gatherings/{gatheringId}/recording-extension", gatheringId)
+                            .header(HttpHeaders.AUTHORIZATION, token));
+        }
+
+        private boolean isRecordingExtended(Long gatheringId) {
+            return Boolean.TRUE.equals(
+                    jdbcTemplate.queryForObject(
+                            "SELECT recording_extended FROM gathering WHERE id = ?",
+                            Boolean.class,
+                            gatheringId));
         }
     }
 

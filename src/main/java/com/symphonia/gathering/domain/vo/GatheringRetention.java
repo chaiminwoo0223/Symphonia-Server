@@ -22,11 +22,14 @@ public record GatheringRetention(
     public static GatheringRetention of(
             Long gatheringId,
             LocalDateTime openedAt,
+            boolean recordingExtended,
             List<Settlement> settlements,
             boolean dataKeyDiscarded) {
         LocalDateTime maxDeletesAt = openedAt.plus(MAX_RETENTION);
+        LocalDateTime recordingClosesAt =
+                GatheringPolicy.recordingClosesAt(openedAt, recordingExtended);
         LocalDateTime deletesAt =
-                completedAt(openedAt, settlements)
+                completedAt(recordingClosesAt, settlements)
                         .map(completedAt -> completedAt.plus(RETENTION_AFTER_COMPLETION))
                         .filter(
                                 deletesAtAfterCompletion ->
@@ -38,8 +41,9 @@ public record GatheringRetention(
 
     // 정산은 빨라도 기록 기간이 끝나야 끝나므로, 가장 빠른 파기 시각은 기록 기간이 끝나고 7일 뒤다.
     // 이 시각보다 늦게 연 모임은 아직 파기 대상이 될 수 없어, 파기 스윕은 이 시각까지 연 모임만 후보로 읽는다.
+    // 연장 여부는 후보를 거르는 쿼리에 넣지 않고, 기록 기간이 가장 긴 연장한 모임을 기준으로 읽어 Java에서 판단한다.
     public static LocalDateTime latestExpirableOpenedAt(LocalDateTime now) {
-        return now.minus(RETENTION_AFTER_COMPLETION).minus(GatheringPolicy.RECORDING_PERIOD);
+        return now.minus(RETENTION_AFTER_COMPLETION).minus(GatheringPolicy.maxRecordingPeriod());
     }
 
     public boolean isExpired(LocalDateTime now) {
@@ -48,10 +52,10 @@ public record GatheringRetention(
 
     // 정산이 끝나지 않았으면 끝난 시각이 없어 빈 값을 돌려준다.
     private static Optional<LocalDateTime> completedAt(
-            LocalDateTime openedAt, List<Settlement> settlements) {
+            LocalDateTime recordingClosesAt, List<Settlement> settlements) {
         return Optional.of(settlements)
                 .filter(GatheringRetention::isSettled)
-                .map(settled -> lastChangedAt(openedAt, settled));
+                .map(settled -> lastChangedAt(recordingClosesAt, settled));
     }
 
     // 취소하지 않은 정산 건에 미입금 분담금이 남았으면 정산이 끝나지 않았다.
@@ -62,12 +66,10 @@ public record GatheringRetention(
     // 기록 기간이 끝난 시각에서 시작해, 분담금 상태를 바꾼 시각과 정산 건을 취소한 시각 중 더 늦은 시각으로 바꿔 간다.
     // 기록 기간 안에는 정산 건이 더 들어올 수 있고, 정산 건이 없는 모임도 기록 기간이 끝나면 더 쓸 일이 없기 때문이다.
     private static LocalDateTime lastChangedAt(
-            LocalDateTime openedAt, List<Settlement> settlements) {
+            LocalDateTime recordingClosesAt, List<Settlement> settlements) {
         return settlements.stream()
                 .map(Settlement::getLastChangedAt)
                 .flatMap(Optional::stream)
-                .reduce(
-                        GatheringPolicy.recordingClosesAt(openedAt),
-                        BinaryOperator.maxBy(Comparator.naturalOrder()));
+                .reduce(recordingClosesAt, BinaryOperator.maxBy(Comparator.naturalOrder()));
     }
 }

@@ -91,6 +91,11 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public void markRecordingExtended(Long gatheringId) {
+        gatheringJpaRepository.markRecordingExtended(gatheringId);
+    }
+
+    @Override
     public void deleteParticipant(Long participantId) {
         participantJpaRepository.deleteParticipantById(participantId);
     }

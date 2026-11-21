@@ -121,6 +121,21 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
+        @DisplayName("기록 기간을 연장한 모임이면 연장한 기록 기간이 끝나고 7일 뒤를 파기 시각으로 반환한다")
+        void shouldCalculateDeletesAtFromExtendedRecordingPeriod() {
+            // given
+            gatheringRepository.markRecordingExtended(gatheringId);
+            clearPersistenceContext();
+
+            // when
+            GatheringRetention result =
+                    gatheringRetentionRepository.findByParticipantId(leeId).orElseThrow();
+
+            // then
+            assertThat(result.deletesAt()).isEqualTo(OPENED_AT.plusHours(96).plusDays(7));
+        }
+
+        @Test
         @DisplayName("데이터 키를 지운 모임이면 참여자를 복호화하지 않고 데이터 키를 지운 것으로 반환한다")
         void shouldReturnDataKeyDiscardedWithoutDecrypting() {
             // given
