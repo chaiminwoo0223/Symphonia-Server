@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.domain.client.SocialClient;
+import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
 import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.catalog.domain.entity.Anju;
@@ -21,6 +22,7 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
+import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectRepository;
 import com.symphonia.gathering.domain.vo.GatheringPairing;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringPairingFixture;
@@ -56,15 +58,10 @@ class ParticipantControllerTest extends IntegrationTest {
     @Autowired private MemberHelper memberHelper;
     @Autowired private CatalogHelper catalogHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
 
     @MockitoBean(name = "google")
     private SocialClient googleSocialClient;
-
-    @BeforeEach
-    void setUpGoogleAccount() {
-        given(googleSocialClient.authenticate(GOOGLE_ID_TOKEN))
-                .willReturn(SocialIdentityFixture.GOOGLE.create());
-    }
 
     @Nested
     @DisplayName("POST /api/v1/participants는")
@@ -78,6 +75,7 @@ class ParticipantControllerTest extends IntegrationTest {
             @DisplayName("인증 없이도 참여시키고 마스킹한 휴대폰과 개인 링크 토큰을 담아 201을 반환한다")
             void shouldJoinWithoutAuthentication() throws Exception {
                 // given
+                givenGoogleAccount();
                 String joinToken = saveGatheringWithJoinToken();
                 JoinGatheringRequest request =
                         joinRequest(
@@ -107,6 +105,7 @@ class ParticipantControllerTest extends IntegrationTest {
             @DisplayName("20번째 참여를 받아 201을 반환한다")
             void shouldJoinTwentiethParticipant() throws Exception {
                 // given
+                givenGoogleAccount();
                 Gathering gathering =
                         gatheringHelper.join(
                                 saveGathering(), GatheringPolicy.MAX_PARTICIPANT_COUNT - 1);
@@ -135,6 +134,7 @@ class ParticipantControllerTest extends IntegrationTest {
             @DisplayName("GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT 코드와 함께 400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
+                givenGoogleAccount();
                 Gathering gathering =
                         gatheringHelper.join(
                                 saveGathering(), GatheringPolicy.MAX_PARTICIPANT_COUNT);
@@ -169,6 +169,7 @@ class ParticipantControllerTest extends IntegrationTest {
             @DisplayName("CONSENT_REQUIRED 코드와 함께 400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
+                givenGoogleAccount();
                 String joinToken = saveGatheringWithJoinToken();
                 JoinGatheringRequest request =
                         joinRequest(
@@ -244,7 +245,9 @@ class ParticipantControllerTest extends IntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isBadRequest())
-                        .andExpect(jsonPath("$.data.code").value("INVALID_SOCIAL_TOKEN"));
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(AuthErrorCode.INVALID_SOCIAL_TOKEN.getCode()));
             }
         }
 
@@ -256,18 +259,13 @@ class ParticipantControllerTest extends IntegrationTest {
             @DisplayName("다른 휴대폰이어도 PARTICIPANT_ALREADY_JOINED 코드와 함께 409를 반환한다")
             void shouldReturnConflict() throws Exception {
                 // given
-                String joinToken = saveGatheringWithJoinToken();
-                mockMvc.perform(
-                                post("/api/v1/participants")
-                                        .header("X-Join-Token", joinToken)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(
-                                                objectMapper.writeValueAsString(
-                                                        joinRequest(
-                                                                ParticipantFixture.KIM.getName(),
-                                                                true,
-                                                                GatheringPolicy.CONSENT_VERSION))))
-                        .andExpect(status().isCreated());
+                givenGoogleAccount();
+                Gathering gathering = gatheringHelper.join(saveGathering(), ParticipantFixture.KIM);
+                participantGoogleSubjectRepository.save(
+                        gathering.getId(),
+                        gathering.getParticipants().getFirst().getId(),
+                        SocialIdentityFixture.GOOGLE.getSocialId());
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
                 JoinGatheringRequest sameAccountRequest =
                         new JoinGatheringRequest(
                                 GOOGLE_ID_TOKEN,
@@ -657,6 +655,11 @@ class ParticipantControllerTest extends IntegrationTest {
         Member member = memberHelper.save(MemberFixture.KAKAO);
 
         return gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+    }
+
+    private void givenGoogleAccount() {
+        given(googleSocialClient.authenticate(GOOGLE_ID_TOKEN))
+                .willReturn(SocialIdentityFixture.GOOGLE.create());
     }
 
     private String saveGatheringWithJoinToken() {
