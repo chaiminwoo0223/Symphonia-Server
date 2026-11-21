@@ -97,6 +97,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
             String otherDeviceToken = bearerTokenIssuedInNextSecond();
             drinkId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM drink", Long.class);
             anjuId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM anju", Long.class);
+            givenGoogleAccounts(ParticipantFixture.KIM, ParticipantFixture.LEE);
 
             // when & then: 모임을 열고 두 사람이 참여 토큰으로 참여한다
             JsonNode opened = openGathering(hostToken);
@@ -212,6 +213,21 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
     }
 
     // 요청을 보내 기대한 상태 코드를 확인하고 응답의 data를 돌려준다.
+    // 참여자마다 다른 구글 계정으로 본인을 확인한 것으로 스텁한다. 구글 ID 토큰을 sub로 쓴다.
+    private void givenGoogleAccounts(ParticipantFixture... participants) {
+        for (ParticipantFixture participant : participants) {
+            String googleIdToken = googleIdTokenOf(participant);
+            given(googleSocialClient.authenticate(googleIdToken))
+                    .willReturn(
+                            new SocialIdentity(
+                                    googleIdToken,
+                                    participant.getName(),
+                                    "symphonia@google.com",
+                                    null,
+                                    "GOOGLE"));
+        }
+    }
+
     private JsonNode json(MockHttpServletRequestBuilder request, int expectedStatus)
             throws Exception {
         String body =
@@ -222,21 +238,6 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                         .getContentAsString();
 
         return objectMapper.readTree(body).at("/data");
-    }
-
-    // 참여자마다 다른 구글 계정으로 본인을 확인한 것으로 스텁한다. 구글 ID 토큰을 sub로 쓴다.
-    private String googleIdTokenOf(ParticipantFixture participant) {
-        String googleIdToken = "google-id-token-" + participant.name();
-        given(googleSocialClient.authenticate(googleIdToken))
-                .willReturn(
-                        new SocialIdentity(
-                                googleIdToken,
-                                participant.getName(),
-                                "symphonia@google.com",
-                                null,
-                                "GOOGLE"));
-
-        return googleIdToken;
     }
 
     private JsonNode join(String joinToken, ParticipantFixture participant) throws Exception {
@@ -253,6 +254,10 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                                                 true,
                                                 GatheringPolicy.CONSENT_VERSION))),
                 201);
+    }
+
+    private String googleIdTokenOf(ParticipantFixture participant) {
+        return "google-id-token-" + participant.name();
     }
 
     private String settlementsPath() {
