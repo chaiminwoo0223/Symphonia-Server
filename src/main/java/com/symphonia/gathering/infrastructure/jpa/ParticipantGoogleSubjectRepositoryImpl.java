@@ -37,7 +37,8 @@ public class ParticipantGoogleSubjectRepositoryImpl implements ParticipantGoogle
         return gatheringDataKeyLoader.load(gatheringId).hmac(HMAC_INPUT_PREFIX + googleSubject);
     }
 
-    // 같은 구글 계정으로 동시에 참여하면 Service의 중복 검사를 둘 다 통과하므로 unique 제약 위반으로 구분한다.
+    // 모임 행 잠금이 동시 참여를 차례로 처리해 보통 닿지 않는다.
+    // 잠금을 거치지 않는 쓰기에 대비해 unique 제약 위반을 중복 참여로 구분한다.
     private boolean isGoogleSubViolation(DataIntegrityViolationException e) {
         return e.getCause() instanceof ConstraintViolationException violation
                 && "uk_participant_google_sub".equalsIgnoreCase(violation.getConstraintName());
