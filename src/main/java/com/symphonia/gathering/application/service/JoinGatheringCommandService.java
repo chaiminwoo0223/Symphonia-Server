@@ -52,7 +52,7 @@ public class JoinGatheringCommandService
                 participantGoogleSubjectRepository.exists(gatheringId, command.googleSubject());
 
         Participant participant =
-                addParticipant(
+                joinParticipant(
                         gathering,
                         command.name(),
                         command.phoneNumber(),
@@ -78,7 +78,7 @@ public class JoinGatheringCommandService
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
 
         Participant participant =
-                addParticipant(
+                joinParticipant(
                         gathering,
                         command.name(),
                         command.phoneNumber(),
@@ -100,7 +100,7 @@ public class JoinGatheringCommandService
 
     // 호출하는 쪽이 모임 행을 잠근 채로 넘겨야 인원 확인과 저장 사이에 다른 참여가 끼어들지 않는다.
     // 잠금을 기다리는 동안 참여 기간이 끝날 수 있으므로, 잠금을 얻은 뒤 시각을 다시 읽어 참여 기간을 검사한다.
-    private Participant addParticipant(
+    private Participant joinParticipant(
             Gathering gathering,
             String name,
             String rawPhoneNumber,
