@@ -1,6 +1,7 @@
 package com.symphonia.gathering.domain.vo;
 
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.NonNull;
 
@@ -21,12 +22,11 @@ public record PhoneNumber(String value) {
 
     // 입력은 하이픈을 섞어 받을 수 있어 하이픈을 지워 정규화한다. +82나 공백이 섞인 번호의 형식 정리는 클라이언트가 맡는다.
     public static PhoneNumber from(String input) {
-        String normalized = input == null ? null : input.replace("-", "");
-        if (normalized == null || !INPUT_PATTERN.matcher(normalized).matches()) {
-            throw new InvalidPhoneNumberException();
-        }
-
-        return new PhoneNumber(normalized);
+        return Optional.ofNullable(input)
+                .map(value -> value.replace("-", ""))
+                .filter(INPUT_PATTERN.asMatchPredicate())
+                .map(PhoneNumber::new)
+                .orElseThrow(InvalidPhoneNumberException::new);
     }
 
     public String masked() {
