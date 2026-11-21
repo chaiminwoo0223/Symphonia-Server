@@ -1,6 +1,6 @@
 # gathering 정산 규칙
 
-`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링과 익명 피드백 규칙은 `gathering-pairing.md`, 참여자 상한과 모임장의 참여자 관리 규칙은 `gathering-participant.md`에 있다. 근거, 택하지 않은 안, 재검토 조건은 `docs/decisions/gathering.md`에 있다.
+`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링과 익명 피드백 규칙은 `gathering-pairing.md`, 참여자 상한과 모임장의 참여자 관리와 직접 참여 규칙은 `gathering-participant.md`, 기록 기간 연장 규칙은 `gathering-recording-period.md`에 있다. 근거, 택하지 않은 안, 재검토 조건은 `docs/decisions/gathering.md`에 있다.
 
 ## 애그리거트와 application
 
@@ -10,8 +10,7 @@
 - application은 흐름 단위로 나눈다. 정산 건 기록, 수정, 취소는 `SettlementCommandService`, 분담금 상태 변경은 `ShareCommandService`가 맡는다.
 - 개인 링크 토큰으로 참여자를 찾는 경로는 `GetLinkedParticipantUseCase` 하나로 모은다. `GetLinkedParticipantUseCase` 구현 밖의 Service는 링크 토큰 Repository를 직접 부르지 않는다.
 - 참여 기간, 휴대폰 중복, 모임을 만든 회원 여부, 동의 검증은 `GatheringPolicy`에 두고, Service가 `Gathering`의 상태를 바꾸기 전에 호출한다. `Gathering`은 검증을 통과한 값으로 상태만 바꾼다. Service 테스트가 검증 실패 경우를 하나씩 확인한다.
-- 48시간 기록 기간 판정은 `GatheringPolicy`에 두고 `Settlement`도 같이 쓴다.
-- 48시간 기록 기간의 시작 시각은 `Gathering.openedAt`이다. `Gathering.open`이 Service가 `Clock`으로 구한 현재 시각을 받아 담는다. 감사용 `created_at`과 별도인 `opened_at` 컬럼이다.
+- 기록 기간은 모임을 연 시각부터 48시간이고, 모임장이 연장하면 48시간이 더해진다. 판정은 `GatheringPolicy`에 두고 `Settlement`도 같이 쓰며, 판정 메서드는 `Gathering.getRecordingClosesAt()`이 돌려주는 닫히는 시각을 받는다.
 
 ## 차수
 
@@ -21,7 +20,7 @@
 - 요청한 번호의 차수가 이미 있으면 새로 만들지 않고 그 차수를 돌려준다. 마지막 번호의 다음 번호보다 큰 번호는 400(`INVALID_GATHERING_ROUND_NUMBER`)으로 거절한다.
 - 동시 추가는 `(gathering_id, round_number)` unique 제약과 `ON CONFLICT DO NOTHING`으로 막고, 넣지 못하면 이미 있는 차수를 읽어 돌려준다.
 - 모임의 차수는 최대 10개(`GatheringPolicy.MAX_ROUND_COUNT`)이고, 상한을 넘는 번호는 건너뛴 번호보다 먼저 400(`GATHERING_ROUND_COUNT_EXCEEDS_LIMIT`)으로 거절한다.
-- 차수 추가는 모임 생성 후 48시간 안에만 할 수 있다. 지나면 400(`GATHERING_ROUND_CLOSED`)이다.
+- 차수 추가는 기록 기간 안에만 할 수 있다. 지나면 400(`GATHERING_ROUND_CLOSED`)이다.
 - 차수에는 인원 명단을 두지 않는다. 인원은 정산 건이 가진다.
 
 ## 참여와 동의
@@ -33,9 +32,8 @@
 - 참여 요청은 동의 여부와 버전을 함께 보낸다. `GatheringPolicy.validateConsent`가 동의하지 않았으면 `ConsentRequiredException`(400), 버전이 다르면 `OutdatedConsentVersionException`(400)으로 거절한다. Request의 Bean Validation으로 검사하지 않는다.
 - 같은 휴대폰의 중복 참여를 막는다. 동시 참여는 `(gathering_id, phone_number_hmac)` unique 제약으로 막고, `GatheringRepositoryImpl`이 위반을 `GatheringPolicy.validateNotJoined`의 예외로 바꾼다.
 - 참여 화면은 참여 토큰으로 모임 이름, 참여 가능 여부(`joinable`), 사유(`joinClosedReason`: `PERIOD_EXPIRED`, `PARTICIPANT_LIMIT_REACHED`)를 먼저 조회한다. 둘 다면 `PERIOD_EXPIRED`다.
-- 참여 토큰은 모임 생성 후 48시간까지 유효하다. 모임을 만든 회원은 참여 QR을 재발급할 수 있고, 재발급하면 기존 토큰은 무효다. 참여 기간이 끝난 모임은 재발급하지 않는다.
+- 참여 토큰은 기록 기간이 끝날 때까지 유효하다. 모임을 만든 회원은 참여 QR을 재발급할 수 있고, 재발급하면 기존 토큰은 무효다. 참여 기간이 끝난 모임은 재발급하지 않는다.
 - 참여 토큰 발급 응답은 참여 기간이 끝나는 `expiresAt`을 담는다.
-- 모임장이 탈퇴해도 모임은 자동 파기까지 유지한다.
 - `GatheringRepositoryImpl.save`는 id가 없는 새 참여자만 INSERT하고 기존 참여자 행을 다시 쓰지 않는다.
 
 ## 분담 방식
@@ -51,7 +49,7 @@
 
 - 정산 건은 모임을 만든 회원이 JWT로 기록, 수정, 취소한다. 결제자는 기록할 때 본문의 `payerParticipantId`로 지정하고, 그 모임의 참여자가 아니면 404(`PARTICIPANT_NOT_FOUND`)다. 모임장은 참여자가 아니어도 된다. 결제자는 수정할 수 없고 취소 뒤 다시 기록한다.
 - 차수 추가와 정산 건 기록, 수정, 취소, 기록 화면 조회는 파기 시각이 지난 모임을 404(`GATHERING_NOT_FOUND`)로, 모임을 만든 회원이 아니면 403(`NOT_GATHERING_HOST`)으로 거절한다. 다른 모임의 정산 건은 404(`SETTLEMENT_NOT_FOUND`)다.
-- 정산 건은 모임 생성 후 48시간 안에만 기록할 수 있다.
+- 정산 건은 기록 기간 안에만 기록할 수 있다.
 - 정산 건 기록 요청은 클라이언트가 만든 요청 id(`clientRequestId`, UUID)를 필수로 담는다. 같은 결제자가 같은 요청 id로 다시 보내면 새로 만들지 않고 처음 기록한 정산 건을 201로 돌려주고, 요청 내용이 달라도 처음 정산 건을 돌려준다. 이미 있는 정산 건은 차수, 인원, 기록 기간 검증보다 먼저 찾아 그대로 돌려준다.
 - 요청 id는 `settlement`의 `(payer_participant_id, client_request_id)` unique 제약과 `ON CONFLICT DO NOTHING`으로 가린다. 동시에 같은 요청이 오면 늦은 요청은 먼저 넣은 요청이 커밋한 뒤 그 정산 건을 읽는다.
 - 정산 건은 차수 id를 지정해 기록한다. 그 모임의 차수가 아니면 404(`GATHERING_ROUND_NOT_FOUND`)다. 보낸 분담금이 없는 정산 건은 수정할 때 차수도 바꿀 수 있다.
