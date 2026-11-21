@@ -41,8 +41,29 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
 
     @Override
     public List<GatheringRetention> findAllOpenedUntil(LocalDateTime openedAt) {
-        List<GatheringJpaEntity> gatheringEntities =
-                gatheringJpaRepository.findAllByOpenedAtLessThanEqualOrderById(openedAt);
+        return toRetentions(
+                gatheringJpaRepository.findAllByOpenedAtLessThanEqualOrderById(openedAt));
+    }
+
+    @Override
+    public List<GatheringRetention> findAllByHostMemberId(Long hostMemberId) {
+        return toRetentions(gatheringJpaRepository.findAllByHostMemberIdOrderById(hostMemberId));
+    }
+
+    @Override
+    public Optional<GatheringRetention> findByGatheringIdForUpdate(Long gatheringId) {
+        return gatheringJpaRepository
+                .findByIdForUpdateSkipLocked(gatheringId)
+                .map(
+                        gatheringEntity ->
+                                toRetention(
+                                        gatheringEntity,
+                                        settlementRepository.findAllByGatheringIdForUpdate(
+                                                gatheringId)));
+    }
+
+    // 모임마다 따로 읽지 않도록 정산 건과 데이터 키를 모임 id 전체로 한 번씩 읽는다.
+    private List<GatheringRetention> toRetentions(List<GatheringJpaEntity> gatheringEntities) {
         List<Long> gatheringIds =
                 gatheringEntities.stream().map(GatheringJpaEntity::getId).toList();
         Map<Long, List<Settlement>> settlementsByGatheringId =
@@ -64,18 +85,6 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
                                                 gatheringEntity.getId(), List.of()),
                                         !dataKeyGatheringIds.contains(gatheringEntity.getId())))
                 .toList();
-    }
-
-    @Override
-    public Optional<GatheringRetention> findByGatheringIdForUpdate(Long gatheringId) {
-        return gatheringJpaRepository
-                .findByIdForUpdateSkipLocked(gatheringId)
-                .map(
-                        gatheringEntity ->
-                                toRetention(
-                                        gatheringEntity,
-                                        settlementRepository.findAllByGatheringIdForUpdate(
-                                                gatheringId)));
     }
 
     private GatheringRetention toRetention(

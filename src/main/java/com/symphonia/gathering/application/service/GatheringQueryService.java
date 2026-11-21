@@ -4,9 +4,11 @@ import com.symphonia.common.annotation.QueryService;
 import com.symphonia.gathering.application.dto.query.GetGatheringParticipantsQuery;
 import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.application.dto.result.OngoingGatheringsResult;
 import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
+import com.symphonia.gathering.application.usecase.GetOngoingGatheringsUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
@@ -26,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class GatheringQueryService
         implements GetGatheringUseCase,
                 GetGatheringParticipantsUseCase,
+                GetOngoingGatheringsUseCase,
                 GetExpiredGatheringsUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
@@ -74,6 +77,18 @@ public class GatheringQueryService
         GatheringPolicy.validateHost(gathering.getHostMemberId(), query.memberId());
 
         return gathering.getParticipants().stream().map(GatheringParticipantResult::from).toList();
+    }
+
+    // 모임장이 탈퇴하면 새 정산 건 기록과 참여자 관리가 멈추므로, 탈퇴하기 전에 진행 중인 모임을 알려 주는 데 쓴다.
+    // 파기 시각이 지난 모임은 물리 삭제 전이라도 진행 중이 아닌 것으로 본다.
+    @Override
+    public OngoingGatheringsResult getOngoing(Long hostMemberId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        return OngoingGatheringsResult.from(
+                gatheringRetentionRepository.findAllByHostMemberId(hostMemberId).stream()
+                        .filter(retention -> !retention.isExpired(now))
+                        .toList());
     }
 
     // 가장 빨리 파기되는 모임도 기록 기간이 끝나고 7일 뒤에 파기되므로, 그보다 늦게 연 모임은 읽지 않는다.

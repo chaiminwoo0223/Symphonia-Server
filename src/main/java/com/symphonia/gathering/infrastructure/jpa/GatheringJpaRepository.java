@@ -13,6 +13,8 @@ import org.springframework.data.repository.query.Param;
 public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity, Long> {
     List<GatheringJpaEntity> findAllByOpenedAtLessThanEqualOrderById(LocalDateTime openedAt);
 
+    List<GatheringJpaEntity> findAllByHostMemberIdOrderById(Long hostMemberId);
+
     // 다른 요청이 잠근 모임은 그 요청이 끝날 때까지 기다린다.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT gathering FROM GatheringJpaEntity gathering WHERE gathering.id = :id")

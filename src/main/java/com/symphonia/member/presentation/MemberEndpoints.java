@@ -6,4 +6,5 @@ public final class MemberEndpoints {
     private static final String BASE = "/api/v1/members";
 
     public static final String ME = BASE + "/me";
+    public static final String WITHDRAWAL_CHECK = ME + "/withdrawal-check";
 }
