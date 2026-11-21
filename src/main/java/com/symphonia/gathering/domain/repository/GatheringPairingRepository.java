@@ -10,5 +10,8 @@ public interface GatheringPairingRepository {
     // 참여자가 속한 모임의 페어링을 모임과 참여자를 복호화하지 않고 읽는다.
     Optional<GatheringPairing> findByParticipantId(Long participantId);
 
+    // 모임장이 마지막으로 고른 페어링이다. 모임을 파기하기 전에 선택 신호를 남길 때 쓴다.
+    Optional<GatheringPairing> findByGatheringId(Long gatheringId);
+
     void deleteByGatheringId(Long gatheringId);
 }

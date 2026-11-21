@@ -97,6 +97,43 @@ class GatheringPairingRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findByGatheringId 메서드는")
+    class FindByGatheringId {
+
+        @Test
+        @DisplayName("다른 모임의 페어링이 아니라 그 모임에서 고른 페어링을 반환한다")
+        void shouldReturnPairingOfGathering() {
+            // given
+            gatheringPairingRepository.save(
+                    gatheringId, GatheringPairingFixture.FRIEND_CASUAL.create());
+            gatheringPairingRepository.save(
+                    otherGatheringId, GatheringPairingFixture.LOVER_ROMANTIC.create());
+
+            // when
+            Optional<GatheringPairing> result =
+                    gatheringPairingRepository.findByGatheringId(gatheringId);
+
+            // then
+            assertThat(result).hasValue(GatheringPairingFixture.FRIEND_CASUAL.create());
+        }
+
+        @Test
+        @DisplayName("그 모임에서 고른 페어링이 없으면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenPairingAbsent() {
+            // given
+            gatheringPairingRepository.save(
+                    otherGatheringId, GatheringPairingFixture.LOVER_ROMANTIC.create());
+
+            // when
+            Optional<GatheringPairing> result =
+                    gatheringPairingRepository.findByGatheringId(gatheringId);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("findByParticipantId 메서드는")
     class FindByParticipantId {
 

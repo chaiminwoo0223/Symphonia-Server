@@ -9,7 +9,10 @@ import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
+import com.symphonia.gathering.domain.vo.GatheringPairing;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
+import com.symphonia.pairing.application.dto.command.RecordPairingSelectionCommand;
+import com.symphonia.pairing.application.usecase.RecordPairingSelectionUseCase;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -28,6 +31,7 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final GatheringPairingRepository gatheringPairingRepository;
     private final SettlementRepository settlementRepository;
+    private final RecordPairingSelectionUseCase recordPairingSelectionUseCase;
     private final Clock clock;
 
     // 고른 뒤 분담금이 미입금으로 되돌아갔을 수 있으므로, 잠근 뒤 파기 시각을 다시 판단한다.
@@ -44,13 +48,24 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     }
 
     // 참조하는 쪽부터 테이블마다 한 번씩 지운다. 참여자 수와 관계없이 쿼리 수가 같다.
+    // 모임 페어링은 지우기 전에 마지막으로 고른 조합 하나를 선택 신호로 남긴다. 같은 트랜잭션이라 파기가 롤백되면 선택 횟수도 롤백된다.
     @Override
     public void purge(Long gatheringId) {
+        gatheringPairingRepository.findByGatheringId(gatheringId).ifPresent(this::recordSelection);
         participantLinkTokenRepository.deleteAllByGatheringId(gatheringId);
         participantPairingFeedbackRepository.deleteAllByGatheringId(gatheringId);
         settlementRepository.deleteAllByGatheringId(gatheringId);
         gatheringJoinTokenRepository.deleteAllByGatheringId(gatheringId);
         gatheringPairingRepository.deleteByGatheringId(gatheringId);
         gatheringRepository.delete(gatheringId);
+    }
+
+    private void recordSelection(GatheringPairing gatheringPairing) {
+        recordPairingSelectionUseCase.record(
+                RecordPairingSelectionCommand.of(
+                        gatheringPairing.drinkId(),
+                        gatheringPairing.anjuId(),
+                        gatheringPairing.relationshipType(),
+                        gatheringPairing.moodType()));
     }
 }
