@@ -106,13 +106,13 @@ public class GatheringCommandService
 
     // 데이터 키를 지우는 것과 나머지 행을 지우는 것을 한 트랜잭션에 묶는다. 자동 파기와 달리 둘을 따로 커밋하지 않는다.
     // 중간에 실패하면 모두 되돌아가 모임이 그대로 남고, 모임장이 다시 요청하면 된다.
+    // 이미 지운 모임은 두 호출 모두 지울 행이 없어 성공으로 끝난다.
     // 따로 커밋하면 2단계가 실패했을 때 파기 스윕이 연 지 9일이 지난 모임만 읽어서 행이 한동안 남는다.
     @Override
     public void delete(DeleteGatheringCommand command) {
-        if (purgeGatheringUseCase.discardDataKeyOfHostedGathering(
-                command.memberId(), command.gatheringId())) {
-            purgeGatheringUseCase.purgeWithoutSelectionSignal(command.gatheringId());
-        }
+        purgeGatheringUseCase.discardDataKeyOfHostedGathering(
+                command.memberId(), command.gatheringId());
+        purgeGatheringUseCase.purgeWithoutSelectionSignal(command.gatheringId());
     }
 
     // 연장은 한 번만 할 수 있다. 이미 연장한 모임에 다시 보낸 요청은 응답만 사라졌거나 버튼을 두 번 누른 것이므로, 바꾸지 않고 성공으로 돌려준다.

@@ -614,51 +614,17 @@ class GatheringCommandServiceTest extends UnitTest {
 
         private static final Long HOST_MEMBER_ID = 1L;
 
-        @Nested
-        @DisplayName("데이터 키를 지운 경우")
-        class WhenDataKeyDiscarded {
+        @Test
+        @DisplayName("데이터 키를 지운 뒤에 모임의 나머지 행을 선택 신호 없이 지운다")
+        void shouldPurgeAfterDiscardingDataKey() {
+            // when
+            gatheringCommandService.delete(DeleteGatheringCommand.of(HOST_MEMBER_ID, GATHERING_ID));
 
-            @Test
-            @DisplayName("데이터 키를 지운 뒤에 모임의 나머지 행을 선택 신호 없이 지운다")
-            void shouldPurgeAfterDiscardingDataKey() {
-                // given
-                given(
-                                purgeGatheringUseCase.discardDataKeyOfHostedGathering(
-                                        HOST_MEMBER_ID, GATHERING_ID))
-                        .willReturn(true);
-
-                // when
-                gatheringCommandService.delete(
-                        DeleteGatheringCommand.of(HOST_MEMBER_ID, GATHERING_ID));
-
-                // then
-                InOrder inOrder = inOrder(purgeGatheringUseCase);
-                inOrder.verify(purgeGatheringUseCase)
-                        .discardDataKeyOfHostedGathering(HOST_MEMBER_ID, GATHERING_ID);
-                inOrder.verify(purgeGatheringUseCase).purgeWithoutSelectionSignal(GATHERING_ID);
-            }
-        }
-
-        @Nested
-        @DisplayName("이미 지운 모임인 경우")
-        class WhenGatheringAlreadyDeleted {
-
-            @Test
-            @DisplayName("행을 지우지 않고 성공으로 끝낸다")
-            void shouldNotPurge() {
-                // given
-                given(
-                                purgeGatheringUseCase.discardDataKeyOfHostedGathering(
-                                        HOST_MEMBER_ID, GATHERING_ID))
-                        .willReturn(false);
-
-                // when
-                gatheringCommandService.delete(
-                        DeleteGatheringCommand.of(HOST_MEMBER_ID, GATHERING_ID));
-
-                // then
-                then(purgeGatheringUseCase).should(never()).purgeWithoutSelectionSignal(anyLong());
-            }
+            // then
+            InOrder inOrder = inOrder(purgeGatheringUseCase);
+            inOrder.verify(purgeGatheringUseCase)
+                    .discardDataKeyOfHostedGathering(HOST_MEMBER_ID, GATHERING_ID);
+            inOrder.verify(purgeGatheringUseCase).purgeWithoutSelectionSignal(GATHERING_ID);
         }
     }
 
