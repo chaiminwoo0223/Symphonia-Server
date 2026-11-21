@@ -28,6 +28,7 @@ import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import com.symphonia.pairing.domain.vo.PairingRating;
+import com.symphonia.pairing.helper.PairingHelper;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -59,6 +60,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private GetExpiredGatheringsUseCase getExpiredGatheringsUseCase;
     @Autowired private PurgeGatheringUseCase purgeGatheringUseCase;
+    @Autowired private PairingHelper pairingHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     private Member host;
@@ -69,16 +71,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
     // 피드백과 집계는 시드 카탈로그 조합에 쌓이므로 그 조합의 행만 지운다. 파기가 끝까지 가지 못한 경우를 위해 모임의 행도 지운다.
     @AfterEach
     void deleteCommittedRows() {
-        jdbcTemplate.update(
-                "DELETE FROM pairing_rating_summary WHERE drink_id = ? AND anju_id = ?",
-                drinkId,
-                anjuId);
-        jdbcTemplate.update(
-                "DELETE FROM pairing_selection_summary WHERE drink_id = ? AND anju_id = ?",
-                drinkId,
-                anjuId);
-        jdbcTemplate.update(
-                "DELETE FROM pairing_feedback WHERE drink_id = ? AND anju_id = ?", drinkId, anjuId);
+        pairingHelper.deleteRowsOf(drinkId, anjuId);
         gatheringHelper.deleteRows(gatheringId);
         memberRepository.delete(host);
     }
@@ -90,7 +83,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
         @Test
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         @DisplayName("피드백을 남기고, 탈퇴한 모임장의 액세스 토큰을 거부하고, 보존 기간이 지나면 모임을 파기한다")
-        void shouldRunFromOpenToPurge() throws Exception {
+        void shouldKeepFeedbackAndPurgeGatheringAfterHostWithdrawal() throws Exception {
             // given
             host = memberHelper.save(MemberFixture.KAKAO);
             String hostToken = authHelper.bearerTokenFor(host);
@@ -148,10 +141,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                                             new SubmitParticipantPairingFeedbackRequest(
                                                     drinkId, anjuId, PairingRating.LIKE))),
                     201);
-            assertThat(
-                            count(
-                                    "SELECT COUNT(*) FROM pairing_feedback WHERE drink_id = ? AND anju_id = ?"))
-                    .isOne();
+            assertThat(countPairingRows("pairing_feedback")).isOne();
 
             // 그다음 모임장이 탈퇴하면 다른 기기에서 발급한 액세스 토큰도 거부되지만 참여자의 개인 링크는 그대로 쓸 수 있다
             mockMvc.perform(
@@ -181,15 +171,17 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
             assertThat(countGatheringRows("gathering", "id")).isZero();
             assertThat(countGatheringRows("participant", "gathering_id")).isZero();
             assertThat(countGatheringRows("settlement", "gathering_id")).isZero();
-            assertThat(
-                            count(
-                                    "SELECT COUNT(*) FROM pairing_selection_summary WHERE drink_id = ? AND anju_id = ?"))
-                    .isOne();
-            assertThat(
-                            count(
-                                    "SELECT COUNT(*) FROM pairing_feedback WHERE drink_id = ? AND anju_id = ?"))
-                    .isOne();
+            assertThat(countPairingRows("pairing_selection_summary")).isOne();
+            assertThat(countPairingRows("pairing_feedback")).isOne();
         }
+    }
+
+    // 액세스 토큰의 발급 시각은 초 단위라 같은 초에 만든 토큰은 문자열이 같고, 탈퇴를 요청한 토큰은 로그아웃으로 막힌다.
+    // 탈퇴한 회원 id로 막히는지 보려면 다른 기기가 나중에 발급한 토큰처럼 문자열이 다른 토큰이 필요하므로 초가 바뀐 뒤에 발급한다.
+    private String bearerTokenIssuedInNextSecond() throws InterruptedException {
+        Thread.sleep(1_100);
+
+        return authHelper.bearerTokenFor(host);
     }
 
     private JsonNode openGathering(String hostToken) throws Exception {
@@ -211,6 +203,19 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                 201);
     }
 
+    // 요청을 보내 기대한 상태 코드를 확인하고 응답의 data를 돌려준다.
+    private JsonNode json(MockHttpServletRequestBuilder request, int expectedStatus)
+            throws Exception {
+        String body =
+                mockMvc.perform(request)
+                        .andExpect(status().is(expectedStatus))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+
+        return objectMapper.readTree(body).at("/data");
+    }
+
     private JsonNode join(String joinToken, ParticipantFixture participant) throws Exception {
         return json(
                 post("/api/v1/participants")
@@ -226,6 +231,10 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                 201);
     }
 
+    private String settlementsPath() {
+        return "/api/v1/gatherings/" + gatheringId + "/settlements";
+    }
+
     private RecordSettlementRequest recordRequest(long payerId, long memberId, long roundId) {
         return new RecordSettlementRequest(
                 UUID.randomUUID(),
@@ -236,37 +245,16 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                 List.<FixedAmountRequest>of());
     }
 
-    // 요청을 보내 기대한 상태 코드를 확인하고 응답의 data를 돌려준다.
-    private JsonNode json(MockHttpServletRequestBuilder request, int expectedStatus)
-            throws Exception {
-        String body =
-                mockMvc.perform(request)
-                        .andExpect(status().is(expectedStatus))
-                        .andReturn()
-                        .getResponse()
-                        .getContentAsString();
-
-        return objectMapper.readTree(body).at("/data");
+    private Long countPairingRows(String table) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM " + table + " WHERE drink_id = ? AND anju_id = ?",
+                Long.class,
+                drinkId,
+                anjuId);
     }
 
     private String participantsPath() {
         return "/api/v1/gatherings/" + gatheringId + "/participants";
-    }
-
-    // 액세스 토큰의 발급 시각은 초 단위라 같은 초에 만든 토큰은 문자열이 같고, 탈퇴를 요청한 토큰은 로그아웃으로 막힌다.
-    // 탈퇴한 회원 id로 막히는지 보려면 다른 기기가 나중에 발급한 토큰처럼 문자열이 다른 토큰이 필요하므로 초가 바뀐 뒤에 발급한다.
-    private String bearerTokenIssuedInNextSecond() throws InterruptedException {
-        Thread.sleep(1_100);
-
-        return authHelper.bearerTokenFor(host);
-    }
-
-    private String settlementsPath() {
-        return "/api/v1/gatherings/" + gatheringId + "/settlements";
-    }
-
-    private Long count(String sql) {
-        return jdbcTemplate.queryForObject(sql, Long.class, drinkId, anjuId);
     }
 
     private Long countGatheringRows(String table, String gatheringColumn) {

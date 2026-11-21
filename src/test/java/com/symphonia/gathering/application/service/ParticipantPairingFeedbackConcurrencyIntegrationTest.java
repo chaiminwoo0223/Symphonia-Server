@@ -21,6 +21,7 @@ import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import com.symphonia.pairing.domain.vo.PairingRating;
+import com.symphonia.pairing.helper.PairingHelper;
 import java.util.List;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
@@ -47,6 +48,7 @@ class ParticipantPairingFeedbackConcurrencyIntegrationTest extends IntegrationTe
     @Autowired private MemberHelper memberHelper;
     @Autowired private MemberRepository memberRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private PairingHelper pairingHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     private Member host;
@@ -87,12 +89,7 @@ class ParticipantPairingFeedbackConcurrencyIntegrationTest extends IntegrationTe
     void deleteCommittedRows() {
         gatheringHelper.deleteRows(gathering.getId());
         memberRepository.delete(host);
-        jdbcTemplate.update(
-                "DELETE FROM pairing_rating_summary WHERE drink_id = ? AND anju_id = ?",
-                drinkId,
-                anjuId);
-        jdbcTemplate.update(
-                "DELETE FROM pairing_feedback WHERE drink_id = ? AND anju_id = ?", drinkId, anjuId);
+        pairingHelper.deleteRowsOf(drinkId, anjuId);
     }
 
     @Nested

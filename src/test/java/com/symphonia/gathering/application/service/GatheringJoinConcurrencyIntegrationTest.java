@@ -133,7 +133,11 @@ class GatheringJoinConcurrencyIntegrationTest extends IntegrationTest {
 
     private JoinGatheringCommand joinCommand(String joinToken, int index) {
         return new JoinGatheringCommand(
-                joinToken, "동시참여" + index, concurrentPhoneNumber(index), true, consentVersion());
+                joinToken,
+                "동시참여" + index,
+                concurrentPhoneNumber(index),
+                true,
+                GatheringPolicy.CONSENT_VERSION);
     }
 
     private JoinGatheringAsHostCommand hostCommand(int index) {
@@ -143,16 +147,12 @@ class GatheringJoinConcurrencyIntegrationTest extends IntegrationTest {
                 "모임장",
                 concurrentPhoneNumber(index),
                 true,
-                consentVersion());
+                GatheringPolicy.CONSENT_VERSION);
     }
 
     // 미리 채운 참여자의 휴대폰과 겹치지 않는 번호다.
     private String concurrentPhoneNumber(int index) {
         return String.format(Locale.ROOT, "0108000%04d", index);
-    }
-
-    private String consentVersion() {
-        return GatheringPolicy.CONSENT_VERSION;
     }
 
     private int participantCount() {
