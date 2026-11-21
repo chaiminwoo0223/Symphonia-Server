@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
@@ -80,13 +81,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
     @BeforeEach
     void setUp() {
         joinGatheringCommandService =
-                new JoinGatheringCommandService(
-                        gatheringRepository,
-                        gatheringJoinTokenRepository,
-                        participantLinkTokenRepository,
-                        participantGoogleSubjectRepository,
-                        gatheringRetentionRepository,
-                        gatheringTokenProvider,
+                serviceOf(
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));
@@ -148,6 +143,25 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 givenGathering(
                         GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                                 GATHERING_ID, CLOSED_PERIOD_OPENED_AT));
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
+                        .isInstanceOf(GatheringJoinClosedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임 행 잠금을 기다리는 동안 참여 기간이 끝난 경우")
+        class WhenRecordingPeriodClosedWhileWaitingForLock {
+
+            @Test
+            @DisplayName("잠금을 얻은 뒤의 시각으로 검사해 예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowGatheringJoinClosedException() {
+                // given
+                givenJoinableGathering(List.of());
+                givenClockReadings(NOW, NOW.plusSeconds(1));
                 AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
@@ -646,6 +660,25 @@ class JoinGatheringCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("모임 행 잠금을 기다리는 동안 참여 기간이 끝난 경우")
+        class WhenRecordingPeriodClosedWhileWaitingForLock {
+
+            @Test
+            @DisplayName("잠금을 얻은 뒤의 시각으로 검사해 예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowGatheringJoinClosedException() {
+                // given
+                givenHostGathering(OPEN_PERIOD_OPENED_AT, List.of());
+                givenClockReadings(NOW, NOW.plusSeconds(1));
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(GatheringJoinClosedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
         @DisplayName("동의하지 않은 경우")
         class WhenConsentNotAgreed {
 
@@ -792,6 +825,28 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
             then(participantGoogleSubjectRepository).shouldHaveNoInteractions();
         }
+    }
+
+    // 첫 번째 시각은 서비스가 맨 처음 읽는 시각이고, 두 번째 시각은 모임 행 잠금을 얻은 뒤 다시 읽는 시각이다.
+    private void givenClockReadings(LocalDateTime first, LocalDateTime second) {
+        Clock clock = mock(Clock.class);
+        given(clock.getZone()).willReturn(TimeConfig.SERVICE_ZONE);
+        given(clock.instant())
+                .willReturn(
+                        first.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
+                        second.atZone(TimeConfig.SERVICE_ZONE).toInstant());
+        joinGatheringCommandService = serviceOf(clock);
+    }
+
+    private JoinGatheringCommandService serviceOf(Clock clock) {
+        return new JoinGatheringCommandService(
+                gatheringRepository,
+                gatheringJoinTokenRepository,
+                participantLinkTokenRepository,
+                participantGoogleSubjectRepository,
+                gatheringRetentionRepository,
+                gatheringTokenProvider,
+                clock);
     }
 
     private void givenRetention(GatheringRetentionFixture retention) {
