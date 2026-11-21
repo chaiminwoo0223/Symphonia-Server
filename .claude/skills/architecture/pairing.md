@@ -119,3 +119,9 @@
 - 모임을 파기할 때 모임장이 마지막에 고른 조합 하나를 `pairing_selection_summary`에 (관계 유형, 분위기, 음료, 안주)별 횟수로 더한다. 분위기를 고르지 않은 상황도 하나의 상황이다.
 - 개인정보와 모임을 가리키는 값은 담지 않는다. `drink`, `anju`에 FK를 걸지 않는다.
 - `PurgeGatheringService`가 `RecordPairingSelectionUseCase`를 같은 트랜잭션에서 불러, 파기와 함께 커밋되거나 롤백된다. 모임 페어링을 지운 호출에서만 센다.
+
+## 내 피드백 조회
+
+- 회원은 `GET /pairings/feedback`로 자기가 낸 피드백을 최근에 낸 순서로 본다. `PairingApi`가 같은 경로의 피드백 기록(`POST`)과 함께 둔다.
+- 회원 id로 읽으므로 모임 참여자의 익명 피드백은 담지 않는다. 술과 안주의 id와 이름, 평점, 관계 유형, 분위기, 처음 낸 시각(`submittedAt`)을 담고, 이름은 읽을 때 catalog의 `GetCatalogReferencesUseCase`로 조회하고 복사해 두지 않는다.
+- 페이지는 마지막으로 읽은 피드백 id를 `cursor`로 받는 방식이고, `size`는 기본 20, 최대 50이다. 응답의 `nextCursor`가 null이면 마지막 페이지다. 한 회원의 피드백은 `(member_id, drink_id, anju_id)` unique 인덱스로 읽는다.
