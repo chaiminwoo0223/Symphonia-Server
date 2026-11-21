@@ -48,6 +48,8 @@ public enum GatheringErrorCode implements ErrorCode {
     SETTLEMENT_CONFLICT(HttpStatus.CONFLICT, "다른 요청이 먼저 정산 건을 바꿨습니다. 다시 불러와 주세요."),
     SETTLEMENT_SHARES_SENT(
             HttpStatus.CONFLICT, "돈을 보낸 참여자가 있는 정산 건은 수정하거나 취소할 수 없습니다. 분담금을 먼저 미입금으로 되돌려 주세요."),
+    GATHERING_SHARES_SENT(
+            HttpStatus.CONFLICT, "돈을 보낸 참여자가 있는 모임은 삭제할 수 없습니다. 분담금을 먼저 미입금으로 되돌려 주세요."),
     SHARE_ALREADY_SENT(HttpStatus.CONFLICT, "이미 보냈다고 알린 분담금입니다."),
     SHARE_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "이미 확인 완료한 분담금입니다."),
     ZERO_SHARE_STATUS_UNCHANGEABLE(

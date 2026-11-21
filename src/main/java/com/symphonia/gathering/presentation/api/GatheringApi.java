@@ -60,6 +60,14 @@ public interface GatheringApi {
             @PathVariable Long gatheringId,
             @Valid @RequestBody RenameGatheringRequest request);
 
+    @DeleteMapping(GatheringEndpoints.GATHERING)
+    @Operation(
+            summary = "모임 삭제",
+            description =
+                    "모임을 개인정보 파기 시각 전에 지웁니다. 모임을 만든 회원만 할 수 있고, 참여자, 정산 건, 참여 링크와 개인 링크를 모두 지웁니다. 지운 모임은 되돌릴 수 없고, 모임장이 고른 페어링은 선택 신호로 남기지 않습니다. 보낸 분담금(보냄이나 확인 완료인 0원 아닌 분담금)이 있으면 참여자의 분담금 확인이 끊기므로 409(GATHERING_SHARES_SENT)입니다. 분담금을 먼저 미입금으로 되돌려야 합니다. 이미 지웠거나 없는 모임은 204로 처리합니다.")
+    ResponseEntity<StandardResponse<Void>> delete(
+            @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
+
     @PostMapping(GatheringEndpoints.REISSUE)
     @Operation(
             summary = "참여 토큰 재발급",

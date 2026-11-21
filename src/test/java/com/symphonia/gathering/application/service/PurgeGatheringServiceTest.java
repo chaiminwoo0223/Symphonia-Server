@@ -1,6 +1,7 @@
 package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -9,6 +10,8 @@ import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.domain.entity.Settlement;
+import com.symphonia.gathering.domain.exception.GatheringSharesSentException;
+import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
@@ -360,6 +363,131 @@ class PurgeGatheringServiceTest extends UnitTest {
                 assertThat(result).isFalse();
                 then(gatheringRepository).should(never()).discardDataKey(anyLong());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("discardDataKeyOfHostedGathering 메서드는")
+    class DiscardDataKeyOfHostedGathering {
+
+        private static final Long HOST_MEMBER_ID = 1L;
+        private static final Long OTHER_MEMBER_ID = 99L;
+
+        @Nested
+        @DisplayName("모임이 없는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("이미 지운 모임이므로 false를 반환하고 데이터 키를 지우지 않는다")
+            void shouldReturnFalse() {
+                // given
+                givenNow(OPENED_AT);
+                given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when
+                boolean result =
+                        purgeGatheringService.discardDataKeyOfHostedGathering(
+                                HOST_MEMBER_ID, GATHERING_ID);
+
+                // then
+                assertThat(result).isFalse();
+                then(gatheringRepository).should(never()).discardDataKey(anyLong());
+                then(settlementRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NotGatheringHostException을 던지고 데이터 키를 지우지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenNow(OPENED_AT);
+                given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.of(HOST_MEMBER_ID));
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        purgeGatheringService.discardDataKeyOfHostedGathering(
+                                                OTHER_MEMBER_ID, GATHERING_ID))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(gatheringRepository).should(never()).discardDataKey(anyLong());
+            }
+        }
+
+        @Nested
+        @DisplayName("보낸 분담금이 있는 정산 건이 있는 경우")
+        class WhenSharesSent {
+
+            @Test
+            @DisplayName("GatheringSharesSentException을 던지고 데이터 키를 지우지 않는다")
+            void shouldThrowGatheringSharesSentException() {
+                // given
+                givenNow(OPENED_AT);
+                given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.of(HOST_MEMBER_ID));
+                Settlement settlement = unpaidSettlement();
+                settlement.markShareSent(PARK_ID, OPENED_AT);
+                given(settlementRepository.findAllByGatheringIdForUpdate(GATHERING_ID))
+                        .willReturn(List.of(settlement));
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        purgeGatheringService.discardDataKeyOfHostedGathering(
+                                                HOST_MEMBER_ID, GATHERING_ID))
+                        .isInstanceOf(GatheringSharesSentException.class);
+                then(gatheringRepository).should(never()).discardDataKey(anyLong());
+            }
+        }
+
+        @Nested
+        @DisplayName("보낸 분담금이 없는 모임을 모임장이 지우는 경우")
+        class WhenDeletable {
+
+            @Test
+            @DisplayName("데이터 키를 지우고 true를 반환한다")
+            void shouldDiscardDataKeyAndReturnTrue() {
+                // given
+                givenNow(OPENED_AT);
+                given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.of(HOST_MEMBER_ID));
+                given(settlementRepository.findAllByGatheringIdForUpdate(GATHERING_ID))
+                        .willReturn(List.of(unpaidSettlement()));
+
+                // when
+                boolean result =
+                        purgeGatheringService.discardDataKeyOfHostedGathering(
+                                HOST_MEMBER_ID, GATHERING_ID);
+
+                // then
+                assertThat(result).isTrue();
+                then(gatheringRepository).should().discardDataKey(GATHERING_ID);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("purgeWithoutSelectionSignal 메서드는")
+    class PurgeWithoutSelectionSignal {
+
+        @Test
+        @DisplayName("모임 페어링이 있어도 선택 신호를 남기지 않고 모임의 행을 지운다")
+        void shouldDeleteRowsWithoutRecordingSelection() {
+            // given
+            givenNow(MAX_DELETES_AT);
+
+            // when
+            purgeGatheringService.purgeWithoutSelectionSignal(GATHERING_ID);
+
+            // then
+            then(gatheringPairingRepository).should().deleteByGatheringId(GATHERING_ID);
+            then(gatheringRepository).should().delete(GATHERING_ID);
+            then(recordPairingSelectionUseCase).shouldHaveNoInteractions();
         }
     }
 
