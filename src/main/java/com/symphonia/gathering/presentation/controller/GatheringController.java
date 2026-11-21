@@ -2,6 +2,7 @@ package com.symphonia.gathering.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.command.CancelSettlementCommand;
+import com.symphonia.gathering.application.dto.command.DeleteGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
@@ -20,6 +21,7 @@ import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.usecase.AddRoundUseCase;
 import com.symphonia.gathering.application.usecase.CancelSettlementUseCase;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
+import com.symphonia.gathering.application.usecase.DeleteGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
@@ -62,6 +64,7 @@ public class GatheringController implements GatheringApi {
     private final OpenGatheringUseCase openGatheringUseCase;
     private final GetHostedGatheringsUseCase getHostedGatheringsUseCase;
     private final RenameGatheringUseCase renameGatheringUseCase;
+    private final DeleteGatheringUseCase deleteGatheringUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
     private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
     private final AddRoundUseCase addRoundUseCase;
@@ -102,6 +105,15 @@ public class GatheringController implements GatheringApi {
     public ResponseEntity<StandardResponse<Void>> rename(
             String memberId, Long gatheringId, RenameGatheringRequest request) {
         renameGatheringUseCase.rename(request.toCommand(memberId, gatheringId));
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(StandardResponse.success(HttpStatus.NO_CONTENT));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<Void>> delete(String memberId, Long gatheringId) {
+        deleteGatheringUseCase.delete(
+                DeleteGatheringCommand.of(Long.parseLong(memberId), gatheringId));
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));

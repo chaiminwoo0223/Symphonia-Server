@@ -92,6 +92,13 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public Optional<Long> findHostMemberIdByIdForUpdate(Long gatheringId) {
+        return gatheringJpaRepository
+                .findByIdForUpdate(gatheringId)
+                .map(GatheringJpaEntity::getHostMemberId);
+    }
+
+    @Override
     public List<HostedGathering> findAllHostedByIds(List<Long> gatheringIds) {
         return gatheringJpaRepository.findAllHostedByIds(gatheringIds);
     }

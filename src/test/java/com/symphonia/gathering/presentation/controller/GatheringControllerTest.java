@@ -393,6 +393,123 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
+    @DisplayName("DELETE /api/v1/gatherings/{gatheringId}는")
+    class Delete {
+
+        @Test
+        @DisplayName("모임을 만든 회원이 요청하면 참여자와 정산 건까지 지우고 204를 반환한다")
+        void shouldDeleteGathering() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Gathering saved =
+                    gatheringHelper.join(
+                            gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId()),
+                            ParticipantFixture.KIM,
+                            ParticipantFixture.LEE);
+            settlementHelper.record(
+                    SettlementFixture.DINNER, saved, saved.getParticipants().getFirst());
+
+            // when & then
+            mockMvc.perform(
+                            delete("/api/v1/gatherings/{gatheringId}", saved.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isNoContent());
+            mockMvc.perform(get("/api/v1/gatherings").header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(jsonPath("$.data.length()").value(0));
+            assertThat(countRowsOf("gathering", saved.getId())).isZero();
+            assertThat(countRowsOf("participant", saved.getId())).isZero();
+            assertThat(countRowsOf("settlement", saved.getId())).isZero();
+        }
+
+        @Test
+        @DisplayName("이미 지운 모임을 다시 지워도 204를 반환한다")
+        void shouldReturnNoContentWhenAlreadyDeleted() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Gathering saved = gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+            mockMvc.perform(
+                            delete("/api/v1/gatherings/{gatheringId}", saved.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isNoContent());
+
+            // when & then
+            mockMvc.perform(
+                            delete("/api/v1/gatherings/{gatheringId}", saved.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("보낸 분담금이 있으면 GATHERING_SHARES_SENT 코드와 함께 409를 반환하고 모임을 지우지 않는다")
+        void shouldReturnConflictWhenSharesSent() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Gathering saved =
+                    gatheringHelper.join(
+                            gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId()),
+                            ParticipantFixture.KIM,
+                            ParticipantFixture.LEE);
+            Settlement settlement =
+                    settlementHelper.record(
+                            SettlementFixture.DINNER, saved, saved.getParticipants().getFirst());
+            settlementHelper.markSent(settlement, saved.getParticipants().getLast());
+
+            // when & then
+            mockMvc.perform(
+                            delete("/api/v1/gatherings/{gatheringId}", saved.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isConflict())
+                    .andExpect(
+                            jsonPath("$.data.code")
+                                    .value(GatheringErrorCode.GATHERING_SHARES_SENT.getCode()));
+            assertThat(countRowsOf("gathering", saved.getId())).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청이면 NOT_GATHERING_HOST 코드와 함께 403을 반환하고 모임을 지우지 않는다")
+        void shouldReturnForbiddenWhenMemberIsNotHost() throws Exception {
+            // given
+            Member hostMember = memberHelper.save(MemberFixture.KAKAO);
+            Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+            String token = authHelper.bearerTokenFor(otherMember);
+            Gathering saved =
+                    gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, hostMember.getId());
+
+            // when & then
+            mockMvc.perform(
+                            delete("/api/v1/gatherings/{gatheringId}", saved.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isForbidden())
+                    .andExpect(
+                            jsonPath("$.data.code")
+                                    .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+            assertThat(countRowsOf("gathering", saved.getId())).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("인증 토큰이 없으면 401을 반환한다")
+        void shouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
+            // when & then
+            mockMvc.perform(delete("/api/v1/gatherings/{gatheringId}", 1L))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        private int countRowsOf(String table, Long gatheringId) {
+            return jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM "
+                            + table
+                            + " WHERE "
+                            + ("gathering".equals(table) ? "id" : "gathering_id")
+                            + " = ?",
+                    Integer.class,
+                    gatheringId);
+        }
+    }
+
+    @Nested
     @DisplayName("GET /api/v1/gatherings/{gatheringId}/participants는")
     class GetParticipants {
 

@@ -17,6 +17,10 @@ public interface GatheringRepository {
 
     Optional<Gathering> findByParticipantId(Long participantId);
 
+    // 모임 행을 잠그고 모임장의 회원 id만 읽는다. 참여자를 복호화하지 않으므로 데이터 키를 지운 모임도 읽을 수 있다.
+    // 같은 모임을 잠그는 다른 요청은 이 트랜잭션이 끝날 때까지 기다린다. 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
+    Optional<Long> findHostMemberIdByIdForUpdate(Long gatheringId);
+
     // 참여자를 복호화하지 않고 모임장이 목록에서 보는 값만 읽는다. 모임 id가 큰 순서로 돌려준다.
     List<HostedGathering> findAllHostedByIds(List<Long> gatheringIds);
 

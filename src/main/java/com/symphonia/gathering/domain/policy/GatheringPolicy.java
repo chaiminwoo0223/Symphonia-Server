@@ -8,6 +8,7 @@ import com.symphonia.gathering.domain.exception.GatheringParticipantCountExceeds
 import com.symphonia.gathering.domain.exception.GatheringRecordingExtensionClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundCountExceedsLimitException;
+import com.symphonia.gathering.domain.exception.GatheringSharesSentException;
 import com.symphonia.gathering.domain.exception.InvalidGatheringRoundNumberException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
@@ -134,6 +135,13 @@ public enum GatheringPolicy {
     public static void validateParticipantRemovable(boolean inSettlement) {
         if (inSettlement) {
             throw new ParticipantUnremovableException();
+        }
+    }
+
+    // 보낸 분담금이 있는 모임을 지우면 참여자가 분담금 상태를 확인할 수 없고, 결제자가 받을 돈의 기록도 사라진다.
+    public static void validateDeletable(boolean sharesSent) {
+        if (sharesSent) {
+            throw new GatheringSharesSentException();
         }
     }
 

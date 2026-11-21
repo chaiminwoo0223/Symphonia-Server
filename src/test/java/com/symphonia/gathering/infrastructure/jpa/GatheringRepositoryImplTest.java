@@ -109,6 +109,54 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findHostMemberIdByIdForUpdate 메서드는")
+    class FindHostMemberIdByIdForUpdate {
+
+        @Test
+        @DisplayName("모임장의 회원 id를 반환한다")
+        void shouldReturnHostMemberId() {
+            // given
+            Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+
+            // when
+            Optional<Long> result =
+                    gatheringRepository.findHostMemberIdByIdForUpdate(saved.getId());
+
+            // then
+            assertThat(result).contains(saved.getHostMemberId());
+        }
+
+        @Test
+        @DisplayName("데이터 키를 지운 모임도 복호화하지 않고 모임장의 회원 id를 반환한다")
+        void shouldReturnHostMemberIdWhenDataKeyDiscarded() {
+            // given
+            Gathering saved =
+                    gatheringRepository.save(
+                            GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                    List.of(ParticipantFixture.KIM.create())));
+            gatheringRepository.discardDataKey(saved.getId());
+            clearPersistenceContext();
+
+            // when
+            Optional<Long> result =
+                    gatheringRepository.findHostMemberIdByIdForUpdate(saved.getId());
+
+            // then
+            assertThat(result).contains(saved.getHostMemberId());
+        }
+
+        @Test
+        @DisplayName("없는 모임이면 빈 값을 반환한다")
+        void shouldReturnEmptyWhenGatheringNotFound() {
+            // when
+            Optional<Long> result = gatheringRepository.findHostMemberIdByIdForUpdate(0L);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("updateName 메서드는")
     class UpdateName {
 
