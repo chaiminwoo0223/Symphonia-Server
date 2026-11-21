@@ -7,7 +7,7 @@
 - 한 모임의 참여자는 최대 20명(`GatheringPolicy.MAX_PARTICIPANT_COUNT`)이다. 모임을 만든 회원도 참여 화면으로 참여해야 한 명으로 센다.
 - 참여자가 20명 이상이면 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)이고, 이미 참여한 휴대폰 검사 뒤에 검사한다. 이미 20명을 넘은 모임은 줄이지 않고 새 참여만 막는다.
 - 참여 화면 조회는 가득 찬 모임을 참여 불가로 알린다.
-- 서로 다른 휴대폰의 참여가 동시에 오면 인원 확인과 저장 사이에서 경합해 최종 인원이 20명을 넘을 수 있으므로, 20명은 보장된 상한이 아니다.
+- 참여는 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤 인원을 확인하고 저장한다(`findByIdForUpdate`). 서로 다른 휴대폰의 참여가 동시에 와도 늦은 요청이 기다리므로 최종 인원은 20명을 넘지 않는다. 20명에서 막힌 요청은 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)이다.
 
 ## 모임장의 참여자 관리
 

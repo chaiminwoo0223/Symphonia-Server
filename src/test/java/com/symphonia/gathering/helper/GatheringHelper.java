@@ -16,6 +16,7 @@ import com.symphonia.gathering.fixture.ParticipantFixture;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -28,6 +29,7 @@ public class GatheringHelper {
     private final GatheringPairingRepository gatheringPairingRepository;
     private final ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
+    private final JdbcTemplate jdbcTemplate;
 
     public Gathering save(GatheringFixture gatheringFixture, Long hostMemberId) {
         return save(gatheringFixture, hostMemberId, LocalDateTime.now());
@@ -100,5 +102,31 @@ public class GatheringHelper {
     public void markPairingFeedbackSubmitted(Participant participant) {
         participantPairingFeedbackRepository.markSubmittedIfAbsent(
                 participant.getId(), LocalDateTime.now());
+    }
+
+    // 트랜잭션 롤백 없이 커밋한 모임의 행을 FK 순서대로 모두 지운다.
+    public void deleteRows(Long gatheringId) {
+        String settlementIds = "SELECT id FROM settlement WHERE gathering_id = ?";
+        String participantIds = "SELECT id FROM participant WHERE gathering_id = ?";
+        jdbcTemplate.update(
+                "DELETE FROM settlement_share WHERE settlement_id IN (" + settlementIds + ")",
+                gatheringId);
+        jdbcTemplate.update("DELETE FROM settlement WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_pairing WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update(
+                "DELETE FROM participant_pairing_feedback WHERE participant_id IN ("
+                        + participantIds
+                        + ")",
+                gatheringId);
+        jdbcTemplate.update(
+                "DELETE FROM participant_link_token WHERE participant_id IN ("
+                        + participantIds
+                        + ")",
+                gatheringId);
+        jdbcTemplate.update("DELETE FROM participant WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_join_token WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering_data_key WHERE gathering_id = ?", gatheringId);
+        jdbcTemplate.update("DELETE FROM gathering WHERE id = ?", gatheringId);
     }
 }
