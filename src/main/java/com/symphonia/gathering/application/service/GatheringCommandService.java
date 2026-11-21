@@ -7,36 +7,27 @@ import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCom
 import com.symphonia.gathering.application.dto.command.DeleteGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.GatheringPairingCommand;
-import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
-import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.command.RenameGatheringCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
-import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
 import com.symphonia.gathering.application.usecase.DeleteGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
-import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
-import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.application.usecase.RenameGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
-import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.GatheringOpenConflictException;
-import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringPairingRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
-import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
-import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.function.Supplier;
@@ -47,15 +38,12 @@ import lombok.RequiredArgsConstructor;
 public class GatheringCommandService
         implements OpenGatheringUseCase,
                 ReissueJoinTokenUseCase,
-                JoinGatheringUseCase,
-                JoinGatheringAsHostUseCase,
                 ChooseGatheringPairingUseCase,
                 ExtendRecordingUseCase,
                 RenameGatheringUseCase,
                 DeleteGatheringUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
-    private final ParticipantLinkTokenRepository participantLinkTokenRepository;
     private final GatheringRetentionRepository gatheringRetentionRepository;
     private final GatheringPairingRepository gatheringPairingRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
@@ -136,49 +124,6 @@ public class GatheringCommandService
         return RecordingExtensionResult.from(gathering);
     }
 
-    @Override
-    public ParticipantResult join(JoinGatheringCommand command) {
-        LocalDateTime now = LocalDateTime.now(clock);
-        Long gatheringId =
-                gatheringJoinTokenRepository
-                        .findGatheringIdByValue(command.joinToken())
-                        .orElseThrow(JoinTokenNotFoundException::new);
-        validateRetained(gatheringId, now, JoinTokenNotFoundException::new);
-        Gathering gathering =
-                gatheringRepository
-                        .findByIdForUpdate(gatheringId)
-                        .orElseThrow(GatheringNotFoundException::new);
-
-        return joinParticipant(
-                gathering,
-                command.name(),
-                command.phoneNumber(),
-                command.consentAgreed(),
-                command.consentVersion(),
-                now);
-    }
-
-    // 모임장도 참여 QR 없이 로그인한 채로 참여자가 될 수 있다. 참여 기간, 동의, 휴대폰 중복, 인원 상한은 QR 참여와 같은 규칙을 따른다.
-    // 참여자가 되면 정산 건 인원에 들어갈 수 있고, 그 정산 건의 결제자에게 이름과 휴대폰이 전달되므로 동의를 똑같이 받는다.
-    @Override
-    public ParticipantResult joinAsHost(JoinGatheringAsHostCommand command) {
-        LocalDateTime now = LocalDateTime.now(clock);
-        validateRetained(command.gatheringId(), now, GatheringNotFoundException::new);
-        Gathering gathering =
-                gatheringRepository
-                        .findByIdForUpdate(command.gatheringId())
-                        .orElseThrow(GatheringNotFoundException::new);
-        GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
-
-        return joinParticipant(
-                gathering,
-                command.name(),
-                command.phoneNumber(),
-                command.consentAgreed(),
-                command.consentVersion(),
-                now);
-    }
-
     // 실제로 먹은 조합이 추천과 달랐으면 모임장이 바로잡는다. 이미 고른 페어링이 있으면 덮어쓴다.
     @Override
     public void choose(ChooseGatheringPairingCommand command) {
@@ -234,28 +179,5 @@ public class GatheringCommandService
                 .findByGatheringId(gatheringId)
                 .filter(retention -> !retention.isExpired(now))
                 .orElseThrow(notFound);
-    }
-
-    // 호출하는 쪽이 모임 행을 잠근 채로 넘겨야 인원 확인과 저장 사이에 다른 참여가 끼어들지 않는다.
-    private ParticipantResult joinParticipant(
-            Gathering gathering,
-            String name,
-            String rawPhoneNumber,
-            boolean consentAgreed,
-            String consentVersion,
-            LocalDateTime now) {
-        PhoneNumber phoneNumber = PhoneNumber.from(rawPhoneNumber);
-        GatheringPolicy.validateJoinable(gathering.getRecordingClosesAt(), now);
-        GatheringPolicy.validateConsent(consentAgreed, consentVersion);
-        GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
-        GatheringPolicy.validateParticipantAddable(gathering.getParticipants().size());
-
-        gathering.join(name, phoneNumber, consentVersion, now);
-        Gathering savedGathering = gatheringRepository.save(gathering);
-        Participant participant = savedGathering.getParticipant(phoneNumber);
-        String linkToken = gatheringTokenProvider.generate();
-        participantLinkTokenRepository.save(linkToken, participant.getId());
-
-        return ParticipantResult.of(participant, linkToken);
     }
 }
