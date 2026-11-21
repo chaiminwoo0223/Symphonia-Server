@@ -17,7 +17,7 @@ public record PairingNoticeContext(
             List<Pairing> pairings) {
         return new PairingNoticeContext(
                 occasion,
-                drinks.stream().anyMatch(drink -> drink.getAbv() <= occasion.maxAbv()),
+                drinks.stream().anyMatch(occasion::allowsAbvOf),
                 anjus.stream().anyMatch(anju -> !occasion.hasAllergyConflict(anju)),
                 !pairings.isEmpty(),
                 pairings.stream().anyMatch(pairing -> pairing.getDrink().isNonAlcoholic()));

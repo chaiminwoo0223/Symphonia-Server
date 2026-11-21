@@ -52,8 +52,7 @@ public class Pairing {
             List<PairingRatingSummary> ratingSummaries,
             Set<CombinationId> excluded,
             Occasion occasion) {
-        List<PairingDrink> allowedDrinks =
-                drinks.stream().filter(drink -> drink.getAbv() <= occasion.maxAbv()).toList();
+        List<PairingDrink> allowedDrinks = drinks.stream().filter(occasion::allowsAbvOf).toList();
         List<PairingAnju> allowedAnjus =
                 anjus.stream().filter(anju -> !occasion.hasAllergyConflict(anju)).toList();
         Map<Long, PairingDrink> drinkById = byId(allowedDrinks, PairingDrink::getId);

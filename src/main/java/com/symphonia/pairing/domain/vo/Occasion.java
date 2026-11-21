@@ -34,6 +34,10 @@ public class Occasion {
         return relationshipType.maxAbv();
     }
 
+    public boolean allowsAbvOf(PairingDrink drink) {
+        return drink.getAbv() <= maxAbv();
+    }
+
     public boolean hasAbvLimit() {
         return relationshipType.maxAbv() < Double.MAX_VALUE;
     }
