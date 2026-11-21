@@ -37,6 +37,7 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
                                 ? null
                                 : pairingFeedback.getMoodType().name(),
                         pairingFeedback.getRating().name(),
+                        pairingFeedback.getSource().name(),
                         now)
                 == 1;
     }

@@ -15,6 +15,7 @@ import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.vo.CombinationId;
+import com.symphonia.pairing.domain.vo.FeedbackSource;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -122,6 +123,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                 PairingFeedbackJpaEntity stored =
                         pairingFeedbackJpaRepository.findById(saved.getId()).orElseThrow();
                 assertThat(stored.getMemberId()).isNull();
+                assertThat(stored.getSource()).isEqualTo(FeedbackSource.PARTICIPANT);
                 assertThat(stored.getRating())
                         .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
             }
@@ -180,6 +182,7 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                         .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getMoodType());
                 assertThat(saved.getRating())
                         .isEqualTo(PairingFeedbackFixture.FRIEND_FORMAL.getRating());
+                assertThat(saved.getSource()).isEqualTo(FeedbackSource.MEMBER);
                 assertThat(saved.getCreatedAt()).isNotNull();
                 assertThat(saved.getUpdatedAt()).isNotNull();
             }
@@ -338,6 +341,24 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
                     .containsExactlyInAnyOrder(null, null, OTHER_MEMBER_ID);
             assertThat(pairingFeedbackRepository.findDislikedCombinationsByMemberId(MEMBER_ID))
                     .isEmpty();
+        }
+
+        @Test
+        @DisplayName("회원 id를 비워도 출처는 MEMBER로 남긴다")
+        void shouldKeepSourceAsMember() {
+            // given
+            saveFeedback(MEMBER_ID, drinkId, anjuId, PairingRating.LIKE);
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            pairingFeedbackRepository.anonymizeByMemberId(MEMBER_ID);
+
+            // then
+            entityManager.clear();
+            assertThat(pairingFeedbackJpaRepository.findAll())
+                    .extracting(PairingFeedbackJpaEntity::getSource)
+                    .containsExactly(FeedbackSource.MEMBER);
         }
     }
 

@@ -56,7 +56,7 @@ class MemberDeleteIntegrationTest extends IntegrationTest {
 
         @Test
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
-        @DisplayName("탈퇴한 회원이 낸 페어링 피드백의 회원 id를 같은 트랜잭션에서 비운다")
+        @DisplayName("탈퇴한 회원이 낸 페어링 피드백의 회원 id를 같은 트랜잭션에서 비우고 출처는 MEMBER로 남긴다")
         void shouldAnonymizePairingFeedbackOfDeletedMember() throws Exception {
             // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
@@ -80,6 +80,12 @@ class MemberDeleteIntegrationTest extends IntegrationTest {
                             Long.class,
                             feedbackId);
             assertThat(memberId).isNull();
+            String source =
+                    jdbcTemplate.queryForObject(
+                            "SELECT source FROM pairing_feedback WHERE id = ?",
+                            String.class,
+                            feedbackId);
+            assertThat(source).isEqualTo("MEMBER");
         }
 
         @Nested
@@ -150,9 +156,9 @@ class MemberDeleteIntegrationTest extends IntegrationTest {
                 jdbcTemplate.queryForObject(
                         """
                 INSERT INTO pairing_feedback
-                    (member_id, drink_id, anju_id, relationship_type, rating, created_at, updated_at)
+                    (member_id, drink_id, anju_id, relationship_type, rating, source, created_at, updated_at)
                 VALUES (?, (SELECT MIN(id) FROM drink), (SELECT MIN(id) FROM anju),
-                        'FRIEND', 'LIKE', now(), now())
+                        'FRIEND', 'LIKE', 'MEMBER', now(), now())
                 RETURNING id
                 """,
                         Long.class,
