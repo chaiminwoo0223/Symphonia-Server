@@ -65,7 +65,7 @@
 
 - `Settlement`는 애그리거트 버전(`version`)을 domain 모델에 갖고, `settlement.version`으로 낙관적 락을 건다. 분담금만 바뀌어도 버전을 올린다.
 - 기존 정산 건은 저장할 때마다 `PESSIMISTIC_FORCE_INCREMENT`로 버전을 바로 올린다. 분담금 행만 UPDATE하는 저장 경로를 따로 두지 않는다.
-- `SettlementRepositoryImpl`은 `saveAndFlush`로 저장하고, 버전 충돌을 `SettlementConflictException`(409)으로 바꾼다.
+- `SettlementRepositoryImpl`은 `saveAndFlush`로 저장하고, 버전 충돌을 `SettlementConflictException`(409)으로 바꾼다. "보냈어요"의 잠금 조회에서 난 충돌도 같다.
 - "보냈어요"는 그 결제자의 정산 건을 id 순으로 행 잠금하고 읽는다. 취소나 수정과 겹치면 버전 충돌로 막는다.
 - 정산 API는 모임을 읽을 때 참여자 전원의 이름과 휴대폰을 복호화한다. 일부만 채운 `Gathering`을 만들지 않는다.
 
