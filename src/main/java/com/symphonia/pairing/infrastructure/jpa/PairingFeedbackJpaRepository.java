@@ -22,9 +22,9 @@ public interface PairingFeedbackJpaRepository
                     """
                     INSERT INTO pairing_feedback
                         (member_id, drink_id, anju_id,
-                         relationship_type, mood_type, rating, created_at, updated_at)
+                         relationship_type, mood_type, rating, source, created_at, updated_at)
                     VALUES (:memberId, :drinkId, :anjuId,
-                            :relationshipType, :moodType, :rating, :now, :now)
+                            :relationshipType, :moodType, :rating, :source, :now, :now)
                     ON CONFLICT (member_id, drink_id, anju_id) DO NOTHING
                     """,
             nativeQuery = true)
@@ -35,6 +35,7 @@ public interface PairingFeedbackJpaRepository
             @Param("relationshipType") String relationshipType,
             @Param("moodType") String moodType,
             @Param("rating") String rating,
+            @Param("source") String source,
             @Param("now") LocalDateTime now);
 
     // member_id가 NULL인 행은 (member_id, drink_id, anju_id) 유니크 인덱스에서 서로 다른 값으로 보여 충돌하지 않는다.

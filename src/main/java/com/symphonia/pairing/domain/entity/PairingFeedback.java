@@ -1,5 +1,6 @@
 package com.symphonia.pairing.domain.entity;
 
+import com.symphonia.pairing.domain.vo.FeedbackSource;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingFeedbackChange;
 import com.symphonia.pairing.domain.vo.PairingRating;
@@ -23,6 +24,7 @@ public class PairingFeedback {
     private RelationshipType relationshipType;
     private MoodType moodType;
     private PairingRating rating;
+    private FeedbackSource source;
 
     public static PairingFeedback of(
             Long memberId,
@@ -38,6 +40,7 @@ public class PairingFeedback {
                 .relationshipType(relationshipType)
                 .moodType(moodType)
                 .rating(rating)
+                .source(FeedbackSource.MEMBER)
                 .build();
     }
 
@@ -48,7 +51,14 @@ public class PairingFeedback {
             RelationshipType relationshipType,
             MoodType moodType,
             PairingRating rating) {
-        return of(null, drinkId, anjuId, relationshipType, moodType, rating);
+        return PairingFeedback.builder()
+                .drinkId(drinkId)
+                .anjuId(anjuId)
+                .relationshipType(relationshipType)
+                .moodType(moodType)
+                .rating(rating)
+                .source(FeedbackSource.PARTICIPANT)
+                .build();
     }
 
     // 처음 낸 피드백이 조합별 집계에 더하는 수다.

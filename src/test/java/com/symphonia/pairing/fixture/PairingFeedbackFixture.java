@@ -1,6 +1,7 @@
 package com.symphonia.pairing.fixture;
 
 import com.symphonia.pairing.domain.entity.PairingFeedback;
+import com.symphonia.pairing.domain.vo.FeedbackSource;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -53,6 +54,7 @@ public enum PairingFeedbackFixture {
                 .relationshipType(relationshipType)
                 .moodType(moodType)
                 .rating(rating)
+                .source(memberId == null ? FeedbackSource.PARTICIPANT : FeedbackSource.MEMBER)
                 .build();
     }
 }

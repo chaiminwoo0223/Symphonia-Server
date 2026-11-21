@@ -2,6 +2,7 @@ package com.symphonia.pairing.infrastructure.jpa;
 
 import com.symphonia.common.entity.BaseTimeEntity;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
+import com.symphonia.pairing.domain.vo.FeedbackSource;
 import com.symphonia.pairing.domain.vo.MoodType;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.RelationshipType;
@@ -49,6 +50,11 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private PairingRating rating;
 
+    // 탈퇴해 회원 id가 비어도 낸 경로는 남는다.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FeedbackSource source;
+
     public static PairingFeedbackJpaEntity from(PairingFeedback pairingFeedback) {
         return PairingFeedbackJpaEntity.builder()
                 .id(pairingFeedback.getId())
@@ -58,6 +64,7 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .relationshipType(pairingFeedback.getRelationshipType())
                 .moodType(pairingFeedback.getMoodType())
                 .rating(pairingFeedback.getRating())
+                .source(pairingFeedback.getSource())
                 .build();
     }
 
@@ -70,6 +77,7 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .relationshipType(relationshipType)
                 .moodType(moodType)
                 .rating(rating)
+                .source(source)
                 .build();
     }
 }
