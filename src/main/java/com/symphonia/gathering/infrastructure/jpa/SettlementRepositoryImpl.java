@@ -89,9 +89,15 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     @Override
     public List<Settlement> findAllByShareParticipantIdAndPayerForUpdate(
             Long participantId, Long payerParticipantId) {
-        return toDomains(
-                settlementJpaRepository.findAllByShareParticipantIdAndPayerForUpdate(
-                        participantId, payerParticipantId));
+        // 수정이 먼저 커밋되면 잠금을 기다리던 조회가 버전이 달라진 정산 건을 읽고 낙관적 락 예외로 실패한다.
+        // 저장할 때의 버전 충돌과 같은 상황이므로 같은 예외로 바꾼다.
+        try {
+            return toDomains(
+                    settlementJpaRepository.findAllByShareParticipantIdAndPayerForUpdate(
+                            participantId, payerParticipantId));
+        } catch (ObjectOptimisticLockingFailureException e) {
+            throw new SettlementConflictException();
+        }
     }
 
     @Override
