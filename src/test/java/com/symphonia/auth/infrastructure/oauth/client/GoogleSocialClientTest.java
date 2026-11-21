@@ -7,7 +7,7 @@ import static org.mockito.BDDMockito.given;
 import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
-import com.symphonia.auth.domain.exception.SocialTokenVerificationFailedException;
+import com.symphonia.auth.domain.exception.SocialTokenVerificationUnavailableException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -86,16 +86,17 @@ class GoogleSocialClientTest extends UnitTest {
         class WhenJwkSetRetrievalFails {
 
             @Test
-            @DisplayName("SocialTokenVerificationFailedException이 발생한다.")
-            void shouldThrowSocialTokenVerificationFailedException() {
+            @DisplayName("SocialTokenVerificationUnavailableException이 발생한다.")
+            void shouldThrowSocialTokenVerificationUnavailableException() {
                 // given
                 given(googleIdTokenDecoder.decode(ID_TOKEN))
                         .willThrow(new JwtException("Couldn't retrieve remote JWK set"));
 
                 // when & then
                 assertThatThrownBy(() -> googleSocialClient.authenticate(ID_TOKEN))
-                        .isInstanceOf(SocialTokenVerificationFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_VERIFICATION_FAILED.getMessage());
+                        .isInstanceOf(SocialTokenVerificationUnavailableException.class)
+                        .hasMessage(
+                                AuthErrorCode.OAUTH_TOKEN_VERIFICATION_UNAVAILABLE.getMessage());
             }
         }
     }

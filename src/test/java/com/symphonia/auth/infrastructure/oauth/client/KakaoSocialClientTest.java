@@ -14,9 +14,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.symphonia.UnitTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
-import com.symphonia.auth.domain.exception.SocialMemberInfoFetchFailedException;
+import com.symphonia.auth.domain.exception.SocialMemberInfoUnavailableException;
 import com.symphonia.auth.domain.exception.SocialRequiredInfoMissingException;
-import com.symphonia.auth.domain.exception.SocialTokenVerificationFailedException;
+import com.symphonia.auth.domain.exception.SocialTokenVerificationUnavailableException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.auth.infrastructure.oauth.config.properties.KakaoOAuthProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -165,8 +165,8 @@ class KakaoSocialClientTest extends UnitTest {
 
             @Test
             @DisplayName(
-                    "호출 한도 초과나 앱 권한 문제처럼 토큰 잘못이 아닌 4xx이면 SocialTokenVerificationFailedException이 발생한다.")
-            void shouldThrowSocialTokenVerificationFailedExceptionWhenForbidden() {
+                    "호출 한도 초과나 앱 권한 문제처럼 토큰 잘못이 아닌 4xx이면 SocialTokenVerificationUnavailableException이 발생한다.")
+            void shouldThrowSocialTokenVerificationUnavailableExceptionWhenForbidden() {
                 // given
                 mockServer
                         .expect(requestTo(ACCESS_TOKEN_INFO_URI))
@@ -174,20 +174,22 @@ class KakaoSocialClientTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
-                        .isInstanceOf(SocialTokenVerificationFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_VERIFICATION_FAILED.getMessage());
+                        .isInstanceOf(SocialTokenVerificationUnavailableException.class)
+                        .hasMessage(
+                                AuthErrorCode.OAUTH_TOKEN_VERIFICATION_UNAVAILABLE.getMessage());
             }
 
             @Test
-            @DisplayName("서버 오류 응답이면 SocialTokenVerificationFailedException이 발생한다.")
-            void shouldThrowSocialTokenVerificationFailedExceptionWhenServerError() {
+            @DisplayName("서버 오류 응답이면 SocialTokenVerificationUnavailableException이 발생한다.")
+            void shouldThrowSocialTokenVerificationUnavailableExceptionWhenServerError() {
                 // given
                 mockServer.expect(requestTo(ACCESS_TOKEN_INFO_URI)).andRespond(withServerError());
 
                 // when & then
                 assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
-                        .isInstanceOf(SocialTokenVerificationFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_TOKEN_VERIFICATION_FAILED.getMessage());
+                        .isInstanceOf(SocialTokenVerificationUnavailableException.class)
+                        .hasMessage(
+                                AuthErrorCode.OAUTH_TOKEN_VERIFICATION_UNAVAILABLE.getMessage());
             }
         }
 
@@ -275,15 +277,15 @@ class KakaoSocialClientTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("서버 오류 응답이면 SocialMemberInfoFetchFailedException이 발생한다.")
-            void shouldThrowSocialMemberInfoFetchFailedException() {
+            @DisplayName("서버 오류 응답이면 SocialMemberInfoUnavailableException이 발생한다.")
+            void shouldThrowSocialMemberInfoUnavailableException() {
                 // given
                 mockServer.expect(requestTo(USER_INFO_URI)).andRespond(withServerError());
 
                 // when & then
                 assertThatThrownBy(() -> kakaoSocialClient.authenticate(ACCESS_TOKEN))
-                        .isInstanceOf(SocialMemberInfoFetchFailedException.class)
-                        .hasMessage(AuthErrorCode.OAUTH_MEMBER_INFO_FETCH_FAILED.getMessage());
+                        .isInstanceOf(SocialMemberInfoUnavailableException.class)
+                        .hasMessage(AuthErrorCode.OAUTH_MEMBER_INFO_UNAVAILABLE.getMessage());
             }
         }
     }

@@ -2,7 +2,7 @@ package com.symphonia.auth.infrastructure.oauth.client;
 
 import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
-import com.symphonia.auth.domain.exception.SocialTokenVerificationFailedException;
+import com.symphonia.auth.domain.exception.SocialTokenVerificationUnavailableException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.member.domain.entity.SocialProvider;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ public class GoogleSocialClient implements SocialClient {
             throw new InvalidSocialTokenException();
         } catch (JwtException e) {
             // 공개키 목록(JWKS)을 가져오지 못하는 등 토큰이 아니라 검증 과정의 실패다.
-            throw new SocialTokenVerificationFailedException();
+            throw new SocialTokenVerificationUnavailableException();
         }
     }
 
