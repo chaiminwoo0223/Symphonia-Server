@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
@@ -291,6 +292,36 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 assertThatThrownBy(() -> joinGatheringCommandService.join(command))
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
                 thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 계정을 저장하다 같은 계정이 이미 있다고 판정된 경우")
+        class WhenGoogleSubjectSaveRejected {
+
+            @Test
+            @DisplayName("예외를 던지고 개인 링크 토큰을 발급하거나 저장하지 않는다")
+            void shouldThrowParticipantAlreadyJoinedExceptionWithoutLinkToken() {
+                // given
+                givenJoinableGathering(List.of());
+                given(gatheringRepository.save(any(Gathering.class)))
+                        .willReturn(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID,
+                                        OPEN_PERIOD_OPENED_AT,
+                                        List.of(
+                                                ParticipantFixture.KIM.createWithId(
+                                                        PARTICIPANT_ID))));
+                willThrow(new ParticipantAlreadyJoinedException())
+                        .given(participantGoogleSubjectRepository)
+                        .save(GATHERING_ID, PARTICIPANT_ID, GOOGLE_SUBJECT);
+                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                then(gatheringTokenProvider).shouldHaveNoInteractions();
+                then(participantLinkTokenRepository).shouldHaveNoInteractions();
             }
         }
 
