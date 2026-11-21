@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 상한과 참여자 관리 규칙(gathering-participant.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -18,7 +18,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 
 | 도메인 | 책임 |
 |---|---|
-| `member` | 회원. 탈퇴 시 `application.event`의 `MemberDeletedEvent` 발행. 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)이고 수정 요청이 넘으면 400, 가입 시 소셜 닉네임이 넘으면 잘라서 저장 |
+| `member` | 회원. 탈퇴 시 `application.event`의 `MemberDeletedEvent` 발행. 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)이고 수정 요청이 넘으면 400, 가입 시 소셜 닉네임이 넘으면 잘라서 저장. 탈퇴 전 확인은 `gathering`의 `GetOngoingGatheringsUseCase`를 부른다(`member → gathering`) |
 | `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰, 액세스 토큰 블랙리스트, 탈퇴한 회원 id |
 | `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`)와 그 맛, 분류 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
@@ -116,7 +116,8 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표(`wine-harmonize.csv`, `beer-harmonize.csv`), `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표(`anju-serving-richness.csv`)도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, API 경로를 바꿀 때 |
 | [`gathering-pairing.md`](gathering-pairing.md) | 모임 페어링과 참여자의 익명 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
-| [`gathering-participant.md`](gathering-participant.md) | 모임 참여자 상한과 모임장의 참여자 목록 조회, 제거, 개인 링크 재발급을 바꿀 때 |
+| [`gathering-participant.md`](gathering-participant.md) | 모임 참여자 상한과 모임장의 참여자 목록 조회, 제거, 개인 링크 재발급, 모임장의 직접 참여와 탈퇴를 바꿀 때 |
+| [`gathering-recording-period.md`](gathering-recording-period.md) | 기록 기간의 시작 시각과 연장을 바꿀 때 |
 | [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 안주의 맛집 검색어를 바꿀 때 |
 
 ## 메시지 큐
