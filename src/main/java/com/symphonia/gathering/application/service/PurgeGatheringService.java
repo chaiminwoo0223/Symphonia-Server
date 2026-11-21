@@ -50,21 +50,21 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     }
 
     // 모임장이 지울 때의 1단계다. 모임을 먼저 잠그고 정산 건을 잠가, 자동 파기와 잠그는 순서가 같다.
-    // 모임이 없으면 이미 지운 것이므로 false를 돌려주고, 데이터 키만 지운 모임은 지우던 중이므로 이어서 true를 돌려준다.
+    // 모임이 없으면 이미 지운 것이므로 아무것도 하지 않는다.
     @Override
-    public boolean discardDataKeyOfHostedGathering(Long hostMemberId, Long gatheringId) {
-        Optional<Long> actualHostMemberId =
-                gatheringRepository.findHostMemberIdByIdForUpdate(gatheringId);
-        actualHostMemberId.ifPresent(
-                actualHost -> {
-                    GatheringPolicy.validateHost(actualHost, hostMemberId);
-                    GatheringPolicy.validateDeletable(
-                            settlementRepository.findAllByGatheringIdForUpdate(gatheringId).stream()
-                                    .anyMatch(Settlement::hasSentShares));
-                    gatheringRepository.discardDataKey(gatheringId);
-                });
-
-        return actualHostMemberId.isPresent();
+    public void discardDataKeyOfHostedGathering(Long hostMemberId, Long gatheringId) {
+        gatheringRepository
+                .findHostMemberIdByIdForUpdate(gatheringId)
+                .ifPresent(
+                        actualHostMemberId -> {
+                            GatheringPolicy.validateHost(actualHostMemberId, hostMemberId);
+                            GatheringPolicy.validateDeletable(
+                                    settlementRepository
+                                            .findAllByGatheringIdForUpdate(gatheringId)
+                                            .stream()
+                                            .anyMatch(Settlement::hasSentShares));
+                            gatheringRepository.discardDataKey(gatheringId);
+                        });
     }
 
     // 모임 페어링은 마지막으로 고른 조합 하나를 읽어 두고, 이 호출이 페어링을 지웠을 때만 선택 신호로 남긴다.

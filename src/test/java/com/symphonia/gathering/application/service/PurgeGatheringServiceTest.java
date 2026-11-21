@@ -378,20 +378,17 @@ class PurgeGatheringServiceTest extends UnitTest {
         class WhenGatheringNotFound {
 
             @Test
-            @DisplayName("이미 지운 모임이므로 false를 반환하고 데이터 키를 지우지 않는다")
-            void shouldReturnFalse() {
+            @DisplayName("이미 지운 모임이므로 데이터 키를 지우지 않고 정산 건도 읽지 않는다")
+            void shouldDoNothing() {
                 // given
                 givenNow(OPENED_AT);
                 given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
                         .willReturn(Optional.empty());
 
                 // when
-                boolean result =
-                        purgeGatheringService.discardDataKeyOfHostedGathering(
-                                HOST_MEMBER_ID, GATHERING_ID);
+                purgeGatheringService.discardDataKeyOfHostedGathering(HOST_MEMBER_ID, GATHERING_ID);
 
                 // then
-                assertThat(result).isFalse();
                 then(gatheringRepository).should(never()).discardDataKey(anyLong());
                 then(settlementRepository).shouldHaveNoInteractions();
             }
@@ -450,8 +447,8 @@ class PurgeGatheringServiceTest extends UnitTest {
         class WhenDeletable {
 
             @Test
-            @DisplayName("데이터 키를 지우고 true를 반환한다")
-            void shouldDiscardDataKeyAndReturnTrue() {
+            @DisplayName("데이터 키를 지운다")
+            void shouldDiscardDataKey() {
                 // given
                 givenNow(OPENED_AT);
                 given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
@@ -460,12 +457,9 @@ class PurgeGatheringServiceTest extends UnitTest {
                         .willReturn(List.of(unpaidSettlement()));
 
                 // when
-                boolean result =
-                        purgeGatheringService.discardDataKeyOfHostedGathering(
-                                HOST_MEMBER_ID, GATHERING_ID);
+                purgeGatheringService.discardDataKeyOfHostedGathering(HOST_MEMBER_ID, GATHERING_ID);
 
                 // then
-                assertThat(result).isTrue();
                 then(gatheringRepository).should().discardDataKey(GATHERING_ID);
             }
         }
