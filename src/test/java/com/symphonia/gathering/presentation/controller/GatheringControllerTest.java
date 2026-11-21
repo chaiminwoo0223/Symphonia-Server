@@ -273,6 +273,49 @@ class GatheringControllerTest extends IntegrationTest {
     }
 
     @Nested
+    @DisplayName("GET /api/v1/gatherings는")
+    class GetHosted {
+
+        @Test
+        @DisplayName("내가 연 모임만 최근에 연 순서로 참여자 수와 파기 예정 시각과 함께 200으로 반환한다")
+        void shouldReturnHostedGatherings() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+            String token = authHelper.bearerTokenFor(member);
+            gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+            Gathering latest =
+                    gatheringHelper.join(
+                            gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId()),
+                            ParticipantFixture.KIM,
+                            ParticipantFixture.LEE);
+            gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, otherMember.getId());
+
+            // when & then
+            mockMvc.perform(get("/api/v1/gatherings").header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.length()").value(2))
+                    .andExpect(jsonPath("$.data[0].gatheringId").value(latest.getId()))
+                    .andExpect(
+                            jsonPath("$.data[0].name")
+                                    .value(GatheringFixture.FRIDAY_DINNER.getName()))
+                    .andExpect(jsonPath("$.data[0].participantCount").value(2))
+                    .andExpect(jsonPath("$.data[0].recordingExtended").value(false))
+                    .andExpect(jsonPath("$.data[0].openedAt").isNotEmpty())
+                    .andExpect(jsonPath("$.data[0].recordingClosesAt").isNotEmpty())
+                    .andExpect(jsonPath("$.data[0].deletesAt").isNotEmpty())
+                    .andExpect(jsonPath("$.data[1].participantCount").value(0));
+        }
+
+        @Test
+        @DisplayName("인증 토큰이 없으면 401을 반환한다")
+        void shouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
+            // when & then
+            mockMvc.perform(get("/api/v1/gatherings")).andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Nested
     @DisplayName("GET /api/v1/gatherings/{gatheringId}/participants는")
     class GetParticipants {
 

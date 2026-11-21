@@ -5,6 +5,7 @@ import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
+import com.symphonia.gathering.domain.vo.HostedGathering;
 import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import java.util.List;
@@ -88,6 +89,11 @@ public class GatheringRepositoryImpl implements GatheringRepository {
         return participantJpaRepository
                 .findById(participantId)
                 .flatMap(participant -> findById(participant.getGatheringId()));
+    }
+
+    @Override
+    public List<HostedGathering> findAllHostedByIds(List<Long> gatheringIds) {
+        return gatheringJpaRepository.findAllHostedByIds(gatheringIds);
     }
 
     @Override

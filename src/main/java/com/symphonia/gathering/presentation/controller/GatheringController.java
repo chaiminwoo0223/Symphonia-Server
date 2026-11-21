@@ -12,6 +12,7 @@ import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
 import com.symphonia.gathering.application.dto.result.GatheringRoundResult;
+import com.symphonia.gathering.application.dto.result.HostedGatheringResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.application.dto.result.SettlementFormResult;
@@ -22,6 +23,7 @@ import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase
 import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
+import com.symphonia.gathering.application.usecase.GetHostedGatheringsUseCase;
 import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
@@ -41,6 +43,7 @@ import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenRespo
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
+import com.symphonia.gathering.presentation.dto.response.HostedGatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import com.symphonia.gathering.presentation.dto.response.RecordingExtensionResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
@@ -55,6 +58,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class GatheringController implements GatheringApi {
     private final OpenGatheringUseCase openGatheringUseCase;
+    private final GetHostedGatheringsUseCase getHostedGatheringsUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
     private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
     private final AddRoundUseCase addRoundUseCase;
@@ -77,6 +81,18 @@ public class GatheringController implements GatheringApi {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(StandardResponse.success(HttpStatus.CREATED, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<List<HostedGatheringResponse>>> getHosted(
+            String memberId) {
+        List<HostedGatheringResult> results =
+                getHostedGatheringsUseCase.getHosted(Long.parseLong(memberId));
+        List<HostedGatheringResponse> response =
+                results.stream().map(HostedGatheringResponse::from).toList();
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
     }
 
     @Override

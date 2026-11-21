@@ -2,6 +2,9 @@ package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
@@ -9,6 +12,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.query.GetGatheringParticipantsQuery;
 import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.application.dto.result.HostedGatheringResult;
 import com.symphonia.gathering.application.dto.result.OngoingGatheringsResult;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
@@ -21,12 +25,14 @@ import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.vo.JoinClosedReason;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRetentionFixture;
+import com.symphonia.gathering.fixture.HostedGatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -396,6 +402,121 @@ class GatheringQueryServiceTest extends UnitTest {
                 // then
                 assertThat(result.count()).isEqualTo(2);
                 assertThat(result.lastDeletesAt()).isEqualTo(NOW.plusDays(7));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("getHosted 메서드는")
+    class GetHosted {
+
+        private static final Long MEMBER_ID = 1L;
+
+        @Nested
+        @DisplayName("모임장으로 연 모임이 없는 경우")
+        class WhenNoGatherings {
+
+            @Test
+            @DisplayName("빈 목록을 반환한다")
+            void shouldReturnEmptyList() {
+                // given
+                given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
+                        .willReturn(List.of());
+
+                // when
+                List<HostedGatheringResult> results = gatheringQueryService.getHosted(MEMBER_ID);
+
+                // then
+                assertThat(results).isEmpty();
+            }
+        }
+
+        @Nested
+        @DisplayName("파기 시각이 지난 모임이 섞여 있는 경우")
+        class WhenExpiredGatheringsMixed {
+
+            @Test
+            @DisplayName("파기 시각이 지난 모임과 데이터 키를 지운 모임을 빼고 읽은 순서대로 반환한다")
+            void shouldReturnOnlyOngoingGatheringsInReadOrder() {
+                // given
+                LocalDateTime openedAt = NOW.minusHours(1);
+                given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
+                        .willReturn(
+                                List.of(
+                                        GatheringRetentionFixture.ABOUT_TO_EXPIRE.create(
+                                                GATHERING_ID, NOW),
+                                        GatheringRetentionFixture.EXPIRED.create(
+                                                GATHERING_ID + 1, NOW),
+                                        GatheringRetentionFixture.DATA_KEY_DISCARDED.create(
+                                                GATHERING_ID + 2, NOW),
+                                        GatheringRetentionFixture.RETAINED.create(
+                                                GATHERING_ID + 3, NOW)));
+                given(
+                                gatheringRepository.findAllHostedByIds(
+                                        argThat(
+                                                ids ->
+                                                        Set.copyOf(ids)
+                                                                .equals(
+                                                                        Set.of(
+                                                                                GATHERING_ID,
+                                                                                GATHERING_ID
+                                                                                        + 3)))))
+                        .willReturn(
+                                List.of(
+                                        HostedGatheringFixture.FRIDAY_DINNER.create(
+                                                GATHERING_ID + 3, openedAt),
+                                        HostedGatheringFixture.EMPTY_GATHERING.create(
+                                                GATHERING_ID, openedAt)));
+
+                // when
+                List<HostedGatheringResult> results = gatheringQueryService.getHosted(MEMBER_ID);
+
+                // then
+                assertThat(results)
+                        .extracting(HostedGatheringResult::gatheringId)
+                        .containsExactly(GATHERING_ID + 3, GATHERING_ID);
+                assertThat(results)
+                        .extracting(HostedGatheringResult::deletesAt)
+                        .containsExactly(NOW.plusDays(7), NOW.plusSeconds(1));
+            }
+        }
+
+        @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("연장한 기록 기간이 끝나는 시각을 담아 반환한다")
+            void shouldReturnExtendedRecordingClosesAt() {
+                // given
+                LocalDateTime openedAt = NOW.minusHours(10);
+                given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
+                        .willReturn(
+                                List.of(
+                                        GatheringRetentionFixture.RETAINED.create(
+                                                GATHERING_ID, NOW),
+                                        GatheringRetentionFixture.RETAINED.create(
+                                                GATHERING_ID + 1, NOW)));
+                given(gatheringRepository.findAllHostedByIds(anyList()))
+                        .willReturn(
+                                List.of(
+                                        HostedGatheringFixture.EXTENDED_FRIDAY_DINNER.create(
+                                                GATHERING_ID + 1, openedAt),
+                                        HostedGatheringFixture.FRIDAY_DINNER.create(
+                                                GATHERING_ID, openedAt)));
+
+                // when
+                List<HostedGatheringResult> results = gatheringQueryService.getHosted(MEMBER_ID);
+
+                // then
+                assertThat(results)
+                        .extracting(
+                                HostedGatheringResult::recordingExtended,
+                                HostedGatheringResult::recordingClosesAt,
+                                HostedGatheringResult::participantCount)
+                        .containsExactly(
+                                tuple(true, openedAt.plusHours(96), 3L),
+                                tuple(false, openedAt.plusHours(48), 3L));
             }
         }
     }
