@@ -1,6 +1,6 @@
 # gathering 정산 규칙
 
-`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링과 익명 피드백 규칙은 `gathering-pairing.md`, 참여자 상한과 모임장의 참여자 관리와 직접 참여 규칙은 `gathering-participant.md`, 기록 기간 연장 규칙은 `gathering-recording-period.md`에 있다. 근거, 택하지 않은 안, 재검토 조건은 `docs/decisions/gathering.md`에 있다.
+`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링 규칙은 `gathering-pairing.md`, 참여자 상한과 참여자 관리 규칙은 `gathering-participant.md`, 기록 기간 연장 규칙은 `gathering-recording-period.md`, 모임 열기와 모임장의 모임 관리 규칙은 `gathering-management.md`에 있다. 근거는 `docs/decisions/gathering.md`에 있다.
 
 ## 애그리거트와 application
 

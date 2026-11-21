@@ -26,6 +26,7 @@ description: Load when a design discussion among multiple viable alternatives co
 | 모임 페어링, 익명 피드백 | `architecture/gathering-pairing.md` | `gathering.md` |
 | 참여자 상한, 모임장의 참여자 관리와 직접 참여 | `architecture/gathering-participant.md` | `gathering.md` |
 | 기록 기간 연장 | `architecture/gathering-recording-period.md` | `gathering.md` |
+| 모임 열기 중복 방지, 모임장의 모임 목록과 이름 수정, 삭제 | `architecture/gathering-management.md` | `gathering.md` |
 | 예외, 에러 코드 | `error-handling` | `error-handling.md` |
 | 테스트 전략 | `testing` | `testing.md` |
 | 하네스(스킬, 훅, 스크립트, 에이전트) | `harness` | `harness.md` |
