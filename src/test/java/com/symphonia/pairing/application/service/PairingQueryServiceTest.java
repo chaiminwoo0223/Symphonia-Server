@@ -1552,7 +1552,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            pairingQueryService.recommend(query).pairings();
+            pairingQueryService.recommend(query);
 
             // then
             then(pairingRatingSummaryRepository)
@@ -2152,6 +2152,26 @@ class PairingQueryServiceTest extends UnitTest {
             PairingRecommendationResult result = pairingQueryService.recommend(query);
 
             // then
+            assertThat(result.notices()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("회원이 싫어요로 모든 조합을 제외해 추천이 비어도 안내를 담지 않는다")
+        void shouldNotNoticeWhenEveryCombinationExcludedByDislikes() {
+            // given
+            givenSojuAndDriedSnack();
+            givenDislikedCombinations(
+                    new CombinationId(
+                            DrinkFixture.SOJU.createWithId().getId(),
+                            AnjuFixture.DRIED_SNACK.createWithId().getId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.pairings()).isEmpty();
             assertThat(result.notices()).isEmpty();
         }
 
