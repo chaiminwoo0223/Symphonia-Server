@@ -2,8 +2,10 @@ package com.symphonia.pairing.presentation.api;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.pairing.presentation.PairingEndpoints;
+import com.symphonia.pairing.presentation.dto.request.GetMemberPairingFeedbacksRequest;
 import com.symphonia.pairing.presentation.dto.request.RecommendPairingRequest;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
+import com.symphonia.pairing.presentation.dto.response.MemberPairingFeedbacksResponse;
 import com.symphonia.pairing.presentation.dto.response.PairingFeedbackResponse;
 import com.symphonia.pairing.presentation.dto.response.PairingRecommendationResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +32,15 @@ public interface PairingApi {
             @AuthenticationPrincipal(expression = "#this == 'anonymousUser' ? null : #this")
                     String memberId,
             @Valid @ModelAttribute RecommendPairingRequest request);
+
+    @GetMapping(PairingEndpoints.FEEDBACK)
+    @Operation(
+            summary = "내 페어링 피드백 조회",
+            description =
+                    "로그인한 회원이 낸 피드백을 최근에 낸 순서로 돌려줍니다. 모임 참여자가 낸 익명 피드백은 담지 않습니다. 술과 안주의 이름은 읽을 때 가져옵니다. 한 페이지에 최대 50건이고, 응답의 nextCursor를 다음 요청의 cursor로 보내 이어서 읽습니다. nextCursor가 null이면 마지막 페이지입니다.")
+    ResponseEntity<StandardResponse<MemberPairingFeedbacksResponse>> getFeedbacks(
+            @AuthenticationPrincipal String memberId,
+            @Valid @ModelAttribute GetMemberPairingFeedbacksRequest request);
 
     @PostMapping(PairingEndpoints.FEEDBACK)
     @Operation(

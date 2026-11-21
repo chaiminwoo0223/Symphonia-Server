@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -60,6 +61,17 @@ public interface PairingFeedbackJpaRepository
             @Param("memberId") Long memberId,
             @Param("drinkId") Long drinkId,
             @Param("anjuId") Long anjuId);
+
+    // (member_id, drink_id, anju_id) 유니크 인덱스가 member_id로 시작해 그 인덱스로 읽고, 한 회원의 피드백만 id로 정렬한다.
+    @Query(
+            """
+            SELECT feedback FROM PairingFeedbackJpaEntity feedback
+            WHERE feedback.memberId = :memberId
+              AND feedback.id < :beforeId
+            ORDER BY feedback.id DESC
+            """)
+    List<PairingFeedbackJpaEntity> findAllByMemberIdBeforeId(
+            @Param("memberId") Long memberId, @Param("beforeId") Long beforeId, Limit limit);
 
     // (member_id, drink_id, anju_id) 유니크 인덱스가 member_id로 시작해 그 인덱스로 읽는다.
     @Query(
