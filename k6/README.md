@@ -75,3 +75,27 @@ k6 run -e JWT_SECRET="$JWT_SECRET" k6/gathering.js
 | `dropped_iterations{scenario:join}` | `count == 0` | VU가 모자라 참여 20건 중 빠진 요청이 있으면 측정을 실패로 본다 |
 | `http_req_duration{scenario:shares}` | `p(95) < 300ms`, `p(99) < 800ms` | `recommend.js`와 같은 기준이다 |
 | `checks{scenario:shares}` | `rate == 1` | 결제자 묶음이 하나가 아니면 측정을 실패로 본다 |
+
+## 모임 참여 스파이크 (`gathering-join-spike.js`)
+
+카카오톡 방에 공유된 모임 링크로 참여 요청(`POST /api/v1/participants`)이 한꺼번에 몰리는 경우를 재현한다(이슈 #129). 참여 요청은 `X-Join-Token` 헤더로 인증 없이 들어오고, 같은 모임의 참여는 모임 행 잠금으로 한 줄로 처리된다.
+
+prod와 같은 사양의 dev에서만 실행한다. 로컬 결과는 임계값의 근거로 쓰지 않고, 스크립트가 끝까지 도는지 확인하는 데만 쓴다. 모임 열기에 회원 JWT가 필요하므로 서버와 같은 `JWT_SECRET`을 넘긴다.
+
+```bash
+k6 run -e BASE_URL=https://dev.symphonia.example.com -e JWT_SECRET="$JWT_SECRET" k6/gathering-join-spike.js
+```
+
+- setup은 모임을 열고 참여자 15명을 채운다. 남은 자리가 5개라서 스파이크의 처음 몇 건만 자리를 얻고 나머지는 상한에 막힌다.
+- `spike` 시나리오는 초당 5건으로 10초, 5초 동안 정점(기본 초당 200건)까지 올려 30초 유지한 뒤, 5초 동안 내리고 10초 더 이어 간다. 정점은 `-e PEAK_RATE=`로 바꾼다.
+- 상한에 막힌 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)은 기대 응답이라 실패로 세지 않는다.
+- 끝나면 teardown에서 모임장이 참여자 수를 읽어 상한 초과 여부를 판정한다.
+
+| 지표 | 기준 | 비고 |
+|---|---|---|
+| `http_req_failed` | `rate < 1%` | 201, 400, 200 밖의 응답(5xx 등)만 센다 |
+| `http_req_duration{expected_response:true}` | `p(95) < 1000ms`, `p(99) < 2000ms` | 측정 전 잠정값이다. 첫 dev 실행 결과를 보고 재조정한다 |
+| `dropped_iterations` | `count == 0` | VU가 모자라 도착한 요청이 빠지면 측정을 실패로 본다 |
+| `participants_within_limit` | `rate == 1` | 참여자가 20명을 넘지 않는다 |
+| `participants_at_limit` | `rate == 1` | 요청이 남은 자리보다 훨씬 많으므로 정확히 20명이다 |
+| `rejected_for_other_reason` | `rate == 0` | 400이 상한 초과가 아닌 다른 이유로 거절된 요청이 없다 |
