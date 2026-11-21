@@ -62,6 +62,16 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
                                                 gatheringId)));
     }
 
+    private GatheringRetention toRetention(
+            GatheringJpaEntity gatheringEntity, List<Settlement> settlements) {
+        return GatheringRetention.of(
+                gatheringEntity.getId(),
+                gatheringEntity.getOpenedAt(),
+                gatheringEntity.isRecordingExtended(),
+                settlements,
+                !gatheringDataKeyJpaRepository.existsById(gatheringEntity.getId()));
+    }
+
     // 모임마다 따로 읽지 않도록 정산 건과 데이터 키를 모임 id 전체로 한 번씩 읽는다.
     private List<GatheringRetention> toRetentions(List<GatheringJpaEntity> gatheringEntities) {
         List<Long> gatheringIds =
@@ -85,15 +95,5 @@ public class GatheringRetentionRepositoryImpl implements GatheringRetentionRepos
                                                 gatheringEntity.getId(), List.of()),
                                         !dataKeyGatheringIds.contains(gatheringEntity.getId())))
                 .toList();
-    }
-
-    private GatheringRetention toRetention(
-            GatheringJpaEntity gatheringEntity, List<Settlement> settlements) {
-        return GatheringRetention.of(
-                gatheringEntity.getId(),
-                gatheringEntity.getOpenedAt(),
-                gatheringEntity.isRecordingExtended(),
-                settlements,
-                !gatheringDataKeyJpaRepository.existsById(gatheringEntity.getId()));
     }
 }
