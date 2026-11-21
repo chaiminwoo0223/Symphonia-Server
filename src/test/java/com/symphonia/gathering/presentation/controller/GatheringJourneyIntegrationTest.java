@@ -1,12 +1,15 @@
 package com.symphonia.gathering.presentation.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
+import com.symphonia.auth.domain.client.SocialClient;
+import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.gathering.application.usecase.GetExpiredGatheringsUseCase;
 import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
@@ -40,6 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +66,9 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
     @Autowired private PurgeGatheringUseCase purgeGatheringUseCase;
     @Autowired private PairingHelper pairingHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean(name = "google")
+    private SocialClient googleSocialClient;
 
     private Member host;
     private Long gatheringId;
@@ -217,6 +224,21 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
         return objectMapper.readTree(body).at("/data");
     }
 
+    // 참여자마다 다른 구글 계정으로 본인을 확인한 것으로 스텁한다. 구글 ID 토큰을 sub로 쓴다.
+    private String googleIdTokenOf(ParticipantFixture participant) {
+        String googleIdToken = "google-id-token-" + participant.name();
+        given(googleSocialClient.authenticate(googleIdToken))
+                .willReturn(
+                        new SocialIdentity(
+                                googleIdToken,
+                                participant.getName(),
+                                "symphonia@google.com",
+                                null,
+                                "GOOGLE"));
+
+        return googleIdToken;
+    }
+
     private JsonNode join(String joinToken, ParticipantFixture participant) throws Exception {
         return json(
                 post("/api/v1/participants")
@@ -225,6 +247,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                         .content(
                                 objectMapper.writeValueAsString(
                                         new JoinGatheringRequest(
+                                                googleIdTokenOf(participant),
                                                 participant.getName(),
                                                 participant.getPhoneNumber(),
                                                 true,

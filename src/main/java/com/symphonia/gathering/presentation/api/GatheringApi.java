@@ -5,7 +5,7 @@ import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.GatheringHeaders;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
-import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.JoinGatheringAsHostRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
 import com.symphonia.gathering.presentation.dto.request.RenameGatheringRequest;
@@ -168,7 +168,7 @@ public interface GatheringApi {
     ResponseEntity<StandardResponse<ParticipantResponse>> joinAsHost(
             @AuthenticationPrincipal String memberId,
             @PathVariable Long gatheringId,
-            @Valid @RequestBody JoinGatheringRequest request);
+            @Valid @RequestBody JoinGatheringAsHostRequest request);
 
     @DeleteMapping(GatheringEndpoints.PARTICIPANT)
     @Operation(

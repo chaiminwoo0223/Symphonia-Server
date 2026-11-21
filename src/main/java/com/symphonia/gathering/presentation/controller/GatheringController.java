@@ -38,7 +38,7 @@ import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
-import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.JoinGatheringAsHostRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
 import com.symphonia.gathering.presentation.dto.request.RenameGatheringRequest;
@@ -222,10 +222,10 @@ public class GatheringController implements GatheringApi {
 
     @Override
     public ResponseEntity<StandardResponse<ParticipantResponse>> joinAsHost(
-            String memberId, Long gatheringId, JoinGatheringRequest request) {
+            String memberId, Long gatheringId, JoinGatheringAsHostRequest request) {
         ParticipantResult result =
                 joinGatheringAsHostUseCase.joinAsHost(
-                        request.toHostCommand(Long.parseLong(memberId), gatheringId));
+                        request.toCommand(Long.parseLong(memberId), gatheringId));
         ParticipantResponse response = ParticipantResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.CREATED)

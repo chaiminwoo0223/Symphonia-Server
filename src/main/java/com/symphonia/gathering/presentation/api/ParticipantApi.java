@@ -21,7 +21,10 @@ public interface ParticipantApi {
     @PostMapping(ParticipantEndpoints.JOIN)
     @Operation(
             summary = "모임 참여",
-            description = "모임에 참여하고 개인 링크 토큰을 발급합니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다.")
+            description =
+                    "구글 로그인으로 본인을 확인한 뒤 모임에 참여하고 개인 링크 토큰을 발급합니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다."
+                            + " 구글 ID 토큰은 본인 확인에만 쓰고 저장하지 않으며, 같은 구글 계정으로 이미 참여했다면 409(PARTICIPANT_ALREADY_JOINED)입니다."
+                            + " 구글 ID 토큰이 없으면 400, 유효하지 않으면 400(INVALID_SOCIAL_TOKEN)입니다.")
     ResponseEntity<StandardResponse<ParticipantResponse>> join(
             @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
             @Valid @RequestBody JoinGatheringRequest request);
