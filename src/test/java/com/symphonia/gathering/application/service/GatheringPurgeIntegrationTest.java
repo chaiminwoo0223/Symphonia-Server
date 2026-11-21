@@ -168,6 +168,31 @@ class GatheringPurgeIntegrationTest extends IntegrationTest {
                                         .isPositive();
                             });
         }
+
+        @Test
+        @DisplayName("모임장이 고른 조합을 상황별 선택 횟수로 남기고 다른 모임의 선택은 세지 않는다")
+        void shouldRecordChosenCombinationAsSelectionOfPurgedGatheringOnly() {
+            // given: 파기 1단계로 데이터 키를 지운 상태
+            jdbcTemplate.update(
+                    "DELETE FROM gathering_data_key WHERE gathering_id = ?", expiredGatheringId);
+
+            // when
+            purgeGatheringUseCase.purge(expiredGatheringId);
+
+            // then
+            GatheringPairingFixture chosen = GatheringPairingFixture.FRIEND_CASUAL;
+            assertThat(
+                            jdbcTemplate.queryForList(
+                                    "SELECT selection_count FROM pairing_selection_summary"
+                                            + " WHERE drink_id = ? AND anju_id = ?"
+                                            + " AND relationship_type = ? AND mood_type = ?",
+                                    Integer.class,
+                                    chosen.getDrinkId(),
+                                    chosen.getAnjuId(),
+                                    chosen.getRelationshipType().name(),
+                                    chosen.getMoodType().name()))
+                    .containsExactly(1);
+        }
     }
 
     private Gathering saveGatheringWithAllRows(Member member) {

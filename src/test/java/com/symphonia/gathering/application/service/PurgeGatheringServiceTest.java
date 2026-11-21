@@ -16,10 +16,15 @@ import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
+import com.symphonia.gathering.domain.vo.GatheringPairing;
 import com.symphonia.gathering.domain.vo.GatheringRetention;
 import com.symphonia.gathering.fixture.GatheringRoundFixture;
 import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.pairing.application.dto.command.RecordPairingSelectionCommand;
+import com.symphonia.pairing.application.usecase.RecordPairingSelectionUseCase;
+import com.symphonia.pairing.domain.vo.MoodType;
+import com.symphonia.pairing.domain.vo.RelationshipType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +46,8 @@ class PurgeGatheringServiceTest extends UnitTest {
     private static final Long PAYER_ID = 20L;
     private static final Long LEE_ID = 21L;
     private static final Long PARK_ID = 22L;
+    private static final Long DRINK_ID = 1L;
+    private static final Long ANJU_ID = 2L;
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final LocalDateTime OPENED_AT = LocalDateTime.of(2026, 10, 1, 18, 0);
     private static final LocalDateTime RECORDING_CLOSES_AT = OPENED_AT.plusHours(48);
@@ -59,6 +66,7 @@ class PurgeGatheringServiceTest extends UnitTest {
     @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
     @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private SettlementRepository settlementRepository;
+    @Mock private RecordPairingSelectionUseCase recordPairingSelectionUseCase;
 
     @Nested
     @DisplayName("discardDataKeyIfExpired 메서드는")
@@ -385,6 +393,62 @@ class PurgeGatheringServiceTest extends UnitTest {
             inOrder.verify(gatheringPairingRepository).deleteByGatheringId(GATHERING_ID);
             inOrder.verify(gatheringRepository).delete(GATHERING_ID);
         }
+
+        @Nested
+        @DisplayName("모임장이 고른 페어링이 있는 경우")
+        class WhenGatheringPairingExists {
+
+            @Test
+            @DisplayName("페어링을 지우기 전에 고른 조합을 상황과 함께 선택 신호로 남긴다")
+            void shouldRecordSelectionBeforeDeletingGatheringPairing() {
+                // given
+                givenNow(MAX_DELETES_AT);
+                given(gatheringPairingRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(
+                                Optional.of(
+                                        GatheringPairing.of(
+                                                DRINK_ID,
+                                                ANJU_ID,
+                                                RelationshipType.LOVER,
+                                                MoodType.ROMANTIC)));
+
+                // when
+                purgeGatheringService.purge(GATHERING_ID);
+
+                // then
+                InOrder inOrder =
+                        inOrder(recordPairingSelectionUseCase, gatheringPairingRepository);
+                inOrder.verify(recordPairingSelectionUseCase)
+                        .record(
+                                RecordPairingSelectionCommand.of(
+                                        DRINK_ID,
+                                        ANJU_ID,
+                                        RelationshipType.LOVER,
+                                        MoodType.ROMANTIC));
+                inOrder.verify(gatheringPairingRepository).deleteByGatheringId(GATHERING_ID);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임장이 고른 페어링이 없는 경우")
+        class WhenGatheringPairingNotExists {
+
+            @Test
+            @DisplayName("선택 신호를 남기지 않고 모임의 행은 지운다")
+            void shouldNotRecordSelectionAndStillDeleteGathering() {
+                // given
+                givenNow(MAX_DELETES_AT);
+                given(gatheringPairingRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when
+                purgeGatheringService.purge(GATHERING_ID);
+
+                // then
+                then(recordPairingSelectionUseCase).shouldHaveNoInteractions();
+                then(gatheringRepository).should().delete(GATHERING_ID);
+            }
+        }
     }
 
     // 결제자 말고 이와 박의 분담금이 모두 미입금인 정산 건이다.
@@ -439,6 +503,7 @@ class PurgeGatheringServiceTest extends UnitTest {
                         participantPairingFeedbackRepository,
                         gatheringPairingRepository,
                         settlementRepository,
+                        recordPairingSelectionUseCase,
                         clock);
     }
 }

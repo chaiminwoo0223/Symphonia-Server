@@ -29,6 +29,13 @@ public class GatheringPairingRepositoryImpl implements GatheringPairingRepositor
     }
 
     @Override
+    public Optional<GatheringPairing> findByGatheringId(Long gatheringId) {
+        return gatheringPairingJpaRepository
+                .findById(gatheringId)
+                .map(GatheringPairingJpaEntity::toDomain);
+    }
+
+    @Override
     public void deleteByGatheringId(Long gatheringId) {
         gatheringPairingJpaRepository.deleteByGatheringId(gatheringId);
     }
