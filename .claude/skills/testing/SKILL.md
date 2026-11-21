@@ -31,6 +31,14 @@ JUnit 5, Mockito, Testcontainers를 쓴다.
 - 컨텍스트끼리 DB와 Redis를 같이 쓰므로 테스트는 데이터를 남기지 않는다. 트랜잭션 롤백을 쓰지 않는 테스트(`Propagation.NOT_SUPPORTED`)는 `@AfterEach`에서 직접 지운다.
 - 테스트 커넥션 풀은 컨텍스트마다 최대 4개(`application-test.yaml`)이고, Postgres 컨테이너의 `max_connections`는 200이다. 컨텍스트 조합(`@Import`, `@MockitoBean`)이 늘어 연결 수가 부족하면 이 두 값을 함께 조정한다.
 
+## 동시성·여정 통합 테스트
+
+- 동시성 경합은 UseCase를 스레드 여러 개에서 실제 DB로 부르는 `*ConcurrencyIntegrationTest`로 확인한다(`application/service`). `ConcurrencyHelper.runConcurrently`가 모든 스레드를 함께 출발시키고 실패한 예외만 돌려준다.
+- 트랜잭션 롤백을 쓰지 않으므로 테스트 메서드에 `@Transactional(propagation = Propagation.NOT_SUPPORTED)`를 붙이고 `@AfterEach`에서 직접 지운다. 저장소는 부른 쪽의 트랜잭션을 전제로 하므로 준비는 `TransactionTemplate` 안에서 한다.
+- 새 경합 테스트는 막는 잠금이나 제약을 임시로 빼서 실제로 실패하는지 확인한 뒤 커밋한다. 임시 변경은 커밋하지 않는다.
+- 핵심 여정은 `*JourneyIntegrationTest`로 컨트롤러(MockMvc)부터 실제 DB까지 잇는다(`presentation/controller`). Postgres와 Redis 컨테이너만 쓰고 외부 호출은 스텁으로 막는다. 요청마다 `// when & then`으로 응답을 확인한다.
+- 카탈로그에 실제 음료와 안주가 필요하면 시드로 적재된 행을 쓰고, 커밋하는 테스트에서 카탈로그를 새로 만들거나 지우지 않는다.
+
 ## 명명 규칙
 
 각 이름은 자기 레벨에서만 새로운 정보를 더한다. 상위 레벨이 이미 표현한 내용을 하위 레벨에서 다시 쓰지 않는다. 사람이 읽을 설명은 모두 `@DisplayName`(한국어)에 담고, 클래스명과 메서드명에는 한국어를 쓰지 않는다.
@@ -135,4 +143,5 @@ class LoginServiceTest extends UnitTest {
 - 부하테스트 도구는 K6다.
 - 범위는 `pairing`의 `GET /api/v1/pairings/recommendations`를 로컬과 dev 프로파일에서 실행하는 것이다. GCP 실행 위치, Grafana Alloy 연동, 인증이 필요한 엔드포인트는 별도 이슈에서 다룬다.
 - 스트레스와 스파이크 테스트는 prod와 같은 사양의 dev에서만 실행하고, 로컬 결과는 한계 값으로 인용하지 않는다.
+- 스파이크 테스트는 `gathering`의 참여 요청(`POST /api/v1/participants`)을 대상으로 `k6/gathering-join-spike.js`에 둔다. 상한 초과 여부, 오류율, 응답 시간을 임계값으로 판정한다.
 - prod에는 부하테스트를 실행하지 않는다.
