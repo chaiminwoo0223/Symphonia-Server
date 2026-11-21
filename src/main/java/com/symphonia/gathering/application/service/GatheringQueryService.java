@@ -92,7 +92,7 @@ public class GatheringQueryService
     }
 
     // 가장 빨리 파기되는 모임도 기록 기간이 끝나고 7일 뒤에 파기되므로, 그보다 늦게 연 모임은 읽지 않는다.
-    // 기록 기간을 연장한 모임까지 놓치지 않도록 기준은 가장 긴 기록 기간이다.
+    // 연장은 파기를 늦추기만 하므로 기준은 가장 짧은 기록 기간이고, 연장한 모임은 파기 시각 판단이 걸러 준다.
     @Override
     public List<Long> getExpiredGatheringIds() {
         LocalDateTime now = LocalDateTime.now(clock);

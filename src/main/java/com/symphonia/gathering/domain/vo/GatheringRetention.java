@@ -41,9 +41,10 @@ public record GatheringRetention(
 
     // 정산은 빨라도 기록 기간이 끝나야 끝나므로, 가장 빠른 파기 시각은 기록 기간이 끝나고 7일 뒤다.
     // 이 시각보다 늦게 연 모임은 아직 파기 대상이 될 수 없어, 파기 스윕은 이 시각까지 연 모임만 후보로 읽는다.
-    // 연장 여부는 후보를 거르는 쿼리에 넣지 않고, 기록 기간이 가장 긴 연장한 모임을 기준으로 읽어 Java에서 판단한다.
+    // 연장 여부는 후보를 거르는 쿼리에 넣지 않는다.
+    // 연장은 파기를 늦추기만 하므로 가장 짧은 기록 기간을 기준으로 읽고, 파기 여부는 Java에서 판단한다.
     public static LocalDateTime latestExpirableOpenedAt(LocalDateTime now) {
-        return now.minus(RETENTION_AFTER_COMPLETION).minus(GatheringPolicy.maxRecordingPeriod());
+        return now.minus(RETENTION_AFTER_COMPLETION).minus(GatheringPolicy.RECORDING_PERIOD);
     }
 
     public boolean isExpired(LocalDateTime now) {
