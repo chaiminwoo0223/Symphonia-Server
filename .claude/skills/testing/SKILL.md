@@ -36,7 +36,7 @@ JUnit 5, Mockito, Testcontainers를 쓴다.
 - 동시성 경합은 UseCase를 스레드 여러 개에서 실제 DB로 부르는 `*ConcurrencyIntegrationTest`로 확인한다(`application/service`). `ConcurrencyHelper.runConcurrently`가 모든 스레드를 함께 출발시키고 실패한 예외만 돌려준다.
 - 트랜잭션 롤백을 쓰지 않으므로 테스트 메서드에 `@Transactional(propagation = Propagation.NOT_SUPPORTED)`를 붙이고 `@AfterEach`에서 직접 지운다. 저장소는 부른 쪽의 트랜잭션을 전제로 하므로 준비는 `TransactionTemplate` 안에서 한다.
 - 새 경합 테스트는 막는 잠금이나 제약을 임시로 빼서 실제로 실패하는지 확인한 뒤 커밋한다. 임시 변경은 커밋하지 않는다.
-- 핵심 여정은 `*JourneyIntegrationTest`로 컨트롤러(MockMvc)부터 실제 DB까지 잇는다(`presentation/controller`). Postgres와 Redis 컨테이너만 쓰고 외부 호출은 스텁으로 막는다. 요청마다 `// when & then`으로 응답을 확인한다.
+- 핵심 여정은 `*JourneyIntegrationTest`로 컨트롤러(MockMvc)부터 실제 DB까지 잇는다(`presentation/controller`). Postgres와 Redis 컨테이너만 쓰고 외부 호출은 스텁으로 막는다. `// when & then` 한 블록에 요청을 순서대로 두고 응답을 확인하며, 단계는 일반 주석으로 나눈다. 중간에 시각을 바꾸는 준비도 이 블록에 둘 수 있다.
 - 카탈로그에 실제 음료와 안주가 필요하면 시드로 적재된 행을 쓰고, 커밋하는 테스트에서 카탈로그를 새로 만들거나 지우지 않는다.
 
 ## 명명 규칙
