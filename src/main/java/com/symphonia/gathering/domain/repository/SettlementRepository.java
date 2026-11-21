@@ -27,6 +27,7 @@ public interface SettlementRepository {
 
     // 참여자가 그 결제자에게 낼 분담금이 있는, 취소하지 않은 정산 건을 잠그고 찾는다. "보냈어요"를 처리하는 데 쓴다.
     // 여러 참여자가 같은 정산 건에서 동시에 누르면 늦은 요청이 기다렸다가 최신 상태를 읽어, 버전 충돌로 실패하지 않는다.
+    // 정산 건 수정과 겹치면 수정이 먼저 커밋된 뒤 잠금을 얻은 요청이 SettlementConflictException으로 실패할 수 있다.
     List<Settlement> findAllByShareParticipantIdAndPayerForUpdate(
             Long participantId, Long payerParticipantId);
 
