@@ -23,6 +23,8 @@ import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.fixture.DrinkStyleFixture;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
+import com.symphonia.pairing.application.dto.result.PairingNoticeResult;
+import com.symphonia.pairing.application.dto.result.PairingRecommendationResult;
 import com.symphonia.pairing.application.dto.result.PairingResult;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
@@ -105,7 +107,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).isNotEmpty();
@@ -123,7 +125,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).hasSize(5);
@@ -146,7 +148,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -175,7 +177,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             PairingResult fruitResult =
@@ -209,7 +211,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             PairingResult sojuResult =
@@ -248,7 +250,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -269,7 +271,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).hasSize(5);
@@ -285,7 +287,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).extracting(PairingResult::drinkNonAlcoholic).containsOnly(false);
@@ -312,7 +314,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).hasSize(5);
@@ -344,7 +346,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).hasSize(5);
@@ -387,7 +389,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -412,7 +414,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -433,7 +435,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -457,7 +459,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -484,7 +486,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -509,7 +511,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).isEmpty();
@@ -562,8 +564,10 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> resultsInOriginalOrder = pairingQueryService.recommend(query);
-            List<PairingResult> resultsInReversedOrder = pairingQueryService.recommend(query);
+            List<PairingResult> resultsInOriginalOrder =
+                    pairingQueryService.recommend(query).pairings();
+            List<PairingResult> resultsInReversedOrder =
+                    pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(resultsInOriginalOrder).hasSize(2);
@@ -585,7 +589,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.get(0).score()).isEqualTo(results.get(1).score());
@@ -608,7 +612,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.get(0).score()).isEqualTo(results.get(1).score());
@@ -631,7 +635,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons()).contains(PairingReason.ABV_LIMIT.message());
@@ -650,7 +654,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -670,7 +674,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons()).contains(PairingReason.LIGHT_ANJU.message());
@@ -689,7 +693,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -709,7 +713,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -727,7 +731,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -743,7 +747,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -758,7 +762,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -774,7 +778,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons()).contains(PairingReason.FLAVOR_MATCH.message());
@@ -791,7 +795,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -813,7 +817,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -835,7 +839,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons()).contains(PairingReason.FLAVOR_MATCH.message());
@@ -859,7 +863,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(scoreOf(results, AnjuFixture.BOILED_PORK))
@@ -880,7 +884,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().anjuName())
@@ -902,7 +906,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().anjuName())
@@ -925,7 +929,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().anjuName())
@@ -948,7 +952,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(scoreOfDrink(results, DrinkFixture.CASS_FRESH.getName()))
@@ -971,7 +975,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -993,7 +997,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1014,7 +1018,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1031,7 +1035,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1046,7 +1050,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1063,7 +1067,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1081,7 +1085,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1098,7 +1102,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1119,7 +1123,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1138,7 +1142,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1155,7 +1159,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().reasons())
@@ -1173,7 +1177,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.CELEBRATORY).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().anjuName()).isEqualTo(AnjuFixture.BOILED_PORK.getName());
@@ -1202,7 +1206,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1224,7 +1228,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.get(0).score()).isEqualTo(results.get(1).score());
@@ -1245,7 +1249,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1282,7 +1286,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.getFirst().anjuName())
@@ -1301,7 +1305,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.subList(0, GOLDEN_TOP_RANK))
@@ -1324,7 +1328,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.subList(0, GOLDEN_TOP_RANK))
@@ -1354,7 +1358,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             List<PairingResult> topRanked = results.subList(0, GOLDEN_TOP_RANK);
@@ -1385,7 +1389,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.FORMAL).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.subList(0, GOLDEN_TOP_RANK))
@@ -1409,7 +1413,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.ROMANTIC).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.subList(0, GOLDEN_TOP_RANK))
@@ -1435,7 +1439,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.CASUAL).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results.subList(0, GOLDEN_TOP_RANK))
@@ -1460,7 +1464,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().moodType(MoodType.CELEBRATORY).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             List<PairingResult> topRanked = results.subList(0, GOLDEN_TOP_RANK);
@@ -1496,7 +1500,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(scoreOf(results, AnjuFixture.CATALOG_FRENCH_FRIES))
@@ -1524,7 +1528,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             then(pairingRatingSummaryRepository)
@@ -1548,7 +1552,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            pairingQueryService.recommend(query);
+            pairingQueryService.recommend(query).pairings();
 
             // then
             then(pairingRatingSummaryRepository)
@@ -1567,7 +1571,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1584,7 +1588,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1602,7 +1606,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1625,7 +1629,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1642,7 +1646,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1665,7 +1669,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1684,7 +1688,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1702,7 +1706,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1742,7 +1746,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1761,7 +1765,7 @@ class PairingQueryServiceTest extends UnitTest {
                     new RecommendPairingQueryFixture().memberId(MEMBER_ID).build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1777,7 +1781,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             then(pairingFeedbackRepository).shouldHaveNoInteractions();
@@ -1797,7 +1801,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1814,7 +1818,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1843,7 +1847,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1864,7 +1868,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1885,7 +1889,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1909,7 +1913,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1936,7 +1940,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1963,7 +1967,7 @@ class PairingQueryServiceTest extends UnitTest {
             RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results)
@@ -1993,7 +1997,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).extracting(PairingResult::anjuId).containsExactly(2L);
@@ -2025,7 +2029,7 @@ class PairingQueryServiceTest extends UnitTest {
                             .build();
 
             // when
-            List<PairingResult> results = pairingQueryService.recommend(query);
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
 
             // then
             assertThat(results).extracting(PairingResult::drinkId).containsExactly(2L);
@@ -2035,6 +2039,120 @@ class PairingQueryServiceTest extends UnitTest {
                                     assertThat(result.reasons())
                                             .doesNotContain(
                                                     PairingReason.FEEDBACK_LIKED.message()));
+        }
+
+        @Test
+        @DisplayName("모든 Drink가 도수 상한을 넘어 추천이 비면 NO_DRINK_WITHIN_ABV_LIMIT 안내를 담는다")
+        void shouldNoticeNoDrinkWithinAbvLimitWhenEveryDrinkExceedsMaxAbv() {
+            // given
+            givenSojuAndDriedSnack();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.pairings()).isEmpty();
+            assertThat(result.notices())
+                    .extracting(PairingNoticeResult::code)
+                    .containsExactly("NO_DRINK_WITHIN_ABV_LIMIT");
+        }
+
+        @Test
+        @DisplayName("모든 Anju가 알레르기와 겹쳐 추천이 비면 NO_ANJU_WITHOUT_ALLERGEN 안내를 담는다")
+        void shouldNoticeNoAnjuWithoutAllergenWhenEveryAnjuConflictsWithAllergies() {
+            // given
+            given(drinkRepository.findAll()).willReturn(List.of(DrinkFixture.SOJU.createWithId()));
+            given(anjuRepository.findAll())
+                    .willReturn(
+                            List.of(
+                                    AnjuFixture.GOLBAENGI_MUCHIM.createWithId(),
+                                    AnjuFixture.FRIED_CHICKEN.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.pairings()).isEmpty();
+            assertThat(result.notices())
+                    .extracting(PairingNoticeResult::code)
+                    .containsExactly("NO_ANJU_WITHOUT_ALLERGEN");
+        }
+
+        @Test
+        @DisplayName("무알코올 Drink가 필요한데 결과에 없으면 추천이 있어도 NO_NON_ALCOHOLIC_DRINK 안내를 담는다")
+        void shouldNoticeNoNonAlcoholicDrinkWhenRequiredButMissing() {
+            // given
+            givenSojuAndDriedSnack();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.pairings()).isNotEmpty();
+            assertThat(result.notices())
+                    .extracting(PairingNoticeResult::code)
+                    .containsExactly("NO_NON_ALCOHOLIC_DRINK");
+        }
+
+        @Test
+        @DisplayName("추천이 비고 무알코올 Drink도 필요하면 두 안내를 함께 담는다")
+        void shouldNoticeBothWhenRecommendationEmptyAndNonAlcoholicRequired() {
+            // given
+            givenSojuAndDriedSnack();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .relationshipType(RelationshipType.BOSS)
+                            .attendeeConstraints(AttendeeConstraint.PREGNANT)
+                            .build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.notices())
+                    .extracting(PairingNoticeResult::code)
+                    .containsExactly("NO_DRINK_WITHIN_ABV_LIMIT", "NO_NON_ALCOHOLIC_DRINK");
+        }
+
+        @Test
+        @DisplayName("무알코올 Drink를 결과에 담았으면 안내를 담지 않는다")
+        void shouldNotNoticeWhenNonAlcoholicDrinkIncluded() {
+            // given
+            givenAlcoholicDrinksOutrankingNonAlcoholicDrink();
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture()
+                            .attendeeConstraints(AttendeeConstraint.DRIVER)
+                            .build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.notices()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("조건 없이 추천이 있으면 안내를 담지 않는다")
+        void shouldNotNoticeWhenRecommendedWithoutConstraints() {
+            // given
+            givenStandardCatalog();
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            PairingRecommendationResult result = pairingQueryService.recommend(query);
+
+            // then
+            assertThat(result.notices()).isEmpty();
         }
 
         // 마른안주 1~5번은 맛이 같아 동점이고, 6번은 단맛만 1 낮아 소주와의 점수가 약 0.043 낮다.

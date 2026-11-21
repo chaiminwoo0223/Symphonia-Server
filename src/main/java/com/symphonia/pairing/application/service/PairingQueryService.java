@@ -7,7 +7,7 @@ import com.symphonia.catalog.application.dto.result.CatalogResult.DrinkResult;
 import com.symphonia.catalog.application.usecase.GetCatalogUseCase;
 import com.symphonia.common.annotation.QueryService;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
-import com.symphonia.pairing.application.dto.result.PairingResult;
+import com.symphonia.pairing.application.dto.result.PairingRecommendationResult;
 import com.symphonia.pairing.application.usecase.RecommendPairingUseCase;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
@@ -17,6 +17,8 @@ import com.symphonia.pairing.domain.vo.Occasion;
 import com.symphonia.pairing.domain.vo.Pairing;
 import com.symphonia.pairing.domain.vo.PairingAnju;
 import com.symphonia.pairing.domain.vo.PairingDrink;
+import com.symphonia.pairing.domain.vo.PairingNotice;
+import com.symphonia.pairing.domain.vo.PairingNoticeContext;
 import com.symphonia.pairing.domain.vo.PairingRatingSummary;
 import com.symphonia.pairing.domain.vo.PairingSituation;
 import java.util.List;
@@ -31,7 +33,7 @@ public class PairingQueryService implements RecommendPairingUseCase {
     private final PairingFeedbackRepository pairingFeedbackRepository;
 
     @Override
-    public List<PairingResult> recommend(RecommendPairingQuery query) {
+    public PairingRecommendationResult recommend(RecommendPairingQuery query) {
         Occasion occasion =
                 Occasion.of(
                         query.relationshipType(),
@@ -52,11 +54,14 @@ public class PairingQueryService implements RecommendPairingUseCase {
                         PairingRatingSummary.MINIMUM_SAMPLE,
                         PairingSituation.of(query.relationshipType(), query.moodType()));
 
-        return Pairing.recommend(
-                        drinks, anjus, ratingSummaries, dislikedCombinationsOf(query), occasion)
-                .stream()
-                .map(PairingResult::from)
-                .toList();
+        List<Pairing> pairings =
+                Pairing.recommend(
+                        drinks, anjus, ratingSummaries, dislikedCombinationsOf(query), occasion);
+        List<PairingNotice> notices =
+                PairingNotice.allApplicableTo(
+                        PairingNoticeContext.of(drinks, anjus, occasion, pairings));
+
+        return PairingRecommendationResult.of(pairings, notices);
     }
 
     private static PairingDrink toPairingDrink(DrinkResult drink) {

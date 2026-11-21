@@ -2,15 +2,14 @@ package com.symphonia.pairing.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
-import com.symphonia.pairing.application.dto.result.PairingResult;
+import com.symphonia.pairing.application.dto.result.PairingRecommendationResult;
 import com.symphonia.pairing.application.usecase.RecommendPairingUseCase;
 import com.symphonia.pairing.application.usecase.SubmitPairingFeedbackUseCase;
 import com.symphonia.pairing.presentation.api.PairingApi;
 import com.symphonia.pairing.presentation.dto.request.RecommendPairingRequest;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
 import com.symphonia.pairing.presentation.dto.response.PairingFeedbackResponse;
-import com.symphonia.pairing.presentation.dto.response.PairingResponse;
-import java.util.List;
+import com.symphonia.pairing.presentation.dto.response.PairingRecommendationResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +22,11 @@ public class PairingController implements PairingApi {
     private final SubmitPairingFeedbackUseCase submitPairingFeedbackUseCase;
 
     @Override
-    public ResponseEntity<StandardResponse<List<PairingResponse>>> recommend(
+    public ResponseEntity<StandardResponse<PairingRecommendationResponse>> recommend(
             String memberId, RecommendPairingRequest request) {
-        List<PairingResult> results = recommendPairingUseCase.recommend(request.toQuery(memberId));
-        List<PairingResponse> response = results.stream().map(PairingResponse::from).toList();
+        PairingRecommendationResult result =
+                recommendPairingUseCase.recommend(request.toQuery(memberId));
+        PairingRecommendationResponse response = PairingRecommendationResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));

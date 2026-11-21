@@ -64,10 +64,12 @@ class PairingControllerTest extends IntegrationTest {
                                     .param("moodType", "CASUAL")
                                     .param("isAdultConfirmed", "true"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data").isArray())
-                    .andExpect(jsonPath("$.data[0].score").exists())
-                    .andExpect(jsonPath("$.data[0].reasons").isArray())
-                    .andExpect(jsonPath("$.data[0].reasons").isNotEmpty());
+                    .andExpect(jsonPath("$.data.pairings").isArray())
+                    .andExpect(jsonPath("$.data.pairings[0].score").exists())
+                    .andExpect(jsonPath("$.data.pairings[0].reasons").isArray())
+                    .andExpect(jsonPath("$.data.pairings[0].reasons").isNotEmpty())
+                    .andExpect(jsonPath("$.data.notices").isArray())
+                    .andExpect(jsonPath("$.data.notices").isEmpty());
         }
 
         @Test
@@ -93,7 +95,7 @@ class PairingControllerTest extends IntegrationTest {
                                     .param("relationshipType", "FRIEND")
                                     .param("isAdultConfirmed", "true"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data").isNotEmpty());
+                    .andExpect(jsonPath("$.data.pairings").isNotEmpty());
         }
 
         @Test
@@ -112,10 +114,10 @@ class PairingControllerTest extends IntegrationTest {
                                     .param("isAdultConfirmed", "true")
                                     .param("attendeeAllergies", "PEANUT"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data").isNotEmpty())
+                    .andExpect(jsonPath("$.data.pairings").isNotEmpty())
                     .andExpect(
                             jsonPath(
-                                            "$.data[?(@.anjuName=='%s')]",
+                                            "$.data.pairings[?(@.anjuName=='%s')]",
                                             AnjuFixture.DRIED_SNACK.getName())
                                     .isEmpty());
         }
@@ -136,7 +138,8 @@ class PairingControllerTest extends IntegrationTest {
                                     .param("isAdultConfirmed", "true")
                                     .param("attendeeConstraints", "DRIVER", "PREGNANT"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data[?(@.drinkNonAlcoholic==true)]").isNotEmpty());
+                    .andExpect(
+                            jsonPath("$.data.pairings[?(@.drinkNonAlcoholic==true)]").isNotEmpty());
         }
 
         @Test
@@ -167,9 +170,9 @@ class PairingControllerTest extends IntegrationTest {
                 // when & then
                 mockMvc.perform(recommendRequest(token))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data").isNotEmpty())
+                        .andExpect(jsonPath("$.data.pairings").isNotEmpty())
                         .andExpect(
-                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                jsonPath("$.data.pairings[?(@.anjuName=='%s')]", disliked.getName())
                                         .isEmpty());
             }
         }
@@ -191,7 +194,7 @@ class PairingControllerTest extends IntegrationTest {
                 mockMvc.perform(recommendRequest(token))
                         .andExpect(status().isOk())
                         .andExpect(
-                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                jsonPath("$.data.pairings[?(@.anjuName=='%s')]", disliked.getName())
                                         .isNotEmpty());
             }
         }
@@ -211,7 +214,7 @@ class PairingControllerTest extends IntegrationTest {
                 mockMvc.perform(recommendRequest(null))
                         .andExpect(status().isOk())
                         .andExpect(
-                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                jsonPath("$.data.pairings[?(@.anjuName=='%s')]", disliked.getName())
                                         .isNotEmpty());
             }
 
@@ -226,7 +229,7 @@ class PairingControllerTest extends IntegrationTest {
                 mockMvc.perform(recommendRequest("Bearer invalid-token"))
                         .andExpect(status().isOk())
                         .andExpect(
-                                jsonPath("$.data[?(@.anjuName=='%s')]", disliked.getName())
+                                jsonPath("$.data.pairings[?(@.anjuName=='%s')]", disliked.getName())
                                         .isNotEmpty());
             }
         }
