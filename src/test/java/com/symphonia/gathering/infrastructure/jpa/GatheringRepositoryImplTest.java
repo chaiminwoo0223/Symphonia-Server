@@ -22,8 +22,10 @@ import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.AfterEach;
@@ -105,6 +107,76 @@ class GatheringRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(results).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("saveIfAbsent 메서드는")
+    class SaveIfAbsent {
+
+        private static final UUID CLIENT_REQUEST_ID =
+                UUID.fromString("0b6c1a52-6f4e-4d0a-9d52-7a1f3c1e8b11");
+
+        @Test
+        @DisplayName("요청 id의 모임이 없으면 모임과 데이터 키와 1차를 저장하고 반환한다")
+        void shouldSaveGatheringWithDataKeyAndFirstRound() {
+            // given
+            Gathering gathering = openedGathering(1L);
+
+            // when
+            Optional<Gathering> result = gatheringRepository.saveIfAbsent(gathering);
+
+            // then
+            assertThat(result).isPresent();
+            Gathering saved = result.orElseThrow();
+            assertThat(saved.getId()).isNotNull();
+            assertThat(saved.getClientRequestId()).isEqualTo(CLIENT_REQUEST_ID);
+            assertThat(saved.getName()).isEqualTo(gathering.getName());
+            assertThat(saved.getOpenedAt()).isEqualTo(gathering.getOpenedAt());
+            assertThat(saved.getRounds()).extracting(GatheringRound::getNumber).containsExactly(1);
+            assertThat(gatheringDataKeyJpaRepository.existsById(saved.getId())).isTrue();
+        }
+
+        @Test
+        @DisplayName("같은 모임장과 요청 id의 모임이 이미 있으면 저장하지 않고 빈 값을 반환한다")
+        void shouldReturnEmptyWhenSameHostAndClientRequestId() {
+            // given
+            Gathering first = gatheringRepository.saveIfAbsent(openedGathering(1L)).orElseThrow();
+            clearPersistenceContext();
+
+            // when
+            Optional<Gathering> result = gatheringRepository.saveIfAbsent(openedGathering(1L));
+
+            // then
+            assertThat(result).isEmpty();
+            assertThat(
+                            gatheringRepository
+                                    .findByHostMemberIdAndClientRequestId(1L, CLIENT_REQUEST_ID)
+                                    .orElseThrow()
+                                    .getId())
+                    .isEqualTo(first.getId());
+        }
+
+        @Test
+        @DisplayName("모임장이 다르면 같은 요청 id여도 저장한다")
+        void shouldSaveWhenOtherHost() {
+            // given
+            gatheringRepository.saveIfAbsent(openedGathering(1L));
+            clearPersistenceContext();
+
+            // when
+            Optional<Gathering> result = gatheringRepository.saveIfAbsent(openedGathering(2L));
+
+            // then
+            assertThat(result).isPresent();
+        }
+
+        private Gathering openedGathering(Long hostMemberId) {
+            return Gathering.open(
+                    hostMemberId,
+                    CLIENT_REQUEST_ID,
+                    GatheringFixture.FRIDAY_DINNER.getName(),
+                    LocalDateTime.of(2026, 11, 21, 18, 0));
         }
     }
 

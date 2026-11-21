@@ -194,6 +194,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                         .content(
                                 objectMapper.writeValueAsString(
                                         new OpenGatheringRequest(
+                                                UUID.randomUUID(),
                                                 "여정 모임",
                                                 new GatheringPairingRequest(
                                                         drinkId,

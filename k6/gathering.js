@@ -69,7 +69,7 @@ function dataOf(response, expectedStatus, step) {
     return response.json().data;
 }
 
-// 정산 건 기록 요청마다 새 요청 id가 필요하다. 요청 id의 형식만 UUID라 난수로 만든 v4 형식을 쓴다.
+// 모임 열기와 정산 건 기록 요청마다 새 요청 id가 필요하다. 요청 id의 형식만 UUID라 난수로 만든 v4 형식을 쓴다.
 function uuidV4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
         const random = Math.floor(Math.random() * 16);
@@ -103,7 +103,11 @@ export function setup() {
 
     const hostHeaders = jsonHeaders({ Authorization: `Bearer ${signAccessToken()}` });
     const { gatheringId, joinToken } = dataOf(
-        http.post(`${BASE_URL}/api/v1/gatherings`, JSON.stringify({ name: 'K6 측정 모임' }), hostHeaders),
+        http.post(
+            `${BASE_URL}/api/v1/gatherings`,
+            JSON.stringify({ clientRequestId: uuidV4(), name: 'K6 측정 모임' }),
+            hostHeaders,
+        ),
         201,
         '모임 열기',
     );

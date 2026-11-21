@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -12,6 +13,29 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity, Long> {
+    // 같은 모임장과 요청 id의 모임이 이미 있으면 넣지 않고 빈 값을 돌려준다. 동시에 같은 요청이 오면 늦은 요청은 먼저 넣은 요청이 커밋한 뒤에 빈 값을 받는다.
+    // 감사 시각 컬럼은 연 시각으로 채운다. 이 쿼리는 JPA 엔티티를 거치지 않아 감사 리스너가 값을 넣지 못한다.
+    @Query(
+            value =
+                    """
+                    INSERT INTO gathering
+                        (host_member_id, name, opened_at, recording_extended, client_request_id,
+                         created_at, updated_at)
+                    VALUES (:hostMemberId, :name, :openedAt, false, :clientRequestId,
+                            :openedAt, :openedAt)
+                    ON CONFLICT (host_member_id, client_request_id) DO NOTHING
+                    RETURNING id
+                    """,
+            nativeQuery = true)
+    Optional<Long> insertIfAbsent(
+            @Param("hostMemberId") Long hostMemberId,
+            @Param("name") String name,
+            @Param("openedAt") LocalDateTime openedAt,
+            @Param("clientRequestId") UUID clientRequestId);
+
+    Optional<GatheringJpaEntity> findByHostMemberIdAndClientRequestId(
+            Long hostMemberId, UUID clientRequestId);
+
     List<GatheringJpaEntity> findAllByOpenedAtLessThanEqualOrderById(LocalDateTime openedAt);
 
     List<GatheringJpaEntity> findAllByHostMemberIdOrderById(Long hostMemberId);

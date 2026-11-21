@@ -96,7 +96,8 @@ class GatheringControllerTest extends IntegrationTest {
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 String token = authHelper.bearerTokenFor(member);
                 OpenGatheringRequest request =
-                        new OpenGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName(), null);
+                        new OpenGatheringRequest(
+                                CLIENT_REQUEST_ID, GatheringFixture.FRIDAY_DINNER.getName(), null);
 
                 // when & then
                 mockMvc.perform(
@@ -112,6 +113,101 @@ class GatheringControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("같은 요청 id로 다시 여는 경우")
+        class WhenSameClientRequestId {
+
+            @Test
+            @DisplayName("모임을 새로 만들지 않고 처음 연 모임에 새 참여 토큰을 발급해 201을 반환한다")
+            void shouldReturnOpenedGatheringWithNewJoinToken() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                OpenGatheringRequest request =
+                        new OpenGatheringRequest(
+                                CLIENT_REQUEST_ID, GatheringFixture.FRIDAY_DINNER.getName(), null);
+                MvcResult first =
+                        mockMvc.perform(
+                                        post("/api/v1/gatherings")
+                                                .header(HttpHeaders.AUTHORIZATION, token)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andReturn();
+                Number gatheringId =
+                        JsonPath.read(
+                                first.getResponse().getContentAsString(), "$.data.gatheringId");
+                String firstJoinToken =
+                        JsonPath.read(first.getResponse().getContentAsString(), "$.data.joinToken");
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.gatheringId").value(gatheringId.intValue()))
+                        .andExpect(jsonPath("$.data.joinToken").value(not(firstJoinToken)));
+                mockMvc.perform(get("/api/v1/gatherings").header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(jsonPath("$.data.length()").value(1));
+            }
+
+            @Test
+            @DisplayName("다른 모임장이 같은 요청 id로 열면 새 모임을 만든다")
+            void shouldOpenNewGatheringForOtherHost() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                OpenGatheringRequest request =
+                        new OpenGatheringRequest(
+                                CLIENT_REQUEST_ID, GatheringFixture.FRIDAY_DINNER.getName(), null);
+                mockMvc.perform(
+                                post("/api/v1/gatherings")
+                                        .header(
+                                                HttpHeaders.AUTHORIZATION,
+                                                authHelper.bearerTokenFor(member))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated());
+                String otherToken = authHelper.bearerTokenFor(otherMember);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings")
+                                        .header(HttpHeaders.AUTHORIZATION, otherToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isCreated());
+                mockMvc.perform(
+                                get("/api/v1/gatherings")
+                                        .header(HttpHeaders.AUTHORIZATION, otherToken))
+                        .andExpect(jsonPath("$.data.length()").value(1));
+            }
+        }
+
+        @Nested
+        @DisplayName("요청 id가 빠진 경우")
+        class WhenClientRequestIdMissing {
+
+            @Test
+            @DisplayName("clientRequestId 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/gatherings")
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("{\"name\":\"금요일 회식\"}"))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.data.violations[0].field").value("clientRequestId"));
+            }
+        }
+
+        @Nested
         @DisplayName("추천 결과에서 고른 페어링과 함께 여는 경우")
         class WhenPairingGiven {
 
@@ -123,7 +219,10 @@ class GatheringControllerTest extends IntegrationTest {
                 String token = authHelper.bearerTokenFor(member);
                 GatheringPairingRequest pairing = seedPairingRequest();
                 OpenGatheringRequest request =
-                        new OpenGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName(), pairing);
+                        new OpenGatheringRequest(
+                                CLIENT_REQUEST_ID,
+                                GatheringFixture.FRIDAY_DINNER.getName(),
+                                pairing);
 
                 // when & then
                 mockMvc.perform(
@@ -150,6 +249,7 @@ class GatheringControllerTest extends IntegrationTest {
                 GatheringPairingFixture pairing = GatheringPairingFixture.FRIEND_CASUAL;
                 OpenGatheringRequest request =
                         new OpenGatheringRequest(
+                                CLIENT_REQUEST_ID,
                                 GatheringFixture.FRIDAY_DINNER.getName(),
                                 new GatheringPairingRequest(
                                         null,
@@ -180,7 +280,8 @@ class GatheringControllerTest extends IntegrationTest {
             void shouldReturnUnauthorized() throws Exception {
                 // given
                 OpenGatheringRequest request =
-                        new OpenGatheringRequest(GatheringFixture.FRIDAY_DINNER.getName(), null);
+                        new OpenGatheringRequest(
+                                CLIENT_REQUEST_ID, GatheringFixture.FRIDAY_DINNER.getName(), null);
 
                 // when & then
                 mockMvc.perform(

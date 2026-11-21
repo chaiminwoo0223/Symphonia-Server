@@ -10,6 +10,7 @@ import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
@@ -72,6 +73,37 @@ public class GatheringRepositoryImpl implements GatheringRepository {
             GatheringPolicy.validateNotJoined(isPhoneNumberViolation(e));
             throw e;
         }
+    }
+
+    // 모임 행은 요청 id 충돌 없이 넣었을 때만 만들어지고, 그때만 데이터 키와 1차를 만든다.
+    @Override
+    public Optional<Gathering> saveIfAbsent(Gathering gathering) {
+        return gatheringJpaRepository
+                .insertIfAbsent(
+                        gathering.getHostMemberId(),
+                        gathering.getName(),
+                        gathering.getOpenedAt(),
+                        gathering.getClientRequestId())
+                .map(
+                        gatheringId -> {
+                            createDataKey(gatheringId);
+                            gathering
+                                    .getRounds()
+                                    .forEach(
+                                            round ->
+                                                    gatheringRoundJpaRepository.insertIfAbsent(
+                                                            gatheringId, round.getNumber()));
+
+                            return findById(gatheringId).orElseThrow();
+                        });
+    }
+
+    @Override
+    public Optional<Gathering> findByHostMemberIdAndClientRequestId(
+            Long hostMemberId, UUID clientRequestId) {
+        return gatheringJpaRepository
+                .findByHostMemberIdAndClientRequestId(hostMemberId, clientRequestId)
+                .map(this::toDomain);
     }
 
     @Override

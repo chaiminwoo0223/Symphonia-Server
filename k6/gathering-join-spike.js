@@ -68,6 +68,14 @@ export const options = {
     },
 };
 
+// 모임 열기 요청에는 클라이언트가 만든 요청 id가 필요하다. 요청 id의 형식만 UUID라 난수로 만든 v4 형식을 쓴다.
+function uuidV4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+        const random = Math.floor(Math.random() * 16);
+        return (char === 'x' ? random : (random & 0x3) | 0x8).toString(16);
+    });
+}
+
 function signAccessToken() {
     const header = encoding.b64encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }), 'rawurl');
     const now = Math.floor(Date.now() / 1000);
@@ -118,7 +126,7 @@ export function setup() {
     const { gatheringId, joinToken } = dataOf(
         http.post(
             `${BASE_URL}/api/v1/gatherings`,
-            JSON.stringify({ name: 'K6 스파이크 모임' }),
+            JSON.stringify({ clientRequestId: uuidV4(), name: 'K6 스파이크 모임' }),
             jsonHeaders({ Authorization: `Bearer ${hostToken}` }),
         ),
         201,

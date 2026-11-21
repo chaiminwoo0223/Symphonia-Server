@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,6 +36,9 @@ public class GatheringJpaEntity extends BaseTimeEntity {
     @Column(nullable = false, updatable = false)
     private String name;
 
+    @Column(updatable = false)
+    private UUID clientRequestId;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime openedAt;
 
@@ -48,6 +52,7 @@ public class GatheringJpaEntity extends BaseTimeEntity {
                 .id(gathering.getId())
                 .hostMemberId(gathering.getHostMemberId())
                 .name(gathering.getName())
+                .clientRequestId(gathering.getClientRequestId())
                 .openedAt(gathering.getOpenedAt())
                 .recordingExtended(gathering.isRecordingExtended())
                 .build();
@@ -59,6 +64,7 @@ public class GatheringJpaEntity extends BaseTimeEntity {
                 .id(id)
                 .hostMemberId(hostMemberId)
                 .name(name)
+                .clientRequestId(clientRequestId)
                 .openedAt(openedAt)
                 .recordingExtended(recordingExtended)
                 .participants(participants)
