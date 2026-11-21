@@ -36,7 +36,7 @@ public class GatheringPairingRepositoryImpl implements GatheringPairingRepositor
     }
 
     @Override
-    public void deleteByGatheringId(Long gatheringId) {
-        gatheringPairingJpaRepository.deleteByGatheringId(gatheringId);
+    public boolean deleteByGatheringId(Long gatheringId) {
+        return gatheringPairingJpaRepository.deleteByGatheringId(gatheringId) > 0;
     }
 }

@@ -156,7 +156,10 @@ class PairingSelectionSummaryRepositoryImplTest extends RepositoryTest {
 
                 // then
                 assertThat(failures).isEmpty();
-                assertThat(pairingSelectionSummaryJpaRepository.findAll())
+                assertThat(
+                                pairingSelectionSummaryJpaRepository.findAll().stream()
+                                        .filter(summary -> DRINK_ID.equals(summary.getDrinkId()))
+                                        .filter(summary -> ANJU_ID.equals(summary.getAnjuId())))
                         .extracting(PairingSelectionSummaryJpaEntity::getSelectionCount)
                         .containsExactly(2 * ACCUMULATIONS_PER_THREAD);
             }

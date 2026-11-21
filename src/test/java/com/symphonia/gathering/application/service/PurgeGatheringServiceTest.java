@@ -399,10 +399,48 @@ class PurgeGatheringServiceTest extends UnitTest {
         class WhenGatheringPairingExists {
 
             @Test
-            @DisplayName("페어링을 지우기 전에 고른 조합을 상황과 함께 선택 신호로 남긴다")
-            void shouldRecordSelectionBeforeDeletingGatheringPairing() {
+            @DisplayName("페어링을 지운 뒤 읽어 둔 조합을 상황과 함께 선택 신호로 남긴다")
+            void shouldRecordSelectionWhenPairingDeleted() {
                 // given
                 givenNow(MAX_DELETES_AT);
+                givenChosenPairing();
+                given(gatheringPairingRepository.deleteByGatheringId(GATHERING_ID))
+                        .willReturn(true);
+
+                // when
+                purgeGatheringService.purge(GATHERING_ID);
+
+                // then
+                InOrder inOrder =
+                        inOrder(gatheringPairingRepository, recordPairingSelectionUseCase);
+                inOrder.verify(gatheringPairingRepository).deleteByGatheringId(GATHERING_ID);
+                inOrder.verify(recordPairingSelectionUseCase)
+                        .record(
+                                RecordPairingSelectionCommand.of(
+                                        DRINK_ID,
+                                        ANJU_ID,
+                                        RelationshipType.LOVER,
+                                        MoodType.ROMANTIC));
+            }
+
+            @Test
+            @DisplayName("다른 파기가 페어링을 먼저 지웠다면 선택 신호를 남기지 않는다")
+            void shouldNotRecordSelectionWhenPairingAlreadyDeletedByOther() {
+                // given
+                givenNow(MAX_DELETES_AT);
+                givenChosenPairing();
+                given(gatheringPairingRepository.deleteByGatheringId(GATHERING_ID))
+                        .willReturn(false);
+
+                // when
+                purgeGatheringService.purge(GATHERING_ID);
+
+                // then
+                then(recordPairingSelectionUseCase).shouldHaveNoInteractions();
+                then(gatheringRepository).should().delete(GATHERING_ID);
+            }
+
+            private void givenChosenPairing() {
                 given(gatheringPairingRepository.findByGatheringId(GATHERING_ID))
                         .willReturn(
                                 Optional.of(
@@ -411,21 +449,6 @@ class PurgeGatheringServiceTest extends UnitTest {
                                                 ANJU_ID,
                                                 RelationshipType.LOVER,
                                                 MoodType.ROMANTIC)));
-
-                // when
-                purgeGatheringService.purge(GATHERING_ID);
-
-                // then
-                InOrder inOrder =
-                        inOrder(recordPairingSelectionUseCase, gatheringPairingRepository);
-                inOrder.verify(recordPairingSelectionUseCase)
-                        .record(
-                                RecordPairingSelectionCommand.of(
-                                        DRINK_ID,
-                                        ANJU_ID,
-                                        RelationshipType.LOVER,
-                                        MoodType.ROMANTIC));
-                inOrder.verify(gatheringPairingRepository).deleteByGatheringId(GATHERING_ID);
             }
         }
 

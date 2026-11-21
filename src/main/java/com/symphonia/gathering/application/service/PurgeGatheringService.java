@@ -48,15 +48,19 @@ public class PurgeGatheringService implements PurgeGatheringUseCase {
     }
 
     // 참조하는 쪽부터 테이블마다 한 번씩 지운다. 참여자 수와 관계없이 쿼리 수가 같다.
-    // 모임 페어링은 지우기 전에 마지막으로 고른 조합 하나를 선택 신호로 남긴다. 같은 트랜잭션이라 파기가 롤백되면 선택 횟수도 롤백된다.
+    // 모임 페어링은 마지막으로 고른 조합 하나를 읽어 두고, 이 호출이 페어링을 지웠을 때만 선택 신호로 남긴다.
+    // 같은 모임의 파기가 겹쳐도 먼저 지운 쪽만 세므로 선택 횟수가 두 번 더해지지 않는다.
+    // 같은 트랜잭션이라 파기가 롤백되면 선택 횟수도 롤백된다.
     @Override
     public void purge(Long gatheringId) {
-        gatheringPairingRepository.findByGatheringId(gatheringId).ifPresent(this::recordSelection);
+        Optional<GatheringPairing> chosen =
+                gatheringPairingRepository.findByGatheringId(gatheringId);
         participantLinkTokenRepository.deleteAllByGatheringId(gatheringId);
         participantPairingFeedbackRepository.deleteAllByGatheringId(gatheringId);
         settlementRepository.deleteAllByGatheringId(gatheringId);
         gatheringJoinTokenRepository.deleteAllByGatheringId(gatheringId);
-        gatheringPairingRepository.deleteByGatheringId(gatheringId);
+        boolean pairingDeleted = gatheringPairingRepository.deleteByGatheringId(gatheringId);
+        chosen.filter(_ -> pairingDeleted).ifPresent(this::recordSelection);
         gatheringRepository.delete(gatheringId);
     }
 

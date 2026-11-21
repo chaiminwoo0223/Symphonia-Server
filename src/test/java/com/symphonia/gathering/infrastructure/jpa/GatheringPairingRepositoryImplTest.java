@@ -194,12 +194,23 @@ class GatheringPairingRepositoryImplTest extends RepositoryTest {
                     otherGatheringId, GatheringPairingFixture.LOVER_ROMANTIC.create());
 
             // when
-            gatheringPairingRepository.deleteByGatheringId(gatheringId);
+            boolean deleted = gatheringPairingRepository.deleteByGatheringId(gatheringId);
 
             // then
+            assertThat(deleted).isTrue();
             assertThat(gatheringPairingRepository.findByParticipantId(participantId)).isEmpty();
             assertThat(gatheringPairingRepository.findByParticipantId(otherParticipantId))
                     .hasValue(GatheringPairingFixture.LOVER_ROMANTIC.create());
+        }
+
+        @Test
+        @DisplayName("지울 페어링이 없으면 false를 반환한다")
+        void shouldReturnFalseWhenNoPairing() {
+            // when
+            boolean deleted = gatheringPairingRepository.deleteByGatheringId(gatheringId);
+
+            // then
+            assertThat(deleted).isFalse();
         }
     }
 
