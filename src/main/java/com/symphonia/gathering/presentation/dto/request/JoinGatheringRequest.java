@@ -9,7 +9,11 @@ public record JoinGatheringRequest(
         @NotBlank @Schema(description = "구글 로그인으로 받은 ID 토큰. 본인 확인에만 쓰고 저장하지 않는다")
                 String googleIdToken,
         @NotBlank @Size(max = 20) @Schema(description = "참여자 이름") String name,
-        @NotBlank @Schema(description = "휴대폰 번호 (하이픈 포함 가능)") String phoneNumber,
+        @NotBlank
+                @Schema(
+                        description =
+                                "휴대폰 번호. 010으로 시작하는 11자리이며 하이픈은 넣어도 됩니다. +82나 공백이 섞인 번호는 클라이언트가 정리해서 보냅니다")
+                String phoneNumber,
         @Schema(description = "개인정보 수집 및 이용 동의 여부") boolean consentAgreed,
         @NotBlank @Schema(description = "참여 화면에서 받은 동의 안내 버전") String consentVersion) {
     public JoinGatheringCommand toCommand(String joinToken) {
