@@ -4,6 +4,7 @@ import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.exception.BusinessException;
 import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
+import com.symphonia.gathering.application.dto.command.DeleteGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.GatheringPairingCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
@@ -15,10 +16,12 @@ import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
+import com.symphonia.gathering.application.usecase.DeleteGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
+import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.application.usecase.RenameGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
@@ -48,7 +51,8 @@ public class GatheringCommandService
                 JoinGatheringAsHostUseCase,
                 ChooseGatheringPairingUseCase,
                 ExtendRecordingUseCase,
-                RenameGatheringUseCase {
+                RenameGatheringUseCase,
+                DeleteGatheringUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
@@ -56,6 +60,7 @@ public class GatheringCommandService
     private final GatheringPairingRepository gatheringPairingRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
     private final VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
+    private final PurgeGatheringUseCase purgeGatheringUseCase;
     private final Clock clock;
 
     @Override
@@ -97,6 +102,17 @@ public class GatheringCommandService
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
 
         gatheringRepository.updateName(gathering.getId(), command.name());
+    }
+
+    // 데이터 키를 지우는 것과 나머지 행을 지우는 것을 한 트랜잭션에 묶는다. 자동 파기와 달리 둘을 따로 커밋하지 않는다.
+    // 중간에 실패하면 모두 되돌아가 모임이 그대로 남고, 모임장이 다시 요청하면 된다.
+    // 따로 커밋하면 2단계가 실패했을 때 파기 스윕이 연 지 9일이 지난 모임만 읽어서 행이 한동안 남는다.
+    @Override
+    public void delete(DeleteGatheringCommand command) {
+        if (purgeGatheringUseCase.discardDataKeyOfHostedGathering(
+                command.memberId(), command.gatheringId())) {
+            purgeGatheringUseCase.purgeWithoutSelectionSignal(command.gatheringId());
+        }
     }
 
     // 연장은 한 번만 할 수 있다. 이미 연장한 모임에 다시 보낸 요청은 응답만 사라졌거나 버튼을 두 번 누른 것이므로, 바꾸지 않고 성공으로 돌려준다.
