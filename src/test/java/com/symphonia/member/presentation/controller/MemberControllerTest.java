@@ -13,12 +13,15 @@ import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.common.exception.error.CommonErrorCode;
+import com.symphonia.gathering.fixture.GatheringFixture;
+import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.member.application.event.MemberDeletedEvent;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.entity.Role;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import com.symphonia.member.presentation.dto.request.UpdateMemberRequest;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +36,7 @@ import org.springframework.test.context.transaction.TestTransaction;
 class MemberControllerTest extends IntegrationTest {
 
     @Autowired private MemberHelper memberHelper;
+    @Autowired private GatheringHelper gatheringHelper;
     @Autowired private AuthHelper authHelper;
     @Autowired private ApplicationEvents applicationEvents;
     @Autowired private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
@@ -191,6 +195,73 @@ class MemberControllerTest extends IntegrationTest {
                                 jsonPath("$.data.code")
                                         .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
                         .andExpect(jsonPath("$.data.violations[0].field").value("nickname"));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/members/me/withdrawal-check는")
+    class CheckWithdrawal {
+
+        @Nested
+        @DisplayName("모임장으로 연 모임이 없는 경우")
+        class WhenNoGatherings {
+
+            @Test
+            @DisplayName("진행 중인 모임 수 0과 파기 예정 시각 없이 200을 반환한다")
+            void shouldReturnZeroOngoingGatherings() throws Exception {
+                // given
+                MemberSession memberSession = authenticateMember();
+
+                // when & then
+                mockMvc.perform(
+                                get("/api/v1/members/me/withdrawal-check")
+                                        .header(HttpHeaders.AUTHORIZATION, memberSession.token()))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.ongoingGatheringCount").value(0))
+                        .andExpect(jsonPath("$.data.lastGatheringDeletesAt").doesNotExist());
+            }
+        }
+
+        @Nested
+        @DisplayName("모임장으로 연 모임이 있는 경우")
+        class WhenHostingGatherings {
+
+            @Test
+            @DisplayName("파기 시각이 지나지 않은 내 모임만 세고 가장 늦은 파기 예정 시각과 함께 200을 반환한다")
+            void shouldCountOnlyOngoingGatheringsOfMember() throws Exception {
+                // given
+                MemberSession memberSession = authenticateMember();
+                Long memberId = memberSession.member().getId();
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, memberId);
+                gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, memberId);
+                gatheringHelper.save(
+                        GatheringFixture.FRIDAY_DINNER,
+                        memberId,
+                        LocalDateTime.now().minusDays(30));
+                gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, otherMember.getId());
+
+                // when & then
+                mockMvc.perform(
+                                get("/api/v1/members/me/withdrawal-check")
+                                        .header(HttpHeaders.AUTHORIZATION, memberSession.token()))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.ongoingGatheringCount").value(2))
+                        .andExpect(jsonPath("$.data.lastGatheringDeletesAt").isNotEmpty());
+            }
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // when & then
+                mockMvc.perform(get("/api/v1/members/me/withdrawal-check"))
+                        .andExpect(status().isUnauthorized());
             }
         }
     }

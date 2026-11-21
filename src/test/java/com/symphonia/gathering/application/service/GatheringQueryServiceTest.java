@@ -9,6 +9,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.query.GetGatheringParticipantsQuery;
 import com.symphonia.gathering.application.dto.result.GatheringParticipantResult;
 import com.symphonia.gathering.application.dto.result.GatheringResult;
+import com.symphonia.gathering.application.dto.result.OngoingGatheringsResult;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
@@ -340,6 +341,62 @@ class GatheringQueryServiceTest extends UnitTest {
                                                             FIRST_PARTICIPANT_ID),
                                                     ParticipantFixture.LEE.createWithId(
                                                             SECOND_PARTICIPANT_ID)))));
+        }
+    }
+
+    @Nested
+    @DisplayName("getOngoing 메서드는")
+    class GetOngoing {
+
+        private static final Long MEMBER_ID = 1L;
+
+        @Nested
+        @DisplayName("모임장으로 연 모임이 없는 경우")
+        class WhenNoGatherings {
+
+            @Test
+            @DisplayName("모임 수 0과 파기 예정 시각 없음을 반환한다")
+            void shouldReturnZeroCountAndNoDeletesAt() {
+                // given
+                given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
+                        .willReturn(List.of());
+
+                // when
+                OngoingGatheringsResult result = gatheringQueryService.getOngoing(MEMBER_ID);
+
+                // then
+                assertThat(result.count()).isZero();
+                assertThat(result.lastDeletesAt()).isNull();
+            }
+        }
+
+        @Nested
+        @DisplayName("파기 시각이 지난 모임이 섞여 있는 경우")
+        class WhenExpiredGatheringsMixed {
+
+            @Test
+            @DisplayName("파기 시각이 지난 모임과 데이터 키를 지운 모임을 빼고 세고 가장 늦은 파기 예정 시각을 반환한다")
+            void shouldCountOnlyOngoingGatherings() {
+                // given
+                given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
+                        .willReturn(
+                                List.of(
+                                        GatheringRetentionFixture.ABOUT_TO_EXPIRE.create(
+                                                GATHERING_ID, NOW),
+                                        GatheringRetentionFixture.RETAINED.create(
+                                                GATHERING_ID + 1, NOW),
+                                        GatheringRetentionFixture.EXPIRED.create(
+                                                GATHERING_ID + 2, NOW),
+                                        GatheringRetentionFixture.DATA_KEY_DISCARDED.create(
+                                                GATHERING_ID + 3, NOW)));
+
+                // when
+                OngoingGatheringsResult result = gatheringQueryService.getOngoing(MEMBER_ID);
+
+                // then
+                assertThat(result.count()).isEqualTo(2);
+                assertThat(result.lastDeletesAt()).isEqualTo(NOW.plusDays(7));
+            }
         }
     }
 

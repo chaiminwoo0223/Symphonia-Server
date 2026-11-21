@@ -48,6 +48,8 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
     // GatheringFixture가 모임을 여는 시각이다.
     private static final LocalDateTime OPENED_AT = LocalDateTime.of(2026, 10, 27, 18, 0);
     private static final LocalDateTime MAX_DELETES_AT = OPENED_AT.plusDays(29);
+    private static final Long OTHER_HOST_MEMBER_ID = 99L;
+    private static final Long NO_GATHERING_MEMBER_ID = 98L;
 
     @Autowired private GatheringRetentionRepository gatheringRetentionRepository;
     @Autowired private GatheringRepository gatheringRepository;
@@ -148,6 +150,55 @@ class GatheringRetentionRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(result.dataKeyDiscarded()).isTrue();
             assertThat(result.isExpired(OPENED_AT)).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("findAllByHostMemberId 메서드는")
+    class FindAllByHostMemberId {
+
+        @Test
+        @DisplayName("회원이 모임장인 모임만 읽고 취소한 정산 건까지 읽어 파기 시각을 계산해 반환한다")
+        void shouldReturnRetentionsOfHostGatheringsOnly() {
+            // given
+            LocalDateTime cancelledAt = OPENED_AT.plusDays(6);
+            Settlement cancelled = recordDinner();
+            cancelled.cancel(cancelledAt);
+            settlementRepository.save(cancelled);
+            Long otherHostGatheringId =
+                    saveInTransaction(
+                                    GatheringFixture.FRIDAY_DINNER
+                                            .createWithHostMemberIdAndOpenedAt(
+                                                    OTHER_HOST_MEMBER_ID, OPENED_AT))
+                            .getId();
+            clearPersistenceContext();
+
+            // when
+            List<GatheringRetention> result =
+                    gatheringRetentionRepository.findAllByHostMemberId(
+                            GatheringFixture.FRIDAY_DINNER.getHostMemberId());
+
+            // then
+            assertThat(result)
+                    .extracting(GatheringRetention::gatheringId)
+                    .contains(gatheringId)
+                    .doesNotContain(otherHostGatheringId);
+            assertThat(result)
+                    .filteredOn(retention -> retention.gatheringId().equals(gatheringId))
+                    .singleElement()
+                    .extracting(GatheringRetention::deletesAt)
+                    .isEqualTo(cancelledAt.plusDays(7));
+        }
+
+        @Test
+        @DisplayName("모임을 연 적 없는 회원이면 빈 목록을 반환한다")
+        void shouldReturnEmptyWhenMemberHostsNoGathering() {
+            // when
+            List<GatheringRetention> result =
+                    gatheringRetentionRepository.findAllByHostMemberId(NO_GATHERING_MEMBER_ID);
+
+            // then
+            assertThat(result).isEmpty();
         }
     }
 

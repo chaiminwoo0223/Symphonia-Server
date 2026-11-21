@@ -3,12 +3,15 @@ package com.symphonia.member.presentation.controller;
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.member.application.dto.command.DeleteMemberCommand;
 import com.symphonia.member.application.dto.result.MemberResult;
+import com.symphonia.member.application.dto.result.WithdrawalCheckResult;
 import com.symphonia.member.application.service.MemberCommandService;
 import com.symphonia.member.application.service.MemberQueryService;
+import com.symphonia.member.application.usecase.CheckWithdrawalUseCase;
 import com.symphonia.member.presentation.api.MemberApi;
 import com.symphonia.member.presentation.dto.request.UpdateMemberRequest;
 import com.symphonia.member.presentation.dto.response.MemberResponse;
 import com.symphonia.member.presentation.dto.response.UpdateMemberResponse;
+import com.symphonia.member.presentation.dto.response.WithdrawalCheckResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MemberController implements MemberApi {
     private final MemberQueryService memberQueryService;
     private final MemberCommandService memberCommandService;
+    private final CheckWithdrawalUseCase checkWithdrawalUseCase;
 
     @Override
     public ResponseEntity<StandardResponse<MemberResponse>> get(String memberId) {
@@ -37,6 +41,16 @@ public class MemberController implements MemberApi {
         MemberResult result =
                 memberCommandService.update(Long.parseLong(memberId), request.toCommand());
         UpdateMemberResponse response = UpdateMemberResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<WithdrawalCheckResponse>> checkWithdrawal(
+            String memberId) {
+        WithdrawalCheckResult result = checkWithdrawalUseCase.check(Long.parseLong(memberId));
+        WithdrawalCheckResponse response = WithdrawalCheckResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));
