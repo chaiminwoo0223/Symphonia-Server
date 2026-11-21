@@ -118,4 +118,4 @@
 
 - 모임을 파기할 때 모임장이 마지막에 고른 조합 하나를 `pairing_selection_summary`에 (관계 유형, 분위기, 음료, 안주)별 횟수로 더한다. 분위기를 고르지 않은 상황도 하나의 상황이다.
 - 개인정보와 모임을 가리키는 값은 담지 않는다. `drink`, `anju`에 FK를 걸지 않는다.
-- `PurgeGatheringService`가 `RecordPairingSelectionUseCase`를 같은 트랜잭션에서 불러, 파기와 함께 커밋되거나 롤백된다.
+- `PurgeGatheringService`가 `RecordPairingSelectionUseCase`를 같은 트랜잭션에서 불러, 파기와 함께 커밋되거나 롤백된다. 모임 페어링을 지운 호출에서만 센다.
