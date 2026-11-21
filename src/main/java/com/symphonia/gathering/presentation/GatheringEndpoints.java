@@ -19,7 +19,7 @@ public final class GatheringEndpoints {
     // 취소는 행을 지우지 않고 규칙이 있는 상태 변경이라서 DELETE 대신 도메인 명령으로 드러낸다.
     public static final String CANCEL_SETTLEMENT = SETTLEMENT + "/cancel";
 
-    // 모임을 연 회원이 참여자 목록을 보고, 참여자를 제거하고, 개인 링크를 재발급한다.
+    // 모임을 연 회원이 직접 참여하고, 참여자 목록을 보고, 참여자를 제거하고, 개인 링크를 재발급한다.
     public static final String PARTICIPANTS = BASE + "/{gatheringId}/participants";
     public static final String PARTICIPANT = PARTICIPANTS + "/{participantId}";
     public static final String REISSUE_LINK_TOKEN = PARTICIPANT + "/link-token";
