@@ -25,6 +25,11 @@ public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity
     Optional<GatheringJpaEntity> findByIdForUpdateSkipLocked(@Param("id") Long id);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            "UPDATE GatheringJpaEntity gathering SET gathering.recordingExtended = true WHERE gathering.id = :id")
+    void markRecordingExtended(@Param("id") Long id);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM GatheringJpaEntity gathering WHERE gathering.id = :id")
     void deleteGathering(@Param("id") Long id);
 }

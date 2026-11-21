@@ -46,6 +46,28 @@ public enum GatheringFixture {
                 id, openedAt, participants, List.of(GatheringRoundFixture.FIRST.create()));
     }
 
+    // 기록 기간을 연장한 모임이다.
+    public Gathering createExtendedWithIdAndOpenedAt(Long id, LocalDateTime openedAt) {
+        return createExtendedWithRounds(
+                id, openedAt, List.of(), List.of(GatheringRoundFixture.FIRST.create()));
+    }
+
+    public Gathering createExtendedWithRounds(
+            Long id,
+            LocalDateTime openedAt,
+            List<Participant> participants,
+            List<GatheringRound> rounds) {
+        return Gathering.builder()
+                .id(id)
+                .hostMemberId(hostMemberId)
+                .name(name)
+                .openedAt(openedAt)
+                .recordingExtended(true)
+                .participants(participants)
+                .rounds(rounds)
+                .build();
+    }
+
     public Gathering createWithRounds(
             Long id,
             LocalDateTime openedAt,

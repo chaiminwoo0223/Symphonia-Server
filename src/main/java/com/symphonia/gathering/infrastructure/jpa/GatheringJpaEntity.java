@@ -36,12 +36,18 @@ public class GatheringJpaEntity extends BaseTimeEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime openedAt;
 
+    // 참여나 차수 추가로 모임을 저장할 때 메모리에 있던 옛 값으로 연장 여부를 되돌리지 않도록 저장으로는 바꾸지 않는다.
+    // 연장은 GatheringJpaRepository.markRecordingExtended로만 바꾼다.
+    @Column(nullable = false, updatable = false)
+    private boolean recordingExtended;
+
     public static GatheringJpaEntity from(Gathering gathering) {
         return GatheringJpaEntity.builder()
                 .id(gathering.getId())
                 .hostMemberId(gathering.getHostMemberId())
                 .name(gathering.getName())
                 .openedAt(gathering.getOpenedAt())
+                .recordingExtended(gathering.isRecordingExtended())
                 .build();
     }
 
@@ -52,6 +58,7 @@ public class GatheringJpaEntity extends BaseTimeEntity {
                 .hostMemberId(hostMemberId)
                 .name(name)
                 .openedAt(openedAt)
+                .recordingExtended(recordingExtended)
                 .participants(participants)
                 .rounds(rounds)
                 .build();

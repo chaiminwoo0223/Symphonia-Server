@@ -13,6 +13,7 @@ import com.symphonia.gathering.presentation.dto.response.GatheringParticipantRes
 import com.symphonia.gathering.presentation.dto.response.GatheringResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringRoundResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
+import com.symphonia.gathering.presentation.dto.response.RecordingExtensionResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementFormResponse;
 import com.symphonia.gathering.presentation.dto.response.SettlementResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,7 +53,8 @@ public interface GatheringApi {
     @PutMapping(GatheringEndpoints.CHOOSE_PAIRING)
     @Operation(
             summary = "모임 페어링 고르기",
-            description = "참여자에게 피드백을 물을 페어링을 고르거나 바꿉니다. 기록 기간(모임을 연 뒤 48시간) 안에만 할 수 있습니다.")
+            description =
+                    "참여자에게 피드백을 물을 페어링을 고르거나 바꿉니다. 기록 기간(모임을 연 뒤 48시간, 연장하면 96시간) 안에만 할 수 있습니다.")
     ResponseEntity<StandardResponse<Void>> choosePairing(
             @AuthenticationPrincipal String memberId,
             @PathVariable Long gatheringId,
@@ -62,11 +64,23 @@ public interface GatheringApi {
     @Operation(
             summary = "차수 추가",
             description =
-                    "모임에 다음 차수를 추가합니다. 모임을 만든 회원만 할 수 있고, 기록 기간(모임을 연 뒤 48시간) 안에만 할 수 있습니다. 요청한 번호의 차수가 이미 있으면 새로 만들지 않고 그 차수를 돌려줍니다. 마지막 차수의 다음 번호까지만 추가할 수 있습니다.")
+                    "모임에 다음 차수를 추가합니다. 모임을 만든 회원만 할 수 있고, 기록 기간(모임을 연 뒤 48시간, 연장하면 96시간) 안에만 할 수 있습니다. 요청한 번호의 차수가 이미 있으면 새로 만들지 않고 그 차수를 돌려줍니다. 마지막 차수의 다음 번호까지만 추가할 수 있습니다.")
     ResponseEntity<StandardResponse<GatheringRoundResponse>> addRound(
             @AuthenticationPrincipal String memberId,
             @PathVariable Long gatheringId,
             @Valid @RequestBody AddRoundRequest request);
+
+    @PutMapping(GatheringEndpoints.EXTEND_RECORDING)
+    @Operation(
+            summary = "기록 기간 연장",
+            description =
+                    """
+                    기록 기간을 48시간 연장합니다. 모임을 만든 회원만 할 수 있고, 모임마다 한 번만 연장할 수 있습니다. 연장하면 정산 건 기록, 차수 추가, 참여, 페어링 변경을 할 수 있는 기간이 함께 늘어납니다. 개인정보 파기 시각은 연장한 기록 기간을 기준으로 다시 계산되며, 모임을 연 뒤 29일을 넘지 않습니다.
+
+                    기록 기간이 끝나기 전에만 연장할 수 있고, 끝난 모임은 400(GATHERING_RECORDING_EXTENSION_CLOSED)을 반환합니다. 이미 연장한 모임에 다시 요청하면 바꾸지 않고 연장한 기간이 끝나는 시각을 돌려줍니다. 기록 화면 조회의 recordingExtended로 연장 버튼을 보일지 정할 수 있습니다.
+                    """)
+    ResponseEntity<StandardResponse<RecordingExtensionResponse>> extendRecording(
+            @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
 
     @GetMapping(GatheringEndpoints.SETTLEMENT_FORM)
     @Operation(

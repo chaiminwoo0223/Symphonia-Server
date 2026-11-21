@@ -179,6 +179,37 @@ class RoundCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("모임을 만든 지 48시간이 지나도 다음 차수를 추가한다")
+            void shouldAddNextRoundAfterOriginalRecordingPeriod() {
+                // given
+                givenExtendedGathering(CLOSED_PERIOD_OPENED_AT, List.of(first()));
+                givenSaveAssignsRoundId();
+
+                // when
+                GatheringRoundResult result = roundCommandService.add(command(HOST_MEMBER_ID, 2));
+
+                // then
+                assertThat(result.number()).isEqualTo(2);
+            }
+
+            @Test
+            @DisplayName("모임을 만든 지 96시간이 되면 예외를 던지고 모임을 저장하지 않는다")
+            void shouldThrowGatheringRoundClosedExceptionAfterExtendedRecordingPeriod() {
+                // given
+                givenExtendedGathering(NOW.minusHours(96), List.of(first()));
+
+                // when & then
+                assertThatThrownBy(() -> roundCommandService.add(command(HOST_MEMBER_ID, 2)))
+                        .isInstanceOf(GatheringRoundClosedException.class);
+                thenGatheringNotSaved();
+            }
+        }
+
+        @Nested
         @DisplayName("기록 기간이 끝나기 1초 전인 경우")
         class WhenRecordingPeriodAboutToClose {
 
@@ -333,6 +364,15 @@ class RoundCommandServiceTest extends UnitTest {
         givenRetention(GatheringRetentionFixture.RETAINED);
         given(gatheringRepository.findById(GATHERING_ID))
                 .willReturn(Optional.of(gathering(openedAt, rounds)));
+    }
+
+    private void givenExtendedGathering(LocalDateTime openedAt, List<GatheringRound> rounds) {
+        givenRetention(GatheringRetentionFixture.RETAINED);
+        given(gatheringRepository.findById(GATHERING_ID))
+                .willReturn(
+                        Optional.of(
+                                GatheringFixture.FRIDAY_DINNER.createExtendedWithRounds(
+                                        GATHERING_ID, openedAt, List.of(), rounds)));
     }
 
     // 저장은 새로 더한 차수에 id를 채워 돌려준다.

@@ -5,6 +5,7 @@ import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
 import com.symphonia.gathering.domain.exception.GatheringPairingConflictException;
 import com.symphonia.gathering.domain.exception.GatheringParticipantCountExceedsLimitException;
+import com.symphonia.gathering.domain.exception.GatheringRecordingExtensionClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundClosedException;
 import com.symphonia.gathering.domain.exception.GatheringRoundCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.InvalidGatheringRoundNumberException;
@@ -29,6 +30,9 @@ public enum GatheringPolicy {
     // 모임 생성 후 정산 건을 기록할 수 있는 기간이다. 이 기간이 지나 참여한 사람은 분담에 들어갈 수 없어 참여도 함께 막는다.
     public static final Duration RECORDING_PERIOD = Duration.ofHours(48);
 
+    // 모임장이 한 번 연장하면 기록 기간이 이만큼 늘어난다. 술자리를 미리 열어 두었다가 도중에 기간이 끝나는 일을 막는다.
+    public static final Duration RECORDING_EXTENSION = Duration.ofHours(48);
+
     // 빈 차수가 무제한 쌓이지 않도록 한 모임의 차수 수를 제한한다.
     public static final int MAX_ROUND_COUNT = 10;
 
@@ -37,8 +41,9 @@ public enum GatheringPolicy {
     // 더치페이 모임이 20명을 넘는 경우는 드물다. 이미 넘은 모임은 줄이지 않고 새 참여만 막는다.
     public static final int MAX_PARTICIPANT_COUNT = 20;
 
-    public static boolean isWithinRecordingPeriod(LocalDateTime openedAt, LocalDateTime now) {
-        return now.isBefore(recordingClosesAt(openedAt));
+    public static boolean isWithinRecordingPeriod(
+            LocalDateTime recordingClosesAt, LocalDateTime now) {
+        return now.isBefore(recordingClosesAt);
     }
 
     public static boolean isParticipantLimitReached(int participantCount) {
@@ -47,8 +52,8 @@ public enum GatheringPolicy {
 
     // 참여할 때 검증하는 순서와 같게 기간을 먼저 보므로, 둘 다 해당하면 기간 만료로 알린다.
     public static Optional<JoinClosedReason> findJoinClosedReason(
-            LocalDateTime openedAt, LocalDateTime now, int participantCount) {
-        if (!isWithinRecordingPeriod(openedAt, now)) {
+            LocalDateTime recordingClosesAt, LocalDateTime now, int participantCount) {
+        if (!isWithinRecordingPeriod(recordingClosesAt, now)) {
             return Optional.of(JoinClosedReason.PERIOD_EXPIRED);
         }
         if (isParticipantLimitReached(participantCount)) {
@@ -58,13 +63,29 @@ public enum GatheringPolicy {
         return Optional.empty();
     }
 
-    public static LocalDateTime recordingClosesAt(LocalDateTime openedAt) {
-        return openedAt.plus(RECORDING_PERIOD);
+    public static LocalDateTime recordingClosesAt(
+            LocalDateTime openedAt, boolean recordingExtended) {
+        LocalDateTime closesAt = openedAt.plus(RECORDING_PERIOD);
+
+        return recordingExtended ? closesAt.plus(RECORDING_EXTENSION) : closesAt;
     }
 
-    public static void validateJoinable(LocalDateTime openedAt, LocalDateTime now) {
-        if (!isWithinRecordingPeriod(openedAt, now)) {
+    // 연장해서 기록 기간이 가장 길어졌을 때의 기간이다. 파기 스윕이 후보 모임을 거를 때 쓴다.
+    public static Duration maxRecordingPeriod() {
+        return RECORDING_PERIOD.plus(RECORDING_EXTENSION);
+    }
+
+    public static void validateJoinable(LocalDateTime recordingClosesAt, LocalDateTime now) {
+        if (!isWithinRecordingPeriod(recordingClosesAt, now)) {
             throw new GatheringJoinClosedException();
+        }
+    }
+
+    // 기록 기간이 끝난 모임은 연장하지 않는다. 연장은 기간이 끝나기 전에 모임장이 미리 하는 일이다.
+    public static void validateRecordingExtendable(
+            LocalDateTime recordingClosesAt, LocalDateTime now) {
+        if (!isWithinRecordingPeriod(recordingClosesAt, now)) {
+            throw new GatheringRecordingExtensionClosedException();
         }
     }
 
@@ -75,8 +96,8 @@ public enum GatheringPolicy {
     }
 
     // 정산 건을 기록할 수 없는 기간에는 차수를 늘릴 이유가 없다.
-    public static void validateRoundAddable(LocalDateTime openedAt, LocalDateTime now) {
-        if (!isWithinRecordingPeriod(openedAt, now)) {
+    public static void validateRoundAddable(LocalDateTime recordingClosesAt, LocalDateTime now) {
+        if (!isWithinRecordingPeriod(recordingClosesAt, now)) {
             throw new GatheringRoundClosedException();
         }
     }
@@ -129,8 +150,9 @@ public enum GatheringPolicy {
 
     // 모임장은 기록 기간 안에만 페어링을 고르거나 바꾼다. 실제로 먹은 조합을 바로잡는 기능이라 술자리가 끝나면 쓸 일이 없다.
     // 또 참여자가 피드백을 내는 동안 묻는 조합이 바뀌는 기간을 줄이기 위해서다.
-    public static void validatePairingChangeable(LocalDateTime openedAt, LocalDateTime now) {
-        if (!isWithinRecordingPeriod(openedAt, now)) {
+    public static void validatePairingChangeable(
+            LocalDateTime recordingClosesAt, LocalDateTime now) {
+        if (!isWithinRecordingPeriod(recordingClosesAt, now)) {
             throw new GatheringPairingClosedException();
         }
     }

@@ -5,11 +5,12 @@ public final class GatheringEndpoints {
 
     private static final String BASE = "/api/v1/gatherings";
 
-    // 인증된 회원이 모임을 열고, 모임을 연 회원이 참여 토큰을 재발급하거나 페어링을 고르거나 차수를 추가한다.
+    // 인증된 회원이 모임을 열고, 모임을 연 회원이 참여 토큰을 재발급하거나 페어링을 고르거나 차수를 추가하거나 기록 기간을 연장한다.
     public static final String OPEN = BASE;
     public static final String REISSUE = BASE + "/{gatheringId}/join-token";
     public static final String CHOOSE_PAIRING = BASE + "/{gatheringId}/pairing";
     public static final String ADD_ROUND = BASE + "/{gatheringId}/rounds";
+    public static final String EXTEND_RECORDING = BASE + "/{gatheringId}/recording-extension";
 
     // 모임을 연 회원이 정산 건을 기록하고, 고치고, 취소한다. 결제자는 기록할 때 지정한다.
     public static final String SETTLEMENTS = BASE + "/{gatheringId}/settlements";

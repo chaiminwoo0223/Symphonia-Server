@@ -15,11 +15,13 @@ import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
+import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
@@ -27,6 +29,7 @@ import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
 import com.symphonia.gathering.domain.exception.GatheringParticipantCountExceedsLimitException;
+import com.symphonia.gathering.domain.exception.GatheringRecordingExtensionClosedException;
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
@@ -342,6 +345,29 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("모임을 만든 지 48시간이 지나도 재발급하고 만료 시각으로 96시간이 되는 시각을 반환한다")
+            void shouldReissueAndReturnExtendedExpiresAt() {
+                // given
+                givenExtendedGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
+                given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
+                ReissueJoinTokenCommand command =
+                        ReissueJoinTokenCommand.of(
+                                GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
+
+                // when
+                GatheringJoinTokenResult result = gatheringCommandService.reissue(command);
+
+                // then
+                then(gatheringJoinTokenRepository).should().save(NEW_JOIN_TOKEN, GATHERING_ID);
+                assertThat(result.expiresAt()).isEqualTo(CLOSED_PERIOD_OPENED_AT.plusHours(96));
+            }
+        }
+
+        @Nested
         @DisplayName("모임을 만든 회원인 경우")
         class WhenMemberIsHost {
 
@@ -380,6 +406,141 @@ class GatheringCommandServiceTest extends UnitTest {
                 // then
                 assertThat(result.expiresAt()).isEqualTo(OPEN_PERIOD_OPENED_AT.plusHours(48));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("extend 메서드는")
+    class Extend {
+
+        @Nested
+        @DisplayName("모임이 존재하지 않는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 연장하지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.extend(hostCommand()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.extend(hostCommand()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 연장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+                ExtendRecordingCommand command =
+                        ExtendRecordingCommand.of(OTHER_MEMBER_ID, GATHERING_ID);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.extend(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(gatheringRepository).should(never()).markRecordingExtended(anyLong());
+            }
+        }
+
+        @Nested
+        @DisplayName("기록 기간이 끝난 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("모임을 만든 지 48시간이 된 모임은 예외를 던지고 연장하지 않는다")
+            void shouldThrowGatheringRecordingExtensionClosedException() {
+                // given
+                givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.extend(hostCommand()))
+                        .isInstanceOf(GatheringRecordingExtensionClosedException.class);
+                then(gatheringRepository).should(never()).markRecordingExtended(anyLong());
+            }
+        }
+
+        @Nested
+        @DisplayName("기록 기간이 끝나기 전에 처음 연장하는 경우")
+        class WhenExtendable {
+
+            @Test
+            @DisplayName("48시간이 되기 1초 전이면 연장했다고 표시하고 48시간 더한 시각을 반환한다")
+            void shouldMarkRecordingExtendedAndReturnExtendedClosesAt() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+
+                // when
+                RecordingExtensionResult result = gatheringCommandService.extend(hostCommand());
+
+                // then
+                then(gatheringRepository).should().markRecordingExtended(GATHERING_ID);
+                assertThat(result.recordingClosesAt())
+                        .isEqualTo(OPEN_PERIOD_OPENED_AT.plusHours(96));
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 연장한 모임인 경우")
+        class WhenAlreadyExtended {
+
+            @Test
+            @DisplayName("다시 연장하지 않고 연장한 기록 기간이 끝나는 시각을 반환한다")
+            void shouldReturnExtendedClosesAtWithoutMarkingAgain() {
+                // given
+                givenExtendedGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
+
+                // when
+                RecordingExtensionResult result = gatheringCommandService.extend(hostCommand());
+
+                // then
+                then(gatheringRepository).should(never()).markRecordingExtended(anyLong());
+                assertThat(result.recordingClosesAt())
+                        .isEqualTo(CLOSED_PERIOD_OPENED_AT.plusHours(96));
+            }
+
+            @Test
+            @DisplayName("연장한 기록 기간도 끝났으면 예외 없이 끝난 시각을 반환한다")
+            void shouldReturnClosedExtendedClosesAtWithoutThrowing() {
+                // given
+                givenExtendedGatheringOpenedAt(NOW.minusHours(96));
+
+                // when
+                RecordingExtensionResult result = gatheringCommandService.extend(hostCommand());
+
+                // then
+                then(gatheringRepository).should(never()).markRecordingExtended(anyLong());
+                assertThat(result.recordingClosesAt()).isEqualTo(NOW);
+            }
+        }
+
+        private ExtendRecordingCommand hostCommand() {
+            return ExtendRecordingCommand.of(
+                    GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID);
         }
     }
 
@@ -622,6 +783,37 @@ class GatheringCommandServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("모임을 만든 지 48시간이 지나도 참여자를 저장한다")
+            void shouldSaveParticipantAfterOriginalRecordingPeriod() {
+                // given
+                givenGathering(
+                        GatheringFixture.FRIDAY_DINNER.createExtendedWithIdAndOpenedAt(
+                                GATHERING_ID, CLOSED_PERIOD_OPENED_AT));
+                given(gatheringRepository.save(any(Gathering.class)))
+                        .willReturn(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID,
+                                        OPEN_PERIOD_OPENED_AT,
+                                        List.of(
+                                                ParticipantFixture.KIM.createWithId(
+                                                        PARTICIPANT_ID))));
+                given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
+
+                // when
+                ParticipantResult result =
+                        gatheringCommandService.join(command(GatheringPolicy.CONSENT_VERSION));
+
+                // then
+                then(gatheringRepository).should().save(any(Gathering.class));
+                assertThat(result.linkToken()).isEqualTo(LINK_TOKEN);
+            }
+        }
+
+        @Nested
         @DisplayName("참여할 수 있는 경우")
         class WhenJoinable {
 
@@ -845,6 +1037,15 @@ class GatheringCommandServiceTest extends UnitTest {
                 .willReturn(
                         Optional.of(
                                 GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID, openedAt)));
+    }
+
+    private void givenExtendedGatheringOpenedAt(LocalDateTime openedAt) {
+        givenRetention(GatheringRetentionFixture.RETAINED);
+        given(gatheringRepository.findById(GATHERING_ID))
+                .willReturn(
+                        Optional.of(
+                                GatheringFixture.FRIDAY_DINNER.createExtendedWithIdAndOpenedAt(
                                         GATHERING_ID, openedAt)));
     }
 

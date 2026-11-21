@@ -31,7 +31,7 @@ public class RoundCommandService implements AddRoundUseCase {
                         .findById(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
-        GatheringPolicy.validateRoundAddable(gathering.getOpenedAt(), now);
+        GatheringPolicy.validateRoundAddable(gathering.getRecordingClosesAt(), now);
 
         return gathering
                 .findRound(command.roundNumber())

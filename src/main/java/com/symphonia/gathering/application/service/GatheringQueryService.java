@@ -47,7 +47,9 @@ public class GatheringQueryService
                         .orElseThrow(GatheringNotFoundException::new);
         JoinClosedReason joinClosedReason =
                 GatheringPolicy.findJoinClosedReason(
-                                gathering.getOpenedAt(), now, gathering.getParticipants().size())
+                                gathering.getRecordingClosesAt(),
+                                now,
+                                gathering.getParticipants().size())
                         .orElse(null);
 
         return GatheringResult.of(
@@ -75,6 +77,7 @@ public class GatheringQueryService
     }
 
     // 가장 빨리 파기되는 모임도 기록 기간이 끝나고 7일 뒤에 파기되므로, 그보다 늦게 연 모임은 읽지 않는다.
+    // 기록 기간을 연장한 모임까지 놓치지 않도록 기준은 가장 긴 기록 기간이다.
     @Override
     public List<Long> getExpiredGatheringIds() {
         LocalDateTime now = LocalDateTime.now(clock);

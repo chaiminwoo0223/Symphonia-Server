@@ -44,6 +44,7 @@ class PurgeGatheringServiceTest extends UnitTest {
     private static final List<Long> PARTICIPANT_IDS = List.of(PAYER_ID, LEE_ID, PARK_ID);
     private static final LocalDateTime OPENED_AT = LocalDateTime.of(2026, 10, 1, 18, 0);
     private static final LocalDateTime RECORDING_CLOSES_AT = OPENED_AT.plusHours(48);
+    private static final LocalDateTime EXTENDED_RECORDING_CLOSES_AT = OPENED_AT.plusHours(96);
     private static final LocalDateTime MAX_DELETES_AT = OPENED_AT.plusDays(29);
 
     // 기록 기간이 끝난 뒤에 마지막으로 바뀐 정산 건의 경계다.
@@ -259,6 +260,53 @@ class PurgeGatheringServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("기록 기간을 연장한 모임인 경우")
+        class WhenRecordingExtended {
+
+            @Test
+            @DisplayName("연장한 기록 기간이 끝나고 7일이 되기 1초 전이면 데이터 키를 지우지 않는다")
+            void shouldKeepDataKeyBeforeRetentionAfterExtendedRecordingPeriod() {
+                // given
+                givenNow(EXTENDED_RECORDING_CLOSES_AT.plusDays(7).minusSeconds(1));
+                givenExtendedRetention();
+
+                // when
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
+
+                // then
+                assertThat(result).isFalse();
+            }
+
+            @Test
+            @DisplayName("연장한 기록 기간이 끝나고 7일이 되는 순간 데이터 키를 지운다")
+            void shouldDiscardDataKeyAtRetentionAfterExtendedRecordingPeriod() {
+                // given
+                givenNow(EXTENDED_RECORDING_CLOSES_AT.plusDays(7));
+                givenExtendedRetention();
+
+                // when
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
+
+                // then
+                assertThat(result).isTrue();
+            }
+
+            @Test
+            @DisplayName("정산이 끝나지 않았어도 모임을 연 지 29일이 되는 순간 데이터 키를 지운다")
+            void shouldDiscardDataKeyAtMaxRetention() {
+                // given
+                givenNow(MAX_DELETES_AT);
+                givenExtendedRetention(unpaidSettlement());
+
+                // when
+                boolean result = purgeGatheringService.discardDataKeyIfExpired(GATHERING_ID);
+
+                // then
+                assertThat(result).isTrue();
+            }
+        }
+
+        @Nested
         @DisplayName("데이터 키를 이미 지운 모임인 경우")
         class WhenDataKeyDiscarded {
 
@@ -273,6 +321,7 @@ class PurgeGatheringServiceTest extends UnitTest {
                                         GatheringRetention.of(
                                                 GATHERING_ID,
                                                 OPENED_AT,
+                                                false,
                                                 List.of(unpaidSettlement()),
                                                 true)));
 
@@ -358,7 +407,23 @@ class PurgeGatheringServiceTest extends UnitTest {
                 .willReturn(
                         Optional.of(
                                 GatheringRetention.of(
-                                        GATHERING_ID, OPENED_AT, List.of(settlements), false)));
+                                        GATHERING_ID,
+                                        OPENED_AT,
+                                        false,
+                                        List.of(settlements),
+                                        false)));
+    }
+
+    private void givenExtendedRetention(Settlement... settlements) {
+        given(gatheringRetentionRepository.findByGatheringIdForUpdate(GATHERING_ID))
+                .willReturn(
+                        Optional.of(
+                                GatheringRetention.of(
+                                        GATHERING_ID,
+                                        OPENED_AT,
+                                        true,
+                                        List.of(settlements),
+                                        false)));
     }
 
     private void givenNow(LocalDateTime now) {

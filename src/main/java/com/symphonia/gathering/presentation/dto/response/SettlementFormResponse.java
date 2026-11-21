@@ -7,6 +7,8 @@ import java.util.List;
 
 public record SettlementFormResponse(
         @Schema(description = "정산 건을 기록할 수 있는지 여부") boolean recordable,
+        @Schema(description = "기록 기간이 끝나는 시각 (연장했으면 연장한 시각)") LocalDateTime recordingClosesAt,
+        @Schema(description = "기록 기간을 이미 연장했는지 여부 (연장은 한 번만 할 수 있음)") boolean recordingExtended,
         @Schema(description = "정산 건이 없는 빈 차수를 포함한 모임의 차수") List<GatheringRoundResponse> rounds,
         @Schema(description = "결제자와 인원을 고를 모임 참여자 (휴대폰은 마스킹)")
                 List<SettlementParticipantResponse> participants,
@@ -19,6 +21,8 @@ public record SettlementFormResponse(
     public static SettlementFormResponse from(SettlementFormResult result) {
         return new SettlementFormResponse(
                 result.recordable(),
+                result.recordingClosesAt(),
+                result.recordingExtended(),
                 result.rounds().stream().map(GatheringRoundResponse::from).toList(),
                 result.participants().stream().map(SettlementParticipantResponse::from).toList(),
                 result.defaultParticipantIds(),

@@ -53,7 +53,7 @@ public class SettlementCommandService
         LocalDateTime now = LocalDateTime.now(clock);
         Gathering gathering = findManagedGathering(command.gatheringId(), command.memberId(), now);
         Settlement settlement = findSettlement(command.settlementId(), gathering.getId());
-        SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
+        SettlementPolicy.validateRecordable(gathering.getRecordingClosesAt(), now);
         SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
@@ -99,7 +99,7 @@ public class SettlementCommandService
 
     private SettlementResult recordNew(
             RecordSettlementCommand command, Gathering gathering, LocalDateTime now) {
-        SettlementPolicy.validateRecordable(gathering.getOpenedAt(), now);
+        SettlementPolicy.validateRecordable(gathering.getRecordingClosesAt(), now);
         SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
         SettlementPolicy.validateGatheringParticipants(
                 gathering.hasParticipants(command.participantIds()));
