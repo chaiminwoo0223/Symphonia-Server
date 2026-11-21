@@ -35,6 +35,14 @@
 - 회원이 같은 조합에 `LIKE`로 다시 내면 피드백이 바뀌어 그 조합은 다시 추천 대상이 된다.
 - 비로그인 요청은 제외 조합을 조회하지 않고 이전과 같은 결과를 낸다. 액세스 토큰이 없거나 만료, 변조된 요청은 401이 아니라 비로그인 요청으로 처리한다. `GET /api/v1/pairings/recommendations`가 `permitAll`이기 때문이다.
 - 익명 피드백은 회원 id가 없어 제외에 쓰이지 않는다.
+- 싫어요는 그 회원의 추천 제외에만 쓰는 개인 취향 신호다. 싫어요 수와 비율은 응답에 담지 않는다. 다른 사람에게는 좋아한 조합에 붙는 `FEEDBACK_LIKED`만 보인다.
+
+## 추천 응답의 안내
+
+- 추천 응답의 `data`는 추천 목록 `pairings`와 안내 목록 `notices`를 담은 객체다. 안내는 코드(`code`)와 문구(`message`)이고, 해당하지 않으면 빈 목록이다.
+- 안내는 `PairingNotice`가 `PairingNoticeContext`로 판정한다. 점수와 추천 이유처럼 도메인이 정한다.
+- 코드는 세 가지다. `NO_DRINK_WITHIN_ABV_LIMIT`은 도수 제한에 맞는 술이 없어 추천이 빈 경우다. `NO_ANJU_WITHOUT_ALLERGEN`은 알레르기를 피한 안주가 없어 추천이 빈 경우다. `NO_NON_ALCOHOLIC_DRINK`은 `DRIVER`, `PREGNANT`, `NON_DRINKER`를 골랐는데 결과에 무알코올 음료가 없는 경우다.
+- 위 사유 없이 비는 경우는 안내를 담지 않는다.
 
 ## 분위기
 
@@ -100,3 +108,14 @@
 - 익명 피드백의 관계 유형과 분위기는 모임 페어링(`gathering_pairing`)에서 오므로 같은 상황별 집계에 더한다.
 - 같은 회원이 같은 조합의 첫 피드백을 동시에 내면 나중 요청을 409로 거절하지 않고 다시 낸 피드백으로 처리한다. `PairingFeedbackRepository.saveIfAbsent`가 `ON CONFLICT DO NOTHING`으로 넣고, Service가 그 뒤에 잠가 읽어 새 피드백과 다시 낸 피드백을 가른다.
 - 클라이언트의 중복 클릭 방지는 보완책으로만 둔다.
+
+## 피드백 출처
+
+- `pairing_feedback.source`는 피드백을 낸 경로이고 `MEMBER` 또는 `PARTICIPANT`다. 회원이 낸 피드백은 `MEMBER`, 모임 참여자의 익명 피드백은 `PARTICIPANT`다.
+- 회원이 탈퇴해 `member_id`가 NULL이 돼도 `source`는 `MEMBER`로 남는다.
+
+## 모임장 선택 신호
+
+- 모임을 파기할 때 모임장이 마지막에 고른 조합 하나를 `pairing_selection_summary`에 (관계 유형, 분위기, 음료, 안주)별 횟수로 더한다. 분위기를 고르지 않은 상황도 하나의 상황이다.
+- 개인정보와 모임을 가리키는 값은 담지 않는다. `drink`, `anju`에 FK를 걸지 않는다.
+- `PurgeGatheringService`가 `RecordPairingSelectionUseCase`를 같은 트랜잭션에서 불러, 파기와 함께 커밋되거나 롤백된다.
