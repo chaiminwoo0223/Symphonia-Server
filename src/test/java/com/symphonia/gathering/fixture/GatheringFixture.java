@@ -5,6 +5,7 @@ import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -33,7 +34,7 @@ public enum GatheringFixture {
     }
 
     public Gathering createWithHostMemberIdAndOpenedAt(Long hostMemberId, LocalDateTime openedAt) {
-        return Gathering.open(hostMemberId, name, openedAt);
+        return Gathering.open(hostMemberId, UUID.randomUUID(), name, openedAt);
     }
 
     public Gathering createWithIdAndOpenedAt(Long id, LocalDateTime openedAt) {

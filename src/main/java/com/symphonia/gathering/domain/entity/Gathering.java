@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
@@ -23,6 +24,8 @@ public class Gathering {
     private Long id;
     private Long hostMemberId;
     private String name;
+    // 모임 열기 요청을 다시 보냈는지 가리는 클라이언트의 요청 id다. 이 값이 생기기 전에 연 모임은 null이다.
+    private UUID clientRequestId;
     // 48시간 기록 기간이 시작되는 시각이다. 감사용 생성 시각과 달리 Clock의 시각으로 정한다.
     private LocalDateTime openedAt;
     // 모임장이 기록 기간을 한 번 연장했는지다. 연장은 한 번만 할 수 있다.
@@ -31,9 +34,11 @@ public class Gathering {
     // 번호 순서로 정렬된 차수다. 모임을 열 때 1차가 생기므로 비어 있지 않다.
     private List<GatheringRound> rounds;
 
-    public static Gathering open(Long hostMemberId, String name, LocalDateTime now) {
+    public static Gathering open(
+            Long hostMemberId, UUID clientRequestId, String name, LocalDateTime now) {
         return Gathering.builder()
                 .hostMemberId(hostMemberId)
+                .clientRequestId(clientRequestId)
                 .name(name)
                 .openedAt(now)
                 .participants(List.of())

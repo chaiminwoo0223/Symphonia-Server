@@ -54,6 +54,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,8 @@ class GatheringCommandServiceTest extends UnitTest {
     private static final Long GATHERING_ID = 10L;
     private static final Long PARTICIPANT_ID = 20L;
     private static final Long OTHER_MEMBER_ID = 99L;
+    private static final UUID CLIENT_REQUEST_ID =
+            UUID.fromString("0b6c1a52-6f4e-4d0a-9d52-7a1f3c1e8b11");
     private static final String JOIN_TOKEN = "join-token";
     private static final String NEW_JOIN_TOKEN = "new-join-token";
     private static final String LINK_TOKEN = "link-token";
@@ -123,14 +126,17 @@ class GatheringCommandServiceTest extends UnitTest {
                 givenSavedGathering(fixture);
                 OpenGatheringCommand command =
                         new OpenGatheringCommand(
-                                fixture.getHostMemberId(), fixture.getName(), null);
+                                fixture.getHostMemberId(),
+                                CLIENT_REQUEST_ID,
+                                fixture.getName(),
+                                null);
 
                 // when
                 GatheringJoinTokenResult result = gatheringCommandService.open(command);
 
                 // then
                 ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
-                then(gatheringRepository).should().save(captor.capture());
+                then(gatheringRepository).should().saveIfAbsent(captor.capture());
                 assertThat(captor.getValue().getHostMemberId())
                         .isEqualTo(fixture.getHostMemberId());
                 assertThat(captor.getValue().getName()).isEqualTo(fixture.getName());
@@ -147,7 +153,10 @@ class GatheringCommandServiceTest extends UnitTest {
                 givenSavedGathering(fixture);
                 OpenGatheringCommand command =
                         new OpenGatheringCommand(
-                                fixture.getHostMemberId(), fixture.getName(), null);
+                                fixture.getHostMemberId(),
+                                CLIENT_REQUEST_ID,
+                                fixture.getName(),
+                                null);
 
                 // when
                 GatheringJoinTokenResult result = gatheringCommandService.open(command);
@@ -164,14 +173,17 @@ class GatheringCommandServiceTest extends UnitTest {
                 givenSavedGathering(fixture);
                 OpenGatheringCommand command =
                         new OpenGatheringCommand(
-                                fixture.getHostMemberId(), fixture.getName(), null);
+                                fixture.getHostMemberId(),
+                                CLIENT_REQUEST_ID,
+                                fixture.getName(),
+                                null);
 
                 // when
                 gatheringCommandService.open(command);
 
                 // then
                 ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
-                then(gatheringRepository).should().save(captor.capture());
+                then(gatheringRepository).should().saveIfAbsent(captor.capture());
                 assertThat(captor.getValue().getOpenedAt()).isEqualTo(NOW);
             }
 
@@ -183,7 +195,10 @@ class GatheringCommandServiceTest extends UnitTest {
                 givenSavedGathering(fixture);
                 OpenGatheringCommand command =
                         new OpenGatheringCommand(
-                                fixture.getHostMemberId(), fixture.getName(), null);
+                                fixture.getHostMemberId(),
+                                CLIENT_REQUEST_ID,
+                                fixture.getName(),
+                                null);
 
                 // when
                 gatheringCommandService.open(command);
@@ -229,10 +244,11 @@ class GatheringCommandServiceTest extends UnitTest {
             void shouldThrowDrinkNotFoundException() {
                 // given
                 GatheringPairingFixture pairing = GatheringPairingFixture.FRIEND_CASUAL;
-                given(gatheringRepository.save(any(Gathering.class)))
+                given(gatheringRepository.saveIfAbsent(any(Gathering.class)))
                         .willReturn(
-                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
-                                        GATHERING_ID, NOW));
+                                Optional.of(
+                                        GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                                GATHERING_ID, NOW)));
                 willThrow(new DrinkNotFoundException())
                         .given(verifyCatalogReferencesUseCase)
                         .verify(any(CatalogReferencesQuery.class));
@@ -246,15 +262,98 @@ class GatheringCommandServiceTest extends UnitTest {
             }
         }
 
+        @Nested
+        @DisplayName("같은 요청 id로 이미 연 모임이 있는 경우")
+        class WhenAlreadyOpened {
+
+            @Test
+            @DisplayName("모임을 새로 저장하지 않고 처음 연 모임에 참여 토큰을 새로 발급해 반환한다")
+            void shouldReissueJoinTokenOfOpenedGathering() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                given(
+                                gatheringRepository.findByHostMemberIdAndClientRequestId(
+                                        fixture.getHostMemberId(), CLIENT_REQUEST_ID))
+                        .willReturn(
+                                Optional.of(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW)));
+                given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
+
+                // when
+                GatheringJoinTokenResult result =
+                        gatheringCommandService.open(
+                                command(GatheringPairingFixture.FRIEND_CASUAL));
+
+                // then
+                then(gatheringRepository).should(never()).saveIfAbsent(any(Gathering.class));
+                then(gatheringJoinTokenRepository).should().save(NEW_JOIN_TOKEN, GATHERING_ID);
+                assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
+                assertThat(result.joinToken()).isEqualTo(NEW_JOIN_TOKEN);
+            }
+
+            @Test
+            @DisplayName("요청한 페어링을 검증하거나 저장하지 않는다")
+            void shouldNotSavePairing() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                given(
+                                gatheringRepository.findByHostMemberIdAndClientRequestId(
+                                        fixture.getHostMemberId(), CLIENT_REQUEST_ID))
+                        .willReturn(
+                                Optional.of(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW)));
+                given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
+
+                // when
+                gatheringCommandService.open(command(GatheringPairingFixture.FRIEND_CASUAL));
+
+                // then
+                then(verifyCatalogReferencesUseCase).shouldHaveNoInteractions();
+                then(gatheringPairingRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 요청 id의 모임을 동시에 넣어 먼저 넣은 요청에 진 경우")
+        class WhenLostRace {
+
+            @Test
+            @DisplayName("먼저 넣은 요청이 커밋한 모임을 읽어 참여 토큰을 발급하고 페어링을 저장하지 않는다")
+            void shouldReadWinnerGatheringAndIssueJoinToken() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                given(gatheringRepository.saveIfAbsent(any(Gathering.class)))
+                        .willReturn(Optional.empty());
+                given(
+                                gatheringRepository.findByHostMemberIdAndClientRequestId(
+                                        fixture.getHostMemberId(), CLIENT_REQUEST_ID))
+                        .willReturn(Optional.empty())
+                        .willReturn(
+                                Optional.of(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW)));
+                given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
+
+                // when
+                GatheringJoinTokenResult result =
+                        gatheringCommandService.open(
+                                command(GatheringPairingFixture.FRIEND_CASUAL));
+
+                // then
+                then(gatheringPairingRepository).shouldHaveNoInteractions();
+                then(gatheringJoinTokenRepository).should().save(JOIN_TOKEN, GATHERING_ID);
+                assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
+            }
+        }
+
         private OpenGatheringCommand command(GatheringPairingFixture pairing) {
             GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
             return new OpenGatheringCommand(
-                    fixture.getHostMemberId(), fixture.getName(), pairing.createCommand());
+                    fixture.getHostMemberId(),
+                    CLIENT_REQUEST_ID,
+                    fixture.getName(),
+                    pairing.createCommand());
         }
 
         private void givenSavedGathering(GatheringFixture fixture) {
-            given(gatheringRepository.save(any(Gathering.class)))
-                    .willReturn(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW));
+            given(gatheringRepository.saveIfAbsent(any(Gathering.class)))
+                    .willReturn(Optional.of(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW)));
             given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
         }
     }
