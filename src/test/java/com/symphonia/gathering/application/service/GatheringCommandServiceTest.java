@@ -29,6 +29,7 @@ import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
+import com.symphonia.gathering.domain.exception.GatheringOpenConflictException;
 import com.symphonia.gathering.domain.exception.GatheringPairingClosedException;
 import com.symphonia.gathering.domain.exception.GatheringParticipantCountExceedsLimitException;
 import com.symphonia.gathering.domain.exception.GatheringRecordingExtensionClosedException;
@@ -316,29 +317,18 @@ class GatheringCommandServiceTest extends UnitTest {
         class WhenLostRace {
 
             @Test
-            @DisplayName("먼저 넣은 요청이 커밋한 모임을 읽어 참여 토큰을 발급하고 페어링을 저장하지 않는다")
-            void shouldReadWinnerGatheringAndIssueJoinToken() {
+            @DisplayName("예외를 던지고 참여 토큰을 발급하거나 페어링을 저장하지 않는다")
+            void shouldThrowGatheringOpenConflictException() {
                 // given
-                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
                 given(gatheringRepository.saveIfAbsent(any(Gathering.class)))
                         .willReturn(Optional.empty());
-                given(
-                                gatheringRepository.findByHostMemberIdAndClientRequestId(
-                                        fixture.getHostMemberId(), CLIENT_REQUEST_ID))
-                        .willReturn(Optional.empty())
-                        .willReturn(
-                                Optional.of(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW)));
-                given(gatheringTokenProvider.generate()).willReturn(JOIN_TOKEN);
+                OpenGatheringCommand command = command(GatheringPairingFixture.FRIEND_CASUAL);
 
-                // when
-                GatheringJoinTokenResult result =
-                        gatheringCommandService.open(
-                                command(GatheringPairingFixture.FRIEND_CASUAL));
-
-                // then
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.open(command))
+                        .isInstanceOf(GatheringOpenConflictException.class);
+                then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
                 then(gatheringPairingRepository).shouldHaveNoInteractions();
-                then(gatheringJoinTokenRepository).should().save(JOIN_TOKEN, GATHERING_ID);
-                assertThat(result.gatheringId()).isEqualTo(GATHERING_ID);
             }
         }
 

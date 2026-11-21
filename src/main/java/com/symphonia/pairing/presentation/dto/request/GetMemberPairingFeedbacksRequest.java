@@ -11,7 +11,7 @@ public record GetMemberPairingFeedbacksRequest(
         @Min(1) @Max(MAX_SIZE) @Schema(description = "한 페이지에 읽을 피드백 수. 보내지 않으면 20입니다.")
                 Integer size) {
     private static final int DEFAULT_SIZE = 20;
-    static final int MAX_SIZE = 50;
+    private static final int MAX_SIZE = 50;
 
     public GetMemberPairingFeedbacksQuery toQuery(String memberId) {
         return GetMemberPairingFeedbacksQuery.of(

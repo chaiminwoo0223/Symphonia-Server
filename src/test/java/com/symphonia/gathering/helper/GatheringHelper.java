@@ -15,6 +15,7 @@ import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,19 @@ public class GatheringHelper {
             GatheringFixture gatheringFixture, Long hostMemberId, LocalDateTime openedAt) {
         return gatheringRepository.save(
                 gatheringFixture.createWithHostMemberIdAndOpenedAt(hostMemberId, openedAt));
+    }
+
+    // 모임 열기 요청으로 이미 만들어 둔 모임을 흉내 낼 때 모임장과 요청 id를 정해 저장한다.
+    public Gathering saveOpenedWithClientRequestId(
+            GatheringFixture gatheringFixture, Long hostMemberId, UUID clientRequestId) {
+        return gatheringRepository
+                .saveIfAbsent(
+                        Gathering.open(
+                                hostMemberId,
+                                clientRequestId,
+                                gatheringFixture.getName(),
+                                LocalDateTime.now()))
+                .orElseThrow();
     }
 
     // 저장소에는 해시만 남으므로, 요청에 쓸 원본 참여 토큰을 돌려준다.

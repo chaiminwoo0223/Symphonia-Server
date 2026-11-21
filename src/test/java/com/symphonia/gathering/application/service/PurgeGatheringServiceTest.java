@@ -478,14 +478,16 @@ class PurgeGatheringServiceTest extends UnitTest {
         @Test
         @DisplayName("모임 페어링이 있어도 선택 신호를 남기지 않고 모임의 행을 지운다")
         void shouldDeleteRowsWithoutRecordingSelection() {
-            // given
+            // given: purge였다면 선택 신호를 남겼을 페어링을 이 호출이 지운다.
             givenNow(MAX_DELETES_AT);
+            given(gatheringPairingRepository.deleteByGatheringId(GATHERING_ID)).willReturn(true);
 
             // when
             purgeGatheringService.purgeWithoutSelectionSignal(GATHERING_ID);
 
             // then
             then(gatheringPairingRepository).should().deleteByGatheringId(GATHERING_ID);
+            then(gatheringPairingRepository).should(never()).findByGatheringId(anyLong());
             then(gatheringRepository).should().delete(GATHERING_ID);
             then(recordPairingSelectionUseCase).shouldHaveNoInteractions();
         }

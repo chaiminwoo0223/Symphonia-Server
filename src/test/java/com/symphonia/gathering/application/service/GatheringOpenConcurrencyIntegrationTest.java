@@ -7,6 +7,7 @@ import com.symphonia.IntegrationTest;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
+import com.symphonia.gathering.domain.exception.GatheringOpenConflictException;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.member.domain.entity.Member;
@@ -57,7 +58,7 @@ class GatheringOpenConcurrencyIntegrationTest extends IntegrationTest {
 
         @Test
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
-        @DisplayName("같은 요청 id로 동시에 열어도 모임을 하나만 만들고 모두 그 모임을 돌려준다")
+        @DisplayName("같은 요청 id로 동시에 열어도 모임을 하나만 만들고 먼저 넣지 못한 요청은 충돌로 거절한다")
         void shouldCreateOneGatheringWhenOpenedConcurrentlyWithSameClientRequestId() {
             // given
             host = memberHelper.save(MemberFixture.KAKAO);
@@ -77,9 +78,13 @@ class GatheringOpenConcurrencyIntegrationTest extends IntegrationTest {
             List<Throwable> failures = runConcurrently(opens);
 
             // then
-            assertThat(failures).isEmpty();
+            assertThat(failures)
+                    .allSatisfy(
+                            failure ->
+                                    assertThat(failure)
+                                            .isInstanceOf(GatheringOpenConflictException.class));
             assertThat(results)
-                    .hasSize(CONCURRENT_OPENS)
+                    .hasSize(CONCURRENT_OPENS - failures.size())
                     .extracting(GatheringJoinTokenResult::gatheringId)
                     .containsOnly(results.getFirst().gatheringId());
             assertThat(countGatherings()).isOne();

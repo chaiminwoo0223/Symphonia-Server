@@ -11,8 +11,7 @@ public interface GatheringRepository {
     Gathering save(Gathering gathering);
 
     // 같은 모임장과 요청 id의 모임이 이미 있으면 새로 저장하지 않고 빈 값을 돌려준다. 모임 열기에만 쓴다.
-    // 동시에 같은 요청이 오면 늦은 요청은 먼저 저장한 요청이 커밋한 뒤 빈 값을 받으므로, 그때 findByHostMemberIdAndClientRequestId로
-    // 읽는다.
+    // 동시에 같은 요청이 오면 늦은 요청은 먼저 저장한 요청이 커밋한 뒤 빈 값을 받는다.
     // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
     Optional<Gathering> saveIfAbsent(Gathering gathering);
 

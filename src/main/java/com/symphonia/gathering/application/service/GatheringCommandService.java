@@ -24,6 +24,7 @@ import com.symphonia.gathering.application.usecase.RenameGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
+import com.symphonia.gathering.domain.exception.GatheringOpenConflictException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
@@ -177,7 +178,9 @@ public class GatheringCommandService
         savePairing(gathering.getId(), command.pairing());
     }
 
-    // 요청 id가 같은 모임을 동시에 넣으면 늦은 요청은 넣지 못하고, 먼저 넣은 요청이 커밋한 모임을 읽는다. 모임 페어링은 새로 연 요청만 저장한다.
+    // 요청 id가 같은 모임을 동시에 넣으면 늦은 요청은 넣지 못하고 409로 거절한다.
+    // 늦은 요청이 참여 토큰을 새로 발급하면 먼저 응답받는 요청의 토큰이 무효가 되기 때문이다. 클라이언트가 다시 보내면 처음 연 모임을 돌려받는다.
+    // 모임 페어링은 새로 연 요청만 저장한다.
     private Gathering openNew(OpenGatheringCommand command) {
         Gathering gathering =
                 Gathering.open(
@@ -185,24 +188,13 @@ public class GatheringCommandService
                         command.clientRequestId(),
                         command.name(),
                         LocalDateTime.now(clock));
+        Gathering savedGathering =
+                gatheringRepository
+                        .saveIfAbsent(gathering)
+                        .orElseThrow(GatheringOpenConflictException::new);
+        command.findPairing().ifPresent(pairing -> savePairing(savedGathering.getId(), pairing));
 
-        return gatheringRepository
-                .saveIfAbsent(gathering)
-                .map(
-                        savedGathering -> {
-                            command.findPairing()
-                                    .ifPresent(
-                                            pairing ->
-                                                    savePairing(savedGathering.getId(), pairing));
-
-                            return savedGathering;
-                        })
-                .orElseGet(
-                        () ->
-                                gatheringRepository
-                                        .findByHostMemberIdAndClientRequestId(
-                                                command.memberId(), command.clientRequestId())
-                                        .orElseThrow());
+        return savedGathering;
     }
 
     // 참여자가 피드백을 낼 때 없는 대상을 가리켜 실패하지 않도록, 고를 때 카탈로그에 있는지 확인한다.

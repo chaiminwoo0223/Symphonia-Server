@@ -122,22 +122,13 @@ class GatheringControllerTest extends IntegrationTest {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 String token = authHelper.bearerTokenFor(member);
+                Gathering opened =
+                        gatheringHelper.saveOpenedWithClientRequestId(
+                                GatheringFixture.FRIDAY_DINNER, member.getId(), CLIENT_REQUEST_ID);
+                String firstJoinToken = gatheringHelper.issueJoinToken(opened);
                 OpenGatheringRequest request =
                         new OpenGatheringRequest(
                                 CLIENT_REQUEST_ID, GatheringFixture.FRIDAY_DINNER.getName(), null);
-                MvcResult first =
-                        mockMvc.perform(
-                                        post("/api/v1/gatherings")
-                                                .header(HttpHeaders.AUTHORIZATION, token)
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isCreated())
-                                .andReturn();
-                Number gatheringId =
-                        JsonPath.read(
-                                first.getResponse().getContentAsString(), "$.data.gatheringId");
-                String firstJoinToken =
-                        JsonPath.read(first.getResponse().getContentAsString(), "$.data.joinToken");
 
                 // when & then
                 mockMvc.perform(
@@ -146,7 +137,7 @@ class GatheringControllerTest extends IntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                         .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.data.gatheringId").value(gatheringId.intValue()))
+                        .andExpect(jsonPath("$.data.gatheringId").value(opened.getId()))
                         .andExpect(jsonPath("$.data.joinToken").value(not(firstJoinToken)));
                 mockMvc.perform(get("/api/v1/gatherings").header(HttpHeaders.AUTHORIZATION, token))
                         .andExpect(jsonPath("$.data.length()").value(1));
@@ -158,18 +149,13 @@ class GatheringControllerTest extends IntegrationTest {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                Gathering opened =
+                        gatheringHelper.saveOpenedWithClientRequestId(
+                                GatheringFixture.FRIDAY_DINNER, member.getId(), CLIENT_REQUEST_ID);
+                String otherToken = authHelper.bearerTokenFor(otherMember);
                 OpenGatheringRequest request =
                         new OpenGatheringRequest(
                                 CLIENT_REQUEST_ID, GatheringFixture.FRIDAY_DINNER.getName(), null);
-                mockMvc.perform(
-                                post("/api/v1/gatherings")
-                                        .header(
-                                                HttpHeaders.AUTHORIZATION,
-                                                authHelper.bearerTokenFor(member))
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isCreated());
-                String otherToken = authHelper.bearerTokenFor(otherMember);
 
                 // when & then
                 mockMvc.perform(
@@ -177,11 +163,8 @@ class GatheringControllerTest extends IntegrationTest {
                                         .header(HttpHeaders.AUTHORIZATION, otherToken)
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
-                        .andExpect(status().isCreated());
-                mockMvc.perform(
-                                get("/api/v1/gatherings")
-                                        .header(HttpHeaders.AUTHORIZATION, otherToken))
-                        .andExpect(jsonPath("$.data.length()").value(1));
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.gatheringId").value(not(opened.getId())));
             }
         }
 
