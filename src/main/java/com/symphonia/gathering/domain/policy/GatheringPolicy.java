@@ -70,11 +70,6 @@ public enum GatheringPolicy {
         return recordingExtended ? closesAt.plus(RECORDING_EXTENSION) : closesAt;
     }
 
-    // 연장해서 기록 기간이 가장 길어졌을 때의 기간이다. 파기 스윕이 후보 모임을 거를 때 쓴다.
-    public static Duration maxRecordingPeriod() {
-        return RECORDING_PERIOD.plus(RECORDING_EXTENSION);
-    }
-
     public static void validateJoinable(LocalDateTime recordingClosesAt, LocalDateTime now) {
         if (!isWithinRecordingPeriod(recordingClosesAt, now)) {
             throw new GatheringJoinClosedException();

@@ -8,5 +8,5 @@
 - 모임을 만든 회원이 JWT로 `PUT /gatherings/{gatheringId}/recording-extension`을 호출해 기록 기간을 한 번 48시간 연장한다. 연장하면 정산 건 기록, 차수 추가, 참여, 참여 토큰 재발급, 페어링 변경이 같은 기간을 따른다.
 - 기록 기간이 끝난 모임은 400(`GATHERING_RECORDING_EXTENSION_CLOSED`)이다. 이미 연장한 모임에 다시 요청하면 바꾸지 않고 200으로 `recordingClosesAt`을 돌려준다.
 - 연장 여부는 `gathering.recording_extended`이고 `GatheringRepository.markRecordingExtended`로만 바꾼다. 모임 저장은 이 컬럼을 바꾸지 않는다.
-- 파기 시각의 완료 하한은 연장한 기록 기간이 끝나는 시각이고 29일 상한은 그대로다. 파기 스윕의 후보 기준은 가장 긴 기록 기간(96시간)이다.
+- 파기 시각의 완료 하한은 연장한 기록 기간이 끝나는 시각이고 29일 상한은 그대로다. 파기 스윕의 후보 기준은 가장 짧은 기록 기간(48시간)이고, 연장한 모임은 파기 시각 판단이 거른다.
 - 기록 화면 응답은 `recordingClosesAt`, `recordingExtended`, 모임장이 직접 참여할 때 보낼 `consentVersion`을 담는다.

@@ -410,8 +410,8 @@ class GatheringQueryServiceTest extends UnitTest {
             // given
             Long retainedGatheringId = GATHERING_ID + 1;
             Long discardedGatheringId = GATHERING_ID + 2;
-            // 기록 기간을 연장한 모임까지 읽도록 가장 긴 기록 기간(96시간)을 기준으로 후보를 읽는다.
-            given(gatheringRetentionRepository.findAllOpenedUntil(NOW.minusDays(7).minusHours(96)))
+            // 연장은 파기를 늦추기만 하므로 연장하지 않은 모임을 놓치지 않게 가장 짧은 기록 기간(48시간)을 기준으로 후보를 읽는다.
+            given(gatheringRetentionRepository.findAllOpenedUntil(NOW.minusDays(7).minusHours(48)))
                     .willReturn(
                             List.of(
                                     GatheringRetentionFixture.EXPIRED.create(GATHERING_ID, NOW),
