@@ -15,3 +15,4 @@
 - 정산 페이지는 `GET /api/v1/participants/pairing`으로 술과 안주의 id와 이름, 제출 여부, 지금 낼 수 있는지(`feedbackSubmittable`)를 받는다. 제출한 참여자는 정산 건을 읽지 않고 낼 수 없다고 알린다. 안주 id는 정산 페이지가 맛집 조회(`place`)에 쓴다. 이름은 읽을 때 catalog의 `GetCatalogReferencesUseCase`로 조회하고, 모임에 복사해 두지 않는다. 고른 페어링이 없거나 카탈로그에서 대상이 사라졌으면 404다.
 - 피드백 제출은 `gathering`의 `*Service`가 pairing의 `SubmitAnonymousPairingFeedbackUseCase`를 직접 의존해 처리한다. 제출 표시와 익명 피드백 저장은 한 트랜잭션에 둔다.
 - `SubmitPairingFeedbackUseCase`, `SubmitAnonymousPairingFeedbackUseCase`가 같은 트랜잭션에서 부르는 `VerifyCatalogReferencesUseCase`의 NotFound 예외는 잡지 않는다. 잡으면 바깥 트랜잭션이 rollback-only라 커밋할 때 `UnexpectedRollbackException`이 난다.
+- 모임을 파기하기 전에 고른 페어링을 pairing의 `RecordPairingSelectionUseCase`로 선택 신호에 남긴다. 규칙은 `pairing.md`의 "모임장 선택 신호"에 있다.
