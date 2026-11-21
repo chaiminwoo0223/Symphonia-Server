@@ -16,6 +16,7 @@ import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -147,7 +148,7 @@ class PairingFeedbackQueryServiceTest extends UnitTest {
                                         feedback.getMoodType()));
                 then(getCatalogReferencesUseCase)
                         .should()
-                        .getReferences(CatalogReferencesQuery.of(3L, 3L));
+                        .getAllReferences(List.of(CatalogReferencesQuery.of(3L, 3L)));
             }
         }
     }
@@ -157,12 +158,19 @@ class PairingFeedbackQueryServiceTest extends UnitTest {
                 id, referenceId, referenceId);
     }
 
+    // 한 페이지의 쌍을 모아 catalog에 한 번에 묻는다.
     private void givenReferencesOf(Long... referenceIds) {
-        for (Long referenceId : referenceIds) {
-            given(
-                            getCatalogReferencesUseCase.getReferences(
-                                    CatalogReferencesQuery.of(referenceId, referenceId)))
-                    .willReturn(new CatalogReferencesResult("술" + referenceId, "안주" + referenceId));
-        }
+        List<CatalogReferencesQuery> queries =
+                Stream.of(referenceIds)
+                        .map(referenceId -> CatalogReferencesQuery.of(referenceId, referenceId))
+                        .toList();
+        given(getCatalogReferencesUseCase.getAllReferences(queries))
+                .willReturn(
+                        Stream.of(referenceIds)
+                                .map(
+                                        referenceId ->
+                                                new CatalogReferencesResult(
+                                                        "술" + referenceId, "안주" + referenceId))
+                                .toList());
     }
 }

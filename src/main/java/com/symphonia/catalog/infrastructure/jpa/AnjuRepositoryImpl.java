@@ -34,6 +34,13 @@ public class AnjuRepositoryImpl implements AnjuRepository {
     }
 
     @Override
+    public List<Anju> findAllByIds(Collection<Long> anjuIds) {
+        return anjuJpaRepository.findAllById(anjuIds).stream()
+                .map(AnjuJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Set<Long> findReferencedIds(Collection<Long> anjuIds) {
         return anjuJpaRepository.findReferencedIds(anjuIds);
     }

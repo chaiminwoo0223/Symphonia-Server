@@ -3,6 +3,7 @@ package com.symphonia.catalog.infrastructure.jpa;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
 import com.symphonia.catalog.domain.vo.DrinkSource;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,13 @@ public class DrinkRepositoryImpl implements DrinkRepository {
     @Override
     public Optional<Drink> findById(Long drinkId) {
         return drinkJpaRepository.findById(drinkId).map(DrinkJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<Drink> findAllByIds(Collection<Long> drinkIds) {
+        return drinkJpaRepository.findAllById(drinkIds).stream()
+                .map(DrinkJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

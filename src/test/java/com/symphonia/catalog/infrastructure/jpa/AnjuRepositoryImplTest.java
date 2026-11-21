@@ -160,6 +160,44 @@ class AnjuRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findAllByIds 메서드는")
+    class FindAllByIds {
+
+        @Test
+        @DisplayName("요청한 id의 Anju만 반환하고 없는 id는 건너뛴다")
+        void shouldReturnOnlyExistingRequestedAnjus() {
+            // given
+            AnjuJpaEntity golbaengi =
+                    anjuJpaRepository.save(
+                            AnjuJpaEntity.from(AnjuFixture.GOLBAENGI_MUCHIM.create()));
+            AnjuJpaEntity chicken =
+                    anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.FRIED_CHICKEN.create()));
+            anjuJpaRepository.save(AnjuJpaEntity.from(AnjuFixture.FRIED_SHRIMP.create()));
+
+            // when
+            List<Anju> result =
+                    anjuRepository.findAllByIds(List.of(golbaengi.getId(), chicken.getId(), -1L));
+
+            // then
+            assertThat(result)
+                    .extracting(Anju::getName)
+                    .containsExactlyInAnyOrder(
+                            AnjuFixture.GOLBAENGI_MUCHIM.getName(),
+                            AnjuFixture.FRIED_CHICKEN.getName());
+        }
+
+        @Test
+        @DisplayName("id가 비어 있으면 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenNoIds() {
+            // when
+            List<Anju> result = anjuRepository.findAllByIds(List.of());
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("findById 메서드는")
     class FindById {
 
