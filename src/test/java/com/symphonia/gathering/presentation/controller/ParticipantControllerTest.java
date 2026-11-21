@@ -1,12 +1,16 @@
 package com.symphonia.gathering.presentation.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.symphonia.IntegrationTest;
+import com.symphonia.auth.domain.client.SocialClient;
+import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
+import com.symphonia.auth.fixture.SocialIdentityFixture;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.fixture.AnjuFixture;
@@ -37,6 +41,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 
 @Sql("/sql/clear-catalog.sql")
@@ -44,12 +49,22 @@ class ParticipantControllerTest extends IntegrationTest {
 
     private static final String HYPHENATED_PHONE_NUMBER = "010-1234-5678";
     private static final String MASKED_PHONE_NUMBER = "010-****-5678";
+    private static final String GOOGLE_ID_TOKEN = "google-id-token";
 
     @Autowired private GatheringHelper gatheringHelper;
     @Autowired private SettlementHelper settlementHelper;
     @Autowired private MemberHelper memberHelper;
     @Autowired private CatalogHelper catalogHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean(name = "google")
+    private SocialClient googleSocialClient;
+
+    @BeforeEach
+    void setUpGoogleAccount() {
+        given(googleSocialClient.authenticate(GOOGLE_ID_TOKEN))
+                .willReturn(SocialIdentityFixture.GOOGLE.create());
+    }
 
     @Nested
     @DisplayName("POST /api/v1/participants는")
@@ -175,6 +190,110 @@ class ParticipantControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("구글 ID 토큰이 공백인 경우")
+        class WhenGoogleIdTokenBlank {
+
+            @Test
+            @DisplayName("googleIdToken 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                JoinGatheringRequest request =
+                        new JoinGatheringRequest(
+                                " ",
+                                ParticipantFixture.KIM.getName(),
+                                HYPHENATED_PHONE_NUMBER,
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("googleIdToken"));
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰이 유효하지 않은 경우")
+        class WhenGoogleIdTokenInvalid {
+
+            @Test
+            @DisplayName("INVALID_SOCIAL_TOKEN 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                given(googleSocialClient.authenticate(GOOGLE_ID_TOKEN))
+                        .willThrow(new InvalidSocialTokenException());
+                JoinGatheringRequest request =
+                        joinRequest(
+                                ParticipantFixture.KIM.getName(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(jsonPath("$.data.code").value("INVALID_SOCIAL_TOKEN"));
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 이미 참여한 경우")
+        class WhenGoogleAccountAlreadyJoined {
+
+            @Test
+            @DisplayName("다른 휴대폰이어도 PARTICIPANT_ALREADY_JOINED 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        joinRequest(
+                                                                ParticipantFixture.KIM.getName(),
+                                                                true,
+                                                                GatheringPolicy.CONSENT_VERSION))))
+                        .andExpect(status().isCreated());
+                JoinGatheringRequest sameAccountRequest =
+                        new JoinGatheringRequest(
+                                GOOGLE_ID_TOKEN,
+                                ParticipantFixture.LEE.getName(),
+                                ParticipantFixture.LEE.getPhoneNumber(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        sameAccountRequest)))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.PARTICIPANT_ALREADY_JOINED
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
         @DisplayName("이름이 공백인 경우")
         class WhenNameBlank {
 
@@ -229,7 +348,7 @@ class ParticipantControllerTest extends IntegrationTest {
         private JoinGatheringRequest joinRequest(
                 String name, boolean consentAgreed, String consentVersion) {
             return new JoinGatheringRequest(
-                    name, HYPHENATED_PHONE_NUMBER, consentAgreed, consentVersion);
+                    GOOGLE_ID_TOKEN, name, HYPHENATED_PHONE_NUMBER, consentAgreed, consentVersion);
         }
     }
 

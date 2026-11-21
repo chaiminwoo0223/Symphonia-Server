@@ -38,6 +38,10 @@ public class ParticipantJpaEntity extends BaseTimeEntity {
     @Column(nullable = false, length = 64)
     private String phoneNumberHmac;
 
+    // 구글 로그인으로 참여한 참여자만 갖는다. 참여자를 저장한 뒤 ParticipantGoogleSubjectRepository가 채운다.
+    @Column(length = 64)
+    private String googleSubHmac;
+
     @Column(nullable = false, length = 20)
     private String consentVersion;
 

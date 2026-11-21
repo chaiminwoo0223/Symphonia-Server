@@ -36,7 +36,7 @@ import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.FixedAmountRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
-import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.JoinGatheringAsHostRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
@@ -860,8 +860,8 @@ class GatheringControllerTest extends IntegrationTest {
             }
         }
 
-        private JoinGatheringRequest hostJoinRequest(boolean consentAgreed) {
-            return new JoinGatheringRequest(
+        private JoinGatheringAsHostRequest hostJoinRequest(boolean consentAgreed) {
+            return new JoinGatheringAsHostRequest(
                     ParticipantFixture.KIM.getName(),
                     ParticipantFixture.KIM.getPhoneNumber(),
                     consentAgreed,
@@ -869,7 +869,8 @@ class GatheringControllerTest extends IntegrationTest {
         }
 
         private ResultActions performJoinAsHost(
-                Long gatheringId, String token, JoinGatheringRequest request) throws Exception {
+                Long gatheringId, String token, JoinGatheringAsHostRequest request)
+                throws Exception {
             return mockMvc.perform(
                     post("/api/v1/gatherings/{gatheringId}/participants", gatheringId)
                             .header(HttpHeaders.AUTHORIZATION, token)

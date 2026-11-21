@@ -10,6 +10,9 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
+import com.symphonia.auth.application.dto.result.OAuthMemberResult;
+import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
+import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
@@ -29,12 +32,14 @@ import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
+import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.fixture.GatheringFixture;
 import com.symphonia.gathering.fixture.GatheringRetentionFixture;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.global.config.TimeConfig;
+import com.symphonia.member.domain.entity.SocialProvider;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,6 +60,8 @@ class JoinGatheringServiceTest extends UnitTest {
     private static final Long PARTICIPANT_ID = 20L;
     private static final Long OTHER_MEMBER_ID = 99L;
     private static final String JOIN_TOKEN = "join-token";
+    private static final String GOOGLE_ID_TOKEN = "google-id-token";
+    private static final String GOOGLE_SUBJECT = "109876543210987654321";
     private static final String LINK_TOKEN = "link-token";
     private static final String HYPHENATED_PHONE_NUMBER = "010-1234-5678";
     private static final String MASKED_PHONE_NUMBER = "010-****-5678";
@@ -70,8 +77,10 @@ class JoinGatheringServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
+    @Mock private ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
+    @Mock private VerifySocialTokenUseCase verifySocialTokenUseCase;
 
     @BeforeEach
     void setUp() {
@@ -80,8 +89,10 @@ class JoinGatheringServiceTest extends UnitTest {
                         gatheringRepository,
                         gatheringJoinTokenRepository,
                         participantLinkTokenRepository,
+                        participantGoogleSubjectRepository,
                         gatheringRetentionRepository,
                         gatheringTokenProvider,
+                        verifySocialTokenUseCase,
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));
@@ -106,6 +117,7 @@ class JoinGatheringServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> joinGatheringService.join(command))
                         .isInstanceOf(JoinTokenNotFoundException.class);
+                then(verifySocialTokenUseCase).shouldHaveNoInteractions();
                 thenNothingSaved();
             }
         }
@@ -126,8 +138,33 @@ class JoinGatheringServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> joinGatheringService.join(command))
                         .isInstanceOf(JoinTokenNotFoundException.class);
+                then(verifySocialTokenUseCase).shouldHaveNoInteractions();
                 then(gatheringRepository).shouldHaveNoInteractions();
                 then(participantLinkTokenRepository).shouldHaveNoInteractions();
+                then(participantGoogleSubjectRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰이 유효하지 않은 경우")
+        class WhenGoogleIdTokenInvalid {
+
+            @Test
+            @DisplayName("예외를 던지고 모임을 잠가 읽거나 참여자를 저장하지 않는다")
+            void shouldThrowInvalidSocialTokenException() {
+                // given
+                given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                        .willReturn(Optional.of(GATHERING_ID));
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(verifySocialTokenUseCase.verify("google", GOOGLE_ID_TOKEN))
+                        .willThrow(new InvalidSocialTokenException());
+                JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringService.join(command))
+                        .isInstanceOf(InvalidSocialTokenException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                thenNothingSaved();
             }
         }
 
@@ -269,6 +306,26 @@ class JoinGatheringServiceTest extends UnitTest {
         }
 
         @Nested
+        @DisplayName("같은 구글 계정으로 이미 참여한 경우")
+        class WhenGoogleAccountAlreadyJoined {
+
+            @Test
+            @DisplayName("다른 휴대폰이어도 중복으로 보고 예외를 던지며 아무것도 저장하지 않는다")
+            void shouldThrowParticipantAlreadyJoinedException() {
+                // given
+                givenJoinableGathering(List.of());
+                given(participantGoogleSubjectRepository.exists(GATHERING_ID, GOOGLE_SUBJECT))
+                        .willReturn(true);
+                JoinGatheringCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringService.join(command))
+                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
         @DisplayName("휴대폰 형식이 틀린 경우")
         class WhenPhoneNumberInvalid {
 
@@ -280,6 +337,7 @@ class JoinGatheringServiceTest extends UnitTest {
                 JoinGatheringCommand command =
                         new JoinGatheringCommand(
                                 JOIN_TOKEN,
+                                GOOGLE_ID_TOKEN,
                                 ParticipantFixture.KIM.getName(),
                                 "02-123-4567",
                                 true,
@@ -387,6 +445,9 @@ class JoinGatheringServiceTest extends UnitTest {
                         .isEqualTo(new PhoneNumber(ParticipantFixture.KIM.getPhoneNumber()));
                 assertThat(joined.getConsentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
                 then(participantLinkTokenRepository).should().save(LINK_TOKEN, PARTICIPANT_ID);
+                then(participantGoogleSubjectRepository)
+                        .should()
+                        .save(GATHERING_ID, PARTICIPANT_ID, GOOGLE_SUBJECT);
                 assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
                 assertThat(result.name()).isEqualTo(ParticipantFixture.KIM.getName());
                 assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
@@ -408,6 +469,7 @@ class JoinGatheringServiceTest extends UnitTest {
         private JoinGatheringCommand command(boolean consentAgreed, String consentVersion) {
             return new JoinGatheringCommand(
                     JOIN_TOKEN,
+                    GOOGLE_ID_TOKEN,
                     ParticipantFixture.KIM.getName(),
                     HYPHENATED_PHONE_NUMBER,
                     consentAgreed,
@@ -424,13 +486,28 @@ class JoinGatheringServiceTest extends UnitTest {
             given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                     .willReturn(Optional.of(GATHERING_ID));
             givenRetention(GatheringRetentionFixture.RETAINED);
+            givenGoogleAccount();
             given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                     .willReturn(Optional.of(gathering));
+        }
+
+        private void givenGoogleAccount() {
+            given(verifySocialTokenUseCase.verify("google", GOOGLE_ID_TOKEN))
+                    .willReturn(
+                            new OAuthMemberResult(
+                                    GOOGLE_SUBJECT,
+                                    "김철수",
+                                    "kim@example.com",
+                                    "https://example.com/kim.png",
+                                    SocialProvider.GOOGLE));
         }
 
         private void thenNothingSaved() {
             then(gatheringRepository).should(never()).save(any(Gathering.class));
             then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
+            then(participantGoogleSubjectRepository)
+                    .should(never())
+                    .save(anyLong(), anyLong(), anyString());
         }
     }
 
@@ -634,6 +711,8 @@ class JoinGatheringServiceTest extends UnitTest {
                         .isEqualTo(new PhoneNumber(ParticipantFixture.KIM.getPhoneNumber()));
                 assertThat(joined.getConsentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
                 then(participantLinkTokenRepository).should().save(LINK_TOKEN, PARTICIPANT_ID);
+                then(verifySocialTokenUseCase).shouldHaveNoInteractions();
+                then(participantGoogleSubjectRepository).shouldHaveNoInteractions();
                 assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
                 assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
                 assertThat(result.linkToken()).isEqualTo(LINK_TOKEN);
@@ -662,6 +741,7 @@ class JoinGatheringServiceTest extends UnitTest {
         private void thenNothingSaved() {
             then(gatheringRepository).should(never()).save(any(Gathering.class));
             then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
+            then(participantGoogleSubjectRepository).shouldHaveNoInteractions();
         }
     }
 

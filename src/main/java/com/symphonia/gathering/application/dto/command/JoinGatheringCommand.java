@@ -2,6 +2,7 @@ package com.symphonia.gathering.application.dto.command;
 
 public record JoinGatheringCommand(
         String joinToken,
+        String googleIdToken,
         String name,
         String phoneNumber,
         boolean consentAgreed,

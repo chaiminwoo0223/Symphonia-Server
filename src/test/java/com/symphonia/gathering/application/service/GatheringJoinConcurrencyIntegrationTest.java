@@ -2,8 +2,12 @@ package com.symphonia.gathering.application.service;
 
 import static com.symphonia.common.helper.ConcurrencyHelper.runConcurrently;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
 
 import com.symphonia.IntegrationTest;
+import com.symphonia.auth.domain.client.SocialClient;
+import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
@@ -22,10 +26,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -46,8 +52,25 @@ class GatheringJoinConcurrencyIntegrationTest extends IntegrationTest {
     @Autowired private MemberRepository memberRepository;
     @Autowired private TransactionTemplate transactionTemplate;
 
+    @MockitoBean(name = "google")
+    private SocialClient googleSocialClient;
+
     private Member host;
     private Long gatheringId;
+
+    // 요청마다 다른 구글 계정으로 본인을 확인한 것으로 스텁한다. 구글 ID 토큰을 sub로 쓴다.
+    @BeforeEach
+    void setUpGoogleAccounts() {
+        given(googleSocialClient.authenticate(anyString()))
+                .willAnswer(
+                        invocation ->
+                                new SocialIdentity(
+                                        invocation.getArgument(0),
+                                        "구글 계정",
+                                        "symphonia@google.com",
+                                        null,
+                                        "GOOGLE"));
+    }
 
     @AfterEach
     void deleteCommittedRows() {
@@ -134,6 +157,7 @@ class GatheringJoinConcurrencyIntegrationTest extends IntegrationTest {
     private JoinGatheringCommand joinCommand(String joinToken, int index) {
         return new JoinGatheringCommand(
                 joinToken,
+                "google-id-token-" + index,
                 "동시참여" + index,
                 concurrentPhoneNumber(index),
                 true,
