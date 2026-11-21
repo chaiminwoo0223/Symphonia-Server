@@ -18,6 +18,11 @@ import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.catalog.domain.repository.AnjuRepository;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
 import com.symphonia.common.annotation.QueryService;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
 @QueryService
@@ -51,6 +56,39 @@ public class CatalogQueryService
     @Override
     public CatalogReferencesResult getReferences(CatalogReferencesQuery query) {
         return CatalogReferencesResult.of(findDrink(query.drinkId()), findAnju(query.anjuId()));
+    }
+
+    // 쌍마다 따로 읽으면 쌍 수만큼 조회하므로, 음료와 안주를 id 모음으로 한 번씩 읽어 쌍에 맞춘다.
+    @Override
+    public List<CatalogReferencesResult> getAllReferences(List<CatalogReferencesQuery> queries) {
+        Map<Long, Drink> drinksById =
+                drinkRepository
+                        .findAllByIds(
+                                queries.stream()
+                                        .map(CatalogReferencesQuery::drinkId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Drink::getId, Function.identity()));
+        Map<Long, Anju> anjusById =
+                anjuRepository
+                        .findAllByIds(
+                                queries.stream()
+                                        .map(CatalogReferencesQuery::anjuId)
+                                        .distinct()
+                                        .toList())
+                        .stream()
+                        .collect(Collectors.toMap(Anju::getId, Function.identity()));
+
+        return queries.stream()
+                .map(
+                        query ->
+                                CatalogReferencesResult.of(
+                                        Optional.ofNullable(drinksById.get(query.drinkId()))
+                                                .orElseThrow(DrinkNotFoundException::new),
+                                        Optional.ofNullable(anjusById.get(query.anjuId()))
+                                                .orElseThrow(AnjuNotFoundException::new)))
+                .toList();
     }
 
     @Override

@@ -254,6 +254,123 @@ class CatalogQueryServiceTest extends UnitTest {
     }
 
     @Nested
+    @DisplayName("getAllReferences 메서드는")
+    class GetAllReferences {
+
+        private static final Long SECOND_DRINK_ID = 3L;
+        private static final Long SECOND_ANJU_ID = 4L;
+
+        @Nested
+        @DisplayName("Drink가 하나라도 존재하지 않는 경우")
+        class WhenDrinkNotFound {
+
+            @Test
+            @DisplayName("DrinkNotFoundException을 던진다")
+            void shouldThrowDrinkNotFoundException() {
+                // given
+                given(drinkRepository.findAllByIds(List.of(DRINK_ID, SECOND_DRINK_ID)))
+                        .willReturn(List.of(DrinkFixture.SOJU.createWithId(DRINK_ID)));
+                given(anjuRepository.findAllByIds(List.of(ANJU_ID, SECOND_ANJU_ID)))
+                        .willReturn(
+                                List.of(
+                                        AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID),
+                                        AnjuFixture.FRIED_CHICKEN.createWithId(SECOND_ANJU_ID)));
+
+                // when & then
+                assertThatThrownBy(() -> catalogQueryService.getAllReferences(queries()))
+                        .isInstanceOf(DrinkNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("Anju가 하나라도 존재하지 않는 경우")
+        class WhenAnjuNotFound {
+
+            @Test
+            @DisplayName("AnjuNotFoundException을 던진다")
+            void shouldThrowAnjuNotFoundException() {
+                // given
+                given(drinkRepository.findAllByIds(List.of(DRINK_ID, SECOND_DRINK_ID)))
+                        .willReturn(
+                                List.of(
+                                        DrinkFixture.SOJU.createWithId(DRINK_ID),
+                                        DrinkFixture.WINE.createWithId(SECOND_DRINK_ID)));
+                given(anjuRepository.findAllByIds(List.of(ANJU_ID, SECOND_ANJU_ID)))
+                        .willReturn(List.of(AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
+
+                // when & then
+                assertThatThrownBy(() -> catalogQueryService.getAllReferences(queries()))
+                        .isInstanceOf(AnjuNotFoundException.class);
+            }
+        }
+
+        @Nested
+        @DisplayName("모든 대상이 존재하는 경우")
+        class WhenReferencesExist {
+
+            @Test
+            @DisplayName("요청한 순서대로 음료와 안주 이름을 반환한다")
+            void shouldReturnCatalogReferencesInRequestedOrder() {
+                // given
+                given(drinkRepository.findAllByIds(List.of(DRINK_ID, SECOND_DRINK_ID)))
+                        .willReturn(
+                                List.of(
+                                        DrinkFixture.WINE.createWithId(SECOND_DRINK_ID),
+                                        DrinkFixture.SOJU.createWithId(DRINK_ID)));
+                given(anjuRepository.findAllByIds(List.of(ANJU_ID, SECOND_ANJU_ID)))
+                        .willReturn(
+                                List.of(
+                                        AnjuFixture.FRIED_CHICKEN.createWithId(SECOND_ANJU_ID),
+                                        AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID)));
+
+                // when
+                List<CatalogReferencesResult> results =
+                        catalogQueryService.getAllReferences(queries());
+
+                // then
+                assertThat(results)
+                        .containsExactly(
+                                new CatalogReferencesResult(
+                                        DrinkFixture.SOJU.getName(),
+                                        AnjuFixture.GOLBAENGI_MUCHIM.getName()),
+                                new CatalogReferencesResult(
+                                        DrinkFixture.WINE.getName(),
+                                        AnjuFixture.FRIED_CHICKEN.getName()));
+            }
+
+            @Test
+            @DisplayName("같은 음료나 안주를 가리키는 쌍이 여럿이어도 id를 중복 없이 한 번씩만 읽는다")
+            void shouldReadEachIdOnce() {
+                // given
+                given(drinkRepository.findAllByIds(List.of(DRINK_ID)))
+                        .willReturn(List.of(DrinkFixture.SOJU.createWithId(DRINK_ID)));
+                given(anjuRepository.findAllByIds(List.of(ANJU_ID, SECOND_ANJU_ID)))
+                        .willReturn(
+                                List.of(
+                                        AnjuFixture.GOLBAENGI_MUCHIM.createWithId(ANJU_ID),
+                                        AnjuFixture.FRIED_CHICKEN.createWithId(SECOND_ANJU_ID)));
+
+                // when
+                List<CatalogReferencesResult> results =
+                        catalogQueryService.getAllReferences(
+                                List.of(
+                                        CatalogReferencesQuery.of(DRINK_ID, ANJU_ID),
+                                        CatalogReferencesQuery.of(DRINK_ID, SECOND_ANJU_ID)));
+
+                // then
+                assertThat(results).hasSize(2);
+                then(drinkRepository).should().findAllByIds(List.of(DRINK_ID));
+            }
+        }
+
+        private List<CatalogReferencesQuery> queries() {
+            return List.of(
+                    CatalogReferencesQuery.of(DRINK_ID, ANJU_ID),
+                    CatalogReferencesQuery.of(SECOND_DRINK_ID, SECOND_ANJU_ID));
+        }
+    }
+
+    @Nested
     @DisplayName("getPlaceKeyword 메서드는")
     class GetPlaceKeyword {
 

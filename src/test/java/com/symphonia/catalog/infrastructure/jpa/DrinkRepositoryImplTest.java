@@ -147,6 +147,42 @@ class DrinkRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findAllByIds 메서드는")
+    class FindAllByIds {
+
+        @Test
+        @DisplayName("요청한 id의 Drink만 반환하고 없는 id는 건너뛴다")
+        void shouldReturnOnlyExistingRequestedDrinks() {
+            // given
+            DrinkJpaEntity soju = saveDrink(DrinkFixture.SOJU);
+            DrinkJpaEntity wine = saveDrink(DrinkFixture.WINE);
+            saveDrink(DrinkFixture.SODA);
+            entityManager.flush();
+            entityManager.clear();
+
+            // when
+            List<Drink> result =
+                    drinkRepository.findAllByIds(List.of(soju.getId(), wine.getId(), -1L));
+
+            // then
+            assertThat(result)
+                    .extracting(Drink::getName)
+                    .containsExactlyInAnyOrder(
+                            DrinkFixture.SOJU.getName(), DrinkFixture.WINE.getName());
+        }
+
+        @Test
+        @DisplayName("id가 비어 있으면 빈 목록을 반환한다")
+        void shouldReturnEmptyListWhenNoIds() {
+            // when
+            List<Drink> result = drinkRepository.findAllByIds(List.of());
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
     @DisplayName("findById 메서드는")
     class FindById {
 

@@ -13,6 +13,9 @@ public interface AnjuRepository {
 
     Optional<Anju> findById(Long anjuId);
 
+    // 주어진 id의 안주를 한 번에 읽는다. 없는 id는 건너뛰고 순서는 정하지 않는다.
+    List<Anju> findAllByIds(Collection<Long> anjuIds);
+
     // 주어진 안주 중 다른 테이블이 FK로 참조해 지울 수 없는 안주의 id를 돌려준다.
     Set<Long> findReferencedIds(Collection<Long> anjuIds);
 

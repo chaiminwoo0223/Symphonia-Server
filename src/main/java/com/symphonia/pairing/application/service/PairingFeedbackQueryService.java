@@ -1,6 +1,7 @@
 package com.symphonia.pairing.application.service;
 
 import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
+import com.symphonia.catalog.application.dto.result.CatalogReferencesResult;
 import com.symphonia.catalog.application.usecase.GetCatalogReferencesUseCase;
 import com.symphonia.common.annotation.QueryService;
 import com.symphonia.pairing.application.dto.query.GetMemberPairingFeedbacksQuery;
@@ -10,6 +11,7 @@ import com.symphonia.pairing.application.usecase.GetMemberPairingFeedbacksUseCas
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import java.util.List;
+import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 
 @QueryService
@@ -28,15 +30,26 @@ public class PairingFeedbackQueryService implements GetMemberPairingFeedbacksUse
         List<PairingFeedback> page = fetched.stream().limit(query.size()).toList();
         Long nextCursor = fetched.size() > query.size() ? page.getLast().getId() : null;
 
-        return MemberPairingFeedbacksResult.of(
-                page.stream().map(this::toResult).toList(), nextCursor);
+        return MemberPairingFeedbacksResult.of(toResults(page), nextCursor);
     }
 
-    private MemberPairingFeedbackResult toResult(PairingFeedback pairingFeedback) {
-        return MemberPairingFeedbackResult.of(
-                pairingFeedback,
-                getCatalogReferencesUseCase.getReferences(
-                        CatalogReferencesQuery.of(
-                                pairingFeedback.getDrinkId(), pairingFeedback.getAnjuId())));
+    // 피드백마다 이름을 따로 읽으면 한 페이지에 최대 size의 두 배만큼 조회하므로, 쌍을 모아 한 번에 읽는다.
+    private List<MemberPairingFeedbackResult> toResults(List<PairingFeedback> page) {
+        List<CatalogReferencesResult> catalogReferences =
+                getCatalogReferencesUseCase.getAllReferences(
+                        page.stream()
+                                .map(
+                                        feedback ->
+                                                CatalogReferencesQuery.of(
+                                                        feedback.getDrinkId(),
+                                                        feedback.getAnjuId()))
+                                .toList());
+
+        return IntStream.range(0, page.size())
+                .mapToObj(
+                        index ->
+                                MemberPairingFeedbackResult.of(
+                                        page.get(index), catalogReferences.get(index)))
+                .toList();
     }
 }
