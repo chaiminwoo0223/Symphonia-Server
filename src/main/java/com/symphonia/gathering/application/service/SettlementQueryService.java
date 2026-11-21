@@ -71,6 +71,7 @@ public class SettlementQueryService
                 recordable,
                 gathering.getRecordingClosesAt(),
                 gathering.isRecordingExtended(),
+                GatheringPolicy.CONSENT_VERSION,
                 gathering.getRounds().stream().map(GatheringRoundResult::from).toList(),
                 gathering.getParticipants().stream()
                         .map(SettlementParticipantResult::from)

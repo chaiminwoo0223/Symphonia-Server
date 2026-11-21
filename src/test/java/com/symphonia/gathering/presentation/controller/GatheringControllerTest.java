@@ -35,6 +35,7 @@ import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.FixedAmountRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
+import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
@@ -355,6 +356,219 @@ class GatheringControllerTest extends IntegrationTest {
                                         gathering.getId()))
                         .andExpect(status().isUnauthorized());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/gatherings/{gatheringId}/participants는")
+    class JoinAsHost {
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 동의하고 요청하는 경우")
+        class WhenMemberIsHost {
+
+            @Test
+            @DisplayName("참여자로 등록하고 마스킹한 휴대폰과 개인 링크 토큰과 함께 201을 반환한다")
+            void shouldJoinAsHost() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                performJoinAsHost(gathering.getId(), token, hostJoinRequest(true))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").isNumber())
+                        .andExpect(jsonPath("$.data.name").value(ParticipantFixture.KIM.getName()))
+                        .andExpect(jsonPath("$.data.maskedPhoneNumber").value("010-****-5678"))
+                        .andExpect(jsonPath("$.data.linkToken").isNotEmpty());
+            }
+
+            @Test
+            @DisplayName("참여한 모임장을 결제자로 지정해 정산 건을 기록할 수 있다")
+            void shouldRecordSettlementWithHostAsPayer() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.LEE);
+                Long leeId = gathering.getParticipants().getFirst().getId();
+                Long roundId = gathering.getRounds().getFirst().getId();
+                Long hostParticipantId =
+                        ((Number)
+                                        JsonPath.read(
+                                                performJoinAsHost(
+                                                                gathering.getId(),
+                                                                token,
+                                                                hostJoinRequest(true))
+                                                        .andReturn()
+                                                        .getResponse()
+                                                        .getContentAsString(),
+                                                "$.data.id"))
+                                .longValue();
+
+                // when & then
+                mockMvc.perform(
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/settlements",
+                                                gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        new RecordSettlementRequest(
+                                                                CLIENT_REQUEST_ID,
+                                                                hostParticipantId,
+                                                                roundId,
+                                                                10_000L,
+                                                                List.of(hostParticipantId, leeId),
+                                                                List.of()))))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.payerParticipantId").value(hostParticipantId));
+            }
+        }
+
+        @Nested
+        @DisplayName("동의하지 않은 경우")
+        class WhenConsentNotAgreed {
+
+            @Test
+            @DisplayName("CONSENT_REQUIRED 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                performJoinAsHost(gathering.getId(), token, hostJoinRequest(false))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.CONSENT_REQUIRED.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 참여한 휴대폰인 경우")
+        class WhenPhoneNumberAlreadyJoined {
+
+            @Test
+            @DisplayName("PARTICIPANT_ALREADY_JOINED 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.KIM);
+
+                // when & then
+                performJoinAsHost(gathering.getId(), token, hostJoinRequest(true))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.PARTICIPANT_ALREADY_JOINED
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 지난 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("GATHERING_JOIN_CLOSED 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.save(
+                                GatheringFixture.FRIDAY_DINNER,
+                                member.getId(),
+                                LocalDateTime.now().minusHours(48));
+
+                // when & then
+                performJoinAsHost(gathering.getId(), token, hostJoinRequest(true))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.GATHERING_JOIN_CLOSED.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청인 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+            void shouldReturnForbidden() throws Exception {
+                // given
+                Member host = memberHelper.save(MemberFixture.KAKAO);
+                Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+                String token = authHelper.bearerTokenFor(otherMember);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId());
+
+                // when & then
+                performJoinAsHost(gathering.getId(), token, hostJoinRequest(true))
+                        .andExpect(status().isForbidden())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("인증 토큰이 없는 경우")
+        class WhenUnauthenticated {
+
+            @Test
+            @DisplayName("401을 반환한다")
+            void shouldReturnUnauthorized() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                Gathering gathering =
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+                // when & then
+                mockMvc.perform(
+                                post(
+                                                "/api/v1/gatherings/{gatheringId}/participants",
+                                                gathering.getId())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        hostJoinRequest(true))))
+                        .andExpect(status().isUnauthorized());
+            }
+        }
+
+        private JoinGatheringRequest hostJoinRequest(boolean consentAgreed) {
+            return new JoinGatheringRequest(
+                    ParticipantFixture.KIM.getName(),
+                    ParticipantFixture.KIM.getPhoneNumber(),
+                    consentAgreed,
+                    GatheringPolicy.CONSENT_VERSION);
+        }
+
+        private ResultActions performJoinAsHost(
+                Long gatheringId, String token, JoinGatheringRequest request) throws Exception {
+            return mockMvc.perform(
+                    post("/api/v1/gatherings/{gatheringId}/participants", gatheringId)
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)));
         }
     }
 
