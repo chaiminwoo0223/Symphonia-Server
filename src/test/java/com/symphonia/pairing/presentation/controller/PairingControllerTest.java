@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.jayway.jsonpath.JsonPath;
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.catalog.domain.entity.Anju;
@@ -37,7 +36,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @Sql("/sql/clear-catalog.sql")
@@ -321,8 +319,8 @@ class PairingControllerTest extends IntegrationTest {
         }
 
         @Test
-        @DisplayName("size보다 피드백이 많으면 nextCursor를 주고 그 값을 cursor로 보내 이어서 읽는다")
-        void shouldPaginateWithCursor() throws Exception {
+        @DisplayName("size보다 피드백이 많으면 마지막으로 읽은 피드백 id를 nextCursor로 반환한다")
+        void shouldReturnNextCursorWhenMoreFeedbacksRemain() throws Exception {
             // given
             Member member = memberHelper.save(MemberFixture.KAKAO);
             String token = authHelper.bearerTokenFor(member);
@@ -331,26 +329,39 @@ class PairingControllerTest extends IntegrationTest {
             Anju second = catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
             Anju third = catalogHelper.saveAnju(AnjuFixture.FRIED_CHICKEN);
             saveFeedback(member.getId(), drink.getId(), first.getId());
-            saveFeedback(member.getId(), drink.getId(), second.getId());
+            Long secondFeedbackId = saveFeedback(member.getId(), drink.getId(), second.getId());
             saveFeedback(member.getId(), drink.getId(), third.getId());
-            MvcResult firstPage =
-                    mockMvc.perform(
-                                    get("/api/v1/pairings/feedback")
-                                            .param("size", "2")
-                                            .header(HttpHeaders.AUTHORIZATION, token))
-                            .andExpect(status().isOk())
-                            .andExpect(jsonPath("$.data.feedbacks.length()").value(2))
-                            .andExpect(jsonPath("$.data.nextCursor").isNumber())
-                            .andReturn();
-            Number nextCursor =
-                    JsonPath.read(
-                            firstPage.getResponse().getContentAsString(), "$.data.nextCursor");
 
             // when & then
             mockMvc.perform(
                             get("/api/v1/pairings/feedback")
                                     .param("size", "2")
-                                    .param("cursor", String.valueOf(nextCursor))
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.feedbacks.length()").value(2))
+                    .andExpect(jsonPath("$.data.feedbacks[1].anjuId").value(second.getId()))
+                    .andExpect(jsonPath("$.data.nextCursor").value(secondFeedbackId));
+        }
+
+        @Test
+        @DisplayName("cursor로 준 id보다 먼저 낸 피드백만 이어서 반환하고 마지막이면 nextCursor를 주지 않는다")
+        void shouldReturnFeedbacksBeforeCursor() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
+            Anju first = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            Anju second = catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+            Anju third = catalogHelper.saveAnju(AnjuFixture.FRIED_CHICKEN);
+            saveFeedback(member.getId(), drink.getId(), first.getId());
+            Long secondFeedbackId = saveFeedback(member.getId(), drink.getId(), second.getId());
+            saveFeedback(member.getId(), drink.getId(), third.getId());
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/feedback")
+                                    .param("size", "2")
+                                    .param("cursor", String.valueOf(secondFeedbackId))
                                     .header(HttpHeaders.AUTHORIZATION, token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.feedbacks.length()").value(1))
@@ -380,10 +391,12 @@ class PairingControllerTest extends IntegrationTest {
             mockMvc.perform(get("/api/v1/pairings/feedback")).andExpect(status().isUnauthorized());
         }
 
-        private void saveFeedback(Long memberId, Long drinkId, Long anjuId) {
-            pairingFeedbackRepository.save(
-                    PairingFeedbackFixture.FRIEND_FORMAL.createWithMemberAndReferences(
-                            memberId, drinkId, anjuId));
+        private Long saveFeedback(Long memberId, Long drinkId, Long anjuId) {
+            return pairingFeedbackRepository
+                    .save(
+                            PairingFeedbackFixture.FRIEND_FORMAL.createWithMemberAndReferences(
+                                    memberId, drinkId, anjuId))
+                    .getId();
         }
     }
 
