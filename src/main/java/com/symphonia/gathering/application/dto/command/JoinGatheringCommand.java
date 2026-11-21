@@ -7,8 +7,8 @@ public record JoinGatheringCommand(
         String phoneNumber,
         boolean consentAgreed,
         String consentVersion) {
-    public JoinWithVerifiedSubjectCommand toVerifiedSubjectCommand(String googleSubject) {
-        return new JoinWithVerifiedSubjectCommand(
+    public AddParticipantCommand toAddParticipantCommand(String googleSubject) {
+        return new AddParticipantCommand(
                 joinToken, googleSubject, name, phoneNumber, consentAgreed, consentVersion);
     }
 }

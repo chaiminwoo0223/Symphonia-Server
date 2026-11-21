@@ -2,11 +2,11 @@ package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.exception.BusinessException;
+import com.symphonia.gathering.application.dto.command.AddParticipantCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
-import com.symphonia.gathering.application.dto.command.JoinWithVerifiedSubjectCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.usecase.AddParticipantUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
-import com.symphonia.gathering.application.usecase.JoinWithVerifiedSubjectUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
@@ -27,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 @CommandService
 @RequiredArgsConstructor
 public class JoinGatheringCommandService
-        implements JoinWithVerifiedSubjectUseCase, JoinGatheringAsHostUseCase {
+        implements AddParticipantUseCase, JoinGatheringAsHostUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantLinkTokenRepository participantLinkTokenRepository;
@@ -37,7 +37,7 @@ public class JoinGatheringCommandService
     private final Clock clock;
 
     @Override
-    public ParticipantResult join(JoinWithVerifiedSubjectCommand command) {
+    public ParticipantResult add(AddParticipantCommand command) {
         LocalDateTime now = LocalDateTime.now(clock);
         Long gatheringId =
                 gatheringJoinTokenRepository

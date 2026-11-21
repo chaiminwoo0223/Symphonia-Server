@@ -1,6 +1,6 @@
 package com.symphonia.gathering.application.dto.command;
 
-public record JoinWithVerifiedSubjectCommand(
+public record AddParticipantCommand(
         String joinToken,
         String googleSubject,
         String name,

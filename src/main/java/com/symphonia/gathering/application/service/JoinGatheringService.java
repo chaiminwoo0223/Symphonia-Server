@@ -3,8 +3,8 @@ package com.symphonia.gathering.application.service;
 import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.usecase.AddParticipantUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
-import com.symphonia.gathering.application.usecase.JoinWithVerifiedSubjectUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +17,7 @@ public class JoinGatheringService implements JoinGatheringUseCase {
     private static final String GOOGLE_PROVIDER = "google";
 
     private final VerifySocialTokenUseCase verifySocialTokenUseCase;
-    private final JoinWithVerifiedSubjectUseCase joinWithVerifiedSubjectUseCase;
+    private final AddParticipantUseCase addParticipantUseCase;
 
     // 구글 ID 토큰은 본인 확인에만 쓰고 sub 외의 값은 읽지 않는다.
     @Override
@@ -27,6 +27,6 @@ public class JoinGatheringService implements JoinGatheringUseCase {
                         .verify(GOOGLE_PROVIDER, command.googleIdToken())
                         .socialId();
 
-        return joinWithVerifiedSubjectUseCase.join(command.toVerifiedSubjectCommand(googleSubject));
+        return addParticipantUseCase.add(command.toAddParticipantCommand(googleSubject));
     }
 }

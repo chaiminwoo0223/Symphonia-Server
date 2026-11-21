@@ -11,8 +11,8 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.dto.command.AddParticipantCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
-import com.symphonia.gathering.application.dto.command.JoinWithVerifiedSubjectCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
@@ -93,8 +93,8 @@ class JoinGatheringCommandServiceTest extends UnitTest {
     }
 
     @Nested
-    @DisplayName("join 메서드는")
-    class Join {
+    @DisplayName("add 메서드는")
+    class Add {
 
         @Nested
         @DisplayName("참여 토큰에 해당하는 모임이 없는 경우")
@@ -106,10 +106,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 // given
                 given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                         .willReturn(Optional.empty());
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(JoinTokenNotFoundException.class);
                 thenNothingSaved();
             }
@@ -126,10 +126,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                         .willReturn(Optional.of(GATHERING_ID));
                 givenRetention(GatheringRetentionFixture.EXPIRED);
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(JoinTokenNotFoundException.class);
                 then(gatheringRepository).shouldHaveNoInteractions();
                 then(participantLinkTokenRepository).shouldHaveNoInteractions();
@@ -148,10 +148,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 givenGathering(
                         GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
                                 GATHERING_ID, CLOSED_PERIOD_OPENED_AT));
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(GatheringJoinClosedException.class);
                 thenNothingSaved();
             }
@@ -166,11 +166,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowConsentRequiredException() {
                 // given
                 givenJoinableGathering(List.of());
-                JoinWithVerifiedSubjectCommand command =
-                        command(false, GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(false, GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(ConsentRequiredException.class);
                 thenNothingSaved();
             }
@@ -185,10 +184,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowOutdatedConsentVersionException() {
                 // given
                 givenJoinableGathering(List.of());
-                JoinWithVerifiedSubjectCommand command = command("2000-01-01");
+                AddParticipantCommand command = command("2000-01-01");
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(OutdatedConsentVersionException.class);
                 thenNothingSaved();
             }
@@ -204,10 +203,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 // given
                 givenJoinableGathering(
                         List.of(ParticipantFixture.KIM.createWithId(PARTICIPANT_ID)));
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
                 thenNothingSaved();
             }
@@ -222,10 +221,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowGatheringParticipantCountExceedsLimitException() {
                 // given
                 givenJoinableGathering(participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT));
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(GatheringParticipantCountExceedsLimitException.class);
                 thenNothingSaved();
             }
@@ -240,10 +239,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowGatheringParticipantCountExceedsLimitException() {
                 // given
                 givenJoinableGathering(participantsOf(GatheringPolicy.MAX_PARTICIPANT_COUNT + 5));
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(GatheringParticipantCountExceedsLimitException.class);
                 thenNothingSaved();
             }
@@ -266,10 +265,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                                 .stream())
                                 .toList();
                 givenJoinableGathering(participants);
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
                 thenNothingSaved();
             }
@@ -286,10 +285,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 givenJoinableGathering(List.of());
                 given(participantGoogleSubjectRepository.exists(GATHERING_ID, GOOGLE_SUBJECT))
                         .willReturn(true);
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
                 thenNothingSaved();
             }
@@ -315,10 +314,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 willThrow(new ParticipantAlreadyJoinedException())
                         .given(participantGoogleSubjectRepository)
                         .save(GATHERING_ID, PARTICIPANT_ID, GOOGLE_SUBJECT);
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
                 then(gatheringTokenProvider).shouldHaveNoInteractions();
                 then(participantLinkTokenRepository).shouldHaveNoInteractions();
@@ -334,8 +333,8 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowInvalidPhoneNumberException() {
                 // given
                 givenJoinableGathering(List.of());
-                JoinWithVerifiedSubjectCommand command =
-                        new JoinWithVerifiedSubjectCommand(
+                AddParticipantCommand command =
+                        new AddParticipantCommand(
                                 JOIN_TOKEN,
                                 GOOGLE_SUBJECT,
                                 ParticipantFixture.KIM.getName(),
@@ -344,7 +343,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                 GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(InvalidPhoneNumberException.class);
                 thenNothingSaved();
             }
@@ -359,8 +358,8 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowInvalidPhoneNumberException() {
                 // given
                 givenJoinableGathering(List.of());
-                JoinWithVerifiedSubjectCommand command =
-                        new JoinWithVerifiedSubjectCommand(
+                AddParticipantCommand command =
+                        new AddParticipantCommand(
                                 JOIN_TOKEN,
                                 GOOGLE_SUBJECT,
                                 ParticipantFixture.KIM.getName(),
@@ -369,7 +368,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                 GatheringPolicy.CONSENT_VERSION);
 
                 // when & then
-                assertThatThrownBy(() -> joinGatheringCommandService.join(command))
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
                         .isInstanceOf(InvalidPhoneNumberException.class);
                 thenNothingSaved();
             }
@@ -393,8 +392,8 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                                 ParticipantFixture.KIM.createWithId(
                                                         PARTICIPANT_ID))));
                 given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
-                JoinWithVerifiedSubjectCommand command =
-                        new JoinWithVerifiedSubjectCommand(
+                AddParticipantCommand command =
+                        new AddParticipantCommand(
                                 JOIN_TOKEN,
                                 GOOGLE_SUBJECT,
                                 "  " + ParticipantFixture.KIM.getName() + "\t ",
@@ -403,7 +402,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                 GatheringPolicy.CONSENT_VERSION);
 
                 // when
-                joinGatheringCommandService.join(command);
+                joinGatheringCommandService.add(command);
 
                 // then
                 ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
@@ -431,10 +430,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                                 ParticipantFixture.KIM.createWithId(
                                                         PARTICIPANT_ID))));
                 given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when
-                joinGatheringCommandService.join(command);
+                joinGatheringCommandService.add(command);
 
                 // then
                 ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
@@ -469,7 +468,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
 
                 // when
                 ParticipantResult result =
-                        joinGatheringCommandService.join(command(GatheringPolicy.CONSENT_VERSION));
+                        joinGatheringCommandService.add(command(GatheringPolicy.CONSENT_VERSION));
 
                 // then
                 then(gatheringRepository).should().save(any(Gathering.class));
@@ -495,10 +494,10 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                                                 ParticipantFixture.KIM.createWithId(
                                                         PARTICIPANT_ID))));
                 given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
-                JoinWithVerifiedSubjectCommand command = command(GatheringPolicy.CONSENT_VERSION);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
 
                 // when
-                ParticipantResult result = joinGatheringCommandService.join(command);
+                ParticipantResult result = joinGatheringCommandService.add(command);
 
                 // then
                 ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
@@ -525,13 +524,12 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                     .toList();
         }
 
-        private JoinWithVerifiedSubjectCommand command(String consentVersion) {
+        private AddParticipantCommand command(String consentVersion) {
             return command(true, consentVersion);
         }
 
-        private JoinWithVerifiedSubjectCommand command(
-                boolean consentAgreed, String consentVersion) {
-            return new JoinWithVerifiedSubjectCommand(
+        private AddParticipantCommand command(boolean consentAgreed, String consentVersion) {
+            return new AddParticipantCommand(
                     JOIN_TOKEN,
                     GOOGLE_SUBJECT,
                     ParticipantFixture.KIM.getName(),

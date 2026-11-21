@@ -9,10 +9,10 @@ import com.symphonia.UnitTest;
 import com.symphonia.auth.application.dto.result.OAuthMemberResult;
 import com.symphonia.auth.application.usecase.VerifySocialTokenUseCase;
 import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
+import com.symphonia.gathering.application.dto.command.AddParticipantCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
-import com.symphonia.gathering.application.dto.command.JoinWithVerifiedSubjectCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
-import com.symphonia.gathering.application.usecase.JoinWithVerifiedSubjectUseCase;
+import com.symphonia.gathering.application.usecase.AddParticipantUseCase;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.fixture.ParticipantFixture;
 import com.symphonia.member.domain.entity.SocialProvider;
@@ -35,7 +35,7 @@ class JoinGatheringServiceTest extends UnitTest {
     @InjectMocks private JoinGatheringService joinGatheringService;
 
     @Mock private VerifySocialTokenUseCase verifySocialTokenUseCase;
-    @Mock private JoinWithVerifiedSubjectUseCase joinWithVerifiedSubjectUseCase;
+    @Mock private AddParticipantUseCase addParticipantUseCase;
 
     @Nested
     @DisplayName("join 메서드는")
@@ -60,7 +60,7 @@ class JoinGatheringServiceTest extends UnitTest {
                 ParticipantResult expected =
                         ParticipantResult.of(
                                 ParticipantFixture.KIM.createWithId(PARTICIPANT_ID), LINK_TOKEN);
-                given(joinWithVerifiedSubjectUseCase.join(verifiedCommand())).willReturn(expected);
+                given(addParticipantUseCase.add(addParticipantCommand())).willReturn(expected);
 
                 // when
                 ParticipantResult result = joinGatheringService.join(command());
@@ -84,7 +84,7 @@ class JoinGatheringServiceTest extends UnitTest {
                 // when & then
                 assertThatThrownBy(() -> joinGatheringService.join(command()))
                         .isInstanceOf(InvalidSocialTokenException.class);
-                then(joinWithVerifiedSubjectUseCase).shouldHaveNoInteractions();
+                then(addParticipantUseCase).shouldHaveNoInteractions();
             }
         }
 
@@ -98,8 +98,8 @@ class JoinGatheringServiceTest extends UnitTest {
                     GatheringPolicy.CONSENT_VERSION);
         }
 
-        private JoinWithVerifiedSubjectCommand verifiedCommand() {
-            return new JoinWithVerifiedSubjectCommand(
+        private AddParticipantCommand addParticipantCommand() {
+            return new AddParticipantCommand(
                     JOIN_TOKEN,
                     GOOGLE_SUBJECT,
                     ParticipantFixture.KIM.getName(),
