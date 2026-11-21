@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
@@ -15,6 +16,7 @@ import com.symphonia.catalog.application.dto.query.CatalogReferencesQuery;
 import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
+import com.symphonia.gathering.application.dto.command.DeleteGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
@@ -24,6 +26,7 @@ import com.symphonia.gathering.application.dto.command.RenameGatheringCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
+import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
@@ -63,6 +66,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 
 @DisplayName("GatheringCommandService 단위 테스트")
@@ -94,6 +98,7 @@ class GatheringCommandServiceTest extends UnitTest {
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
+    @Mock private PurgeGatheringUseCase purgeGatheringUseCase;
 
     @BeforeEach
     void setUp() {
@@ -106,6 +111,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         gatheringPairingRepository,
                         gatheringTokenProvider,
                         verifyCatalogReferencesUseCase,
+                        purgeGatheringUseCase,
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));
@@ -599,6 +605,60 @@ class GatheringCommandServiceTest extends UnitTest {
         private RenameGatheringCommand hostCommand() {
             return RenameGatheringCommand.of(
                     GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID, NEW_NAME);
+        }
+    }
+
+    @Nested
+    @DisplayName("delete 메서드는")
+    class Delete {
+
+        private static final Long HOST_MEMBER_ID = 1L;
+
+        @Nested
+        @DisplayName("데이터 키를 지운 경우")
+        class WhenDataKeyDiscarded {
+
+            @Test
+            @DisplayName("데이터 키를 지운 뒤에 모임의 나머지 행을 선택 신호 없이 지운다")
+            void shouldPurgeAfterDiscardingDataKey() {
+                // given
+                given(
+                                purgeGatheringUseCase.discardDataKeyOfHostedGathering(
+                                        HOST_MEMBER_ID, GATHERING_ID))
+                        .willReturn(true);
+
+                // when
+                gatheringCommandService.delete(
+                        DeleteGatheringCommand.of(HOST_MEMBER_ID, GATHERING_ID));
+
+                // then
+                InOrder inOrder = inOrder(purgeGatheringUseCase);
+                inOrder.verify(purgeGatheringUseCase)
+                        .discardDataKeyOfHostedGathering(HOST_MEMBER_ID, GATHERING_ID);
+                inOrder.verify(purgeGatheringUseCase).purgeWithoutSelectionSignal(GATHERING_ID);
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 지운 모임인 경우")
+        class WhenGatheringAlreadyDeleted {
+
+            @Test
+            @DisplayName("행을 지우지 않고 성공으로 끝낸다")
+            void shouldNotPurge() {
+                // given
+                given(
+                                purgeGatheringUseCase.discardDataKeyOfHostedGathering(
+                                        HOST_MEMBER_ID, GATHERING_ID))
+                        .willReturn(false);
+
+                // when
+                gatheringCommandService.delete(
+                        DeleteGatheringCommand.of(HOST_MEMBER_ID, GATHERING_ID));
+
+                // then
+                then(purgeGatheringUseCase).should(never()).purgeWithoutSelectionSignal(anyLong());
+            }
         }
     }
 
