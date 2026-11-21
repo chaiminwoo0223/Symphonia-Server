@@ -2,8 +2,8 @@ package com.symphonia.auth.infrastructure.oauth.client;
 
 import com.symphonia.auth.domain.client.SocialClient;
 import com.symphonia.auth.domain.exception.InvalidSocialTokenException;
-import com.symphonia.auth.domain.exception.SocialMemberInfoFetchFailedException;
-import com.symphonia.auth.domain.exception.SocialTokenVerificationFailedException;
+import com.symphonia.auth.domain.exception.SocialMemberInfoUnavailableException;
+import com.symphonia.auth.domain.exception.SocialTokenVerificationUnavailableException;
 import com.symphonia.auth.domain.identity.SocialIdentity;
 import com.symphonia.auth.infrastructure.oauth.client.response.KakaoAccessTokenInfoResponse;
 import com.symphonia.auth.infrastructure.oauth.client.response.KakaoUserInfoResponse;
@@ -50,7 +50,7 @@ public class KakaoSocialClient implements SocialClient {
                             })
                     .requiredBody(KakaoAccessTokenInfoResponse.class);
         } catch (RestClientException e) {
-            throw new SocialTokenVerificationFailedException();
+            throw new SocialTokenVerificationUnavailableException();
         }
     }
 
@@ -68,7 +68,7 @@ public class KakaoSocialClient implements SocialClient {
                     .retrieve()
                     .requiredBody(KakaoUserInfoResponse.class);
         } catch (RestClientException e) {
-            throw new SocialMemberInfoFetchFailedException();
+            throw new SocialMemberInfoUnavailableException();
         }
     }
 }
