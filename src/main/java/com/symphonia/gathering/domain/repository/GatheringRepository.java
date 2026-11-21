@@ -20,6 +20,10 @@ public interface GatheringRepository {
     // 참여자를 복호화하지 않고 모임장이 목록에서 보는 값만 읽는다. 모임 id가 큰 순서로 돌려준다.
     List<HostedGathering> findAllHostedByIds(List<Long> gatheringIds);
 
+    // 모임 이름을 바꾼다. 모임을 저장할 때는 이름을 바꾸지 않으므로 이 메서드로만 바꾼다.
+    // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
+    void updateName(Long gatheringId, String name);
+
     // 기록 기간을 연장한 것으로 표시한다. 모임을 저장할 때는 연장 여부를 바꾸지 않으므로 이 메서드로만 바꾼다.
     // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
     void markRecordingExtended(Long gatheringId);

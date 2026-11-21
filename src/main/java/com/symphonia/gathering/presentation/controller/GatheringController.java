@@ -31,6 +31,7 @@ import com.symphonia.gathering.application.usecase.RecordSettlementUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
 import com.symphonia.gathering.application.usecase.ReissueParticipantLinkTokenUseCase;
 import com.symphonia.gathering.application.usecase.RemoveParticipantUseCase;
+import com.symphonia.gathering.application.usecase.RenameGatheringUseCase;
 import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
@@ -38,6 +39,7 @@ import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
+import com.symphonia.gathering.presentation.dto.request.RenameGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
@@ -59,6 +61,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class GatheringController implements GatheringApi {
     private final OpenGatheringUseCase openGatheringUseCase;
     private final GetHostedGatheringsUseCase getHostedGatheringsUseCase;
+    private final RenameGatheringUseCase renameGatheringUseCase;
     private final ReissueJoinTokenUseCase reissueJoinTokenUseCase;
     private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
     private final AddRoundUseCase addRoundUseCase;
@@ -93,6 +96,15 @@ public class GatheringController implements GatheringApi {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<Void>> rename(
+            String memberId, Long gatheringId, RenameGatheringRequest request) {
+        renameGatheringUseCase.rename(request.toCommand(memberId, gatheringId));
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(StandardResponse.success(HttpStatus.NO_CONTENT));
     }
 
     @Override

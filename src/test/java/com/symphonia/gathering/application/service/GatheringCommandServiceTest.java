@@ -20,6 +20,7 @@ import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostComman
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
+import com.symphonia.gathering.application.dto.command.RenameGatheringCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
@@ -407,6 +408,108 @@ class GatheringCommandServiceTest extends UnitTest {
                 // then
                 assertThat(result.expiresAt()).isEqualTo(OPEN_PERIOD_OPENED_AT.plusHours(48));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("rename 메서드는")
+    class Rename {
+
+        private static final String NEW_NAME = "토요일 번개";
+
+        @Nested
+        @DisplayName("모임이 존재하지 않는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 이름을 바꾸지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.rename(hostCommand()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.rename(hostCommand()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 이름을 바꾸지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+                RenameGatheringCommand command =
+                        RenameGatheringCommand.of(OTHER_MEMBER_ID, GATHERING_ID, NEW_NAME);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.rename(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                then(gatheringRepository).should(never()).updateName(anyLong(), anyString());
+            }
+        }
+
+        @Nested
+        @DisplayName("기록 기간이 끝난 모임인 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("기록 기간과 관계없이 이름을 바꾼다")
+            void shouldUpdateName() {
+                // given
+                givenGatheringOpenedAt(CLOSED_PERIOD_OPENED_AT);
+
+                // when
+                gatheringCommandService.rename(hostCommand());
+
+                // then
+                then(gatheringRepository).should().updateName(GATHERING_ID, NEW_NAME);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 요청하는 경우")
+        class WhenMemberIsHost {
+
+            @Test
+            @DisplayName("모임 이름을 요청한 이름으로 바꾼다")
+            void shouldUpdateName() {
+                // given
+                givenGatheringOpenedAt(OPEN_PERIOD_OPENED_AT);
+
+                // when
+                gatheringCommandService.rename(hostCommand());
+
+                // then
+                then(gatheringRepository).should().updateName(GATHERING_ID, NEW_NAME);
+            }
+        }
+
+        private RenameGatheringCommand hostCommand() {
+            return RenameGatheringCommand.of(
+                    GatheringFixture.FRIDAY_DINNER.getHostMemberId(), GATHERING_ID, NEW_NAME);
         }
     }
 

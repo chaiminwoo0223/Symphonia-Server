@@ -30,7 +30,9 @@ public class GatheringJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private Long hostMemberId;
 
-    @Column(nullable = false)
+    // 참여나 차수 추가로 모임을 저장할 때 메모리에 있던 옛 이름으로 되돌리지 않도록 저장으로는 바꾸지 않는다.
+    // 이름은 GatheringJpaRepository.updateName으로만 바꾼다.
+    @Column(nullable = false, updatable = false)
     private String name;
 
     @Column(nullable = false, updatable = false)
