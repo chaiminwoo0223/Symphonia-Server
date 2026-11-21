@@ -22,7 +22,7 @@ const BASE_RATE = 5;
 
 // GatheringPolicy.MAX_PARTICIPANT_COUNT와 같은 값이다.
 const MAX_PARTICIPANT_COUNT = 20;
-// 모임을 열 때 이미 상한 근처까지 채워 두는 참여자 수다. 스파이크의 처음 몇 건만 자리를 얻고 나머지는 상한에 막힌다.
+// 모임을 열 때 이미 상한 근처까지 채워 두는 참여자 수다. 스파이크가 시작하자마자 남은 자리를 두고 서로 다른 휴대폰의 참여가 동시에 경합한다.
 const INITIAL_PARTICIPANT_COUNT = 15;
 const LIMIT_EXCEEDED_CODE = 'GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT';
 // host_member_id는 member를 FK로 참조하지 않아, 서명한 토큰의 회원 id만 있으면 모임을 열 수 있다.
@@ -43,13 +43,12 @@ export const options = {
         spike: {
             executor: 'ramping-arrival-rate',
             exec: 'join',
-            startRate: BASE_RATE,
+            // 링크가 공유되면 한 번에 몰리므로 처음부터 정점으로 시작한다. 정점 전에 평소 요청을 보내면 남은 자리가 정점 전에 찬다.
+            startRate: PEAK_RATE,
             timeUnit: '1s',
             preAllocatedVUs: 50,
             maxVUs: 400,
             stages: [
-                { duration: '10s', target: BASE_RATE },
-                { duration: '5s', target: PEAK_RATE },
                 { duration: '30s', target: PEAK_RATE },
                 { duration: '5s', target: BASE_RATE },
                 { duration: '10s', target: BASE_RATE },
@@ -60,6 +59,8 @@ export const options = {
     thresholds: {
         http_req_failed: ['rate<0.01'],
         'http_req_duration{expected_response:true}': ['p(95)<1000', 'p(99)<2000'],
+        // 상한에 막힌 400은 인원 확인만 하고 끝나므로, 모임 행 잠금 안에서 암호화와 저장까지 하는 참여 성공은 따로 본다.
+        'http_req_duration{status:201}': ['p(95)<1000'],
         dropped_iterations: ['count==0'],
         participants_within_limit: ['rate==1'],
         participants_at_limit: ['rate==1'],

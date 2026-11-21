@@ -86,8 +86,8 @@ prod와 같은 사양의 dev에서만 실행한다. 로컬 결과는 임계값�
 k6 run -e BASE_URL=https://dev.symphonia.example.com -e JWT_SECRET="$JWT_SECRET" k6/gathering-join-spike.js
 ```
 
-- setup은 모임을 열고 참여자 15명을 채운다. 남은 자리가 5개라서 스파이크의 처음 몇 건만 자리를 얻고 나머지는 상한에 막힌다.
-- `spike` 시나리오는 초당 5건으로 10초, 5초 동안 정점(기본 초당 200건)까지 올려 30초 유지한 뒤, 5초 동안 내리고 10초 더 이어 간다. 정점은 `-e PEAK_RATE=`로 바꾼다.
+- setup은 모임을 열고 참여자 15명을 채운다. 남은 자리가 5개이고, 스파이크가 시작하자마자 요청이 몰려 그 자리를 두고 서로 다른 휴대폰의 참여가 동시에 경합한다. 나머지 요청은 상한에 막힌다.
+- `spike` 시나리오는 처음부터 정점(기본 초당 200건)으로 시작해 30초 유지한 뒤, 5초 동안 초당 5건으로 내리고 10초 더 이어 간다. 정점은 `-e PEAK_RATE=`로 바꾼다. 평소 요청을 먼저 보내면 남은 자리가 정점 전에 차서 경합이 사라진다.
 - 상한에 막힌 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)은 기대 응답이라 실패로 세지 않는다.
 - 끝나면 teardown에서 모임장이 참여자 수를 읽어 상한 초과 여부를 판정한다.
 
@@ -95,6 +95,7 @@ k6 run -e BASE_URL=https://dev.symphonia.example.com -e JWT_SECRET="$JWT_SECRET"
 |---|---|---|
 | `http_req_failed` | `rate < 1%` | 201, 400, 200 밖의 응답(5xx 등)만 센다 |
 | `http_req_duration{expected_response:true}` | `p(95) < 1000ms`, `p(99) < 2000ms` | 측정 전 잠정값이다. 첫 dev 실행 결과를 보고 재조정한다 |
+| `http_req_duration{status:201}` | `p(95) < 1000ms` | 참여에 성공한 요청만 본다. 남은 자리가 5개라 표본이 적으므로 최댓값에 가깝다 |
 | `dropped_iterations` | `count == 0` | VU가 모자라 도착한 요청이 빠지면 측정을 실패로 본다 |
 | `participants_within_limit` | `rate == 1` | 참여자가 20명을 넘지 않는다 |
 | `participants_at_limit` | `rate == 1` | 요청이 남은 자리보다 훨씬 많으므로 정확히 20명이다 |
