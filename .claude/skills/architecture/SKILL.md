@@ -116,7 +116,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표와 `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, API 경로를 바꿀 때 |
 | [`gathering-pairing.md`](gathering-pairing.md) | 모임 페어링과 참여자의 익명 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
-| [`gathering-participant.md`](gathering-participant.md) | 참여자 상한과 모임장의 참여자 관리, 직접 참여, 탈퇴를 바꿀 때 |
+| [`gathering-participant.md`](gathering-participant.md) | 참여자 본인 확인, 상한, 모임장의 참여자 관리, 직접 참여, 탈퇴 변경 시 |
 | [`gathering-recording-period.md`](gathering-recording-period.md) | 기록 기간의 시작 시각과 연장을 바꿀 때 |
 | [`gathering-management.md`](gathering-management.md) | 모임 열기의 중복 방지와 모임장의 모임 목록, 이름 수정, 삭제를 바꿀 때 |
 | [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 안주의 맛집 검색어를 바꿀 때 |

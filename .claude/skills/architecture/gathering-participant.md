@@ -1,6 +1,17 @@
-# gathering 참여자 상한과 모임장의 참여자 관리 규칙
+# gathering 참여자의 본인 확인, 상한, 모임장의 참여자 관리 규칙
 
 `architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임의 기본 모델과 정산 규칙은 `gathering.md`에 있다. 근거, 택하지 않은 안, 재검토 조건은 `docs/decisions/gathering.md`에 있다.
+
+## 참여자의 본인 확인과 입력 규칙
+
+- QR 참여(`POST /participants`)는 구글 ID 토큰(`googleIdToken`)을 필수로 받는다. 없으면 400, 유효하지 않으면 400(`INVALID_SOCIAL_TOKEN`)이다.
+- `JoinGatheringService`가 모임 행을 잠그기 전에 `auth`의 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽는다. 이메일, 이름, 사진, ID 토큰은 저장하지 않고 이메일도 보내지 않는다. 구글 로그인은 본인 확인에만 쓰며 회원과 세션을 만들지 않는다.
+- 같은 구글 계정의 중복 참여는 휴대폰이 달라도 409(`PARTICIPANT_ALREADY_JOINED`)다. `participant.google_sub_hmac`에 모임별 HMAC(`"google:" + sub`)만 저장하고 `(gathering_id, google_sub_hmac)` unique 제약을 둔다.
+- 저장과 조회는 `ParticipantGoogleSubjectRepository`가 하고, 참여자를 저장한 뒤 값을 채운다. 모임 행 잠금 아래에서 검사하고, 동시 위반은 `ParticipantGoogleSubjectRepositoryImpl`이 `GatheringPolicy.validateNotJoined`의 예외로 바꾼다.
+- 모임장의 직접 참여(`POST /gatherings/{gatheringId}/participants`, JWT)는 구글 토큰 없이 참여하고 이 값은 NULL이다. 요청은 `JoinGatheringAsHostRequest`로 따로 받는다.
+- 휴대폰은 010으로 시작하는 11자리만 받고(`PhoneNumber.from`) 하이픈은 지워 정규화한다. `+82`나 공백이 섞인 번호의 형식 정리는 클라이언트가 맡는다. 저장된 번호를 복원하는 `PhoneNumber` 생성자는 예전 번호도 복원하도록 기존 검증을 유지한다.
+- 휴대폰은 본인이 입력한 값이고 인증하지 않는다. 이름은 앞뒤 공백을 제거해 저장한다(`Participant.of`).
+- 참여 화면은 구글 계정 식별값(HMAC)을 모임 파기 때까지 보관한다는 목적과 보유 기간도 안내한다. 안내를 바꾸면 `GatheringPolicy.CONSENT_VERSION`도 바꾼다.
 
 ## 참여자 상한
 
