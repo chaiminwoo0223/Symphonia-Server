@@ -110,7 +110,7 @@ public class GatheringCommandService
         validateRetained(gatheringId, now, JoinTokenNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
-                        .findById(gatheringId)
+                        .findByIdForUpdate(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
 
         return joinParticipant(
@@ -130,7 +130,7 @@ public class GatheringCommandService
         validateRetained(command.gatheringId(), now, GatheringNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
-                        .findById(command.gatheringId())
+                        .findByIdForUpdate(command.gatheringId())
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
 
@@ -181,6 +181,7 @@ public class GatheringCommandService
                 .orElseThrow(notFound);
     }
 
+    // 호출하는 쪽이 모임 행을 잠근 채로 넘겨야 인원 확인과 저장 사이에 다른 참여가 끼어들지 않는다.
     private ParticipantResult joinParticipant(
             Gathering gathering,
             String name,

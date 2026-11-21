@@ -882,7 +882,8 @@ class GatheringCommandServiceTest extends UnitTest {
             given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
                     .willReturn(Optional.of(GATHERING_ID));
             givenRetention(GatheringRetentionFixture.RETAINED);
-            given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.of(gathering));
+            given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
+                    .willReturn(Optional.of(gathering));
         }
 
         private void thenNothingSaved() {
@@ -1109,7 +1110,7 @@ class GatheringCommandServiceTest extends UnitTest {
 
         private void givenHostGathering(LocalDateTime openedAt, List<Participant> participants) {
             givenRetention(GatheringRetentionFixture.RETAINED);
-            given(gatheringRepository.findById(GATHERING_ID))
+            given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                     .willReturn(
                             Optional.of(
                                     GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
