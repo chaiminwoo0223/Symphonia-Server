@@ -57,22 +57,6 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     class MarkRecordingExtended {
 
         @Test
-        @DisplayName("새로 연 모임은 연장하지 않은 것으로 저장한다")
-        void shouldPersistNewGatheringAsNotExtended() {
-            // given
-            Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
-            clearPersistenceContext();
-
-            // when & then
-            assertThat(
-                            gatheringRepository
-                                    .findById(saved.getId())
-                                    .orElseThrow()
-                                    .isRecordingExtended())
-                    .isFalse();
-        }
-
-        @Test
         @DisplayName("연장했다고 표시하고 다시 읽으면 연장한 모임으로 반환한다")
         void shouldPersistRecordingExtended() {
             // given
@@ -90,29 +74,6 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                                     .isRecordingExtended())
                     .isTrue();
         }
-
-        @Test
-        @DisplayName("연장하기 전에 읽은 모임을 이어서 저장해도 연장 여부를 되돌리지 않는다")
-        void shouldKeepRecordingExtendedWhenStaleGatheringSaved() {
-            // given
-            Gathering staleGathering =
-                    gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
-            clearPersistenceContext();
-            gatheringRepository.markRecordingExtended(staleGathering.getId());
-            clearPersistenceContext();
-
-            // when
-            gatheringRepository.save(staleGathering);
-
-            // then
-            clearPersistenceContext();
-            assertThat(
-                            gatheringRepository
-                                    .findById(staleGathering.getId())
-                                    .orElseThrow()
-                                    .isRecordingExtended())
-                    .isTrue();
-        }
     }
 
     @Nested
@@ -120,8 +81,55 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     class Save {
 
         @Nested
+        @DisplayName("연장하기 전에 읽은 모임을 연장한 뒤에 저장하는 경우")
+        class WhenRecordingExtendedAfterRead {
+
+            @Test
+            @DisplayName("연장 여부를 되돌리지 않는다")
+            void shouldKeepRecordingExtended() {
+                // given
+                Gathering staleGathering =
+                        gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+                clearPersistenceContext();
+                gatheringRepository.markRecordingExtended(staleGathering.getId());
+                clearPersistenceContext();
+
+                // when
+                gatheringRepository.save(staleGathering);
+
+                // then
+                clearPersistenceContext();
+                assertThat(
+                                gatheringRepository
+                                        .findById(staleGathering.getId())
+                                        .orElseThrow()
+                                        .isRecordingExtended())
+                        .isTrue();
+            }
+        }
+
+        @Nested
         @DisplayName("처음 저장하는 모임인 경우")
         class WhenGatheringIsNew {
+
+            @Test
+            @DisplayName("연장하지 않은 모임으로 저장한다")
+            void shouldPersistAsNotExtended() {
+                // given
+                Gathering gathering = GatheringFixture.FRIDAY_DINNER.create();
+
+                // when
+                Gathering saved = gatheringRepository.save(gathering);
+
+                // then
+                clearPersistenceContext();
+                assertThat(
+                                gatheringRepository
+                                        .findById(saved.getId())
+                                        .orElseThrow()
+                                        .isRecordingExtended())
+                        .isFalse();
+            }
 
             @Test
             @DisplayName("모임과 함께 모임별 데이터 키를 저장한다")
