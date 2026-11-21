@@ -16,6 +16,7 @@ import com.symphonia.catalog.application.usecase.VerifyCatalogReferencesUseCase;
 import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
 import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
+import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
@@ -882,6 +883,237 @@ class GatheringCommandServiceTest extends UnitTest {
                     .willReturn(Optional.of(GATHERING_ID));
             givenRetention(GatheringRetentionFixture.RETAINED);
             given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.of(gathering));
+        }
+
+        private void thenNothingSaved() {
+            then(gatheringRepository).should(never()).save(any(Gathering.class));
+            then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("joinAsHost 메서드는")
+    class JoinAsHost {
+
+        @Nested
+        @DisplayName("모임이 존재하지 않는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                given(gatheringRetentionRepository.findByGatheringId(GATHERING_ID))
+                        .willReturn(Optional.empty());
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 모임을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 회원이 아닌 경우")
+        class WhenMemberIsNotHost {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowNotGatheringHostException() {
+                // given
+                givenHostGathering(OPEN_PERIOD_OPENED_AT, List.of());
+                JoinGatheringAsHostCommand command =
+                        new JoinGatheringAsHostCommand(
+                                OTHER_MEMBER_ID,
+                                GATHERING_ID,
+                                ParticipantFixture.KIM.getName(),
+                                HYPHENATED_PHONE_NUMBER,
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(NotGatheringHostException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowGatheringJoinClosedException() {
+                // given
+                givenHostGathering(CLOSED_PERIOD_OPENED_AT, List.of());
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(GatheringJoinClosedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("동의하지 않은 경우")
+        class WhenConsentNotAgreed {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowConsentRequiredException() {
+                // given
+                givenHostGathering(OPEN_PERIOD_OPENED_AT, List.of());
+                JoinGatheringAsHostCommand command =
+                        new JoinGatheringAsHostCommand(
+                                GatheringFixture.FRIDAY_DINNER.getHostMemberId(),
+                                GATHERING_ID,
+                                ParticipantFixture.KIM.getName(),
+                                HYPHENATED_PHONE_NUMBER,
+                                false,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(ConsentRequiredException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("동의 안내문 버전이 다른 경우")
+        class WhenConsentVersionOutdated {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowOutdatedConsentVersionException() {
+                // given
+                givenHostGathering(OPEN_PERIOD_OPENED_AT, List.of());
+                JoinGatheringAsHostCommand command = hostCommand("2000-01-01");
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(OutdatedConsentVersionException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("이미 참여한 휴대폰인 경우")
+        class WhenPhoneNumberAlreadyJoined {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowParticipantAlreadyJoinedException() {
+                // given
+                givenHostGathering(
+                        OPEN_PERIOD_OPENED_AT,
+                        List.of(ParticipantFixture.KIM.createWithId(PARTICIPANT_ID)));
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("참여자가 이미 20명인 경우")
+        class WhenParticipantCountAtLimit {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
+            void shouldThrowGatheringParticipantCountExceedsLimitException() {
+                // given
+                givenHostGathering(
+                        OPEN_PERIOD_OPENED_AT,
+                        LongStream.rangeClosed(1, GatheringPolicy.MAX_PARTICIPANT_COUNT)
+                                .mapToObj(ParticipantFixture.LEE::createWithId)
+                                .toList());
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> gatheringCommandService.joinAsHost(command))
+                        .isInstanceOf(GatheringParticipantCountExceedsLimitException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임장이 참여할 수 있는 경우")
+        class WhenJoinable {
+
+            @Test
+            @DisplayName("정규화한 휴대폰으로 참여자를 더해 저장하고, 저장된 참여자 id로 개인 링크 토큰을 저장해 반환한다")
+            void shouldSaveParticipantAndLinkTokenWithSavedParticipantId() {
+                // given
+                givenHostGathering(OPEN_PERIOD_OPENED_AT, List.of());
+                given(gatheringRepository.save(any(Gathering.class)))
+                        .willReturn(
+                                GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                        GATHERING_ID,
+                                        OPEN_PERIOD_OPENED_AT,
+                                        List.of(
+                                                ParticipantFixture.KIM.createWithId(
+                                                        PARTICIPANT_ID))));
+                given(gatheringTokenProvider.generate()).willReturn(LINK_TOKEN);
+                JoinGatheringAsHostCommand command = hostCommand(GatheringPolicy.CONSENT_VERSION);
+
+                // when
+                ParticipantResult result = gatheringCommandService.joinAsHost(command);
+
+                // then
+                ArgumentCaptor<Gathering> captor = ArgumentCaptor.forClass(Gathering.class);
+                then(gatheringRepository).should().save(captor.capture());
+                Participant joined = captor.getValue().getParticipants().getFirst();
+                assertThat(joined.getPhoneNumber())
+                        .isEqualTo(new PhoneNumber(ParticipantFixture.KIM.getPhoneNumber()));
+                assertThat(joined.getConsentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
+                then(participantLinkTokenRepository).should().save(LINK_TOKEN, PARTICIPANT_ID);
+                assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
+                assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
+                assertThat(result.linkToken()).isEqualTo(LINK_TOKEN);
+            }
+        }
+
+        private JoinGatheringAsHostCommand hostCommand(String consentVersion) {
+            return new JoinGatheringAsHostCommand(
+                    GatheringFixture.FRIDAY_DINNER.getHostMemberId(),
+                    GATHERING_ID,
+                    ParticipantFixture.KIM.getName(),
+                    HYPHENATED_PHONE_NUMBER,
+                    true,
+                    consentVersion);
+        }
+
+        private void givenHostGathering(LocalDateTime openedAt, List<Participant> participants) {
+            givenRetention(GatheringRetentionFixture.RETAINED);
+            given(gatheringRepository.findById(GATHERING_ID))
+                    .willReturn(
+                            Optional.of(
+                                    GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                            GATHERING_ID, openedAt, participants)));
         }
 
         private void thenNothingSaved() {

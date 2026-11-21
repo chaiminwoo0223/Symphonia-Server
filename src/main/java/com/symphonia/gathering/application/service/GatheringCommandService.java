@@ -6,6 +6,7 @@ import com.symphonia.common.exception.BusinessException;
 import com.symphonia.gathering.application.dto.command.ChooseGatheringPairingCommand;
 import com.symphonia.gathering.application.dto.command.ExtendRecordingCommand;
 import com.symphonia.gathering.application.dto.command.GatheringPairingCommand;
+import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import com.symphonia.gathering.application.dto.command.OpenGatheringCommand;
 import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
@@ -14,6 +15,7 @@ import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
 import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
+import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
@@ -40,6 +42,7 @@ public class GatheringCommandService
         implements OpenGatheringUseCase,
                 ReissueJoinTokenUseCase,
                 JoinGatheringUseCase,
+                JoinGatheringAsHostUseCase,
                 ChooseGatheringPairingUseCase,
                 ExtendRecordingUseCase {
     private final GatheringRepository gatheringRepository;
@@ -109,19 +112,35 @@ public class GatheringCommandService
                 gatheringRepository
                         .findById(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
-        PhoneNumber phoneNumber = PhoneNumber.from(command.phoneNumber());
-        GatheringPolicy.validateJoinable(gathering.getRecordingClosesAt(), now);
-        GatheringPolicy.validateConsent(command.consentAgreed(), command.consentVersion());
-        GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
-        GatheringPolicy.validateParticipantAddable(gathering.getParticipants().size());
 
-        gathering.join(command.name(), phoneNumber, command.consentVersion(), now);
-        Gathering savedGathering = gatheringRepository.save(gathering);
-        Participant participant = savedGathering.getParticipant(phoneNumber);
-        String linkToken = gatheringTokenProvider.generate();
-        participantLinkTokenRepository.save(linkToken, participant.getId());
+        return joinParticipant(
+                gathering,
+                command.name(),
+                command.phoneNumber(),
+                command.consentAgreed(),
+                command.consentVersion(),
+                now);
+    }
 
-        return ParticipantResult.of(participant, linkToken);
+    // 모임장도 참여 QR 없이 로그인한 채로 참여자가 될 수 있다. 참여 기간, 동의, 휴대폰 중복, 인원 상한은 QR 참여와 같은 규칙을 따른다.
+    // 참여자가 되면 정산 건 인원에 들어갈 수 있고, 그 정산 건의 결제자에게 이름과 휴대폰이 전달되므로 동의를 똑같이 받는다.
+    @Override
+    public ParticipantResult joinAsHost(JoinGatheringAsHostCommand command) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        validateRetained(command.gatheringId(), now, GatheringNotFoundException::new);
+        Gathering gathering =
+                gatheringRepository
+                        .findById(command.gatheringId())
+                        .orElseThrow(GatheringNotFoundException::new);
+        GatheringPolicy.validateHost(gathering.getHostMemberId(), command.memberId());
+
+        return joinParticipant(
+                gathering,
+                command.name(),
+                command.phoneNumber(),
+                command.consentAgreed(),
+                command.consentVersion(),
+                now);
     }
 
     // 실제로 먹은 조합이 추천과 달랐으면 모임장이 바로잡는다. 이미 고른 페어링이 있으면 덮어쓴다.
@@ -160,5 +179,27 @@ public class GatheringCommandService
                 .findByGatheringId(gatheringId)
                 .filter(retention -> !retention.isExpired(now))
                 .orElseThrow(notFound);
+    }
+
+    private ParticipantResult joinParticipant(
+            Gathering gathering,
+            String name,
+            String rawPhoneNumber,
+            boolean consentAgreed,
+            String consentVersion,
+            LocalDateTime now) {
+        PhoneNumber phoneNumber = PhoneNumber.from(rawPhoneNumber);
+        GatheringPolicy.validateJoinable(gathering.getRecordingClosesAt(), now);
+        GatheringPolicy.validateConsent(consentAgreed, consentVersion);
+        GatheringPolicy.validateNotJoined(gathering.hasJoined(phoneNumber));
+        GatheringPolicy.validateParticipantAddable(gathering.getParticipants().size());
+
+        gathering.join(name, phoneNumber, consentVersion, now);
+        Gathering savedGathering = gatheringRepository.save(gathering);
+        Participant participant = savedGathering.getParticipant(phoneNumber);
+        String linkToken = gatheringTokenProvider.generate();
+        participantLinkTokenRepository.save(linkToken, participant.getId());
+
+        return ParticipantResult.of(participant, linkToken);
     }
 }

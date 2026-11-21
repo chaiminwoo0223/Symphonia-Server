@@ -5,6 +5,7 @@ import com.symphonia.gathering.presentation.GatheringEndpoints;
 import com.symphonia.gathering.presentation.GatheringHeaders;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
+import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
@@ -123,6 +124,22 @@ public interface GatheringApi {
             description = "모임의 참여자를 참여한 순서대로 조회합니다. 휴대폰 번호는 마스킹하며, 개인 링크 토큰은 담지 않습니다.")
     ResponseEntity<StandardResponse<List<GatheringParticipantResponse>>> getParticipants(
             @AuthenticationPrincipal String memberId, @PathVariable Long gatheringId);
+
+    @PostMapping(GatheringEndpoints.PARTICIPANTS)
+    @Operation(
+            summary = "모임장 참여",
+            description =
+                    """
+                    모임을 만든 회원이 참여 QR 없이 로그인한 채로 참여자가 됩니다. 모임장이 결제자로 지정되거나 정산 건 인원에 들어가려면 먼저 참여자여야 합니다. 응답의 linkToken은 모임장이 결제자일 때 수금 화면을 볼 개인 링크 토큰이며, 이 응답에서만 받을 수 있습니다.
+
+                    참여 기간, 동의, 휴대폰 중복, 참여자 상한은 참여 QR로 참여할 때와 같은 규칙입니다. 기록 기간이 끝났으면 400(GATHERING_JOIN_CLOSED), 이미 참여한 휴대폰이면 409(PARTICIPANT_ALREADY_JOINED)입니다.
+
+                    참여자가 된 모임장이 다른 결제자의 정산 건 인원에 들어가면 모임장의 이름과 휴대폰 번호가 그 결제자에게 전달되고, 분담 금액도 그 결제자에게 보입니다. 동의 안내문은 참여 화면과 같은 내용을 보여 주고, consentVersion에는 기록 화면 조회 응답의 값을 그대로 보내야 합니다.
+                    """)
+    ResponseEntity<StandardResponse<ParticipantResponse>> joinAsHost(
+            @AuthenticationPrincipal String memberId,
+            @PathVariable Long gatheringId,
+            @Valid @RequestBody JoinGatheringRequest request);
 
     @DeleteMapping(GatheringEndpoints.PARTICIPANT)
     @Operation(

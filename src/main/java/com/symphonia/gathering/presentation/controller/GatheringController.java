@@ -23,6 +23,7 @@ import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringParticipantsUseCase;
 import com.symphonia.gathering.application.usecase.GetGatheringUseCase;
 import com.symphonia.gathering.application.usecase.GetSettlementFormUseCase;
+import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
 import com.symphonia.gathering.application.usecase.OpenGatheringUseCase;
 import com.symphonia.gathering.application.usecase.RecordSettlementUseCase;
 import com.symphonia.gathering.application.usecase.ReissueJoinTokenUseCase;
@@ -32,6 +33,7 @@ import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
 import com.symphonia.gathering.presentation.api.GatheringApi;
 import com.symphonia.gathering.presentation.dto.request.AddRoundRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
+import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
@@ -57,6 +59,7 @@ public class GatheringController implements GatheringApi {
     private final ChooseGatheringPairingUseCase chooseGatheringPairingUseCase;
     private final AddRoundUseCase addRoundUseCase;
     private final ExtendRecordingUseCase extendRecordingUseCase;
+    private final JoinGatheringAsHostUseCase joinGatheringAsHostUseCase;
     private final GetSettlementFormUseCase getSettlementFormUseCase;
     private final RecordSettlementUseCase recordSettlementUseCase;
     private final UpdateSettlementUseCase updateSettlementUseCase;
@@ -175,6 +178,18 @@ public class GatheringController implements GatheringApi {
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<ParticipantResponse>> joinAsHost(
+            String memberId, Long gatheringId, JoinGatheringRequest request) {
+        ParticipantResult result =
+                joinGatheringAsHostUseCase.joinAsHost(
+                        request.toHostCommand(Long.parseLong(memberId), gatheringId));
+        ParticipantResponse response = ParticipantResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(StandardResponse.success(HttpStatus.CREATED, response));
     }
 
     @Override

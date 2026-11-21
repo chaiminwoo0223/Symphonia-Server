@@ -1,5 +1,6 @@
 package com.symphonia.gathering.presentation.dto.request;
 
+import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -13,5 +14,10 @@ public record JoinGatheringRequest(
     public JoinGatheringCommand toCommand(String joinToken) {
         return new JoinGatheringCommand(
                 joinToken, name, phoneNumber, consentAgreed, consentVersion);
+    }
+
+    public JoinGatheringAsHostCommand toHostCommand(Long memberId, Long gatheringId) {
+        return new JoinGatheringAsHostCommand(
+                memberId, gatheringId, name, phoneNumber, consentAgreed, consentVersion);
     }
 }

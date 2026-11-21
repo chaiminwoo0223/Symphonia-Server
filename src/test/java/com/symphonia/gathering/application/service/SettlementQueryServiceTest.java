@@ -26,6 +26,7 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
+import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -635,6 +636,24 @@ class SettlementQueryServiceTest extends UnitTest {
                 assertThat(result.recordingExtended()).isFalse();
                 assertThat(result.recordingClosesAt())
                         .isEqualTo(OPEN_PERIOD_OPENED_AT.plusHours(48));
+            }
+        }
+
+        @Nested
+        @DisplayName("모임장이 직접 참여할 동의 안내문 버전이 필요한 경우")
+        class WhenConsentVersionNeeded {
+
+            @Test
+            @DisplayName("참여 화면과 같은 동의 안내문 버전을 담는다")
+            void shouldReturnCurrentConsentVersion() {
+                // given
+                givenForm(OPEN_PERIOD_OPENED_AT, List.of());
+
+                // when
+                SettlementFormResult result = settlementQueryService.getForm(query(HOST_MEMBER_ID));
+
+                // then
+                assertThat(result.consentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
             }
         }
 
