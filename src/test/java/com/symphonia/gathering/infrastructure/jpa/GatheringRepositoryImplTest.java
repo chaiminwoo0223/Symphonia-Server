@@ -109,6 +109,45 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("updateName 메서드는")
+    class UpdateName {
+
+        @Test
+        @DisplayName("이름을 바꾸고 다시 읽으면 바뀐 이름을 반환한다")
+        void shouldPersistName() {
+            // given
+            Gathering saved = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+
+            // when
+            gatheringRepository.updateName(saved.getId(), "토요일 번개");
+
+            // then
+            clearPersistenceContext();
+            assertThat(gatheringRepository.findById(saved.getId()).orElseThrow().getName())
+                    .isEqualTo("토요일 번개");
+        }
+
+        @Test
+        @DisplayName("이름을 바꾸기 전에 읽은 모임을 바꾼 뒤에 저장해도 이름을 되돌리지 않는다")
+        void shouldKeepNameWhenStaleGatheringSaved() {
+            // given
+            Gathering staleGathering =
+                    gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
+            clearPersistenceContext();
+            gatheringRepository.updateName(staleGathering.getId(), "토요일 번개");
+            clearPersistenceContext();
+
+            // when
+            gatheringRepository.save(staleGathering);
+
+            // then
+            clearPersistenceContext();
+            assertThat(gatheringRepository.findById(staleGathering.getId()).orElseThrow().getName())
+                    .isEqualTo("토요일 번개");
+        }
+    }
+
+    @Nested
     @DisplayName("markRecordingExtended 메서드는")
     class MarkRecordingExtended {
 

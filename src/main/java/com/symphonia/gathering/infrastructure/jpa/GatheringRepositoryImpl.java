@@ -97,6 +97,11 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public void updateName(Long gatheringId, String name) {
+        gatheringJpaRepository.updateName(gatheringId, name);
+    }
+
+    @Override
     public void markRecordingExtended(Long gatheringId) {
         gatheringJpaRepository.markRecordingExtended(gatheringId);
     }

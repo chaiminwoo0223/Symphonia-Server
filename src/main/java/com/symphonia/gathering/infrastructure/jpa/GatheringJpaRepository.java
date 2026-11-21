@@ -45,6 +45,11 @@ public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(
+            "UPDATE GatheringJpaEntity gathering SET gathering.name = :name WHERE gathering.id = :id")
+    void updateName(@Param("id") Long id, @Param("name") String name);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
             "UPDATE GatheringJpaEntity gathering SET gathering.recordingExtended = true WHERE gathering.id = :id")
     void markRecordingExtended(@Param("id") Long id);
 

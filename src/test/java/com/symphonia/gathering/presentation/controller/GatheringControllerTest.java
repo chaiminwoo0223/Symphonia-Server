@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -312,6 +313,82 @@ class GatheringControllerTest extends IntegrationTest {
         void shouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
             // when & then
             mockMvc.perform(get("/api/v1/gatherings")).andExpect(status().isUnauthorized());
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /api/v1/gatherings/{gatheringId}는")
+    class Rename {
+
+        @Test
+        @DisplayName("모임을 만든 회원이 이름을 보내면 이름을 바꾸고 204를 반환한다")
+        void shouldRenameGathering() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Gathering gathering =
+                    gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+            // when & then
+            mockMvc.perform(
+                            patch("/api/v1/gatherings/{gatheringId}", gathering.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"name\":\"토요일 번개\"}"))
+                    .andExpect(status().isNoContent());
+            mockMvc.perform(get("/api/v1/gatherings").header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(jsonPath("$.data[0].name").value("토요일 번개"));
+        }
+
+        @Test
+        @DisplayName("이름이 비어 있으면 400을 반환한다")
+        void shouldReturnBadRequestWhenNameBlank() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Gathering gathering =
+                    gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
+
+            // when & then
+            mockMvc.perform(
+                            patch("/api/v1/gatherings/{gatheringId}", gathering.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"name\":\" \"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("모임을 만들지 않은 다른 회원의 요청이면 NOT_GATHERING_HOST 코드와 함께 403을 반환한다")
+        void shouldReturnForbiddenWhenMemberIsNotHost() throws Exception {
+            // given
+            Member host = memberHelper.save(MemberFixture.KAKAO);
+            Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+            String token = authHelper.bearerTokenFor(otherMember);
+            Gathering gathering =
+                    gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, host.getId());
+
+            // when & then
+            mockMvc.perform(
+                            patch("/api/v1/gatherings/{gatheringId}", gathering.getId())
+                                    .header(HttpHeaders.AUTHORIZATION, token)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"name\":\"토요일 번개\"}"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(
+                            jsonPath("$.data.code")
+                                    .value(GatheringErrorCode.NOT_GATHERING_HOST.getCode()));
+        }
+
+        @Test
+        @DisplayName("인증 토큰이 없으면 401을 반환한다")
+        void shouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
+            // when & then
+            mockMvc.perform(
+                            patch("/api/v1/gatherings/{gatheringId}", 1L)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content("{\"name\":\"토요일 번개\"}"))
+                    .andExpect(status().isUnauthorized());
         }
     }
 

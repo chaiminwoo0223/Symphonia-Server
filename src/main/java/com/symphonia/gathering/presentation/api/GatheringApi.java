@@ -8,6 +8,7 @@ import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
+import com.symphonia.gathering.presentation.dto.request.RenameGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.UpdateSettlementRequest;
 import com.symphonia.gathering.presentation.dto.response.GatheringJoinTokenResponse;
 import com.symphonia.gathering.presentation.dto.response.GatheringParticipantResponse;
@@ -26,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,6 +49,16 @@ public interface GatheringApi {
                     "내가 연 모임을 최근에 연 순서로 돌려줍니다. 개인정보 파기 시각이 지난 모임은 담지 않습니다. 참여자는 이름과 휴대폰을 읽지 않고 수만 담습니다. 목록은 페이지로 나누지 않습니다. 파기 시각이 지나면 사라지고 모임은 최대 29일만 남으므로 길이가 제한됩니다.")
     ResponseEntity<StandardResponse<List<HostedGatheringResponse>>> getHosted(
             @AuthenticationPrincipal String memberId);
+
+    @PatchMapping(GatheringEndpoints.GATHERING)
+    @Operation(
+            summary = "모임 이름 수정",
+            description =
+                    "모임 이름을 바꿉니다. 모임을 만든 회원만 할 수 있고, 기록 기간과 관계없이 개인정보 파기 시각 전까지 바꿀 수 있습니다. 이름 규칙은 모임 열기와 같습니다. 같은 이름으로 다시 보내도 성공으로 처리합니다.")
+    ResponseEntity<StandardResponse<Void>> rename(
+            @AuthenticationPrincipal String memberId,
+            @PathVariable Long gatheringId,
+            @Valid @RequestBody RenameGatheringRequest request);
 
     @PostMapping(GatheringEndpoints.REISSUE)
     @Operation(
