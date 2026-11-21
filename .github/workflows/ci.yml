@@ -27,7 +27,8 @@ jobs:
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 25
+          # Temurin 25.0.5.1+2. setup-java는 4자리 버전을 `<major>.<minor>.<security>+<patch>.<build>`로 받는다.
+          java-version: 25.0.5+1.2
 
       - uses: gradle/actions/setup-gradle@v6
 
