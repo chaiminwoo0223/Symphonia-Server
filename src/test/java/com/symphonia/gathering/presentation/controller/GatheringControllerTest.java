@@ -43,6 +43,8 @@ import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +56,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 @Sql("/sql/clear-catalog.sql")
@@ -386,49 +389,31 @@ class GatheringControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("참여한 모임장을 결제자로 지정해 정산 건을 기록할 수 있다")
-            void shouldRecordSettlementWithHostAsPayer() throws Exception {
+            @DisplayName("참여한 모임장이 참여자 목록에 나타난다")
+            void shouldListHostAmongParticipants() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 String token = authHelper.bearerTokenFor(member);
                 Gathering gathering =
-                        gatheringHelper.join(
-                                gatheringHelper.save(
-                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
-                                ParticipantFixture.LEE);
-                Long leeId = gathering.getParticipants().getFirst().getId();
-                Long roundId = gathering.getRounds().getFirst().getId();
-                Long hostParticipantId =
-                        ((Number)
-                                        JsonPath.read(
-                                                performJoinAsHost(
-                                                                gathering.getId(),
-                                                                token,
-                                                                hostJoinRequest(true))
-                                                        .andReturn()
-                                                        .getResponse()
-                                                        .getContentAsString(),
-                                                "$.data.id"))
-                                .longValue();
+                        gatheringHelper.save(GatheringFixture.FRIDAY_DINNER, member.getId());
 
-                // when & then
+                // when
+                MvcResult result =
+                        performJoinAsHost(gathering.getId(), token, hostJoinRequest(true))
+                                .andReturn();
+
+                // then
+                Number participantId =
+                        JsonPath.read(result.getResponse().getContentAsString(), "$.data.id");
                 mockMvc.perform(
-                                post(
-                                                "/api/v1/gatherings/{gatheringId}/settlements",
+                                get(
+                                                "/api/v1/gatherings/{gatheringId}/participants",
                                                 gathering.getId())
-                                        .header(HttpHeaders.AUTHORIZATION, token)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(
-                                                objectMapper.writeValueAsString(
-                                                        new RecordSettlementRequest(
-                                                                CLIENT_REQUEST_ID,
-                                                                hostParticipantId,
-                                                                roundId,
-                                                                10_000L,
-                                                                List.of(hostParticipantId, leeId),
-                                                                List.of()))))
-                        .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.data.payerParticipantId").value(hostParticipantId));
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data[0].id").value(participantId.intValue()))
+                        .andExpect(
+                                jsonPath("$.data[0].name").value(ParticipantFixture.KIM.getName()));
             }
         }
 
@@ -989,28 +974,28 @@ class GatheringControllerTest extends IntegrationTest {
             }
 
             @Test
-            @DisplayName("이미 연장한 모임에 다시 요청해도 같은 시각과 함께 200을 반환한다")
-            void shouldReturnSameClosesAtWhenAlreadyExtended() throws Exception {
+            @DisplayName("이미 연장한 모임에 요청해도 연장한 기간이 끝나는 시각과 함께 200을 반환한다")
+            void shouldReturnExtendedClosesAtWhenAlreadyExtended() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
                 String token = authHelper.bearerTokenFor(member);
+                LocalDateTime openedAt =
+                        LocalDateTime.now().minusHours(40).truncatedTo(ChronoUnit.SECONDS);
                 Gathering gathering =
                         gatheringHelper.save(
-                                GatheringFixture.FRIDAY_DINNER,
-                                member.getId(),
-                                LocalDateTime.now().minusHours(40));
-                String firstClosesAt =
-                        JsonPath.read(
-                                performExtendRecording(gathering.getId(), token)
-                                        .andReturn()
-                                        .getResponse()
-                                        .getContentAsString(),
-                                "$.data.recordingClosesAt");
+                                GatheringFixture.FRIDAY_DINNER, member.getId(), openedAt);
+                jdbcTemplate.update(
+                        "UPDATE gathering SET recording_extended = TRUE WHERE id = ?",
+                        gathering.getId());
 
                 // when & then
                 performExtendRecording(gathering.getId(), token)
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.data.recordingClosesAt").value(firstClosesAt));
+                        .andExpect(
+                                jsonPath("$.data.recordingClosesAt")
+                                        .value(
+                                                DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(
+                                                        openedAt.plusHours(96))));
             }
         }
 
