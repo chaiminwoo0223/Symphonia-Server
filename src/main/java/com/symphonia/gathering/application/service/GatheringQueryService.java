@@ -98,7 +98,8 @@ public class GatheringQueryService
     }
 
     // 파기 시각이 지난 모임은 물리 삭제 전이라도 목록에 담지 않는다. 삭제 뒤의 응답과 같게 하기 위해서다.
-    // 파기 시각은 정산 건으로 계산하므로 getOngoing과 같은 조회를 쓰고, 목록에 보일 값은 그 모임 id로 따로 읽는다.
+    // 파기 시각은 정산 건으로 계산하므로 getOngoing과 같은 조회를 쓰고, 이름과 참여자 수는 그 모임 id로 따로 읽는다.
+    // 연 시각, 기록 기간, 연장 여부는 파기 시각과 같은 조회에서 읽은 값을 쓴다. 두 조회 사이에 연장이 커밋돼도 응답의 값이 서로 어긋나지 않게 하기 위해서다.
     @Override
     public List<HostedGatheringResult> getHosted(Long hostMemberId) {
         LocalDateTime now = LocalDateTime.now(clock);

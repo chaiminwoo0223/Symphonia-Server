@@ -9,15 +9,19 @@ import lombok.RequiredArgsConstructor;
 // EXPIRED는 파기 시각이 된 순간이고, ABOUT_TO_EXPIRE는 파기 시각 1초 전이다.
 @RequiredArgsConstructor
 public enum GatheringRetentionFixture {
-    RETAINED(Duration.ofDays(7), false),
-    ABOUT_TO_EXPIRE(Duration.ofSeconds(1), false),
-    EXPIRED(Duration.ZERO, false),
-    DATA_KEY_DISCARDED(Duration.ofDays(7), true);
+    RETAINED(Duration.ofDays(7), false, false),
+    EXTENDED(Duration.ofDays(7), true, false),
+    ABOUT_TO_EXPIRE(Duration.ofSeconds(1), false, false),
+    EXPIRED(Duration.ZERO, false, false),
+    DATA_KEY_DISCARDED(Duration.ofDays(7), false, true);
 
     private final Duration remaining;
+    private final boolean recordingExtended;
     private final boolean dataKeyDiscarded;
 
+    // 연 시각은 만든 시각으로 둔다.
     public GatheringRetention create(Long gatheringId, LocalDateTime now) {
-        return new GatheringRetention(gatheringId, now.plus(remaining), dataKeyDiscarded);
+        return new GatheringRetention(
+                gatheringId, now, recordingExtended, now.plus(remaining), dataKeyDiscarded);
     }
 }

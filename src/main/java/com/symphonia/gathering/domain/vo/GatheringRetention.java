@@ -14,7 +14,11 @@ import java.util.function.BinaryOperator;
 // 참여 화면이 안내하는 보유 기간은 최대 30일이다. 1시간 주기 스윕이 늦거나 몇 회차 실패해도 30일 안에 파기하도록 하루를 남긴다.
 // 데이터 키를 지운 모임은 개인정보를 복호화할 수 없으므로 파기 시각과 관계없이 파기가 확정된 것으로 본다.
 public record GatheringRetention(
-        Long gatheringId, LocalDateTime deletesAt, boolean dataKeyDiscarded) {
+        Long gatheringId,
+        LocalDateTime openedAt,
+        boolean recordingExtended,
+        LocalDateTime deletesAt,
+        boolean dataKeyDiscarded) {
     private static final Duration MAX_RETENTION = Duration.ofDays(29);
     private static final Duration RETENTION_AFTER_COMPLETION = Duration.ofDays(7);
 
@@ -36,7 +40,8 @@ public record GatheringRetention(
                                         deletesAtAfterCompletion.isBefore(maxDeletesAt))
                         .orElse(maxDeletesAt);
 
-        return new GatheringRetention(gatheringId, deletesAt, dataKeyDiscarded);
+        return new GatheringRetention(
+                gatheringId, openedAt, recordingExtended, deletesAt, dataKeyDiscarded);
     }
 
     // 정산은 빨라도 기록 기간이 끝나야 끝나므로, 가장 빠른 파기 시각은 기록 기간이 끝나고 7일 뒤다.
@@ -45,6 +50,10 @@ public record GatheringRetention(
     // 연장은 파기를 늦추기만 하므로 가장 짧은 기록 기간을 기준으로 읽고, 파기 여부는 Java에서 판단한다.
     public static LocalDateTime latestExpirableOpenedAt(LocalDateTime now) {
         return now.minus(RETENTION_AFTER_COMPLETION).minus(GatheringPolicy.RECORDING_PERIOD);
+    }
+
+    public LocalDateTime getRecordingClosesAt() {
+        return GatheringPolicy.recordingClosesAt(openedAt, recordingExtended);
     }
 
     public boolean isExpired(LocalDateTime now) {

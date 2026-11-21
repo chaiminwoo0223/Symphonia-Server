@@ -60,7 +60,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     class FindAllHostedByIds {
 
         @Test
-        @DisplayName("요청한 모임만 id가 큰 순서로 이름과 연 시각과 연장 여부와 참여자 수와 함께 반환한다")
+        @DisplayName("요청한 모임만 id가 큰 순서로 이름과 참여자 수와 함께 반환한다")
         void shouldReturnRequestedGatheringsInDescendingIdOrder() {
             // given
             Gathering first = gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
@@ -72,7 +72,6 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                                             ParticipantFixture.LEE.create())));
             Gathering notRequested =
                     gatheringRepository.save(GatheringFixture.FRIDAY_DINNER.create());
-            gatheringRepository.markRecordingExtended(second.getId());
             clearPersistenceContext();
 
             // when
@@ -84,12 +83,10 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                     .extracting(
                             HostedGathering::gatheringId,
                             HostedGathering::name,
-                            HostedGathering::openedAt,
-                            HostedGathering::recordingExtended,
                             HostedGathering::participantCount)
                     .containsExactly(
-                            tuple(second.getId(), second.getName(), second.getOpenedAt(), true, 2L),
-                            tuple(first.getId(), first.getName(), first.getOpenedAt(), false, 0L));
+                            tuple(second.getId(), second.getName(), 2L),
+                            tuple(first.getId(), first.getName(), 0L));
             assertThat(results)
                     .extracting(HostedGathering::gatheringId)
                     .doesNotContain(notRequested.getId());

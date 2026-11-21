@@ -439,7 +439,6 @@ class GatheringQueryServiceTest extends UnitTest {
             @DisplayName("파기 시각이 지난 모임과 데이터 키를 지운 모임을 빼고 읽은 순서대로 반환한다")
             void shouldReturnOnlyOngoingGatheringsInReadOrder() {
                 // given
-                LocalDateTime openedAt = NOW.minusHours(1);
                 given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
                         .willReturn(
                                 List.of(
@@ -464,9 +463,9 @@ class GatheringQueryServiceTest extends UnitTest {
                         .willReturn(
                                 List.of(
                                         HostedGatheringFixture.FRIDAY_DINNER.create(
-                                                GATHERING_ID + 3, openedAt),
+                                                GATHERING_ID + 3),
                                         HostedGatheringFixture.EMPTY_GATHERING.create(
-                                                GATHERING_ID, openedAt)));
+                                                GATHERING_ID)));
 
                 // when
                 List<HostedGatheringResult> results = gatheringQueryService.getHosted(MEMBER_ID);
@@ -486,24 +485,23 @@ class GatheringQueryServiceTest extends UnitTest {
         class WhenRecordingExtended {
 
             @Test
-            @DisplayName("연장한 기록 기간이 끝나는 시각을 담아 반환한다")
-            void shouldReturnExtendedRecordingClosesAt() {
+            @DisplayName("파기 시각을 읽은 조회의 연장 여부로 기록 기간이 끝나는 시각을 담아 반환한다")
+            void shouldReturnRecordingClosesAtFromRetention() {
                 // given
-                LocalDateTime openedAt = NOW.minusHours(10);
+                LocalDateTime openedAt = NOW;
                 given(gatheringRetentionRepository.findAllByHostMemberId(MEMBER_ID))
                         .willReturn(
                                 List.of(
                                         GatheringRetentionFixture.RETAINED.create(
                                                 GATHERING_ID, NOW),
-                                        GatheringRetentionFixture.RETAINED.create(
+                                        GatheringRetentionFixture.EXTENDED.create(
                                                 GATHERING_ID + 1, NOW)));
                 given(gatheringRepository.findAllHostedByIds(anyList()))
                         .willReturn(
                                 List.of(
-                                        HostedGatheringFixture.EXTENDED_FRIDAY_DINNER.create(
-                                                GATHERING_ID + 1, openedAt),
                                         HostedGatheringFixture.FRIDAY_DINNER.create(
-                                                GATHERING_ID, openedAt)));
+                                                GATHERING_ID + 1),
+                                        HostedGatheringFixture.FRIDAY_DINNER.create(GATHERING_ID)));
 
                 // when
                 List<HostedGatheringResult> results = gatheringQueryService.getHosted(MEMBER_ID);

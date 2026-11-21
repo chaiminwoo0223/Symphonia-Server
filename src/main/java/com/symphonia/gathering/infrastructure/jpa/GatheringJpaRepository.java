@@ -46,8 +46,6 @@ public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity
             SELECT new com.symphonia.gathering.domain.vo.HostedGathering(
                 gathering.id,
                 gathering.name,
-                gathering.openedAt,
-                gathering.recordingExtended,
                 (SELECT COUNT(participant) FROM ParticipantJpaEntity participant
                     WHERE participant.gatheringId = gathering.id))
             FROM GatheringJpaEntity gathering
