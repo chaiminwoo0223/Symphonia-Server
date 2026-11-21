@@ -3,7 +3,7 @@ package com.symphonia.pairing.domain.vo;
 import java.util.List;
 
 // 안내를 판정할 때 보는 자리와 추천 결과다.
-// 후보가 없었는지는 도수 상한과 알레르기를 거치기 전의 음료와 안주로 가린다.
+// 후보가 없었는지는 카탈로그가 도수 상한으로 거른 음료와 알레르기를 거치기 전의 안주로 가린다.
 public record PairingNoticeContext(
         Occasion occasion,
         boolean hasDrinkWithinAbvLimit,
