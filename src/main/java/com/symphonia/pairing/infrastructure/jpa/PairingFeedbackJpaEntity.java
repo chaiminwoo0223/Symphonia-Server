@@ -78,6 +78,7 @@ public class PairingFeedbackJpaEntity extends BaseTimeEntity {
                 .moodType(moodType)
                 .rating(rating)
                 .source(source)
+                .submittedAt(createdAt)
                 .build();
     }
 }

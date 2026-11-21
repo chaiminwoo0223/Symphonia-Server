@@ -5,9 +5,11 @@ import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.vo.CombinationId;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -48,6 +50,17 @@ public class PairingFeedbackRepositoryImpl implements PairingFeedbackRepository 
         return pairingFeedbackJpaRepository
                 .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId)
                 .map(PairingFeedbackJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<PairingFeedback> findAllByMemberIdBeforeId(
+            Long memberId, Long beforeId, int limit) {
+        return pairingFeedbackJpaRepository
+                .findAllByMemberIdBeforeId(
+                        memberId, beforeId == null ? Long.MAX_VALUE : beforeId, Limit.of(limit))
+                .stream()
+                .map(PairingFeedbackJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

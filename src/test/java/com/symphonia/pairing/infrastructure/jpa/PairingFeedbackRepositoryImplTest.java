@@ -67,6 +67,86 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("findAllByMemberIdBeforeId 메서드는")
+    class FindAllByMemberIdBeforeId {
+
+        private List<Long> anjuIds;
+
+        @BeforeEach
+        void setUpAnjus() {
+            anjuIds =
+                    List.of(
+                            anjuId,
+                            savedAnjuId(AnjuFixture.FRIED_CHICKEN),
+                            savedAnjuId(AnjuFixture.FRIED_SHRIMP));
+        }
+
+        @Test
+        @DisplayName("회원이 낸 피드백만 id가 큰 순서로 요청한 수만큼 반환한다")
+        void shouldReturnOnlyMemberFeedbacksInDescendingIdOrder() {
+            // given
+            List<PairingFeedback> saved = saveMemberFeedbacks(MEMBER_ID);
+            pairingFeedbackRepository.save(
+                    PairingFeedbackFixture.FRIEND_FORMAL.createWithMemberAndReferences(
+                            OTHER_MEMBER_ID, drinkId, anjuId));
+            pairingFeedbackRepository.save(
+                    PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
+                            drinkId, anjuId));
+            clearPersistenceContext();
+
+            // when
+            List<PairingFeedback> result =
+                    pairingFeedbackRepository.findAllByMemberIdBeforeId(MEMBER_ID, null, 2);
+
+            // then
+            assertThat(result)
+                    .extracting(PairingFeedback::getId)
+                    .containsExactly(saved.get(2).getId(), saved.get(1).getId());
+        }
+
+        @Test
+        @DisplayName("커서로 준 id보다 먼저 낸 피드백만 반환한다")
+        void shouldReturnFeedbacksBeforeCursor() {
+            // given
+            List<PairingFeedback> saved = saveMemberFeedbacks(MEMBER_ID);
+            clearPersistenceContext();
+
+            // when
+            List<PairingFeedback> result =
+                    pairingFeedbackRepository.findAllByMemberIdBeforeId(
+                            MEMBER_ID, saved.get(1).getId(), 10);
+
+            // then
+            assertThat(result)
+                    .extracting(PairingFeedback::getId)
+                    .containsExactly(saved.get(0).getId());
+        }
+
+        @Test
+        @DisplayName("피드백이 없는 회원이면 빈 목록을 반환한다")
+        void shouldReturnEmptyWhenNoFeedbacks() {
+            // when
+            List<PairingFeedback> result =
+                    pairingFeedbackRepository.findAllByMemberIdBeforeId(MEMBER_ID, null, 10);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+
+        // 조합마다 한 번만 낼 수 있으므로 안주를 바꿔 가며 낸 순서대로 저장한다.
+        private List<PairingFeedback> saveMemberFeedbacks(Long memberId) {
+            return anjuIds.stream()
+                    .map(
+                            savedAnjuId ->
+                                    pairingFeedbackRepository.save(
+                                            PairingFeedbackFixture.FRIEND_FORMAL
+                                                    .createWithMemberAndReferences(
+                                                            memberId, drinkId, savedAnjuId)))
+                    .toList();
+        }
+    }
+
+    @Nested
     @DisplayName("save 메서드는")
     class Save {
 
@@ -391,5 +471,10 @@ class PairingFeedbackRepositoryImplTest extends RepositoryTest {
         return pairingFeedbackJpaRepository
                 .findByMemberIdAndCombinationForUpdate(memberId, drinkId, anjuId)
                 .orElseThrow();
+    }
+
+    private void clearPersistenceContext() {
+        entityManager.flush();
+        entityManager.clear();
     }
 }

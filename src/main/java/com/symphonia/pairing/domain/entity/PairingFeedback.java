@@ -6,6 +6,7 @@ import com.symphonia.pairing.domain.vo.PairingFeedbackChange;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.domain.vo.PairingSituation;
 import com.symphonia.pairing.domain.vo.RelationshipType;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,6 +26,8 @@ public class PairingFeedback {
     private MoodType moodType;
     private PairingRating rating;
     private FeedbackSource source;
+    // 처음 피드백을 낸 시각이다. 저장하기 전에는 null이다.
+    private LocalDateTime submittedAt;
 
     public static PairingFeedback of(
             Long memberId,

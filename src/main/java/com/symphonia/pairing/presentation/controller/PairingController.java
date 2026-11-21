@@ -1,13 +1,17 @@
 package com.symphonia.pairing.presentation.controller;
 
 import com.symphonia.common.response.StandardResponse;
+import com.symphonia.pairing.application.dto.result.MemberPairingFeedbacksResult;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
 import com.symphonia.pairing.application.dto.result.PairingRecommendationResult;
+import com.symphonia.pairing.application.usecase.GetMemberPairingFeedbacksUseCase;
 import com.symphonia.pairing.application.usecase.RecommendPairingUseCase;
 import com.symphonia.pairing.application.usecase.SubmitPairingFeedbackUseCase;
 import com.symphonia.pairing.presentation.api.PairingApi;
+import com.symphonia.pairing.presentation.dto.request.GetMemberPairingFeedbacksRequest;
 import com.symphonia.pairing.presentation.dto.request.RecommendPairingRequest;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
+import com.symphonia.pairing.presentation.dto.response.MemberPairingFeedbacksResponse;
 import com.symphonia.pairing.presentation.dto.response.PairingFeedbackResponse;
 import com.symphonia.pairing.presentation.dto.response.PairingRecommendationResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PairingController implements PairingApi {
     private final RecommendPairingUseCase recommendPairingUseCase;
     private final SubmitPairingFeedbackUseCase submitPairingFeedbackUseCase;
+    private final GetMemberPairingFeedbacksUseCase getMemberPairingFeedbacksUseCase;
 
     @Override
     public ResponseEntity<StandardResponse<PairingRecommendationResponse>> recommend(
@@ -27,6 +32,17 @@ public class PairingController implements PairingApi {
         PairingRecommendationResult result =
                 recommendPairingUseCase.recommend(request.toQuery(memberId));
         PairingRecommendationResponse response = PairingRecommendationResponse.from(result);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(StandardResponse.success(HttpStatus.OK, response));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<MemberPairingFeedbacksResponse>> getFeedbacks(
+            String memberId, GetMemberPairingFeedbacksRequest request) {
+        MemberPairingFeedbacksResult result =
+                getMemberPairingFeedbacksUseCase.getFeedbacks(request.toQuery(memberId));
+        MemberPairingFeedbacksResponse response = MemberPairingFeedbacksResponse.from(result);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .body(StandardResponse.success(HttpStatus.OK, response));

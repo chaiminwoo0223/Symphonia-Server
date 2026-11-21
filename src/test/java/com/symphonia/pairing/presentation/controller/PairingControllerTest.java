@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.catalog.domain.entity.Anju;
@@ -36,6 +37,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @Sql("/sql/clear-catalog.sql")
@@ -260,6 +262,128 @@ class PairingControllerTest extends IntegrationTest {
                                         .param("isAdultConfirmed", "false"))
                         .andExpect(status().isBadRequest());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/pairings/feedback는")
+    class GetFeedbacks {
+
+        @Test
+        @DisplayName("회원이 낸 피드백을 최근에 낸 순서로 술과 안주의 이름과 함께 200으로 반환한다")
+        void shouldReturnMemberFeedbacks() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
+            Anju first = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            Anju second = catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+            saveFeedback(member.getId(), drink.getId(), first.getId());
+            saveFeedback(member.getId(), drink.getId(), second.getId());
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/feedback")
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.feedbacks.length()").value(2))
+                    .andExpect(jsonPath("$.data.feedbacks[0].anjuId").value(second.getId()))
+                    .andExpect(jsonPath("$.data.feedbacks[0].anjuName").value(second.getName()))
+                    .andExpect(jsonPath("$.data.feedbacks[0].drinkId").value(drink.getId()))
+                    .andExpect(jsonPath("$.data.feedbacks[0].drinkName").value(drink.getName()))
+                    .andExpect(jsonPath("$.data.feedbacks[0].rating").value("LIKE"))
+                    .andExpect(jsonPath("$.data.feedbacks[0].relationshipType").value("FRIEND"))
+                    .andExpect(jsonPath("$.data.feedbacks[0].submittedAt").isNotEmpty())
+                    .andExpect(jsonPath("$.data.feedbacks[1].anjuId").value(first.getId()))
+                    .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("다른 회원이 낸 피드백과 익명 피드백은 담지 않는다")
+        void shouldExcludeOtherMembersAndAnonymousFeedbacks() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            Member otherMember = memberHelper.save(MemberFixture.GOOGLE);
+            String token = authHelper.bearerTokenFor(member);
+            Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
+            Anju anju = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            saveFeedback(otherMember.getId(), drink.getId(), anju.getId());
+            pairingFeedbackRepository.save(
+                    PairingFeedbackFixture.FRIEND_FORMAL.createAnonymousWithReferences(
+                            drink.getId(), anju.getId()));
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/feedback")
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.feedbacks.length()").value(0));
+        }
+
+        @Test
+        @DisplayName("size보다 피드백이 많으면 nextCursor를 주고 그 값을 cursor로 보내 이어서 읽는다")
+        void shouldPaginateWithCursor() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+            Drink drink = catalogHelper.saveDrink(DrinkFixture.SOJU);
+            Anju first = catalogHelper.saveAnju(AnjuFixture.GOLBAENGI_MUCHIM);
+            Anju second = catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+            Anju third = catalogHelper.saveAnju(AnjuFixture.FRIED_CHICKEN);
+            saveFeedback(member.getId(), drink.getId(), first.getId());
+            saveFeedback(member.getId(), drink.getId(), second.getId());
+            saveFeedback(member.getId(), drink.getId(), third.getId());
+            MvcResult firstPage =
+                    mockMvc.perform(
+                                    get("/api/v1/pairings/feedback")
+                                            .param("size", "2")
+                                            .header(HttpHeaders.AUTHORIZATION, token))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.data.feedbacks.length()").value(2))
+                            .andExpect(jsonPath("$.data.nextCursor").isNumber())
+                            .andReturn();
+            Number nextCursor =
+                    JsonPath.read(
+                            firstPage.getResponse().getContentAsString(), "$.data.nextCursor");
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/feedback")
+                                    .param("size", "2")
+                                    .param("cursor", String.valueOf(nextCursor))
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.feedbacks.length()").value(1))
+                    .andExpect(jsonPath("$.data.feedbacks[0].anjuId").value(first.getId()))
+                    .andExpect(jsonPath("$.data.nextCursor").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("size가 50을 넘으면 400을 반환한다")
+        void shouldReturnBadRequestWhenSizeExceedsLimit() throws Exception {
+            // given
+            Member member = memberHelper.save(MemberFixture.KAKAO);
+            String token = authHelper.bearerTokenFor(member);
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/feedback")
+                                    .param("size", "51")
+                                    .header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("인증 토큰이 없으면 401을 반환한다")
+        void shouldReturnUnauthorizedWhenUnauthenticated() throws Exception {
+            // when & then
+            mockMvc.perform(get("/api/v1/pairings/feedback")).andExpect(status().isUnauthorized());
+        }
+
+        private void saveFeedback(Long memberId, Long drinkId, Long anjuId) {
+            pairingFeedbackRepository.save(
+                    PairingFeedbackFixture.FRIEND_FORMAL.createWithMemberAndReferences(
+                            memberId, drinkId, anjuId));
         }
     }
 
