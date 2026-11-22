@@ -289,6 +289,102 @@ class GatheringRepositoryImplTest extends RepositoryTest {
     }
 
     @Nested
+    @DisplayName("updateParticipant 메서드는")
+    class UpdateParticipant {
+
+        @Test
+        @DisplayName("참여자의 이름과 휴대폰을 바꾸고 다시 읽으면 바뀐 값을 반환하며 다른 참여자는 그대로 둔다")
+        void shouldPersistNameAndPhoneNumber() {
+            // given
+            Gathering saved = saveWithKimAndLee();
+            Participant kim = saved.getParticipants().get(0);
+            saved.correctParticipant(kim.getId(), "김영수", new PhoneNumber("01077778888"));
+
+            // when
+            gatheringRepository.updateParticipant(saved.getId(), saved.getParticipant(kim.getId()));
+
+            // then
+            clearPersistenceContext();
+            List<Participant> participants =
+                    gatheringRepository.findById(saved.getId()).orElseThrow().getParticipants();
+            assertThat(participants)
+                    .extracting(
+                            Participant::getId,
+                            Participant::getName,
+                            participant -> participant.getPhoneNumber().value())
+                    .containsExactly(
+                            tuple(kim.getId(), "김영수", "01077778888"),
+                            tuple(
+                                    saved.getParticipants().get(1).getId(),
+                                    ParticipantFixture.LEE.getName(),
+                                    ParticipantFixture.LEE.getPhoneNumber()));
+        }
+
+        @Test
+        @DisplayName("바꾼 이름과 휴대폰도 평문 없이 암호화해 저장하고 휴대폰 중복 검사용 HMAC을 함께 바꾼다")
+        void shouldEncryptNameAndPhoneNumberAndReplaceHmac() {
+            // given
+            Gathering saved = saveWithKimAndLee();
+            Participant kim = saved.getParticipants().get(0);
+            String oldHmac = findPhoneNumberHmac(kim.getId());
+            saved.correctParticipant(kim.getId(), "김영수", new PhoneNumber("01077778888"));
+
+            // when
+            gatheringRepository.updateParticipant(saved.getId(), saved.getParticipant(kim.getId()));
+
+            // then
+            clearPersistenceContext();
+            ParticipantJpaEntity stored =
+                    participantJpaRepository.findById(kim.getId()).orElseThrow();
+            assertThat(new String(stored.getEncryptedName(), StandardCharsets.UTF_8))
+                    .doesNotContain("김영수");
+            assertThat(new String(stored.getEncryptedPhoneNumber(), StandardCharsets.UTF_8))
+                    .doesNotContain("01077778888");
+            assertThat(stored.getPhoneNumberHmac())
+                    .isNotEqualTo(oldHmac)
+                    .doesNotContain("01077778888");
+        }
+
+        @Test
+        @DisplayName("같은 모임의 다른 참여자가 쓰는 휴대폰으로 바꾸면 ParticipantAlreadyJoinedException이 발생한다")
+        void shouldThrowParticipantAlreadyJoinedExceptionWhenPhoneNumberUsedByOther() {
+            // given
+            Gathering saved = saveWithKimAndLee();
+            Participant kim = saved.getParticipants().get(0);
+            Participant kimWithLeePhoneNumber =
+                    Participant.builder()
+                            .id(kim.getId())
+                            .name(kim.getName())
+                            .phoneNumber(new PhoneNumber(ParticipantFixture.LEE.getPhoneNumber()))
+                            .consentVersion(kim.getConsentVersion())
+                            .consentedAt(kim.getConsentedAt())
+                            .build();
+
+            // when & then
+            assertThatThrownBy(
+                            () ->
+                                    gatheringRepository.updateParticipant(
+                                            saved.getId(), kimWithLeePhoneNumber))
+                    .isInstanceOf(ParticipantAlreadyJoinedException.class);
+        }
+
+        private Gathering saveWithKimAndLee() {
+            return gatheringRepository.save(
+                    GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                            List.of(
+                                    ParticipantFixture.KIM.create(),
+                                    ParticipantFixture.LEE.create())));
+        }
+
+        private String findPhoneNumberHmac(Long participantId) {
+            return participantJpaRepository
+                    .findById(participantId)
+                    .orElseThrow()
+                    .getPhoneNumberHmac();
+        }
+    }
+
+    @Nested
     @DisplayName("markRecordingExtended 메서드는")
     class MarkRecordingExtended {
 

@@ -3,12 +3,14 @@ package com.symphonia.gathering.presentation.controller;
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.application.dto.result.ParticipantPairingResult;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.usecase.CorrectParticipantUseCase;
 import com.symphonia.gathering.application.usecase.GetParticipantPairingUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringUseCase;
 import com.symphonia.gathering.application.usecase.RecoverParticipantLinkUseCase;
 import com.symphonia.gathering.application.usecase.SubmitParticipantPairingFeedbackUseCase;
 import com.symphonia.gathering.application.usecase.WithdrawParticipantUseCase;
 import com.symphonia.gathering.presentation.api.ParticipantApi;
+import com.symphonia.gathering.presentation.dto.request.CorrectParticipantRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecoverParticipantLinkRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ParticipantController implements ParticipantApi {
     private final JoinGatheringUseCase joinGatheringUseCase;
     private final WithdrawParticipantUseCase withdrawParticipantUseCase;
+    private final CorrectParticipantUseCase correctParticipantUseCase;
     private final RecoverParticipantLinkUseCase recoverParticipantLinkUseCase;
     private final GetParticipantPairingUseCase getParticipantPairingUseCase;
     private final SubmitParticipantPairingFeedbackUseCase submitParticipantPairingFeedbackUseCase;
@@ -43,6 +46,15 @@ public class ParticipantController implements ParticipantApi {
     public ResponseEntity<StandardResponse<Void>> withdraw(
             String joinToken, WithdrawParticipantRequest request) {
         withdrawParticipantUseCase.withdraw(request.toCommand(joinToken));
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(StandardResponse.success(HttpStatus.NO_CONTENT));
+    }
+
+    @Override
+    public ResponseEntity<StandardResponse<Void>> correctProfile(
+            String joinToken, CorrectParticipantRequest request) {
+        correctParticipantUseCase.correct(request.toCommand(joinToken));
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                 .body(StandardResponse.success(HttpStatus.NO_CONTENT));

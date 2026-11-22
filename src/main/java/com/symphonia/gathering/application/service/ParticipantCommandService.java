@@ -2,11 +2,13 @@ package com.symphonia.gathering.application.service;
 
 import com.symphonia.common.annotation.CommandService;
 import com.symphonia.common.exception.BusinessException;
+import com.symphonia.gathering.application.dto.command.CorrectParticipantByGoogleSubjectCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenByGoogleSubjectCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantBySubjectCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.usecase.CorrectParticipantByGoogleSubjectUseCase;
 import com.symphonia.gathering.application.usecase.ReissueParticipantLinkTokenByGoogleSubjectUseCase;
 import com.symphonia.gathering.application.usecase.ReissueParticipantLinkTokenUseCase;
 import com.symphonia.gathering.application.usecase.RemoveParticipantBySubjectUseCase;
@@ -25,12 +27,13 @@ import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectReposit
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
+import com.symphonia.gathering.domain.vo.PhoneNumber;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 
-// 모임장이 참여자를 정리하거나 링크를 잃은 참여자를 돕는 흐름이고, 참여자가 스스로 링크를 복구하거나 철회하는 흐름도 함께 맡는다.
+// 모임장이 참여자를 정리하거나 링크를 잃은 참여자를 돕는 흐름이고, 참여자가 스스로 링크를 복구하거나 철회하거나 정정하는 흐름도 함께 맡는다.
 // 링크를 잃은 참여자도 파기 전까지 분담금을 보내야 하므로 기록 기간 제한을 두지 않는다.
 @CommandService
 @RequiredArgsConstructor
@@ -38,7 +41,8 @@ public class ParticipantCommandService
         implements RemoveParticipantUseCase,
                 RemoveParticipantBySubjectUseCase,
                 ReissueParticipantLinkTokenUseCase,
-                ReissueParticipantLinkTokenByGoogleSubjectUseCase {
+                ReissueParticipantLinkTokenByGoogleSubjectUseCase,
+                CorrectParticipantByGoogleSubjectUseCase {
     private final GatheringRepository gatheringRepository;
     private final GatheringJoinTokenRepository gatheringJoinTokenRepository;
     private final ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
@@ -86,6 +90,31 @@ public class ParticipantCommandService
                         .orElseThrow(ParticipantNotFoundException::new);
 
         return reissueLinkToken(gathering.getParticipant(participantId));
+    }
+
+    // 본인 확인을 마친 구글 계정으로 참여한 참여자의 이름과 휴대폰을 정정한다. 모임은 참여 토큰으로 찾는다.
+    // 파기 시각이 지난 모임은 참여 때와 같이 참여 토큰을 찾지 못한 것으로 보고, 기록 기간 제한은 두지 않는다.
+    // 모임 행을 잠가 같은 모임의 참여와 정정이 겹쳐도 휴대폰 중복 검사와 저장이 차례로 처리되게 한다.
+    // 정산 건에 든 참여자도 정정할 수 있다. 정산 화면이 이름과 휴대폰을 매번 읽으므로 금액과 분담금 상태는 바뀌지 않는다.
+    @Override
+    public void correctByGoogleSubject(CorrectParticipantByGoogleSubjectCommand command) {
+        Long gatheringId =
+                gatheringJoinTokenRepository
+                        .findGatheringIdByValue(command.joinToken())
+                        .orElseThrow(JoinTokenNotFoundException::new);
+        validateRetained(gatheringId, JoinTokenNotFoundException::new);
+        Gathering gathering =
+                gatheringRepository
+                        .findByIdForUpdate(gatheringId)
+                        .orElseThrow(GatheringNotFoundException::new);
+        Long participantId =
+                participantGoogleSubjectRepository
+                        .findParticipantId(gatheringId, command.googleSubject())
+                        .orElseThrow(ParticipantNotFoundException::new);
+
+        gathering.correctParticipant(
+                participantId, command.name(), PhoneNumber.from(command.phoneNumber()));
+        gatheringRepository.updateParticipant(gatheringId, gathering.getParticipant(participantId));
     }
 
     // 모임 행을 잠가 정산 건 기록과 차례로 처리한다. 잠그지 않으면 제거와 동시에 기록된 정산 건이 익명화한 참여자를 가리킬 수 있다.
