@@ -51,6 +51,7 @@ public class SecurityConfig {
         PlaceEndpoints.RECOMMEND,
         GatheringEndpoints.PREVIEW,
         ParticipantEndpoints.JOIN,
+        ParticipantEndpoints.WITHDRAWAL,
         ParticipantEndpoints.PAIRING,
         ParticipantEndpoints.PAIRING_FEEDBACK,
         SettlementEndpoints.LIST,

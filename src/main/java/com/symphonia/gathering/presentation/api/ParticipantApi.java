@@ -5,6 +5,7 @@ import com.symphonia.gathering.presentation.GatheringHeaders;
 import com.symphonia.gathering.presentation.ParticipantEndpoints;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
+import com.symphonia.gathering.presentation.dto.request.WithdrawParticipantRequest;
 import com.symphonia.gathering.presentation.dto.response.ParticipantPairingResponse;
 import com.symphonia.gathering.presentation.dto.response.ParticipantResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,19 @@ public interface ParticipantApi {
     ResponseEntity<StandardResponse<ParticipantResponse>> join(
             @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
             @Valid @RequestBody JoinGatheringRequest request);
+
+    @PostMapping(ParticipantEndpoints.WITHDRAWAL)
+    @Operation(
+            summary = "참여 철회",
+            description =
+                    "참여할 때 쓴 참여 토큰으로 모임을 찾고, 구글 로그인으로 본인을 확인해 참여를 철회합니다. 개인 링크는 필요하지 않고, 철회하면 개인 링크가 무효가 됩니다."
+                            + " 같은 구글 계정으로 참여한 참여자가 모임에 없으면 404(PARTICIPANT_NOT_FOUND)입니다."
+                            + " 취소하지 않은 정산 건의 결제자이거나 분담금 인원이면 받을 돈이 걸려 있어 409(PARTICIPANT_UNREMOVABLE)이며, 모임장이 정산 건을 고쳐 빼거나 취소한 뒤에 철회할 수 있습니다. 결제자는 정산 건에서 뺄 수 없어 취소해야 합니다."
+                            + " 취소한 정산 건에만 든 참여자는 철회할 수 있고, 취소 이력은 그대로 두고 이름과 휴대폰, 구글 계정 식별값만 지웁니다."
+                            + " 철회한 뒤 같은 구글 계정으로 다시 참여할 수 있습니다.")
+    ResponseEntity<StandardResponse<Void>> withdraw(
+            @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
+            @Valid @RequestBody WithdrawParticipantRequest request);
 
     @GetMapping(ParticipantEndpoints.PAIRING)
     @Operation(

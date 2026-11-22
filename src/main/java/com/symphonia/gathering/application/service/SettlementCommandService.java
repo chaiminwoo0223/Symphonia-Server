@@ -83,6 +83,8 @@ public class SettlementCommandService
     }
 
     // 파기 시각이 지난 모임은 물리 삭제 전이라도 찾지 못한 것으로 본다. 삭제 뒤의 응답과 같게 하기 위해서다.
+    // 모임 행을 잠가 참여자의 철회와 모임장의 참여자 제거와 차례로 처리한다.
+    // 잠그지 않으면 철회와 동시에 기록된 정산 건이 익명화한 참여자를 가리킬 수 있다.
     private Gathering findManagedGathering(Long gatheringId, Long memberId, LocalDateTime now) {
         gatheringRetentionRepository
                 .findByGatheringId(gatheringId)
@@ -90,7 +92,7 @@ public class SettlementCommandService
                 .orElseThrow(GatheringNotFoundException::new);
         Gathering gathering =
                 gatheringRepository
-                        .findById(gatheringId)
+                        .findByIdForUpdate(gatheringId)
                         .orElseThrow(GatheringNotFoundException::new);
         GatheringPolicy.validateHost(gathering.getHostMemberId(), memberId);
 

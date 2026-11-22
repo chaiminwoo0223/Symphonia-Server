@@ -929,8 +929,8 @@ class GatheringControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("취소한 정산 건의 인원인 참여자인 경우")
-        class WhenParticipantInCancelledSettlement {
+        @DisplayName("취소하지 않은 정산 건의 인원인 참여자인 경우")
+        class WhenParticipantInUncancelledSettlement {
 
             @Test
             @DisplayName("PARTICIPANT_UNREMOVABLE 코드와 함께 409를 반환한다")
@@ -946,8 +946,7 @@ class GatheringControllerTest extends IntegrationTest {
                                 ParticipantFixture.LEE);
                 Participant kim = gathering.getParticipants().get(0);
                 Participant lee = gathering.getParticipants().get(1);
-                settlementHelper.cancel(
-                        settlementHelper.record(SettlementFixture.DINNER, gathering, kim));
+                settlementHelper.record(SettlementFixture.DINNER, gathering, kim);
 
                 // when & then
                 mockMvc.perform(
@@ -962,6 +961,56 @@ class GatheringControllerTest extends IntegrationTest {
                                         .value(
                                                 GatheringErrorCode.PARTICIPANT_UNREMOVABLE
                                                         .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("취소한 정산 건에만 든 참여자인 경우")
+        class WhenParticipantOnlyInCancelledSettlement {
+
+            @Test
+            @DisplayName("참여자를 익명화해 목록에서 빼고 204를 반환한다")
+            void shouldRemoveParticipant() throws Exception {
+                // given
+                Member member = memberHelper.save(MemberFixture.KAKAO);
+                String token = authHelper.bearerTokenFor(member);
+                Gathering gathering =
+                        gatheringHelper.join(
+                                gatheringHelper.save(
+                                        GatheringFixture.FRIDAY_DINNER, member.getId()),
+                                ParticipantFixture.KIM,
+                                ParticipantFixture.LEE);
+                Participant kim = gathering.getParticipants().get(0);
+                Participant lee = gathering.getParticipants().get(1);
+                settlementHelper.cancel(
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, kim));
+
+                // when
+                mockMvc.perform(
+                                delete(
+                                                "/api/v1/gatherings/{gatheringId}/participants/{participantId}",
+                                                gathering.getId(),
+                                                lee.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(status().isNoContent());
+
+                // then
+                mockMvc.perform(
+                                get(
+                                                "/api/v1/gatherings/{gatheringId}/participants",
+                                                gathering.getId())
+                                        .header(HttpHeaders.AUTHORIZATION, token))
+                        .andExpect(jsonPath("$.data.length()").value(1))
+                        .andExpect(
+                                jsonPath("$.data[0].name").value(ParticipantFixture.KIM.getName()));
+                assertThat(
+                                jdbcTemplate.queryForObject(
+                                        "SELECT COUNT(*) FROM participant WHERE id = ?"
+                                                + " AND encrypted_name IS NULL"
+                                                + " AND withdrawn_at IS NOT NULL",
+                                        Long.class,
+                                        lee.getId()))
+                        .isOne();
             }
         }
 

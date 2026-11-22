@@ -2,6 +2,7 @@ package com.symphonia.gathering.infrastructure.jpa;
 
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +20,12 @@ public class ParticipantGoogleSubjectRepositoryImpl implements ParticipantGoogle
     @Override
     public boolean exists(Long gatheringId, String googleSubject) {
         return participantJpaRepository.existsByGatheringIdAndGoogleSubHmac(
+                gatheringId, hmac(gatheringId, googleSubject));
+    }
+
+    @Override
+    public Optional<Long> findParticipantId(Long gatheringId, String googleSubject) {
+        return participantJpaRepository.findIdByGatheringIdAndGoogleSubHmac(
                 gatheringId, hmac(gatheringId, googleSubject));
     }
 

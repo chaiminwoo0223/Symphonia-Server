@@ -40,6 +40,8 @@ public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEnti
 
     boolean existsByPayerParticipantId(Long payerParticipantId);
 
+    boolean existsByPayerParticipantIdAndCancelledAtIsNull(Long payerParticipantId);
+
     List<SettlementJpaEntity> findAllByPayerParticipantIdAndCancelledAtIsNullOrderById(
             Long payerParticipantId);
 

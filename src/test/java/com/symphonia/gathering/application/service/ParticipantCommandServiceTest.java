@@ -2,6 +2,7 @@ package com.symphonia.gathering.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -10,16 +11,20 @@ import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
+import com.symphonia.gathering.application.dto.command.RemoveParticipantBySubjectCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
+import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
+import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.GatheringRetentionRepository;
+import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectRepository;
 import com.symphonia.gathering.domain.repository.ParticipantLinkTokenRepository;
 import com.symphonia.gathering.domain.repository.ParticipantPairingFeedbackRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -46,6 +51,8 @@ class ParticipantCommandServiceTest extends UnitTest {
     private static final Long OTHER_PARTICIPANT_ID = 21L;
     private static final Long OTHER_MEMBER_ID = 99L;
     private static final Long HOST_MEMBER_ID = GatheringFixture.FRIDAY_DINNER.getHostMemberId();
+    private static final String JOIN_TOKEN = "join-token";
+    private static final String GOOGLE_SUBJECT = "109876543210987654321";
     private static final String NEW_LINK_TOKEN = "new-link-token";
     private static final String MASKED_PHONE_NUMBER = "010-****-5678";
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 19, 18, 0);
@@ -57,6 +64,8 @@ class ParticipantCommandServiceTest extends UnitTest {
     private ParticipantCommandService participantCommandService;
 
     @Mock private GatheringRepository gatheringRepository;
+    @Mock private GatheringJoinTokenRepository gatheringJoinTokenRepository;
+    @Mock private ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private ParticipantLinkTokenRepository participantLinkTokenRepository;
     @Mock private ParticipantPairingFeedbackRepository participantPairingFeedbackRepository;
@@ -68,6 +77,8 @@ class ParticipantCommandServiceTest extends UnitTest {
         participantCommandService =
                 new ParticipantCommandService(
                         gatheringRepository,
+                        gatheringJoinTokenRepository,
+                        participantGoogleSubjectRepository,
                         gatheringRetentionRepository,
                         participantLinkTokenRepository,
                         participantPairingFeedbackRepository,
@@ -126,7 +137,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 개인 링크 토큰을 지우거나 저장하지 않는다")
             void shouldThrowNotGatheringHostException() {
                 // given
-                givenLockedGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
 
                 // when & then
                 assertThatThrownBy(
@@ -145,7 +156,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("예외를 던지고 개인 링크 토큰을 지우거나 저장하지 않는다")
             void shouldThrowParticipantNotFoundException() {
                 // given
-                givenLockedGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
                 ReissueParticipantLinkTokenCommand command =
                         ReissueParticipantLinkTokenCommand.of(
                                 HOST_MEMBER_ID, GATHERING_ID, OTHER_PARTICIPANT_ID);
@@ -166,7 +177,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("기존 개인 링크 토큰을 모두 지운 뒤 새 토큰을 저장하고 반환한다")
             void shouldReplaceLinkTokens() {
                 // given
-                givenLockedGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
                 given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
 
                 // when
@@ -196,7 +207,7 @@ class ParticipantCommandServiceTest extends UnitTest {
             @DisplayName("기록 기간과 관계없이 새 개인 링크 토큰을 저장하고 반환한다")
             void shouldReplaceLinkTokens() {
                 // given
-                givenLockedGatheringWithParticipant(CLOSED_PERIOD_OPENED_AT);
+                givenGatheringWithParticipant(CLOSED_PERIOD_OPENED_AT);
                 given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
 
                 // when
@@ -292,15 +303,16 @@ class ParticipantCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("정산 건의 결제자이거나 인원인 참여자인 경우")
-        class WhenParticipantInSettlement {
+        @DisplayName("취소하지 않은 정산 건의 결제자이거나 인원인 참여자인 경우")
+        class WhenParticipantInUncancelledSettlement {
 
             @Test
-            @DisplayName("예외를 던지고 아무것도 지우지 않는다")
+            @DisplayName("예외를 던지고 아무것도 지우거나 익명화하지 않는다")
             void shouldThrowParticipantUnremovableException() {
                 // given
                 givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
-                given(settlementRepository.existsByParticipantId(PARTICIPANT_ID)).willReturn(true);
+                given(settlementRepository.existsUncancelledByParticipantId(PARTICIPANT_ID))
+                        .willReturn(true);
 
                 // when & then
                 assertThatThrownBy(() -> participantCommandService.remove(command(HOST_MEMBER_ID)))
@@ -310,15 +322,45 @@ class ParticipantCommandServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("정산 건에 없는 참여자인 경우")
-        class WhenParticipantRemovable {
+        @DisplayName("취소한 정산 건에만 든 참여자인 경우")
+        class WhenParticipantOnlyInCancelledSettlement {
 
             @Test
-            @DisplayName("개인 링크 토큰, 피드백 제출 표시, 참여자 순서로 지운다")
+            @DisplayName("개인 링크 토큰과 피드백 제출 표시를 지운 뒤 참여자를 익명화하고 행은 지우지 않는다")
+            void shouldAnonymizeParticipant() {
+                // given
+                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                given(settlementRepository.existsByParticipantId(PARTICIPANT_ID)).willReturn(true);
+
+                // when
+                participantCommandService.remove(command(HOST_MEMBER_ID));
+
+                // then
+                InOrder inOrder =
+                        inOrder(
+                                participantLinkTokenRepository,
+                                participantPairingFeedbackRepository,
+                                gatheringRepository);
+                then(participantLinkTokenRepository)
+                        .should(inOrder)
+                        .deleteAllByParticipantId(PARTICIPANT_ID);
+                then(participantPairingFeedbackRepository)
+                        .should(inOrder)
+                        .deleteByParticipantId(PARTICIPANT_ID);
+                then(gatheringRepository).should(inOrder).anonymizeParticipant(PARTICIPANT_ID, NOW);
+                then(gatheringRepository).should(never()).deleteParticipant(anyLong());
+            }
+        }
+
+        @Nested
+        @DisplayName("정산 건에 전혀 없는 참여자인 경우")
+        class WhenParticipantNotInAnySettlement {
+
+            @Test
+            @DisplayName("개인 링크 토큰, 피드백 제출 표시, 참여자 순서로 지우고 익명화하지 않는다")
             void shouldDeleteReferencesBeforeParticipant() {
                 // given
                 givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
-                given(settlementRepository.existsByParticipantId(PARTICIPANT_ID)).willReturn(false);
 
                 // when
                 participantCommandService.remove(command(HOST_MEMBER_ID));
@@ -336,6 +378,9 @@ class ParticipantCommandServiceTest extends UnitTest {
                         .should(inOrder)
                         .deleteByParticipantId(PARTICIPANT_ID);
                 then(gatheringRepository).should(inOrder).deleteParticipant(PARTICIPANT_ID);
+                then(gatheringRepository)
+                        .should(never())
+                        .anonymizeParticipant(anyLong(), any(LocalDateTime.class));
             }
         }
 
@@ -348,7 +393,6 @@ class ParticipantCommandServiceTest extends UnitTest {
             void shouldDeleteParticipant() {
                 // given
                 givenGatheringWithParticipant(CLOSED_PERIOD_OPENED_AT);
-                given(settlementRepository.existsByParticipantId(PARTICIPANT_ID)).willReturn(false);
 
                 // when
                 participantCommandService.remove(command(HOST_MEMBER_ID));
@@ -361,22 +405,216 @@ class ParticipantCommandServiceTest extends UnitTest {
         private RemoveParticipantCommand command(Long memberId) {
             return RemoveParticipantCommand.of(memberId, GATHERING_ID, PARTICIPANT_ID);
         }
+    }
 
-        private void thenNothingDeleted() {
-            then(participantLinkTokenRepository).shouldHaveNoInteractions();
-            then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
-            then(gatheringRepository).should(never()).deleteParticipant(anyLong());
+    @Nested
+    @DisplayName("remove 메서드는(참여 토큰과 구글 계정)")
+    class RemoveBySubject {
+
+        @Nested
+        @DisplayName("참여 토큰이 없는 경우")
+        class WhenJoinTokenNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 모임을 읽거나 아무것도 지우지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> participantCommandService.remove(command()))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                thenNothingDeleted();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 참여 토큰을 찾지 못한 예외를 던지고 모임을 읽거나 아무것도 지우지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                givenJoinToken();
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(() -> participantCommandService.remove(command()))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                thenNothingDeleted();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임이 존재하지 않는 경우")
+        class WhenGatheringNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 지우지 않는다")
+            void shouldThrowGatheringNotFoundException() {
+                // given
+                givenJoinToken();
+                givenRetention(GatheringRetentionFixture.RETAINED);
+                given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> participantCommandService.remove(command()))
+                        .isInstanceOf(GatheringNotFoundException.class);
+                thenNothingDeleted();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 없는 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 지우지 않는다")
+            void shouldThrowParticipantNotFoundException() {
+                // given
+                givenJoinToken();
+                givenLockedGathering();
+                given(
+                                participantGoogleSubjectRepository.findParticipantId(
+                                        GATHERING_ID, GOOGLE_SUBJECT))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(() -> participantCommandService.remove(command()))
+                        .isInstanceOf(ParticipantNotFoundException.class);
+                thenNothingDeleted();
+            }
+        }
+
+        @Nested
+        @DisplayName("취소하지 않은 정산 건의 결제자이거나 인원인 참여자인 경우")
+        class WhenParticipantInUncancelledSettlement {
+
+            @Test
+            @DisplayName("예외를 던지고 아무것도 지우거나 익명화하지 않는다")
+            void shouldThrowParticipantUnremovableException() {
+                // given
+                givenJoinToken();
+                givenLockedGathering();
+                givenGoogleParticipant();
+                given(settlementRepository.existsUncancelledByParticipantId(PARTICIPANT_ID))
+                        .willReturn(true);
+
+                // when & then
+                assertThatThrownBy(() -> participantCommandService.remove(command()))
+                        .isInstanceOf(ParticipantUnremovableException.class);
+                thenNothingDeleted();
+            }
+        }
+
+        @Nested
+        @DisplayName("정산 건에 전혀 없는 참여자인 경우")
+        class WhenParticipantNotInAnySettlement {
+
+            @Test
+            @DisplayName("모임장의 회원 id만 읽는 잠금 조회로 모임을 잠그고 개인 링크 토큰, 피드백 제출 표시, 참여자 순서로 지운다")
+            void shouldDeleteParticipant() {
+                // given
+                givenJoinToken();
+                givenLockedGathering();
+                givenGoogleParticipant();
+
+                // when
+                participantCommandService.remove(command());
+
+                // then
+                InOrder inOrder =
+                        inOrder(
+                                participantLinkTokenRepository,
+                                participantPairingFeedbackRepository,
+                                gatheringRepository);
+                then(participantLinkTokenRepository)
+                        .should(inOrder)
+                        .deleteAllByParticipantId(PARTICIPANT_ID);
+                then(participantPairingFeedbackRepository)
+                        .should(inOrder)
+                        .deleteByParticipantId(PARTICIPANT_ID);
+                then(gatheringRepository).should(inOrder).deleteParticipant(PARTICIPANT_ID);
+                then(gatheringRepository)
+                        .should(never())
+                        .anonymizeParticipant(anyLong(), any(LocalDateTime.class));
+                then(gatheringRepository).should(never()).findByIdForUpdate(anyLong());
+            }
+        }
+
+        @Nested
+        @DisplayName("취소한 정산 건에만 든 참여자인 경우")
+        class WhenParticipantOnlyInCancelledSettlement {
+
+            @Test
+            @DisplayName("개인 링크 토큰과 피드백 제출 표시를 지운 뒤 참여자를 익명화하고 행은 지우지 않는다")
+            void shouldAnonymizeParticipant() {
+                // given
+                givenJoinToken();
+                givenLockedGathering();
+                givenGoogleParticipant();
+                given(settlementRepository.existsByParticipantId(PARTICIPANT_ID)).willReturn(true);
+
+                // when
+                participantCommandService.remove(command());
+
+                // then
+                InOrder inOrder =
+                        inOrder(
+                                participantLinkTokenRepository,
+                                participantPairingFeedbackRepository,
+                                gatheringRepository);
+                then(participantLinkTokenRepository)
+                        .should(inOrder)
+                        .deleteAllByParticipantId(PARTICIPANT_ID);
+                then(participantPairingFeedbackRepository)
+                        .should(inOrder)
+                        .deleteByParticipantId(PARTICIPANT_ID);
+                then(gatheringRepository).should(inOrder).anonymizeParticipant(PARTICIPANT_ID, NOW);
+                then(gatheringRepository).should(never()).deleteParticipant(anyLong());
+            }
+        }
+
+        private RemoveParticipantBySubjectCommand command() {
+            return new RemoveParticipantBySubjectCommand(JOIN_TOKEN, GOOGLE_SUBJECT);
+        }
+
+        // 참여자를 읽을 필요가 없으므로 모임장의 회원 id만 읽는 잠금 조회로 모임 행만 잠근다.
+        private void givenLockedGathering() {
+            givenRetention(GatheringRetentionFixture.RETAINED);
+            given(gatheringRepository.findHostMemberIdByIdForUpdate(GATHERING_ID))
+                    .willReturn(Optional.of(HOST_MEMBER_ID));
+        }
+
+        private void givenJoinToken() {
+            given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                    .willReturn(Optional.of(GATHERING_ID));
+        }
+
+        private void givenGoogleParticipant() {
+            given(
+                            participantGoogleSubjectRepository.findParticipantId(
+                                    GATHERING_ID, GOOGLE_SUBJECT))
+                    .willReturn(Optional.of(PARTICIPANT_ID));
         }
     }
 
-    private void givenGatheringWithParticipant(LocalDateTime openedAt) {
-        givenRetention(GatheringRetentionFixture.RETAINED);
-        given(gatheringRepository.findById(GATHERING_ID))
-                .willReturn(Optional.of(gatheringWithParticipant(openedAt)));
+    private void thenNothingDeleted() {
+        then(participantLinkTokenRepository).shouldHaveNoInteractions();
+        then(participantPairingFeedbackRepository).shouldHaveNoInteractions();
+        then(gatheringRepository).should(never()).deleteParticipant(anyLong());
+        then(gatheringRepository)
+                .should(never())
+                .anonymizeParticipant(anyLong(), any(LocalDateTime.class));
     }
 
-    // 재발급은 같은 모임의 다른 재발급과 겹치지 않도록 모임을 잠그고 읽는다.
-    private void givenLockedGatheringWithParticipant(LocalDateTime openedAt) {
+    // 재발급, 모임장의 제거, 참여자의 철회는 같은 모임의 다른 요청과 겹치지 않도록 모임을 잠그고 읽는다.
+    private void givenGatheringWithParticipant(LocalDateTime openedAt) {
         givenRetention(GatheringRetentionFixture.RETAINED);
         given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                 .willReturn(Optional.of(gatheringWithParticipant(openedAt)));

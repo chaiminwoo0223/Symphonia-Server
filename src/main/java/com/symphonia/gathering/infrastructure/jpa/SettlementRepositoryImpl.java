@@ -121,6 +121,13 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                 || settlementShareJpaRepository.existsByParticipantId(participantId);
     }
 
+    @Override
+    public boolean existsUncancelledByParticipantId(Long participantId) {
+        return settlementJpaRepository.existsByPayerParticipantIdAndCancelledAtIsNull(participantId)
+                || settlementShareJpaRepository.existsByParticipantIdInUncancelledSettlement(
+                        participantId);
+    }
+
     // 정산 건을 참조하는 분담금을 먼저 지운다.
     @Override
     public void deleteAllByGatheringId(Long gatheringId) {
