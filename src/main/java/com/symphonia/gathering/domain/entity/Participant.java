@@ -32,4 +32,15 @@ public class Participant {
                 .consentedAt(consentedAt)
                 .build();
     }
+
+    // 동의 기록은 그대로 두고 이름과 휴대폰만 바꾼 새 참여자를 돌려준다. 이름은 앞뒤 공백을 제거한다.
+    Participant corrected(String name, PhoneNumber phoneNumber) {
+        return Participant.builder()
+                .id(id)
+                .name(name.strip())
+                .phoneNumber(phoneNumber)
+                .consentVersion(consentVersion)
+                .consentedAt(consentedAt)
+                .build();
+    }
 }

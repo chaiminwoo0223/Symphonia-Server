@@ -4,21 +4,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.dto.command.CorrectParticipantByGoogleSubjectCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenByGoogleSubjectCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantBySubjectCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
+import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
+import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
 import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
@@ -41,6 +46,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 
@@ -56,6 +62,7 @@ class ParticipantCommandServiceTest extends UnitTest {
     private static final String GOOGLE_SUBJECT = "109876543210987654321";
     private static final String NEW_LINK_TOKEN = "new-link-token";
     private static final String MASKED_PHONE_NUMBER = "010-****-5678";
+    private static final String NEW_PHONE_NUMBER = "01077778888";
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 19, 18, 0);
 
     // 기록 기간(48시간)이 지나도 링크를 잃은 참여자는 분담금을 보내야 하므로, 닫힌 뒤의 모임으로 경계를 확인한다.
@@ -388,6 +395,240 @@ class ParticipantCommandServiceTest extends UnitTest {
                             participantGoogleSubjectRepository.findParticipantId(
                                     GATHERING_ID, GOOGLE_SUBJECT))
                     .willReturn(Optional.of(PARTICIPANT_ID));
+        }
+    }
+
+    @Nested
+    @DisplayName("correctByGoogleSubject 메서드는")
+    class CorrectByGoogleSubject {
+
+        @Nested
+        @DisplayName("참여 토큰이 가리키는 모임이 없는 경우")
+        class WhenJoinTokenNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 모임을 읽거나 참여자를 바꾸지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        participantCommandService.correctByGoogleSubject(
+                                                correctCommand(NEW_PHONE_NUMBER)))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 참여 토큰을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                givenJoinToken();
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        participantCommandService.correctByGoogleSubject(
+                                                correctCommand(NEW_PHONE_NUMBER)))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 없는 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 참여자를 바꾸지 않는다")
+            void shouldThrowParticipantNotFoundException() {
+                // given
+                givenJoinToken();
+                givenGatheringWithTwoParticipants(OPEN_PERIOD_OPENED_AT);
+                given(
+                                participantGoogleSubjectRepository.findParticipantId(
+                                        GATHERING_ID, GOOGLE_SUBJECT))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        participantCommandService.correctByGoogleSubject(
+                                                correctCommand(NEW_PHONE_NUMBER)))
+                        .isInstanceOf(ParticipantNotFoundException.class);
+                then(gatheringRepository)
+                        .should(never())
+                        .updateParticipant(anyLong(), any(Participant.class));
+            }
+        }
+
+        @Nested
+        @DisplayName("010으로 시작하는 11자리가 아닌 휴대폰인 경우")
+        class WhenPhoneNumberInvalid {
+
+            @Test
+            @DisplayName("예외를 던지고 참여자를 바꾸지 않는다")
+            void shouldThrowInvalidPhoneNumberException() {
+                // given
+                givenJoinToken();
+                givenGatheringWithTwoParticipants(OPEN_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        participantCommandService.correctByGoogleSubject(
+                                                correctCommand("01112345678")))
+                        .isInstanceOf(InvalidPhoneNumberException.class);
+                then(gatheringRepository)
+                        .should(never())
+                        .updateParticipant(anyLong(), any(Participant.class));
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 모임의 다른 참여자가 쓰는 휴대폰인 경우")
+        class WhenPhoneNumberUsedByOtherParticipant {
+
+            @Test
+            @DisplayName("예외를 던지고 참여자를 바꾸지 않는다")
+            void shouldThrowParticipantAlreadyJoinedException() {
+                // given
+                givenJoinToken();
+                givenGatheringWithTwoParticipants(OPEN_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+
+                // when & then
+                assertThatThrownBy(
+                                () ->
+                                        participantCommandService.correctByGoogleSubject(
+                                                correctCommand(
+                                                        ParticipantFixture.LEE.getPhoneNumber())))
+                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                then(gatheringRepository)
+                        .should(never())
+                        .updateParticipant(anyLong(), any(Participant.class));
+            }
+        }
+
+        @Nested
+        @DisplayName("다른 참여자가 쓰지 않는 휴대폰인 경우")
+        class WhenPhoneNumberAvailable {
+
+            @Test
+            @DisplayName("이름의 앞뒤 공백을 제거하고 하이픈을 지운 휴대폰으로 참여자를 바꾼다")
+            void shouldUpdateParticipantWithNormalizedValues() {
+                // given
+                givenJoinToken();
+                givenGatheringWithTwoParticipants(OPEN_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+
+                // when
+                participantCommandService.correctByGoogleSubject(
+                        new CorrectParticipantByGoogleSubjectCommand(
+                                JOIN_TOKEN, GOOGLE_SUBJECT, " 김영수 ", "010-7777-8888"));
+
+                // then
+                Participant corrected = captureUpdatedParticipant();
+                assertThat(corrected.getId()).isEqualTo(PARTICIPANT_ID);
+                assertThat(corrected.getName()).isEqualTo("김영수");
+                assertThat(corrected.getPhoneNumber().value()).isEqualTo(NEW_PHONE_NUMBER);
+            }
+        }
+
+        @Nested
+        @DisplayName("자기 휴대폰을 그대로 두고 이름만 바꾸는 경우")
+        class WhenPhoneNumberUnchanged {
+
+            @Test
+            @DisplayName("자기 휴대폰은 중복으로 보지 않고 참여자를 바꾼다")
+            void shouldUpdateParticipant() {
+                // given
+                givenJoinToken();
+                givenGatheringWithTwoParticipants(OPEN_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+
+                // when
+                participantCommandService.correctByGoogleSubject(
+                        correctCommand(ParticipantFixture.KIM.getPhoneNumber()));
+
+                // then
+                Participant corrected = captureUpdatedParticipant();
+                assertThat(corrected.getName()).isEqualTo("김영수");
+                assertThat(corrected.getPhoneNumber().value())
+                        .isEqualTo(ParticipantFixture.KIM.getPhoneNumber());
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("기록 기간과 관계없이 참여자를 바꾼다")
+            void shouldUpdateParticipant() {
+                // given
+                givenJoinToken();
+                givenGatheringWithTwoParticipants(CLOSED_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+
+                // when
+                participantCommandService.correctByGoogleSubject(correctCommand(NEW_PHONE_NUMBER));
+
+                // then
+                assertThat(captureUpdatedParticipant().getPhoneNumber().value())
+                        .isEqualTo(NEW_PHONE_NUMBER);
+            }
+        }
+
+        private CorrectParticipantByGoogleSubjectCommand correctCommand(String phoneNumber) {
+            return new CorrectParticipantByGoogleSubjectCommand(
+                    JOIN_TOKEN, GOOGLE_SUBJECT, "김영수", phoneNumber);
+        }
+
+        private Participant captureUpdatedParticipant() {
+            ArgumentCaptor<Participant> captor = ArgumentCaptor.forClass(Participant.class);
+            then(gatheringRepository)
+                    .should()
+                    .updateParticipant(eq(GATHERING_ID), captor.capture());
+
+            return captor.getValue();
+        }
+
+        private void givenJoinToken() {
+            given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                    .willReturn(Optional.of(GATHERING_ID));
+        }
+
+        private void givenParticipantOfGoogleSubject() {
+            given(
+                            participantGoogleSubjectRepository.findParticipantId(
+                                    GATHERING_ID, GOOGLE_SUBJECT))
+                    .willReturn(Optional.of(PARTICIPANT_ID));
+        }
+
+        private void givenGatheringWithTwoParticipants(LocalDateTime openedAt) {
+            givenRetention(GatheringRetentionFixture.RETAINED);
+            given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
+                    .willReturn(
+                            Optional.of(
+                                    GatheringFixture.FRIDAY_DINNER.createWithIdAndOpenedAt(
+                                            GATHERING_ID,
+                                            openedAt,
+                                            List.of(
+                                                    ParticipantFixture.KIM.createWithId(
+                                                            PARTICIPANT_ID),
+                                                    ParticipantFixture.LEE.createWithId(
+                                                            OTHER_PARTICIPANT_ID)))));
         }
     }
 

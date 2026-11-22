@@ -14,6 +14,9 @@ public final class ParticipantEndpoints {
     // 인증 없이 X-Join-Token 헤더의 참여 토큰과 구글 로그인으로 본인을 확인해 개인 링크를 다시 발급받는다.
     public static final String LINK_TOKEN = BASE + "/link-token";
 
+    // 인증 없이 X-Join-Token 헤더의 참여 토큰으로 모임을 찾고, 구글 ID 토큰으로 본인을 확인해 이름과 휴대폰을 정정한다.
+    public static final String PROFILE = BASE + "/profile";
+
     // 인증 없이 X-Link-Token 헤더의 개인 링크 토큰으로 요청한다. 토큰이 가리키는 참여자의 모임에서 고른 페어링을 조회하고 피드백을 남긴다.
     public static final String PAIRING = BASE + "/pairing";
     public static final String PAIRING_FEEDBACK = PAIRING + "/feedback";

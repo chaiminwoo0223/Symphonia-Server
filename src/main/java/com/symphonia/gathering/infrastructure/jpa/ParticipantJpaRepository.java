@@ -24,6 +24,20 @@ public interface ParticipantJpaRepository extends JpaRepository<ParticipantJpaEn
     Optional<Long> findIdByGatheringIdAndGoogleSubHmac(
             @Param("gatheringId") Long gatheringId, @Param("googleSubHmac") String googleSubHmac);
 
+    // 같은 모임에 같은 휴대폰이 이미 있으면 유일 제약 위반으로 실패한다.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(
+            "UPDATE ParticipantJpaEntity participant"
+                    + " SET participant.encryptedName = :encryptedName,"
+                    + " participant.encryptedPhoneNumber = :encryptedPhoneNumber,"
+                    + " participant.phoneNumberHmac = :phoneNumberHmac"
+                    + " WHERE participant.id = :participantId")
+    void updateNameAndPhoneNumberById(
+            @Param("participantId") Long participantId,
+            @Param("encryptedName") byte[] encryptedName,
+            @Param("encryptedPhoneNumber") byte[] encryptedPhoneNumber,
+            @Param("phoneNumberHmac") String phoneNumberHmac);
+
     // 이름, 휴대폰, 구글 계정 값을 비우고 철회 시각만 남긴다. 정산 건이 참조하는 행은 지울 수 없을 때 쓴다.
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(

@@ -61,6 +61,21 @@ public class Gathering {
         participants = Stream.concat(participants.stream(), Stream.of(participant)).toList();
     }
 
+    // 참여자 목록을 바깥에서 바꿀 수 없게, 정정한 참여자로 갈아 끼운 새 불변 목록으로 바꾼다.
+    // 같은 모임의 다른 참여자가 쓰는 휴대폰으로는 정정할 수 없고, 자기 휴대폰은 그대로 둘 수 있다.
+    public void correctParticipant(Long participantId, String name, PhoneNumber phoneNumber) {
+        GatheringPolicy.validateNotJoined(hasOtherParticipantJoined(participantId, phoneNumber));
+        Participant corrected = getParticipant(participantId).corrected(name, phoneNumber);
+        participants =
+                participants.stream()
+                        .map(
+                                participant ->
+                                        participantId.equals(participant.getId())
+                                                ? corrected
+                                                : participant)
+                        .toList();
+    }
+
     // 차수 목록을 바깥에서 바꿀 수 없게, 추가할 때마다 기존 목록에 더한 새 불변 목록으로 바꾼다.
     public void addRound(int number) {
         rounds = Stream.concat(rounds.stream(), Stream.of(GatheringRound.of(number))).toList();
@@ -134,5 +149,11 @@ public class Gathering {
 
     public List<GatheringRound> getRounds() {
         return List.copyOf(rounds);
+    }
+
+    private boolean hasOtherParticipantJoined(Long participantId, PhoneNumber phoneNumber) {
+        return participants.stream()
+                .filter(participant -> !participantId.equals(participant.getId()))
+                .anyMatch(participant -> participant.getPhoneNumber().equals(phoneNumber));
     }
 }

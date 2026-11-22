@@ -3,6 +3,7 @@ package com.symphonia.gathering.presentation.api;
 import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringHeaders;
 import com.symphonia.gathering.presentation.ParticipantEndpoints;
+import com.symphonia.gathering.presentation.dto.request.CorrectParticipantRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecoverParticipantLinkRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
@@ -15,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
@@ -47,6 +49,24 @@ public interface ParticipantApi {
     ResponseEntity<StandardResponse<Void>> withdraw(
             @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
             @Valid @RequestBody WithdrawParticipantRequest request);
+
+    @PutMapping(ParticipantEndpoints.PROFILE)
+    @Operation(
+            summary = "참여자 이름과 휴대폰 정정",
+            description =
+                    "참여할 때 쓴 참여 토큰으로 모임을 찾고, 구글 로그인으로 본인을 확인해 이름과 휴대폰을 정정합니다. 개인 링크는 필요하지 않고 개인 링크는 바뀌지 않습니다."
+                            + " 이름과 휴대폰을 모두 보내야 하며, 현재 값과 같아도 됩니다. 204입니다."
+                            + " 모임의 파기 시각 전까지는 참여 기간이 끝난 뒤에도 정정할 수 있고, 정산 건에 든 참여자도 정정할 수 있습니다."
+                            + " 정산 화면은 이름과 휴대폰을 매번 새로 읽으므로 정정한 값이 바로 보이며 금액과 분담금 상태는 바뀌지 않습니다."
+                            + " 이미 정산 화면을 본 결제자는 이전 값을 볼 수 있습니다."
+                            + " 휴대폰은 010으로 시작하는 11자리만 받으며 본인이 입력한 값이라 인증하지 않습니다. 이름은 앞뒤 공백을 제거해 저장합니다."
+                            + " 같은 모임의 다른 참여자가 쓰는 휴대폰이면 409(PARTICIPANT_ALREADY_JOINED)입니다."
+                            + " 구글 ID 토큰이 없으면 400, 유효하지 않으면 400(INVALID_SOCIAL_TOKEN)입니다."
+                            + " 참여 토큰을 찾지 못하거나 파기된 모임이면 404(JOIN_TOKEN_NOT_FOUND)입니다."
+                            + " 이 구글 계정으로 참여한 참여자가 없으면 404(PARTICIPANT_NOT_FOUND)이며, 구글 계정 없이 참여한 모임장과 이전 방식으로 참여한 참여자는 정정할 수 없습니다.")
+    ResponseEntity<StandardResponse<Void>> correctProfile(
+            @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
+            @Valid @RequestBody CorrectParticipantRequest request);
 
     @PostMapping(ParticipantEndpoints.LINK_TOKEN)
     @Operation(

@@ -147,6 +147,23 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public void updateParticipant(Long gatheringId, Participant participant) {
+        GatheringDataKey dataKey = gatheringDataKeyLoader.load(gatheringId);
+        String phoneNumber = participant.getPhoneNumber().value();
+
+        try {
+            participantJpaRepository.updateNameAndPhoneNumberById(
+                    participant.getId(),
+                    dataKey.encrypt(participant.getName()),
+                    dataKey.encrypt(phoneNumber),
+                    dataKey.hmac(phoneNumber));
+        } catch (DataIntegrityViolationException e) {
+            GatheringPolicy.validateNotJoined(isPhoneNumberViolation(e));
+            throw e;
+        }
+    }
+
+    @Override
     public void deleteParticipant(Long participantId) {
         participantJpaRepository.deleteParticipantById(participantId);
     }

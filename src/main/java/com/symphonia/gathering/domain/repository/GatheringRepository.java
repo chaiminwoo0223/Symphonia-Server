@@ -1,6 +1,7 @@
 package com.symphonia.gathering.domain.repository;
 
 import com.symphonia.gathering.domain.entity.Gathering;
+import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.vo.HostedGathering;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,6 +43,10 @@ public interface GatheringRepository {
     // 기록 기간을 연장한 것으로 표시한다. 모임을 저장할 때는 연장 여부를 바꾸지 않으므로 이 메서드로만 바꾼다.
     // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
     void markRecordingExtended(Long gatheringId);
+
+    // 참여자의 이름과 휴대폰을 바꾼다. 모임을 저장할 때는 기존 참여자를 다시 쓰지 않으므로 이 메서드로만 바꾼다.
+    // 같은 휴대폰의 다른 참여자가 있으면 참여자 중복으로 알린다. 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
+    void updateParticipant(Long gatheringId, Participant participant);
 
     // 참여자 한 명을 지운다. 참여자를 참조하는 개인 링크 토큰과 피드백 제출 표시를 먼저 지우고, 정산 건에 없는지 확인한 뒤에 부른다.
     void deleteParticipant(Long participantId);
