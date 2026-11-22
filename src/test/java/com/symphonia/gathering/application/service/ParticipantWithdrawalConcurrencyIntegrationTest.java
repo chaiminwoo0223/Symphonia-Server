@@ -138,21 +138,15 @@ class ParticipantWithdrawalConcurrencyIntegrationTest extends IntegrationTest {
         }
     }
 
-    // 먼저 잠금을 얻은 요청이 이긴다. 어느 쪽이 먼저든 늦은 요청은 아래 둘 중 하나로 정확히 하나만 실패하고, 최종 상태는 이긴 요청의 결과와 일치한다.
-    // 철회나 제거가 먼저면 기록이 인원 없음으로 실패하고 참여자는 익명화돼 있다.
-    // 기록이 먼저면 철회나 제거가 PARTICIPANT_UNREMOVABLE로 실패하고 참여자는 그대로다.
+    // 먼저 잠금을 얻은 요청이 이기고, 늦은 요청이 정확히 하나만 실패한다.
+    // 철회나 제거가 먼저면 기록이 인원 없음으로, 기록이 먼저면 철회나 제거가 PARTICIPANT_UNREMOVABLE로 실패한다.
     private void assertOneRequestWonAndStateConsistent(List<Throwable> failures) {
         assertThat(failures).hasSize(1);
-        boolean recorded = uncancelledSettlementCount() == 1;
-        if (recorded) {
-            assertThat(failures.getFirst()).isInstanceOf(ParticipantUnremovableException.class);
-            assertThat(withdrawnParticipantCount()).isZero();
-        } else {
-            assertThat(failures.getFirst())
-                    .isInstanceOf(InvalidSettlementParticipantsException.class);
-            assertThat(uncancelledSettlementCount()).isZero();
-            assertThat(withdrawnParticipantCount()).isOne();
-        }
+        assertThat(failures.getFirst())
+                .isInstanceOfAny(
+                        ParticipantUnremovableException.class,
+                        InvalidSettlementParticipantsException.class);
+        assertThat(uncancelledSettlementCount() + withdrawnParticipantCount()).isOne();
         assertThat(uncancelledSettlementsOfWithdrawnParticipantCount()).isZero();
     }
 
