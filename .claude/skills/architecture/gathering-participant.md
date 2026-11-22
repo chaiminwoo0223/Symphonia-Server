@@ -23,6 +23,18 @@
 - 구글 계정 없이 참여한 모임장과 구글 본인 확인 도입 전 참여자는 이 경로로 복구할 수 없고 모임장의 재발급을 쓴다.
 - 같은 구글 계정으로 `POST /participants`를 다시 호출하면 계속 409(`PARTICIPANT_ALREADY_JOINED`)이고 링크를 발급하지 않는다. 클라이언트는 이 409를 받으면 링크 복구로 안내한다.
 
+## 참여자의 이름과 휴대폰 정정
+
+- 참여자는 `PUT /participants/profile`(인증 없음)로 본인의 이름과 휴대폰을 정정한다. `X-Join-Token` 헤더의 참여 토큰으로 모임을 찾고 본문 `googleIdToken`으로 본인을 확인하며 204다. 개인 링크는 필요하지 않고 바뀌지 않는다. `*Api`는 `ParticipantApi`다.
+- 본문은 `name`, `phoneNumber`, `googleIdToken`을 모두 받는다. 현재 값과 같아도 된다.
+- `CorrectParticipantService`(`@Service`)가 트랜잭션 밖에서 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽은 뒤, `ParticipantCommandService`에 정정을 맡긴다. 토큰이 없으면 400, 유효하지 않으면 400(`INVALID_SOCIAL_TOKEN`), 검증 장애는 503이다.
+- 참여 토큰이 없거나 파기 시각이 지난 모임이면 404(`JOIN_TOKEN_NOT_FOUND`), 같은 `sub`의 참여자가 없으면 404(`PARTICIPANT_NOT_FOUND`)다. 기록 기간 제한은 두지 않고 파기 시각 전까지 허용한다.
+- 정산 건에 든 참여자도 정정할 수 있다. 정산 화면이 이름과 휴대폰을 매번 읽으므로 금액과 분담금 상태는 바뀌지 않는다.
+- 휴대폰은 참여와 같이 010으로 시작하는 11자리만 받고(`PhoneNumber.from`) 오류는 400(`INVALID_PHONE_NUMBER`)이다. 이름은 앞뒤 공백을 제거해 저장한다.
+- 같은 모임의 다른 참여자가 쓰는 휴대폰은 409(`PARTICIPANT_ALREADY_JOINED`)이고 자기 휴대폰은 중복으로 보지 않는다. `Gathering.correctParticipant`가 검사한다.
+- 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤 검사하고 저장한다. `GatheringRepository.save`는 기존 참여자 행을 다시 쓰지 않으므로 `updateParticipant`만 이름, 휴대폰, 휴대폰 HMAC을 바꾼다. 동시 위반은 `uk_participant_phone_number` 제약을 같은 409로 바꾼다.
+- 구글 계정 없이 참여한 모임장과 구글 본인 확인 도입 전 참여자는 `sub`가 없어 정정할 수 없고 404다.
+
 ## 참여자 상한
 
 - 한 모임의 참여자는 최대 20명(`GatheringPolicy.MAX_PARTICIPANT_COUNT`)이다. 모임을 만든 회원도 참여 화면으로 참여해야 한 명으로 센다.
