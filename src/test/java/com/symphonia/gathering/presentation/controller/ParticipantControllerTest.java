@@ -864,6 +864,30 @@ class ParticipantControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("구글 ID 토큰이 공백인 경우")
+        class WhenGoogleIdTokenBlank {
+
+            @Test
+            @DisplayName("googleIdToken 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                put("/api/v1/participants/profile")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        new CorrectParticipantRequest(
+                                                                " ", NEW_NAME, NEW_PHONE_NUMBER))))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("googleIdToken"));
+            }
+        }
+
+        @Nested
         @DisplayName("이름이 공백인 경우")
         class WhenNameBlank {
 
