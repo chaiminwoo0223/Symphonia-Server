@@ -201,6 +201,18 @@ class ParticipantGoogleSubjectRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(participantId).isEmpty();
         }
+
+        @Test
+        @DisplayName("구글 계정 없이 참여한 참여자만 있으면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenParticipantHasNoSubject() {
+            // when
+            Optional<Long> participantId =
+                    participantGoogleSubjectRepository.findParticipantId(
+                            gatheringId, GOOGLE_SUBJECT);
+
+            // then
+            assertThat(participantId).isEmpty();
+        }
     }
 
     @Nested

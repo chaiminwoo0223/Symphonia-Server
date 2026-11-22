@@ -4,6 +4,7 @@ import com.symphonia.common.response.StandardResponse;
 import com.symphonia.gathering.presentation.GatheringHeaders;
 import com.symphonia.gathering.presentation.ParticipantEndpoints;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.RecoverParticipantLinkRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
 import com.symphonia.gathering.presentation.dto.request.WithdrawParticipantRequest;
 import com.symphonia.gathering.presentation.dto.response.ParticipantPairingResponse;
@@ -25,6 +26,7 @@ public interface ParticipantApi {
             description =
                     "구글 로그인으로 본인을 확인한 뒤 모임에 참여하고 개인 링크 토큰을 발급합니다. 개인 링크 토큰은 이 응답에서만 받을 수 있습니다."
                             + " 구글 ID 토큰은 본인 확인에만 쓰고 저장하지 않으며, 같은 구글 계정으로 이미 참여했다면 409(PARTICIPANT_ALREADY_JOINED)입니다."
+                            + " 참여 응답을 잃어 이 409를 받았다면 개인 링크 복구 API로 새 링크를 받습니다."
                             + " 구글 ID 토큰이 없으면 400, 유효하지 않으면 400(INVALID_SOCIAL_TOKEN)입니다."
                             + " 토큰에 이메일과 이름이 없으면 400(SOCIAL_REQUIRED_INFO_MISSING)이므로 기본 로그인 범위(openid, email, profile)로 로그인해야 합니다. 이 값들은 저장하지 않습니다."
                             + " 휴대폰은 010으로 시작하는 11자리만 받으며 본인이 입력한 값이라 인증하지 않습니다. 이름은 앞뒤 공백을 제거해 저장합니다."
@@ -45,6 +47,19 @@ public interface ParticipantApi {
     ResponseEntity<StandardResponse<Void>> withdraw(
             @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
             @Valid @RequestBody WithdrawParticipantRequest request);
+
+    @PostMapping(ParticipantEndpoints.LINK_TOKEN)
+    @Operation(
+            summary = "개인 링크 복구",
+            description =
+                    "개인 링크를 잃은 참여자가 참여할 때 쓴 구글 계정으로 다시 로그인해 새 개인 링크 토큰을 발급받습니다. 새 토큰은 201 응답에서만 받을 수 있습니다."
+                            + " 새 토큰을 발급하면 이전 개인 링크는 모두 무효가 됩니다. 모임은 참여 토큰으로 찾으며 모임장이 참여 QR을 재발급했다면 새 QR의 토큰으로 요청해야 하고,모임의 파기 시각 전까지 참여 기간이 끝난 뒤에도 복구할 수 있습니다."
+                            + " 구글 ID 토큰이 없으면 400, 유효하지 않으면 400(INVALID_SOCIAL_TOKEN)입니다."
+                            + " 참여 토큰을 찾지 못하거나 파기된 모임이면 404(JOIN_TOKEN_NOT_FOUND)입니다."
+                            + " 이 구글 계정으로 참여한 참여자가 없으면 404(PARTICIPANT_NOT_FOUND)이며, 구글 계정 없이 참여한 모임장과 이전 방식으로 참여한 참여자는 모임장이 링크를 다시 발급합니다.")
+    ResponseEntity<StandardResponse<ParticipantResponse>> recoverLinkToken(
+            @RequestHeader(GatheringHeaders.JOIN_TOKEN) String joinToken,
+            @Valid @RequestBody RecoverParticipantLinkRequest request);
 
     @GetMapping(ParticipantEndpoints.PAIRING)
     @Operation(
