@@ -22,6 +22,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Propagation;
@@ -80,26 +81,45 @@ class ParticipantCorrectionConcurrencyIntegrationTest extends IntegrationTest {
         memberRepository.delete(host);
     }
 
-    @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    @DisplayName("같은 새 휴대폰으로 겹쳐 정정해도 한 요청만 성공하고 늦은 요청은 ParticipantAlreadyJoinedException이다")
-    void shouldLetOnlyOneParticipantTakePhoneNumberWhenCorrectedConcurrently() {
-        // when
-        List<Throwable> failures =
-                runConcurrently(
-                        () -> correctUseCase.correctByGoogleSubject(command(KIM_SUBJECT, "김영수")),
-                        () -> correctUseCase.correctByGoogleSubject(command(LEE_SUBJECT, "이영희")));
+    @Nested
+    @DisplayName("correctByGoogleSubject 메서드는")
+    class CorrectByGoogleSubject {
 
-        // then
-        assertThat(failures).hasSize(1);
-        assertThat(failures.getFirst()).isInstanceOf(ParticipantAlreadyJoinedException.class);
-        List<Participant> participants =
-                gatheringRepository.findById(gathering.getId()).orElseThrow().getParticipants();
-        assertThat(participants)
-                .filteredOn(
-                        participant ->
-                                NEW_PHONE_NUMBER.equals(participant.getPhoneNumber().value()))
-                .hasSize(1);
+        @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @DisplayName("같은 새 휴대폰으로 겹쳐 정정해도 한 요청만 성공하고 늦은 요청은 ParticipantAlreadyJoinedException이다")
+        void shouldLetOnlyOneParticipantTakePhoneNumberWhenCorrectedConcurrently() {
+            // when
+            List<Throwable> failures =
+                    runConcurrently(
+                            () ->
+                                    correctUseCase.correctByGoogleSubject(
+                                            command(KIM_SUBJECT, "김영수")),
+                            () ->
+                                    correctUseCase.correctByGoogleSubject(
+                                            command(LEE_SUBJECT, "이영희")));
+
+            // then
+            assertThat(failures).hasSize(1);
+            assertThat(failures.getFirst()).isInstanceOf(ParticipantAlreadyJoinedException.class);
+            assertThat(participantsWithNewPhoneNumber()).hasSize(1);
+        }
+    }
+
+    // 저장소는 부른 쪽의 트랜잭션을 전제로 하므로 트랜잭션 안에서 읽는다.
+    private List<Participant> participantsWithNewPhoneNumber() {
+        return transactionTemplate.execute(
+                _ ->
+                        gatheringRepository
+                                .findById(gathering.getId())
+                                .orElseThrow()
+                                .getParticipants()
+                                .stream()
+                                .filter(
+                                        participant ->
+                                                NEW_PHONE_NUMBER.equals(
+                                                        participant.getPhoneNumber().value()))
+                                .toList());
     }
 
     private CorrectParticipantByGoogleSubjectCommand command(String googleSubject, String name) {
