@@ -10,6 +10,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 import com.symphonia.UnitTest;
+import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenByGoogleSubjectCommand;
 import com.symphonia.gathering.application.dto.command.ReissueParticipantLinkTokenCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantBySubjectCommand;
 import com.symphonia.gathering.application.dto.command.RemoveParticipantCommand;
@@ -222,6 +223,171 @@ class ParticipantCommandServiceTest extends UnitTest {
 
         private ReissueParticipantLinkTokenCommand command(Long memberId) {
             return ReissueParticipantLinkTokenCommand.of(memberId, GATHERING_ID, PARTICIPANT_ID);
+        }
+    }
+
+    @Nested
+    @DisplayName("reissueByGoogleSubject 메서드는")
+    class ReissueByGoogleSubject {
+
+        @Nested
+        @DisplayName("참여 토큰이 가리키는 모임이 없는 경우")
+        class WhenJoinTokenNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 모임을 읽거나 개인 링크 토큰을 지우거나 저장하지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(
+                                () -> participantCommandService.reissueByGoogleSubject(command()))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(participantLinkTokenRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각이 지난 경우")
+        class WhenGatheringExpired {
+
+            @Test
+            @DisplayName("물리 삭제 전이라도 참여 토큰을 찾지 못한 예외를 던지고 모임을 읽지 않는다")
+            void shouldThrowJoinTokenNotFoundException() {
+                // given
+                givenJoinToken();
+                givenRetention(GatheringRetentionFixture.EXPIRED);
+
+                // when & then
+                assertThatThrownBy(
+                                () -> participantCommandService.reissueByGoogleSubject(command()))
+                        .isInstanceOf(JoinTokenNotFoundException.class);
+                then(gatheringRepository).shouldHaveNoInteractions();
+                then(participantLinkTokenRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("모임의 파기 시각 1초 전인 경우")
+        class WhenGatheringAboutToExpire {
+
+            @Test
+            @DisplayName("새 개인 링크 토큰을 저장하고 반환한다")
+            void shouldReplaceLinkTokens() {
+                // given
+                givenJoinToken();
+                givenRetention(GatheringRetentionFixture.ABOUT_TO_EXPIRE);
+                givenLockedGathering(OPEN_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+                given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
+
+                // when
+                ParticipantResult result =
+                        participantCommandService.reissueByGoogleSubject(command());
+
+                // then
+                then(participantLinkTokenRepository).should().save(NEW_LINK_TOKEN, PARTICIPANT_ID);
+                assertThat(result.linkToken()).isEqualTo(NEW_LINK_TOKEN);
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 없는 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("예외를 던지고 개인 링크 토큰을 지우거나 저장하지 않는다")
+            void shouldThrowParticipantNotFoundException() {
+                // given
+                givenJoinToken();
+                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                given(
+                                participantGoogleSubjectRepository.findParticipantId(
+                                        GATHERING_ID, GOOGLE_SUBJECT))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(
+                                () -> participantCommandService.reissueByGoogleSubject(command()))
+                        .isInstanceOf(ParticipantNotFoundException.class);
+                then(gatheringTokenProvider).shouldHaveNoInteractions();
+                then(participantLinkTokenRepository).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 있는 경우")
+        class WhenParticipantExists {
+
+            @Test
+            @DisplayName("기존 개인 링크 토큰을 모두 지운 뒤 새 토큰을 저장하고 반환한다")
+            void shouldReplaceLinkTokens() {
+                // given
+                givenJoinToken();
+                givenGatheringWithParticipant(OPEN_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+                given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
+
+                // when
+                ParticipantResult result =
+                        participantCommandService.reissueByGoogleSubject(command());
+
+                // then
+                InOrder inOrder = inOrder(participantLinkTokenRepository);
+                then(participantLinkTokenRepository)
+                        .should(inOrder)
+                        .deleteAllByParticipantId(PARTICIPANT_ID);
+                then(participantLinkTokenRepository)
+                        .should(inOrder)
+                        .save(NEW_LINK_TOKEN, PARTICIPANT_ID);
+                assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
+                assertThat(result.name()).isEqualTo(ParticipantFixture.KIM.getName());
+                assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
+                assertThat(result.linkToken()).isEqualTo(NEW_LINK_TOKEN);
+            }
+        }
+
+        @Nested
+        @DisplayName("모임을 만든 지 48시간이 된 경우")
+        class WhenRecordingPeriodClosed {
+
+            @Test
+            @DisplayName("기록 기간과 관계없이 새 개인 링크 토큰을 저장하고 반환한다")
+            void shouldReplaceLinkTokens() {
+                // given
+                givenJoinToken();
+                givenGatheringWithParticipant(CLOSED_PERIOD_OPENED_AT);
+                givenParticipantOfGoogleSubject();
+                given(gatheringTokenProvider.generate()).willReturn(NEW_LINK_TOKEN);
+
+                // when
+                ParticipantResult result =
+                        participantCommandService.reissueByGoogleSubject(command());
+
+                // then
+                then(participantLinkTokenRepository).should().save(NEW_LINK_TOKEN, PARTICIPANT_ID);
+                assertThat(result.linkToken()).isEqualTo(NEW_LINK_TOKEN);
+            }
+        }
+
+        private ReissueParticipantLinkTokenByGoogleSubjectCommand command() {
+            return new ReissueParticipantLinkTokenByGoogleSubjectCommand(
+                    JOIN_TOKEN, GOOGLE_SUBJECT);
+        }
+
+        private void givenJoinToken() {
+            given(gatheringJoinTokenRepository.findGatheringIdByValue(JOIN_TOKEN))
+                    .willReturn(Optional.of(GATHERING_ID));
+        }
+
+        private void givenParticipantOfGoogleSubject() {
+            given(
+                            participantGoogleSubjectRepository.findParticipantId(
+                                    GATHERING_ID, GOOGLE_SUBJECT))
+                    .willReturn(Optional.of(PARTICIPANT_ID));
         }
     }
 
@@ -616,6 +782,10 @@ class ParticipantCommandServiceTest extends UnitTest {
     // 재발급, 모임장의 제거, 참여자의 철회는 같은 모임의 다른 요청과 겹치지 않도록 모임을 잠그고 읽는다.
     private void givenGatheringWithParticipant(LocalDateTime openedAt) {
         givenRetention(GatheringRetentionFixture.RETAINED);
+        givenLockedGathering(openedAt);
+    }
+
+    private void givenLockedGathering(LocalDateTime openedAt) {
         given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                 .willReturn(Optional.of(gatheringWithParticipant(openedAt)));
     }

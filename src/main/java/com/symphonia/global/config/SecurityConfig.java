@@ -52,6 +52,7 @@ public class SecurityConfig {
         GatheringEndpoints.PREVIEW,
         ParticipantEndpoints.JOIN,
         ParticipantEndpoints.WITHDRAWAL,
+        ParticipantEndpoints.LINK_TOKEN,
         ParticipantEndpoints.PAIRING,
         ParticipantEndpoints.PAIRING_FEEDBACK,
         SettlementEndpoints.LIST,

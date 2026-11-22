@@ -1,6 +1,7 @@
 package com.symphonia.gathering.presentation.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,6 +33,7 @@ import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
+import com.symphonia.gathering.presentation.dto.request.RecoverParticipantLinkRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
 import com.symphonia.gathering.presentation.dto.request.WithdrawParticipantRequest;
 import com.symphonia.member.domain.entity.Member;
@@ -628,6 +630,146 @@ class ParticipantControllerTest extends IntegrationTest {
                             + " AND withdrawn_at IS NOT NULL",
                     Long.class,
                     participant.getId());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/participants/link-token은")
+    class RecoverLinkToken {
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 있는 경우")
+        class WhenParticipantExists {
+
+            @Test
+            @DisplayName("인증 없이도 새 개인 링크 토큰을 담아 201을 반환하고 이전 토큰과 다르다")
+            void shouldRecoverLinkTokenWithoutAuthentication() throws Exception {
+                // given
+                givenGoogleAccount();
+                Gathering gathering = gatheringHelper.join(saveGathering(), ParticipantFixture.KIM);
+                Participant participant = gathering.getParticipants().getFirst();
+                participantGoogleSubjectRepository.save(
+                        gathering.getId(),
+                        participant.getId(),
+                        SocialIdentityFixture.GOOGLE.getSocialId());
+                String oldLinkToken = gatheringHelper.issueLinkToken(participant);
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/link-token")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(recoverRequest())))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").value(participant.getId().intValue()))
+                        .andExpect(jsonPath("$.data.name").value(ParticipantFixture.KIM.getName()))
+                        .andExpect(jsonPath("$.data.maskedPhoneNumber").value(MASKED_PHONE_NUMBER))
+                        .andExpect(jsonPath("$.data.linkToken").isNotEmpty())
+                        .andExpect(jsonPath("$.data.linkToken").value(not(oldLinkToken)));
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 없는 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("PARTICIPANT_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                givenGoogleAccount();
+                Gathering gathering = gatheringHelper.join(saveGathering(), ParticipantFixture.KIM);
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/link-token")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(recoverRequest())))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.PARTICIPANT_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("참여 토큰이 유효하지 않은 경우")
+        class WhenJoinTokenNotFound {
+
+            @Test
+            @DisplayName("JOIN_TOKEN_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                givenGoogleAccount();
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/link-token")
+                                        .header("X-Join-Token", "unknown-join-token")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(recoverRequest())))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.JOIN_TOKEN_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰이 공백인 경우")
+        class WhenGoogleIdTokenBlank {
+
+            @Test
+            @DisplayName("googleIdToken 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                RecoverParticipantLinkRequest request = new RecoverParticipantLinkRequest(" ");
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/link-token")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("googleIdToken"));
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰이 유효하지 않은 경우")
+        class WhenGoogleIdTokenInvalid {
+
+            @Test
+            @DisplayName("INVALID_SOCIAL_TOKEN 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String joinToken = saveGatheringWithJoinToken();
+                given(googleSocialClient.authenticate(GOOGLE_ID_TOKEN))
+                        .willThrow(new InvalidSocialTokenException());
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/link-token")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(recoverRequest())))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(AuthErrorCode.INVALID_SOCIAL_TOKEN.getCode()));
+            }
+        }
+
+        private RecoverParticipantLinkRequest recoverRequest() {
+            return new RecoverParticipantLinkRequest(GOOGLE_ID_TOKEN);
         }
     }
 
