@@ -10,6 +10,17 @@ public interface SettlementShareJpaRepository
         extends JpaRepository<SettlementShareJpaEntity, Long> {
     boolean existsByParticipantId(Long participantId);
 
+    @Query(
+            """
+            SELECT COUNT(share) > 0 FROM SettlementShareJpaEntity share
+            WHERE share.participantId = :participantId
+              AND share.settlementId IN (
+                SELECT settlement.id FROM SettlementJpaEntity settlement
+                WHERE settlement.cancelledAt IS NULL)
+            """)
+    boolean existsByParticipantIdInUncancelledSettlement(
+            @Param("participantId") Long participantId);
+
     List<SettlementShareJpaEntity> findAllBySettlementIdOrderById(Long settlementId);
 
     List<SettlementShareJpaEntity> findAllBySettlementIdInOrderById(List<Long> settlementIds);

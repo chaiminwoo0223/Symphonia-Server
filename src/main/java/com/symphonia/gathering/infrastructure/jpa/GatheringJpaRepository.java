@@ -47,7 +47,8 @@ public interface GatheringJpaRepository extends JpaRepository<GatheringJpaEntity
                 gathering.id,
                 gathering.name,
                 (SELECT COUNT(participant) FROM ParticipantJpaEntity participant
-                    WHERE participant.gatheringId = gathering.id))
+                    WHERE participant.gatheringId = gathering.id
+                      AND participant.withdrawnAt IS NULL))
             FROM GatheringJpaEntity gathering
             WHERE gathering.id IN :ids
             ORDER BY gathering.id DESC

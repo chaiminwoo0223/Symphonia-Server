@@ -40,8 +40,12 @@ public interface SettlementRepository {
     // 취소한 정산 건까지 모임의 정산 건을 id 순으로 잠그고 찾는다. 파기하기 직전에 파기 시각을 다시 판단하는 데 쓴다.
     List<Settlement> findAllByGatheringIdForUpdate(Long gatheringId);
 
-    // 참여자가 취소한 정산 건까지 포함해 어떤 정산 건의 결제자이거나 분담금 인원인지 확인한다. 참여자를 제거할 수 있는지 판단하는 데 쓴다.
+    // 참여자가 취소한 정산 건까지 포함해 어떤 정산 건의 결제자이거나 분담금 인원인지 확인한다.
+    // 참여자 행을 지울 수 있는지, 지울 수 없어 익명화해야 하는지 판단하는 데 쓴다.
     boolean existsByParticipantId(Long participantId);
+
+    // 참여자가 취소하지 않은 정산 건의 결제자이거나 분담금 인원인지 확인한다. 참여자를 제거하거나 철회할 수 있는지 판단하는 데 쓴다.
+    boolean existsUncancelledByParticipantId(Long participantId);
 
     void deleteAllByGatheringId(Long gatheringId);
 }

@@ -8,6 +8,7 @@ import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.vo.HostedGathering;
 import com.symphonia.gathering.infrastructure.crypto.GatheringDataKey;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -151,6 +152,11 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public void anonymizeParticipant(Long participantId, LocalDateTime withdrawnAt) {
+        participantJpaRepository.anonymizeParticipantById(participantId, withdrawnAt);
+    }
+
+    @Override
     public void discardDataKey(Long gatheringId) {
         gatheringDataKeyJpaRepository.deleteAllByGatheringId(gatheringId);
     }
@@ -183,7 +189,8 @@ public class GatheringRepositoryImpl implements GatheringRepository {
 
         return toDomain(
                 gatheringEntity,
-                participantJpaRepository.findAllByGatheringIdOrderById(gatheringId),
+                participantJpaRepository.findAllByGatheringIdAndWithdrawnAtIsNullOrderById(
+                        gatheringId),
                 gatheringDataKeyLoader.load(gatheringId));
     }
 

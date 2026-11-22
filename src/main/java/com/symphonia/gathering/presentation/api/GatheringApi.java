@@ -177,7 +177,7 @@ public interface GatheringApi {
                     """
                     참여자를 제거합니다. 그 참여자의 개인 링크는 무효가 됩니다.
 
-                    정산 건의 결제자이거나 분담금 인원인 참여자는 취소한 정산 건까지 포함해 제거할 수 없고 409(PARTICIPANT_UNREMOVABLE)를 반환합니다. 제거한 휴대폰도 참여 QR로 다시 참여할 수 있으니, 유출된 QR은 참여 QR 재발급으로 막아야 합니다.
+                    취소하지 않은 정산 건의 결제자이거나 분담금 인원인 참여자는 제거할 수 없고 409(PARTICIPANT_UNREMOVABLE)를 반환합니다. 정산 건을 고쳐 빼거나 취소한 뒤에 제거해 주세요. 결제자는 정산 건에서 뺄 수 없어 취소해야 합니다. 취소한 정산 건에만 든 참여자는 제거할 수 있고, 취소 이력은 그대로 두고 참여자의 이름과 휴대폰만 지웁니다. 제거한 휴대폰도 참여 QR로 다시 참여할 수 있으니, 유출된 QR은 참여 QR 재발급으로 막아야 합니다.
                     """)
     ResponseEntity<StandardResponse<Void>> removeParticipant(
             @AuthenticationPrincipal String memberId,

@@ -94,7 +94,9 @@ public class SettlementQueryService
                 getLinkedParticipantUseCase.getLinkedParticipant(linkToken);
         Long participantId = linkedParticipant.participantId();
         // 정산 건을 모임보다 먼저 읽는다.
-        // 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 정산 건에 든 참여자는 지우지 않으므로, 뒤에 읽는 모임에는 그 결제자가 반드시 들어 있다.
+        // 읽은 정산 건의 결제자는 그 정산 건을 저장하기 전에 참여했고 취소하지 않은 정산 건에 든 참여자는 철회할 수 없으므로, 뒤에 읽는 모임에는 그 결제자가 들어
+        // 있다.
+        // 다만 두 읽기 사이에 모임장이 그 정산 건을 취소하고 결제자가 철회하면 모임에 결제자가 없어 500이다. 두 일이 모두 끝나야 해서 드물어 변환하지 않는다.
         List<Settlement> shareSettlements =
                 settlementRepository.findAllByShareParticipantId(participantId);
         Gathering gathering = findGatheringByParticipantId(participantId);
@@ -126,7 +128,8 @@ public class SettlementQueryService
     }
 
     // 결제자는 모임장이 지정한 참여자이고 개인 링크 토큰으로 요청한다. 정산 건을 모임보다 먼저 읽는다.
-    // 읽은 정산 건의 참여자는 그 정산 건을 저장하기 전에 참여했고 정산 건에 든 참여자는 지우지 않으므로, 뒤에 읽는 모임에는 그 참여자가 반드시 들어 있다.
+    // 읽은 정산 건의 참여자는 그 정산 건을 저장하기 전에 참여했고 취소하지 않은 정산 건에 든 참여자는 철회할 수 없으므로, 뒤에 읽는 모임에는 그 참여자가 들어 있다.
+    // 다만 두 읽기 사이에 모임장이 그 정산 건을 취소하고 참여자가 철회하면 모임에 참여자가 없어 500이다. 두 일이 모두 끝나야 해서 드물어 변환하지 않는다.
     @Override
     public PayerCollectionResult getCollection(String linkToken) {
         LinkedParticipantResult linkedParticipant =

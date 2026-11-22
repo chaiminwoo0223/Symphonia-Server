@@ -22,6 +22,7 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.error.GatheringErrorCode;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
+import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectRepository;
 import com.symphonia.gathering.domain.vo.GatheringPairing;
 import com.symphonia.gathering.fixture.GatheringFixture;
@@ -32,10 +33,12 @@ import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
+import com.symphonia.gathering.presentation.dto.request.WithdrawParticipantRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import com.symphonia.pairing.domain.vo.PairingRating;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,6 +48,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @Sql("/sql/clear-catalog.sql")
 class ParticipantControllerTest extends IntegrationTest {
@@ -59,6 +63,7 @@ class ParticipantControllerTest extends IntegrationTest {
     @Autowired private CatalogHelper catalogHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
+    @Autowired private GatheringRepository gatheringRepository;
 
     @MockitoBean(name = "google")
     private SocialClient googleSocialClient;
@@ -347,6 +352,282 @@ class ParticipantControllerTest extends IntegrationTest {
                 String name, boolean consentAgreed, String consentVersion) {
             return new JoinGatheringRequest(
                     GOOGLE_ID_TOKEN, name, HYPHENATED_PHONE_NUMBER, consentAgreed, consentVersion);
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/participants/withdrawal은")
+    class Withdraw {
+
+        private Gathering gathering;
+        private Participant kim;
+        private Participant lee;
+        private String joinToken;
+
+        @BeforeEach
+        void setUp() {
+            gathering =
+                    gatheringHelper.join(
+                            saveGathering(), ParticipantFixture.KIM, ParticipantFixture.LEE);
+            kim = gathering.getParticipants().get(0);
+            lee = gathering.getParticipants().get(1);
+            joinToken = gatheringHelper.issueJoinToken(gathering);
+        }
+
+        @Nested
+        @DisplayName("정산 건에 전혀 없는 참여자의 요청인 경우")
+        class WhenParticipantNotInAnySettlement {
+
+            @Test
+            @DisplayName("인증 없이도 참여자 행과 개인 링크를 지우고 204를 반환한다")
+            void shouldWithdrawParticipantWithoutAuthentication() throws Exception {
+                // given
+                givenGoogleAccount();
+                bindGoogleAccount(lee);
+                String leeLinkToken = gatheringHelper.issueLinkToken(lee);
+
+                // when
+                mockMvc.perform(withdrawal(joinToken, GOOGLE_ID_TOKEN))
+                        .andExpect(status().isNoContent());
+
+                // then
+                assertThat(countParticipantRows(lee)).isZero();
+                assertThat(countParticipantRows(kim)).isOne();
+                mockMvc.perform(get("/api/v1/shares").header("X-Link-Token", leeLinkToken))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.LINK_TOKEN_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("취소한 정산 건에만 든 참여자의 요청인 경우")
+        class WhenParticipantOnlyInCancelledSettlement {
+
+            @Test
+            @DisplayName("참여자 행은 남기고 이름, 휴대폰, 구글 계정 값을 비운 채 204를 반환한다")
+            void shouldAnonymizeParticipant() throws Exception {
+                // given
+                givenGoogleAccount();
+                bindGoogleAccount(lee);
+                settlementHelper.cancel(
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, kim));
+
+                // when
+                mockMvc.perform(withdrawal(joinToken, GOOGLE_ID_TOKEN))
+                        .andExpect(status().isNoContent());
+
+                // then
+                assertThat(countAnonymizedParticipantRows(lee)).isOne();
+            }
+
+            @Test
+            @DisplayName("철회한 뒤 같은 구글 계정과 같은 휴대폰으로 다시 참여할 수 있다")
+            void shouldAllowRejoinAfterWithdrawal() throws Exception {
+                // given
+                givenGoogleAccount();
+                bindGoogleAccount(lee);
+                settlementHelper.cancel(
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, kim));
+                gatheringRepository.anonymizeParticipant(lee.getId(), LocalDateTime.now());
+                JoinGatheringRequest rejoinRequest =
+                        new JoinGatheringRequest(
+                                GOOGLE_ID_TOKEN,
+                                ParticipantFixture.LEE.getName(),
+                                ParticipantFixture.LEE.getPhoneNumber(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(rejoinRequest)))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.data.id").isNumber());
+            }
+        }
+
+        @Nested
+        @DisplayName("취소하지 않은 정산 건의 인원인 참여자의 요청인 경우")
+        class WhenParticipantInUncancelledSettlement {
+
+            @Test
+            @DisplayName("PARTICIPANT_UNREMOVABLE 코드와 함께 409를 반환하고 참여자 행을 그대로 둔다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                givenGoogleAccount();
+                bindGoogleAccount(lee);
+                settlementHelper.record(SettlementFixture.DINNER, gathering, kim);
+
+                // when & then
+                mockMvc.perform(withdrawal(joinToken, GOOGLE_ID_TOKEN))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.PARTICIPANT_UNREMOVABLE
+                                                        .getCode()));
+                assertThat(countParticipantRows(lee)).isOne();
+                assertThat(countAnonymizedParticipantRows(lee)).isZero();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정으로 참여한 참여자가 없는 경우")
+        class WhenParticipantNotFound {
+
+            @Test
+            @DisplayName("PARTICIPANT_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                givenGoogleAccount();
+
+                // when & then
+                mockMvc.perform(withdrawal(joinToken, GOOGLE_ID_TOKEN))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.PARTICIPANT_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("참여 토큰이 없는 모임을 가리키는 경우")
+        class WhenJoinTokenNotFound {
+
+            @Test
+            @DisplayName("JOIN_TOKEN_NOT_FOUND 코드와 함께 404를 반환한다")
+            void shouldReturnNotFound() throws Exception {
+                // given
+                givenGoogleAccount();
+                bindGoogleAccount(lee);
+
+                // when & then
+                mockMvc.perform(withdrawal("unknown-join-token", GOOGLE_ID_TOKEN))
+                        .andExpect(status().isNotFound())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.JOIN_TOKEN_NOT_FOUND.getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰이 유효하지 않은 경우")
+        class WhenGoogleIdTokenInvalid {
+
+            @Test
+            @DisplayName("INVALID_SOCIAL_TOKEN 코드와 함께 400을 반환하고 참여자 행을 그대로 둔다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                bindGoogleAccount(lee);
+                given(googleSocialClient.authenticate(GOOGLE_ID_TOKEN))
+                        .willThrow(new InvalidSocialTokenException());
+
+                // when & then
+                mockMvc.perform(withdrawal(joinToken, GOOGLE_ID_TOKEN))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(AuthErrorCode.INVALID_SOCIAL_TOKEN.getCode()));
+                assertThat(countParticipantRows(lee)).isOne();
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰이 공백인 경우")
+        class WhenGoogleIdTokenBlank {
+
+            @Test
+            @DisplayName("googleIdToken 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // when & then
+                mockMvc.perform(withdrawal(joinToken, " "))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("googleIdToken"));
+            }
+        }
+
+        @Nested
+        @DisplayName("구글 ID 토큰 필드가 없는 경우")
+        class WhenGoogleIdTokenMissing {
+
+            @Test
+            @DisplayName("googleIdToken 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/withdrawal")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("{}"))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("googleIdToken"));
+            }
+        }
+
+        @Nested
+        @DisplayName("참여 토큰 헤더가 없는 경우")
+        class WhenJoinTokenHeaderMissing {
+
+            @Test
+            @DisplayName("MISSING_REQUEST_HEADER 코드와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants/withdrawal")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                objectMapper.writeValueAsString(
+                                                        new WithdrawParticipantRequest(
+                                                                GOOGLE_ID_TOKEN))))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.MISSING_REQUEST_HEADER.getCode()));
+            }
+        }
+
+        private MockHttpServletRequestBuilder withdrawal(String joinToken, String googleIdToken)
+                throws Exception {
+            return post("/api/v1/participants/withdrawal")
+                    .header("X-Join-Token", joinToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                            objectMapper.writeValueAsString(
+                                    new WithdrawParticipantRequest(googleIdToken)));
+        }
+
+        private void bindGoogleAccount(Participant participant) {
+            participantGoogleSubjectRepository.save(
+                    gathering.getId(),
+                    participant.getId(),
+                    SocialIdentityFixture.GOOGLE.getSocialId());
+        }
+
+        private Long countParticipantRows(Participant participant) {
+            return jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM participant WHERE id = ?",
+                    Long.class,
+                    participant.getId());
+        }
+
+        private Long countAnonymizedParticipantRows(Participant participant) {
+            return jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM participant WHERE id = ?"
+                            + " AND encrypted_name IS NULL AND encrypted_phone_number IS NULL"
+                            + " AND phone_number_hmac IS NULL AND google_sub_hmac IS NULL"
+                            + " AND withdrawn_at IS NOT NULL",
+                    Long.class,
+                    participant.getId());
         }
     }
 

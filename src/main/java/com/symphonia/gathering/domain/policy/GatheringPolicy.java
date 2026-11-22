@@ -132,9 +132,11 @@ public enum GatheringPolicy {
         }
     }
 
-    // 정산 건의 결제자나 분담금 인원은 취소한 정산 건이어도 분담금 행이 참여자를 가리키므로 지울 수 없다.
-    public static void validateParticipantRemovable(boolean inSettlement) {
-        if (inSettlement) {
+    // 취소하지 않은 정산 건의 결제자나 분담금 인원은 받을 돈이 걸려 있어 철회하거나 제거할 수 없다. 모임장이 정산 건을 고쳐 빼거나 취소한 뒤에 할 수 있다. 결제자는
+    // 정산 건에서 뺄 수 없어 취소해야 한다.
+    // 취소한 정산 건에만 든 참여자는 허용한다. 취소 이력은 그대로 두고 참여자 행만 익명화한다.
+    public static void validateParticipantRemovable(boolean inUncancelledSettlement) {
+        if (inUncancelledSettlement) {
             throw new ParticipantUnremovableException();
         }
     }

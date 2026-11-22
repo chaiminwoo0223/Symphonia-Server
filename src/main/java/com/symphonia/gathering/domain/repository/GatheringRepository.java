@@ -2,6 +2,7 @@ package com.symphonia.gathering.domain.repository;
 
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.vo.HostedGathering;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,6 +45,11 @@ public interface GatheringRepository {
 
     // 참여자 한 명을 지운다. 참여자를 참조하는 개인 링크 토큰과 피드백 제출 표시를 먼저 지우고, 정산 건에 없는지 확인한 뒤에 부른다.
     void deleteParticipant(Long participantId);
+
+    // 참여자의 이름, 휴대폰, 구글 계정 값을 비우고 철회 시각을 남긴다. 취소한 정산 건이 참여자를 참조해 지울 수 없을 때 쓴다.
+    // 익명화한 참여자는 모임을 읽을 때 불러오지 않는다. 참여자를 참조하는 개인 링크 토큰과 피드백 제출 표시를 먼저 지우고 부른다.
+    // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
+    void anonymizeParticipant(Long participantId, LocalDateTime withdrawnAt);
 
     // 모임별 데이터 키를 지워, 남은 행이나 백업에 암호문이 있어도 복호화할 수 없게 한다(#128).
     void discardDataKey(Long gatheringId);

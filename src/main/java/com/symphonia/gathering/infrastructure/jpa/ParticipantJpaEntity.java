@@ -29,13 +29,12 @@ public class ParticipantJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private Long gatheringId;
 
-    @Column(nullable = false)
+    // 이름, 휴대폰, 휴대폰 HMAC은 익명화한 참여자만 비어 있다. 익명화한 행은 모임에 불러오지 않는다.
     private byte[] encryptedName;
 
-    @Column(nullable = false)
     private byte[] encryptedPhoneNumber;
 
-    @Column(nullable = false, length = 64)
+    @Column(length = 64)
     private String phoneNumberHmac;
 
     // 구글 로그인으로 참여한 참여자만 갖는다. 참여자를 저장한 뒤 ParticipantGoogleSubjectRepository가 채운다.
@@ -47,6 +46,9 @@ public class ParticipantJpaEntity extends BaseTimeEntity {
 
     @Column(nullable = false)
     private LocalDateTime consentedAt;
+
+    // 철회하거나 제거돼 익명화한 참여자만 갖는다.
+    private LocalDateTime withdrawnAt;
 
     // 이름과 휴대폰은 모임별 데이터 키로 암호화한 값만 저장한다.
     public static ParticipantJpaEntity from(

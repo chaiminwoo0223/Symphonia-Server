@@ -856,6 +856,72 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("existsUncancelledByParticipantId 메서드는")
+    class ExistsUncancelledByParticipantId {
+
+        @Test
+        @DisplayName("취소하지 않은 정산 건의 결제자인 참여자면 true를 반환한다")
+        void shouldReturnTrueWhenParticipantIsPayerOfUncancelledSettlement() {
+            // given
+            recordDinner(kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsUncancelledByParticipantId(kimId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("취소하지 않은 정산 건의 분담금 인원인 참여자면 true를 반환한다")
+        void shouldReturnTrueWhenParticipantHasShareOfUncancelledSettlement() {
+            // given
+            recordDinner(kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsUncancelledByParticipantId(leeId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("취소한 정산 건의 결제자에게는 false를 반환한다")
+        void shouldReturnFalseWhenParticipantIsPayerOfCancelledSettlementOnly() {
+            // given
+            cancel(recordDinner(kimId, List.of(kimId, leeId)));
+
+            // when & then
+            assertThat(settlementRepository.existsUncancelledByParticipantId(kimId)).isFalse();
+        }
+
+        @Test
+        @DisplayName("취소한 정산 건의 분담금 인원에게는 false를 반환한다")
+        void shouldReturnFalseWhenParticipantHasShareOfCancelledSettlementOnly() {
+            // given
+            cancel(recordDinner(kimId, List.of(kimId, leeId)));
+
+            // when & then
+            assertThat(settlementRepository.existsUncancelledByParticipantId(leeId)).isFalse();
+        }
+
+        @Test
+        @DisplayName("취소한 정산 건과 취소하지 않은 정산 건에 모두 든 참여자면 true를 반환한다")
+        void shouldReturnTrueWhenParticipantInBothCancelledAndUncancelledSettlements() {
+            // given
+            cancel(recordDinner(kimId, List.of(kimId, leeId)));
+            recordDinner(parkId, List.of(parkId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsUncancelledByParticipantId(leeId)).isTrue();
+        }
+
+        @Test
+        @DisplayName("어떤 정산 건에도 없는 참여자면 false를 반환한다")
+        void shouldReturnFalseWhenParticipantNotInAnySettlement() {
+            // given
+            recordDinner(kimId, List.of(kimId, leeId));
+
+            // when & then
+            assertThat(settlementRepository.existsUncancelledByParticipantId(parkId)).isFalse();
+        }
+    }
+
     private Settlement recordDinner(Long payerParticipantId, List<Long> participantIds) {
         return settlementRepository.save(
                 SettlementFixture.DINNER.create(

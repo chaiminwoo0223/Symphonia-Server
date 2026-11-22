@@ -47,6 +47,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 })
 class GatheringRepositoryImplTest extends RepositoryTest {
 
+    private static final LocalDateTime WITHDRAWN_AT = LocalDateTime.of(2026, 11, 22, 10, 0);
+
     @Autowired private GatheringRepository gatheringRepository;
     @Autowired private ParticipantJpaRepository participantJpaRepository;
     @Autowired private GatheringDataKeyJpaRepository gatheringDataKeyJpaRepository;
@@ -90,6 +92,28 @@ class GatheringRepositoryImplTest extends RepositoryTest {
             assertThat(results)
                     .extracting(HostedGathering::gatheringId)
                     .doesNotContain(notRequested.getId());
+        }
+
+        @Test
+        @DisplayName("익명화한 참여자는 참여자 수에 세지 않는다")
+        void shouldNotCountAnonymizedParticipant() {
+            // given
+            Gathering gathering =
+                    gatheringRepository.save(
+                            GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                    List.of(
+                                            ParticipantFixture.KIM.create(),
+                                            ParticipantFixture.LEE.create())));
+            gatheringRepository.anonymizeParticipant(
+                    gathering.getParticipants().getFirst().getId(), WITHDRAWN_AT);
+            clearPersistenceContext();
+
+            // when
+            List<HostedGathering> results =
+                    gatheringRepository.findAllHostedByIds(List.of(gathering.getId()));
+
+            // then
+            assertThat(results).extracting(HostedGathering::participantCount).containsExactly(1L);
         }
 
         @Test
@@ -735,6 +759,116 @@ class GatheringRepositoryImplTest extends RepositoryTest {
             assertThat(found.getParticipants())
                     .extracting(Participant::getId)
                     .containsExactly(leeId);
+        }
+
+        private Gathering saveWithKimAndLee() {
+            return gatheringRepository.save(
+                    GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                            List.of(
+                                    ParticipantFixture.KIM.create(),
+                                    ParticipantFixture.LEE.create())));
+        }
+    }
+
+    @Nested
+    @DisplayName("anonymizeParticipant 메서드는")
+    class AnonymizeParticipant {
+
+        @Test
+        @DisplayName("익명화한 참여자는 모임을 읽을 때 불러오지 않고 같은 모임의 다른 참여자는 남긴다")
+        void shouldExcludeAnonymizedParticipantFromGathering() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            Long leeId = gathering.getParticipants().get(1).getId();
+
+            // when
+            gatheringRepository.anonymizeParticipant(kimId, WITHDRAWN_AT);
+
+            // then
+            clearPersistenceContext();
+            Gathering found = gatheringRepository.findById(gathering.getId()).orElseThrow();
+            assertThat(found.getParticipants())
+                    .extracting(Participant::getId)
+                    .containsExactly(leeId);
+        }
+
+        @Test
+        @DisplayName("행은 지우지 않고 이름, 휴대폰, 휴대폰 HMAC, 구글 계정 값을 비우고 철회 시각을 남긴다")
+        void shouldKeepRowWithPersonalDataCleared() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            Long leeId = gathering.getParticipants().get(1).getId();
+            jdbcTemplate.update(
+                    "UPDATE participant SET google_sub_hmac = ? WHERE id = ?",
+                    "a".repeat(64),
+                    kimId);
+
+            // when
+            gatheringRepository.anonymizeParticipant(kimId, WITHDRAWN_AT);
+
+            // then
+            clearPersistenceContext();
+            List<ParticipantJpaEntity> rows =
+                    participantJpaRepository.findAllByGatheringIdOrderById(gathering.getId());
+            assertThat(rows).extracting(ParticipantJpaEntity::getId).containsExactly(kimId, leeId);
+            ParticipantJpaEntity anonymized = rows.getFirst();
+            assertThat(anonymized.getEncryptedName()).isNull();
+            assertThat(anonymized.getEncryptedPhoneNumber()).isNull();
+            assertThat(anonymized.getPhoneNumberHmac()).isNull();
+            assertThat(anonymized.getGoogleSubHmac()).isNull();
+            assertThat(anonymized.getWithdrawnAt()).isEqualTo(WITHDRAWN_AT);
+        }
+
+        @Test
+        @DisplayName("같은 모임의 다른 참여자의 값은 바꾸지 않는다")
+        void shouldNotChangeOtherParticipant() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            Long leeId = gathering.getParticipants().get(1).getId();
+
+            // when
+            gatheringRepository.anonymizeParticipant(kimId, WITHDRAWN_AT);
+
+            // then
+            clearPersistenceContext();
+            ParticipantJpaEntity lee = participantJpaRepository.findById(leeId).orElseThrow();
+            assertThat(lee.getEncryptedName()).isNotNull();
+            assertThat(lee.getEncryptedPhoneNumber()).isNotNull();
+            assertThat(lee.getPhoneNumberHmac()).isNotNull();
+            assertThat(lee.getWithdrawnAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("익명화한 뒤 같은 휴대폰으로 다시 참여해 저장할 수 있다")
+        void shouldAllowRejoinWithSamePhoneNumber() {
+            // given
+            Gathering gathering = saveWithKimAndLee();
+            Long kimId = gathering.getParticipants().get(0).getId();
+            gatheringRepository.anonymizeParticipant(kimId, WITHDRAWN_AT);
+            clearPersistenceContext();
+            Gathering loaded = gatheringRepository.findById(gathering.getId()).orElseThrow();
+            loaded.join(
+                    ParticipantFixture.KIM.getName(),
+                    new PhoneNumber(ParticipantFixture.KIM.getPhoneNumber()),
+                    GatheringPolicy.CONSENT_VERSION,
+                    loaded.getOpenedAt().plusHours(1));
+
+            // when
+            Gathering saved = gatheringRepository.save(loaded);
+
+            // then
+            clearPersistenceContext();
+            Gathering found = gatheringRepository.findById(saved.getId()).orElseThrow();
+            assertThat(found.getParticipants())
+                    .extracting(Participant::getName)
+                    .containsExactly(
+                            ParticipantFixture.LEE.getName(), ParticipantFixture.KIM.getName());
+            assertThat(found.getParticipants())
+                    .extracting(Participant::getId)
+                    .doesNotContain(kimId);
         }
 
         private Gathering saveWithKimAndLee() {

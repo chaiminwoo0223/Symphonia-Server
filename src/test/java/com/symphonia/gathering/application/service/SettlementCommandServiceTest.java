@@ -141,7 +141,8 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldThrowGatheringNotFoundException() {
                 // given
                 givenRetention(GatheringRetentionFixture.RETAINED);
-                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
+                given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.empty());
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
                 // when & then
@@ -228,7 +229,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSaveSettlementAfterOriginalRecordingPeriod() {
                 // given
                 givenRetention(GatheringRetentionFixture.RETAINED);
-                given(gatheringRepository.findById(GATHERING_ID))
+                given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                         .willReturn(Optional.of(extendedGathering(CLOSED_PERIOD_OPENED_AT)));
                 givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
@@ -245,7 +246,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldThrowSettlementRecordingClosedExceptionAfterExtendedRecordingPeriod() {
                 // given
                 givenRetention(GatheringRetentionFixture.RETAINED);
-                given(gatheringRepository.findById(GATHERING_ID))
+                given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                         .willReturn(Optional.of(extendedGathering(NOW.minusHours(96))));
                 RecordSettlementCommand command = command(10_000L, PARTICIPANT_IDS, Map.of());
 
@@ -445,7 +446,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldSaveSettlementWhenGatheringAboutToExpire() {
                 // given
                 givenRetention(GatheringRetentionFixture.ABOUT_TO_EXPIRE);
-                given(gatheringRepository.findById(GATHERING_ID))
+                given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                         .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
                 givenSaveIfAbsentReturnsSettlement();
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
@@ -859,15 +860,16 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldReadGatheringAgainWhenRoundMissingInSnapshot() {
                 // given
                 givenRetention(GatheringRetentionFixture.RETAINED);
-                given(gatheringRepository.findById(GATHERING_ID))
+                given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                         .willReturn(
                                 Optional.of(
                                         GatheringFixture.FRIDAY_DINNER.createWithRounds(
                                                 GATHERING_ID,
                                                 OPEN_PERIOD_OPENED_AT,
                                                 ParticipantFixture.createWithIds(PARTICIPANT_IDS),
-                                                List.of(GatheringRoundFixture.FIRST.create()))),
-                                Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
+                                                List.of(GatheringRoundFixture.FIRST.create()))));
+                given(gatheringRepository.findById(GATHERING_ID))
+                        .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
                 given(settlementRepository.saveIfAbsent(any(Settlement.class)))
                         .willReturn(recordedSecondRoundSettlement());
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
@@ -997,7 +999,8 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldThrowGatheringNotFoundException() {
                 // given
                 givenRetention(GatheringRetentionFixture.RETAINED);
-                given(gatheringRepository.findById(GATHERING_ID)).willReturn(Optional.empty());
+                given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
+                        .willReturn(Optional.empty());
                 UpdateSettlementCommand command = command();
 
                 // when & then
@@ -1552,7 +1555,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
     private void givenGathering(LocalDateTime openedAt, List<Participant> participants) {
         givenRetention(GatheringRetentionFixture.RETAINED);
-        given(gatheringRepository.findById(GATHERING_ID))
+        given(gatheringRepository.findByIdForUpdate(GATHERING_ID))
                 .willReturn(Optional.of(gathering(openedAt, participants)));
     }
 
