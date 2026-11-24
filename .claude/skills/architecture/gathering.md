@@ -30,7 +30,7 @@
 - 참여 화면에서는 수집 항목, 목적, 보유 기간(최대 30일), 동의를 거부할 권리와 불이익을 안내하고 필수 동의를 받는다. 참여 화면은 같은 차수의 참여자에게 이름이 보이고, 정산 건의 결제자에게 이름과 휴대폰이 전달된다는 사실도 목적으로 안내한다.
 - 참여자는 동의 시각과 안내문 버전(`consent_version`)을 남긴다. 버전의 단일 소스는 `GatheringPolicy.CONSENT_VERSION`이고, 참여 화면 조회 응답에 담는다. 안내 문구를 바꾸면 이 상수도 바꾼다.
 - 참여 요청은 동의 여부와 버전을 함께 보낸다. `GatheringPolicy.validateConsent`가 동의하지 않았으면 `ConsentRequiredException`(400), 버전이 다르면 `OutdatedConsentVersionException`(400)으로 거절한다. Request의 Bean Validation으로 검사하지 않는다.
-- 같은 휴대폰의 중복 참여를 막는다. 동시 참여는 `(gathering_id, phone_number_hmac)` unique 제약으로 막고, `GatheringRepositoryImpl`이 위반을 `GatheringPolicy.validateNotJoined`의 예외로 바꾼다.
+- 같은 휴대폰 중복 참여를 막는다. 동시 참여는 `(gathering_id, phone_number_hmac)` unique 제약으로 막고, `GatheringRepositoryImpl`이 위반을 `GatheringPolicy.validatePhoneNumberNotUsed` 예외로 바꾼다.
 - 참여 화면은 참여 토큰으로 모임 이름, 참여 가능 여부(`joinable`), 사유(`joinClosedReason`: `PERIOD_EXPIRED`, `PARTICIPANT_LIMIT_REACHED`)를 먼저 조회한다. 둘 다면 `PERIOD_EXPIRED`다.
 - 참여 토큰은 기록 기간이 끝날 때까지 참여에 쓴다. 모임을 만든 회원은 참여 QR을 재발급할 수 있고, 재발급하면 기존 토큰은 무효다. 참여 기간이 끝난 모임은 재발급하지 않는다.
 - 참여 토큰 발급 응답은 참여 기간이 끝나는 `expiresAt`을 담는다.
