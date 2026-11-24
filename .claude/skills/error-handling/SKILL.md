@@ -17,13 +17,13 @@ description: Load when handling exceptions/errors. BusinessException 계층(공�
 | 도메인 구체 예외 (`MemberNotFoundException` 등) | 각 도메인의 `domain/exception` 패키지 | 공통 예외를 상속해 에러 코드를 고정한 도메인 전용 예외 |
 | 도메인 `*ErrorCode` (enum) | 각 도메인의 `domain/error` 패키지 | `ErrorCode` 구현. 도메인별 에러 정의 (`MemberErrorCode`, `AuthErrorCode`) |
 | `CommonErrorCode` (enum) | `common.exception.error` | 도메인 무관 공통 에러 코드. 주로 프레임워크 예외를 매핑하는 데 쓴다 |
-| `GlobalExceptionHandler` | `common.exception.handler` | `@RestControllerAdvice`. `BusinessException`(서브클래스 포함)과 그 외 미처리 `Exception`(catch-all)을 `StandardResponse`로 변환 |
+| `GlobalExceptionHandler` | `common.exception.handler` | `@RestControllerAdvice`. `BusinessException`(서브클래스 포함), DB 행 잠금 실패(`PessimisticLockingFailureException`), 그 외 미처리 `Exception`(catch-all)을 `StandardResponse`로 변환 |
 | `ValidationExceptionHandler` | `common.exception.handler` | `ResponseEntityExceptionHandler` 상속, `@Order(HIGHEST_PRECEDENCE)`. Bean Validation·파라미터·URL 등 스프링 프레임워크 예외를 `CommonErrorCode`로 매핑 |
 | `ErrorResponse` / `ValidationErrorResponse` | `common.exception.response` | 에러 응답 바디. 필드별 검증 오류는 `violations: List<ValidationErrorResponse>`(`field`+`reason`)로 표현 |
 
 예외 관련 컴포넌트는 모두 `common.exception` 패키지 아래 둔다. 근거와 변경 이력은 `docs/decisions/error-handling.md`에 있다.
 
-**핸들러가 2개인 이유**: `GlobalExceptionHandler`는 도메인 비즈니스 예외(`BusinessException`)와 예상 못한 500(catch-all)만 담당하고, `ValidationExceptionHandler`는 스프링이 던지는 프레임워크 예외(Bean Validation, 파라미터, URL 등)만 담당한다. 관심사가 다르므로 핸들러를 하나로 합치지 않는다.
+**핸들러가 2개인 이유**: `GlobalExceptionHandler`는 도메인 비즈니스 예외(`BusinessException`), 웹 계층이 아닌 DB 행 잠금 실패(`PessimisticLockingFailureException`), 예상 못한 500(catch-all)만 담당하고, `ValidationExceptionHandler`는 스프링이 던지는 프레임워크 예외(Bean Validation, 파라미터, URL 등)만 담당한다. 관심사가 다르므로 핸들러를 하나로 합치지 않는다.
 
 ## 예외 계층
 
@@ -112,13 +112,13 @@ public enum MemberErrorCode implements ErrorCode {
 | 404 | `*_NOT_FOUND` | `GATHERING_NOT_FOUND` |
 | 409 | `*_ALREADY_*`, `*_CONFLICT`, `*_UNCHANGEABLE`, `*_UNREMOVABLE` | `SHARE_ALREADY_SENT`, `PARTICIPANT_UNREMOVABLE` |
 | 500 | 실패한 작업은 `{작업}_FAILED`, 불변식 위반은 위반한 상태 | `GATHERING_ENCRYPTION_FAILED`, `UNDETERMINED_EVALUATION` |
-| 503 | 외부 서비스를 지금 쓸 수 없으면 `*_UNAVAILABLE`, 외부 서비스의 호출 한도를 넘으면 `*_LIMIT_EXCEEDED` | `PLACE_SEARCH_UNAVAILABLE`, `PLACE_SEARCH_LIMIT_EXCEEDED` |
+| 503 | 외부 서비스를 지금 쓸 수 없으면 `*_UNAVAILABLE`, 외부 서비스의 호출 한도를 넘으면 `*_LIMIT_EXCEEDED`, 프레임워크 예외를 매핑한 `CommonErrorCode`는 예외 이름 | `PLACE_SEARCH_UNAVAILABLE`, `PLACE_SEARCH_LIMIT_EXCEEDED`, `PESSIMISTIC_LOCKING_FAILURE` |
 
 - `INVALID_`는 400에서만 쓴다. 클라이언트가 보낸 값이 형식이나 규칙을 어겼다는 뜻이다. 500에 쓰면 서버의 실패가 클라이언트 입력의 잘못처럼 읽힌다.
 - 404는 반드시 `*_NOT_FOUND`를 쓴다. `*_NOT_FOUND`는 찾는 대상이 없다는 사실을 나타내므로 다른 상태에도 쓸 수 있다. 상태는 그 대상을 누가 책임지는지로 정한다. 리프레시 토큰은 인증 수단이라 401(`REFRESH_TOKEN_NOT_FOUND`)이고, 서버가 저장한 데이터 키는 500(`GATHERING_DATA_KEY_NOT_FOUND`)이다.
 - 401은 클라이언트가 할 행동별로 코드를 하나씩 둔다. `UNAUTHENTICATED`를 받으면 재발급하고, `REFRESH_TOKEN_NOT_FOUND`를 받으면 다시 로그인한다. 액세스 토큰이 만료됐는지, 위조됐는지, 블랙리스트에 있는지는 응답에서 구분하지 않는다. 실패 이유는 `JwtAccessTokenProvider`가 예외 이름만 debug 로그로 남긴다.
 - `CommonErrorCode`가 프레임워크 예외를 매핑한 코드는 그 예외 이름을 따른다(`METHOD_ARGUMENT_NOT_VALID`, `CONSTRAINT_VIOLATION`, `PESSIMISTIC_LOCKING_FAILURE`).
-- 행 잠금 대기 시간 초과와 데드락(`PessimisticLockingFailureException`)은 `GlobalExceptionHandler`가 503 `PESSIMISTIC_LOCKING_FAILURE`로 바꾼다. 요청을 다시 보내면 성공할 수 있기 때문이다.
+- 행 잠금 대기 시간 초과와 데드락(`PessimisticLockingFailureException`)은 `GlobalExceptionHandler`가 503 `PESSIMISTIC_LOCKING_FAILURE`로 바꾼다. 요청을 다시 보내면 성공할 수 있기 때문이다. 이 핸들러도 `BusinessException`처럼 `warn`(스택트레이스 없음)으로 남기고, 잠금 대기 초과와 데드락을 구분하도록 예외 클래스명을 함께 찍는다.
 - 상수로만 들어오는 값처럼 코드상 실행 중에 어길 수 없는 불변식은 검사하지 않는다. 어기면 JVM 예외가 catch-all로 가서 스택트레이스와 함께 `error`로 남는다. `BusinessException`으로 감싸면 `warn`으로 스택트레이스 없이 남아 버그가 덜 보인다.
 - 에러 코드 이름을 바꾸면 클라이언트 계약이 바뀐다. 그래서 PR 본문에 기존 이름과 새 이름을 함께 적는다.
 
@@ -126,7 +126,7 @@ public enum MemberErrorCode implements ErrorCode {
 
 `GlobalExceptionHandler`(`@RestControllerAdvice`)는 애플리케이션 전체에 **하나만** 둔다.
 
-- **`BusinessException`만 캐치**하고 `errorCode.getStatus()`로 HTTP status를 결정한다. `@ExceptionHandler(BusinessException.class)`는 스프링이 서브클래스까지 함께 잡아주므로, 공통/도메인 예외가 늘어나도 핸들러에 분기를 추가하지 않는다. 계층을 두는 목적은 타입으로 의도를 드러내는 것이지 핸들러 분기를 늘리는 게 아니다.
+- **`BusinessException`을 캐치**하고 `errorCode.getStatus()`로 HTTP status를 결정한다. `@ExceptionHandler(BusinessException.class)`는 스프링이 서브클래스까지 함께 잡아주므로, 공통/도메인 예외가 늘어나도 핸들러에 분기를 추가하지 않는다. 계층을 두는 목적은 타입으로 의도를 드러내는 것이지 핸들러 분기를 늘리는 게 아니다.
 - 프레임워크 예외는 `CommonErrorCode`로 매핑하되, **클라이언트 잘못을 500으로 흘리지 않는다** (자주 걸리는 리뷰 포인트):
   - `MethodArgumentNotValidException` (Bean Validation, `@NotNull`/`@NotBlank` 등) → 400 `METHOD_ARGUMENT_NOT_VALID`
   - `HttpMessageNotReadableException` (JSON 파싱 실패) → 400 `INVALID_JSON_FORMAT`. 필수 필드 누락은 기본적으로 Bean Validation(`@NotNull` 등)으로 잡는 걸 권장한다. Request를 Java record로 만들고 생성자에서 값이 없어 Jackson이 예외를 던지는 경우도 Spring이 이 예외로 감싸서 전달하지만, 이 경로는 Bean Validation과 달리 필드별 `reason`을 주기 어렵다.
