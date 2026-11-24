@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -43,7 +44,11 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     // 소비한 토큰 하나만 지우므로 같은 회원의 다른 기기 토큰은 유지된다.
     @Override
     public Optional<String> consume(String value) {
-        return call(() -> consumeToken(Sha256.hash(value)));
+        return call(
+                () ->
+                        Optional.of(Sha256.hash(value))
+                                .filter(this::tryAcquireConsumeLock)
+                                .flatMap(this::findAndDelete));
     }
 
     @Override
@@ -58,18 +63,29 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
                 });
     }
 
-    private Optional<String> consumeToken(String hashedValue) {
-        if (!tryAcquireConsumeLock(hashedValue)) {
-            return Optional.empty();
+    // 락을 잡은 뒤 조회나 삭제가 실패하면 토큰이 남아 있어도 락 때문에 TTL 동안 재시도가 모두 실패한다. 그래서 실패하면 락을 풀고 예외를 그대로 던진다.
+    private Optional<String> findAndDelete(String hashedValue) {
+        try {
+            return refreshTokenRedisRepository
+                    .findById(hashedValue)
+                    .map(
+                            token -> {
+                                refreshTokenRedisRepository.deleteById(hashedValue);
+                                return token.getMemberId();
+                            });
+        } catch (RuntimeException e) {
+            releaseConsumeLock(hashedValue, e);
+            throw e;
         }
+    }
 
-        return refreshTokenRedisRepository
-                .findById(hashedValue)
-                .map(
-                        token -> {
-                            refreshTokenRedisRepository.deleteById(hashedValue);
-                            return token.getMemberId();
-                        });
+    // 락 해제도 실패하면 원래 예외에 덧붙인다. 남은 락은 TTL이 지나면 풀린다.
+    private void releaseConsumeLock(String hashedValue, RuntimeException cause) {
+        try {
+            redisTemplate.delete(CONSUME_LOCK_KEY_PREFIX + hashedValue);
+        } catch (DataAccessException e) {
+            cause.addSuppressed(e);
+        }
     }
 
     // setIfAbsent는 파이프라인/트랜잭션에서 null을 반환할 수 있어, null도 획득 실패로 취급한다.
