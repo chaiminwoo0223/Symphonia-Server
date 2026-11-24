@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 class JwtAuthenticationFilterTest extends IntegrationTest {
 
@@ -32,53 +33,51 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
     @MockitoBean private WithdrawnMemberRepository withdrawnMemberRepository;
 
     @Nested
-    @DisplayName("토큰 저장소 조회가 실패하면")
-    class WhenTokenStoreFails {
+    @DisplayName("공개 엔드포인트 요청은")
+    class PublicEndpoint {
 
         @Nested
-        @DisplayName("공개 엔드포인트는")
-        class PublicEndpoint {
+        @DisplayName("블랙리스트 조회가 실패한 경우")
+        class WhenBlacklistLookupFails {
 
             @Test
-            @DisplayName("블랙리스트 조회가 실패해도 비회원으로 처리해 200을 반환한다")
-            void shouldReturnOkWhenBlacklistLookupFails() throws Exception {
+            @DisplayName("비회원으로 처리해 200을 반환한다")
+            void shouldReturnOk() throws Exception {
                 // given
                 String bearer = bearerTokenOfMember();
                 given(blacklistAccessTokenRepository.isBlacklisted(anyString()))
                         .willThrow(new QueryTimeoutException("redis down"));
 
                 // when & then
-                mockMvc.perform(
-                                get("/api/v1/pairings/recommendations")
-                                        .header(HttpHeaders.AUTHORIZATION, bearer)
-                                        .param("relationshipType", "FRIEND")
-                                        .param("moodType", "CASUAL")
-                                        .param("isAdultConfirmed", "true"))
-                        .andExpect(status().isOk());
+                mockMvc.perform(recommendationRequest(bearer)).andExpect(status().isOk());
             }
+        }
+
+        @Nested
+        @DisplayName("탈퇴 회원 조회가 실패한 경우")
+        class WhenWithdrawnLookupFails {
 
             @Test
-            @DisplayName("탈퇴 회원 조회가 실패해도 비회원으로 처리해 200을 반환한다")
-            void shouldReturnOkWhenWithdrawnLookupFails() throws Exception {
+            @DisplayName("비회원으로 처리해 200을 반환한다")
+            void shouldReturnOk() throws Exception {
                 // given
                 String bearer = bearerTokenOfMember();
                 given(withdrawnMemberRepository.isWithdrawn(anyString()))
                         .willThrow(new QueryTimeoutException("redis down"));
 
                 // when & then
-                mockMvc.perform(
-                                get("/api/v1/pairings/recommendations")
-                                        .header(HttpHeaders.AUTHORIZATION, bearer)
-                                        .param("relationshipType", "FRIEND")
-                                        .param("moodType", "CASUAL")
-                                        .param("isAdultConfirmed", "true"))
-                        .andExpect(status().isOk());
+                mockMvc.perform(recommendationRequest(bearer)).andExpect(status().isOk());
             }
         }
+    }
+
+    @Nested
+    @DisplayName("인증이 필요한 엔드포인트 요청은")
+    class ProtectedEndpoint {
 
         @Nested
-        @DisplayName("인증이 필요한 엔드포인트는")
-        class ProtectedEndpoint {
+        @DisplayName("블랙리스트 조회가 실패한 경우")
+        class WhenBlacklistLookupFails {
 
             @Test
             @DisplayName("401이 아니라 503과 TOKEN_STORE_UNAVAILABLE을 반환한다")
@@ -97,11 +96,41 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
                                         .value(AuthErrorCode.TOKEN_STORE_UNAVAILABLE.getCode()));
             }
         }
+
+        @Nested
+        @DisplayName("탈퇴 회원 조회가 실패한 경우")
+        class WhenWithdrawnLookupFails {
+
+            @Test
+            @DisplayName("401이 아니라 503과 TOKEN_STORE_UNAVAILABLE을 반환한다")
+            void shouldReturnServiceUnavailable() throws Exception {
+                // given
+                String bearer = bearerTokenOfMember();
+                given(withdrawnMemberRepository.isWithdrawn(anyString()))
+                        .willThrow(new QueryTimeoutException("redis down"));
+
+                // when & then
+                mockMvc.perform(get("/api/v1/members/me").header(HttpHeaders.AUTHORIZATION, bearer))
+                        .andExpect(status().isServiceUnavailable())
+                        .andExpect(header().doesNotExist(HttpHeaders.WWW_AUTHENTICATE))
+                        .andExpect(
+                                jsonPath("$.code")
+                                        .value(AuthErrorCode.TOKEN_STORE_UNAVAILABLE.getCode()));
+            }
+        }
     }
 
     private String bearerTokenOfMember() {
         Member member = memberHelper.save(MemberFixture.KAKAO);
 
         return authHelper.bearerTokenFor(member);
+    }
+
+    private MockHttpServletRequestBuilder recommendationRequest(String bearer) {
+        return get("/api/v1/pairings/recommendations")
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .param("relationshipType", "FRIEND")
+                .param("moodType", "CASUAL")
+                .param("isAdultConfirmed", "true");
     }
 }
