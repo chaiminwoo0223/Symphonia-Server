@@ -47,6 +47,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -2146,6 +2147,37 @@ class GatheringControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("지정 금액 필드가 빠진 경우")
+        class WhenFixedAmountMissing {
+
+            @Test
+            @DisplayName("지정 금액 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                String body =
+                        objectMapper.writeValueAsString(
+                                Map.of(
+                                        "clientRequestId", CLIENT_REQUEST_ID,
+                                        "payerParticipantId", payer.getId(),
+                                        "roundId", roundId(),
+                                        "totalAmount", 10_000L,
+                                        "participantIds", participantIds(),
+                                        "fixedAmounts",
+                                                List.of(Map.of("participantId", lee.getId()))));
+
+                // when & then
+                performRecord(gathering.getId(), hostToken, body)
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(
+                                jsonPath("$.data.violations[0].field")
+                                        .value("fixedAmounts[0].amount"));
+            }
+        }
+
+        @Nested
         @DisplayName("지정 금액이 1억 원을 넘는 경우")
         class WhenFixedAmountExceedsLimit {
 
@@ -2303,11 +2335,16 @@ class GatheringControllerTest extends IntegrationTest {
 
         private ResultActions performRecord(
                 Long gatheringId, String token, RecordSettlementRequest request) throws Exception {
+            return performRecord(gatheringId, token, objectMapper.writeValueAsString(request));
+        }
+
+        private ResultActions performRecord(Long gatheringId, String token, String body)
+                throws Exception {
             return mockMvc.perform(
                     post("/api/v1/gatherings/{gatheringId}/settlements", gatheringId)
                             .header(HttpHeaders.AUTHORIZATION, token)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)));
+                            .content(body));
         }
     }
 

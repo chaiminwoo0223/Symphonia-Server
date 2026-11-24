@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -33,7 +34,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
-    // ResponseEntityExceptionHandler가 처리하는 모든 예외 공통 처리
+    // 전용 핸들러가 없는 ResponseEntityExceptionHandler의 나머지 예외 공통 처리. 응답 상태에 맞는 코드와 본문 status를 낸다.
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception ex,
@@ -41,11 +42,20 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode statusCode,
             @NonNull WebRequest request) {
-        log.error("[ExceptionInternal] message={}", ex.getMessage(), ex);
+        if (statusCode.is5xxServerError()) {
+            log.error("[ExceptionInternal] message={}", ex.getMessage(), ex);
+        } else {
+            // 예외 메시지에 거부된 입력값이 들어 있을 수 있어 예외 클래스명과 상태만 남긴다.
+            log.warn(
+                    "[ExceptionInternal] type={}, status={}",
+                    ex.getClass().getSimpleName(),
+                    statusCode.value());
+        }
 
+        HttpStatus status = HttpStatus.valueOf(statusCode.value());
         return super.handleExceptionInternal(
                 ex,
-                toStandardResponse(CommonErrorCode.INTERNAL_SERVER_ERROR),
+                StandardResponse.fail(status, ErrorResponse.of(toFallbackErrorCode(status))),
                 headers,
                 statusCode,
                 request);
@@ -146,6 +156,17 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getConstraintViolations().stream().map(this::toValidationErrorResponse).toList();
 
         return buildValidationResponse(CommonErrorCode.CONSTRAINT_VIOLATION, violations);
+    }
+
+    private ErrorCode toFallbackErrorCode(HttpStatus status) {
+        return switch (status) {
+            case NOT_ACCEPTABLE -> CommonErrorCode.NOT_ACCEPTABLE;
+            case UNSUPPORTED_MEDIA_TYPE -> CommonErrorCode.UNSUPPORTED_MEDIA_TYPE;
+            default ->
+                    status.is4xxClientError()
+                            ? CommonErrorCode.INVALID_REQUEST
+                            : CommonErrorCode.INTERNAL_SERVER_ERROR;
+        };
     }
 
     private ResponseEntity<Object> buildErrorResponse(ErrorCode errorCode) {

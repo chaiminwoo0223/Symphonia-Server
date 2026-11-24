@@ -15,12 +15,19 @@ public enum CommonErrorCode implements ErrorCode {
             HttpStatus.BAD_REQUEST, "요청 본문(JSON) 형식이 잘못되어 파싱할 수 없습니다. (필드 타입 불일치, 필수 필드 누락 등)"),
     INVALID_ORIGIN(HttpStatus.BAD_REQUEST, "잘못된 Origin입니다."),
     UNSUPPORTED_ORIGIN(HttpStatus.BAD_REQUEST, "지원하지 않는 Origin입니다."),
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST, "요청이 올바르지 않습니다."),
 
     // 404
     NOT_FOUND(HttpStatus.NOT_FOUND, "리소스를 찾을 수 없습니다."),
 
     // 405
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드 입니다."),
+
+    // 406
+    NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, "요청한 Accept 형식으로 응답할 수 없습니다."),
+
+    // 415
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 Content-Type입니다."),
 
     // 500
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류입니다. 관리자에게 문의하세요."),
