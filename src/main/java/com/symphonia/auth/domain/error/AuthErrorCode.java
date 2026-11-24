@@ -23,6 +23,7 @@ public enum AuthErrorCode implements ErrorCode {
             HttpStatus.SERVICE_UNAVAILABLE, "소셜 로그인 확인을 잠시 이용할 수 없습니다. 잠시 후 다시 시도해주세요."),
     OAUTH_MEMBER_INFO_UNAVAILABLE(
             HttpStatus.SERVICE_UNAVAILABLE, "소셜 계정 정보 조회를 잠시 이용할 수 없습니다. 잠시 후 다시 시도해주세요."),
+    TOKEN_STORE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "로그인 상태를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."),
     ;
 
     private final HttpStatus status;

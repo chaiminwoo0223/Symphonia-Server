@@ -1,5 +1,6 @@
 package com.symphonia.global.security.filter;
 
+import com.symphonia.auth.domain.exception.TokenStoreUnavailableException;
 import com.symphonia.auth.domain.provider.AccessTokenProvider;
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.auth.domain.repository.WithdrawnMemberRepository;
@@ -10,7 +11,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,9 +22,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    public static final String TOKEN_STORE_UNAVAILABLE_ATTRIBUTE =
+            JwtAuthenticationFilter.class.getName() + ".TOKEN_STORE_UNAVAILABLE";
+
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final AccessTokenProvider accessTokenProvider;
@@ -36,8 +43,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String accessToken = extractBearerToken(request);
 
-        if (StringUtils.hasText(accessToken) && isValidToken(accessToken)) {
-            setAuthentication(accessToken);
+        try {
+            if (StringUtils.hasText(accessToken) && isValidToken(accessToken)) {
+                setAuthentication(accessToken);
+            }
+        } catch (DataAccessException e) {
+            // 토큰 원문이 로그에 남지 않도록 예외 메시지 대신 클래스 이름만 남긴다.
+            log.warn("토큰 저장소를 조회하지 못해 인증하지 않고 요청을 넘깁니다. 원인: {}", e.getClass().getSimpleName());
+            request.setAttribute(
+                    TOKEN_STORE_UNAVAILABLE_ATTRIBUTE, new TokenStoreUnavailableException());
         }
 
         filterChain.doFilter(request, response);
