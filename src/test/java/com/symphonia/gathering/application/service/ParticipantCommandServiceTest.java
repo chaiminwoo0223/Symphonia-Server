@@ -23,8 +23,8 @@ import com.symphonia.gathering.domain.exception.GatheringNotFoundException;
 import com.symphonia.gathering.domain.exception.InvalidPhoneNumberException;
 import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
-import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
+import com.symphonia.gathering.domain.exception.ParticipantPhoneNumberAlreadyUsedException;
 import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
@@ -501,7 +501,7 @@ class ParticipantCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 참여자를 바꾸지 않는다")
-            void shouldThrowParticipantAlreadyJoinedException() {
+            void shouldThrowParticipantPhoneNumberAlreadyUsedException() {
                 // given
                 givenJoinToken();
                 givenGatheringWithTwoParticipants(OPEN_PERIOD_OPENED_AT);
@@ -513,7 +513,7 @@ class ParticipantCommandServiceTest extends UnitTest {
                                         participantCommandService.correctByGoogleSubject(
                                                 correctCommand(
                                                         ParticipantFixture.LEE.getPhoneNumber())))
-                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                        .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
                 then(gatheringRepository)
                         .should(never())
                         .updateParticipant(anyLong(), any(Participant.class));

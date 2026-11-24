@@ -71,7 +71,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
 
             return savedGathering.toDomain(participants, findRounds(gatheringId));
         } catch (DataIntegrityViolationException e) {
-            GatheringPolicy.validateNotJoined(isPhoneNumberViolation(e));
+            GatheringPolicy.validatePhoneNumberNotUsed(isPhoneNumberViolation(e));
             throw e;
         }
     }
@@ -158,7 +158,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                     dataKey.encrypt(phoneNumber),
                     dataKey.hmac(phoneNumber));
         } catch (DataIntegrityViolationException e) {
-            GatheringPolicy.validateNotJoined(isPhoneNumberViolation(e));
+            GatheringPolicy.validatePhoneNumberNotUsed(isPhoneNumberViolation(e));
             throw e;
         }
     }

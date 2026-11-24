@@ -35,7 +35,7 @@ public class ParticipantGoogleSubjectRepositoryImpl implements ParticipantGoogle
             participantJpaRepository.updateGoogleSubHmac(
                     participantId, hmac(gatheringId, googleSubject));
         } catch (DataIntegrityViolationException e) {
-            GatheringPolicy.validateNotJoined(isGoogleSubViolation(e));
+            GatheringPolicy.validateGoogleAccountNotJoined(isGoogleSubViolation(e));
             throw e;
         }
     }

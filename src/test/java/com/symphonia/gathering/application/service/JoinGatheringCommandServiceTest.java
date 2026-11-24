@@ -26,6 +26,7 @@ import com.symphonia.gathering.domain.exception.JoinTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotGatheringHostException;
 import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.exception.ParticipantPhoneNumberAlreadyUsedException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.provider.GatheringTokenProvider;
 import com.symphonia.gathering.domain.repository.GatheringJoinTokenRepository;
@@ -213,7 +214,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("하이픈을 섞어 입력해도 중복으로 보고 예외를 던지며 아무것도 저장하지 않는다")
-            void shouldThrowParticipantAlreadyJoinedException() {
+            void shouldThrowParticipantPhoneNumberAlreadyUsedException() {
                 // given
                 givenJoinableGathering(
                         List.of(ParticipantFixture.KIM.createWithId(PARTICIPANT_ID)));
@@ -221,7 +222,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> joinGatheringCommandService.add(command))
-                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                        .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
                 thenNothingSaved();
             }
         }
@@ -267,8 +268,8 @@ class JoinGatheringCommandServiceTest extends UnitTest {
         class WhenPhoneNumberAlreadyJoinedAtLimit {
 
             @Test
-            @DisplayName("상한 초과가 아니라 이미 참여했다는 예외를 던진다")
-            void shouldThrowParticipantAlreadyJoinedException() {
+            @DisplayName("상한 초과가 아니라 다른 참여자가 쓰는 휴대폰이라는 예외를 던진다")
+            void shouldThrowParticipantPhoneNumberAlreadyUsedException() {
                 // given
                 List<Participant> participants =
                         Stream.concat(
@@ -283,7 +284,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> joinGatheringCommandService.add(command))
-                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                        .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
                 thenNothingSaved();
             }
         }
@@ -297,6 +298,27 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             void shouldThrowParticipantAlreadyJoinedException() {
                 // given
                 givenJoinableGathering(List.of());
+                given(participantGoogleSubjectRepository.exists(GATHERING_ID, GOOGLE_SUBJECT))
+                        .willReturn(true);
+                AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                assertThatThrownBy(() -> joinGatheringCommandService.add(command))
+                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                thenNothingSaved();
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정과 같은 휴대폰이 모두 겹치는 경우")
+        class WhenGoogleAccountAndPhoneNumberBothJoined {
+
+            @Test
+            @DisplayName("구글 계정 쪽 예외를 던지며 아무것도 저장하지 않는다")
+            void shouldThrowParticipantAlreadyJoinedException() {
+                // given
+                givenJoinableGathering(
+                        List.of(ParticipantFixture.KIM.createWithId(PARTICIPANT_ID)));
                 given(participantGoogleSubjectRepository.exists(GATHERING_ID, GOOGLE_SUBJECT))
                         .willReturn(true);
                 AddParticipantCommand command = command(GatheringPolicy.CONSENT_VERSION);
@@ -727,7 +749,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
 
             @Test
             @DisplayName("예외를 던지고 아무것도 저장하지 않는다")
-            void shouldThrowParticipantAlreadyJoinedException() {
+            void shouldThrowParticipantPhoneNumberAlreadyUsedException() {
                 // given
                 givenHostGathering(
                         OPEN_PERIOD_OPENED_AT,
@@ -736,7 +758,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
 
                 // when & then
                 assertThatThrownBy(() -> joinGatheringCommandService.joinAsHost(command))
-                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                        .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
                 thenNothingSaved();
             }
         }

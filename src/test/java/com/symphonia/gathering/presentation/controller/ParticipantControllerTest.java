@@ -309,6 +309,79 @@ class ParticipantControllerTest extends IntegrationTest {
         }
 
         @Nested
+        @DisplayName("다른 구글 계정으로 같은 휴대폰을 쓰는 참여자가 이미 있는 경우")
+        class WhenPhoneNumberUsedByOtherParticipant {
+
+            @Test
+            @DisplayName("PARTICIPANT_PHONE_NUMBER_ALREADY_USED 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                givenGoogleAccount();
+                Gathering gathering = gatheringHelper.join(saveGathering(), ParticipantFixture.KIM);
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
+                JoinGatheringRequest samePhoneRequest =
+                        new JoinGatheringRequest(
+                                GOOGLE_ID_TOKEN,
+                                ParticipantFixture.LEE.getName(),
+                                ParticipantFixture.KIM.getPhoneNumber(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(samePhoneRequest)))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode
+                                                        .PARTICIPANT_PHONE_NUMBER_ALREADY_USED
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
+        @DisplayName("같은 구글 계정과 같은 휴대폰이 모두 겹치는 경우")
+        class WhenGoogleAccountAndPhoneNumberBothJoined {
+
+            @Test
+            @DisplayName("PARTICIPANT_ALREADY_JOINED 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                givenGoogleAccount();
+                Gathering gathering = gatheringHelper.join(saveGathering(), ParticipantFixture.KIM);
+                participantGoogleSubjectRepository.save(
+                        gathering.getId(),
+                        gathering.getParticipants().getFirst().getId(),
+                        SocialIdentityFixture.GOOGLE.getSocialId());
+                String joinToken = gatheringHelper.issueJoinToken(gathering);
+                JoinGatheringRequest bothRequest =
+                        new JoinGatheringRequest(
+                                GOOGLE_ID_TOKEN,
+                                ParticipantFixture.KIM.getName(),
+                                ParticipantFixture.KIM.getPhoneNumber(),
+                                true,
+                                GatheringPolicy.CONSENT_VERSION);
+
+                // when & then
+                mockMvc.perform(
+                                post("/api/v1/participants")
+                                        .header("X-Join-Token", joinToken)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(bothRequest)))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(
+                                                GatheringErrorCode.PARTICIPANT_ALREADY_JOINED
+                                                        .getCode()));
+            }
+        }
+
+        @Nested
         @DisplayName("이름이 공백인 경우")
         class WhenNameBlank {
 
@@ -718,7 +791,7 @@ class ParticipantControllerTest extends IntegrationTest {
 
             @Test
             @DisplayName(
-                    "같은 모임의 다른 참여자가 쓰는 휴대폰이면 PARTICIPANT_ALREADY_JOINED 코드와 함께 409를 반환하고 값을 그대로 둔다")
+                    "같은 모임의 다른 참여자가 쓰는 휴대폰이면 PARTICIPANT_PHONE_NUMBER_ALREADY_USED 코드와 함께 409를 반환하고 값을 그대로 둔다")
             void shouldReturnConflictWhenPhoneNumberUsedByOther() throws Exception {
                 // given
                 givenGoogleAccount();
@@ -734,7 +807,8 @@ class ParticipantControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.code")
                                         .value(
-                                                GatheringErrorCode.PARTICIPANT_ALREADY_JOINED
+                                                GatheringErrorCode
+                                                        .PARTICIPANT_PHONE_NUMBER_ALREADY_USED
                                                         .getCode()));
                 assertThat(
                                 gatheringRepository

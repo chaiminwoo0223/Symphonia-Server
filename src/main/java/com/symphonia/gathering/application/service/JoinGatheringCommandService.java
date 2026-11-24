@@ -111,8 +111,8 @@ public class JoinGatheringCommandService
         PhoneNumber phoneNumber = PhoneNumber.from(rawPhoneNumber);
         GatheringPolicy.validateJoinable(gathering.getRecordingClosesAt(), now);
         GatheringPolicy.validateConsent(consentAgreed, consentVersion);
-        GatheringPolicy.validateNotJoined(
-                gathering.hasJoined(phoneNumber) || joinedByGoogleAccount);
+        GatheringPolicy.validateGoogleAccountNotJoined(joinedByGoogleAccount);
+        GatheringPolicy.validatePhoneNumberNotUsed(gathering.hasJoined(phoneNumber));
         GatheringPolicy.validateParticipantAddable(gathering.getParticipants().size());
 
         gathering.join(name, phoneNumber, consentVersion, now);
