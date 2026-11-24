@@ -10,7 +10,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 이 문서는 현재 규칙만 담는다. 근거, 택하지 않은 안, 변경 이력은 `docs/decisions/`의 주제별 파일에 있다. 규칙을 바꾸면 같은 커밋에서 두 곳을 함께 고친다(`design-decision` 스킬).
 
 - 단일 Gradle 모듈에 도메인별 계층형 패키지를 둔다. 헥사고날 포트/어댑터 명칭과 멀티모듈 구조는 쓰지 않는다.
-- `*Repository` 구현체는 `*RepositoryImpl`로 쓴다(예: `MemberRepositoryImpl implements MemberRepository`). `*RepositoryAdapter`는 금지한다.
+- `*Repository` 구현체는 `*RepositoryImpl`로 쓴다. `*RepositoryAdapter`는 금지한다.
 
 ## 프로젝트 구조
 
@@ -18,7 +18,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 
 | 도메인 | 책임 |
 |---|---|
-| `member` | 회원. 탈퇴 시 `application.event`의 `MemberDeletedEvent` 발행. 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)이고 수정 요청이 넘으면 400, 가입 시 소셜 닉네임이 넘으면 잘라서 저장. 탈퇴 전 확인은 `gathering`의 `GetOngoingGatheringsUseCase`를 부른다(`member → gathering`) |
+| `member` | 회원. 탈퇴 시 `MemberDeletedEvent` 발행. 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)이고 수정 요청이 넘으면 400, 가입 시 소셜 닉네임이 넘으면 잘라서 저장. 탈퇴 전 확인은 `gathering`의 `GetOngoingGatheringsUseCase`를 부른다(`member → gathering`) |
 | `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰, 액세스 토큰 블랙리스트, 탈퇴한 회원 id |
 | `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`)와 그 맛, 분류 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
@@ -41,7 +41,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `domain`과 `application`은 `common`만 참조하고 `global`은 참조하지 않는다. `global`은 Spring 설정과 필터 wiring 목적으로만 `common`을 참조한다.
 - `global`은 wiring 목적으로 도메인 `presentation`의 `*Endpoints`(URL 경로 문자열 상수 클래스)를 참조할 수 있다. `*Request`, `*Response`, `*Api`, `*Controller`는 참조하지 않는다.
 - `*Endpoints`가 경로의 단일 소스다. `*Api`는 매핑 애노테이션에 같은 도메인의 `*Endpoints` 상수를 넣는다(예: `@PostMapping(AuthEndpoints.LOGIN)`). 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 완성한 전체 경로를 쓴다.
-- `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`, `WithdrawnMemberRepository`)와 에러 코드(`AuthErrorCode`)를 참조할 수 있다. 구현체와 `infrastructure`는 참조하지 않는다.
+- `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`, `WithdrawnMemberRepository`)와 에러 코드(`AuthErrorCode`), 예외(`TokenStoreUnavailableException`)를 참조할 수 있다. 구현체와 `infrastructure`는 참조하지 않는다.
 - 토큰 Provider도 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. 인터페이스가 기본 이름을 갖고, 구현체 이름에 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
 
 ## 계층별 역할
@@ -145,18 +145,18 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - CORS는 `allowCredentials`를 켜지 않고 허용 오리진을 명시한다. 와일드카드(`*`)는 쓰지 않는다. 인증 정보를 브라우저가 자동으로 붙이지 않으므로 CSRF 토큰은 두지 않는다.
 - 로그아웃은 인증 없이 호출할 수 있고, 토큰이 없거나 만료돼도 204를 반환한다. 요청 바디의 리프레시 토큰 하나를 `consume`으로 지우고, 필터가 인증한 유효한 액세스 토큰만 블랙리스트에 올린다.
 - 회원 탈퇴는 `MemberDeletedEventListener`가 `BlockWithdrawnMemberUseCase`로 탈퇴한 회원 id를 액세스 토큰 유효시간만큼 Redis에 남기고, `ForceRevokeUseCase`로 리프레시 토큰을 모두 지우고, `LogoutUseCase`로 요청한 액세스 토큰을 블랙리스트에 올린다. 필터는 탈퇴한 회원 id의 액세스 토큰을 인증하지 않는다.
+- 필터가 Redis 조회 중 `DataAccessException`을 만나면 토큰 원문 없이 경고 로그만 남기고 인증하지 않은 채 넘긴다. 공개 엔드포인트는 비회원으로 응답하고, 인증이 필요한 엔드포인트는 401 대신 503 `TOKEN_STORE_UNAVAILABLE`로 응답한다.
 - 블랙리스트 TTL은 최소 1초다. 0이면 Redis 키가 만료되지 않고 남는다.
 - `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"`를 넣는다. `GlobalExceptionHandler`의 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다.
 - 앱 단 rate limit은 두지 않는다. 대량 요청 방어는 LB/WAF가 맡는다.
-- 클라이언트 IP는 감사 로그(`AuditLogRecorder`)에만 쓴다. `server.forward-headers-strategy: native`와 `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES`)로 신뢰 프록시의 `X-Forwarded-For`만 반영하고, 어디서든 `HttpServletRequest.getRemoteAddr()`로 구한다. 별도 IP 추출 유틸과 테스트는 두지 않는다.
+- 클라이언트 IP는 감사 로그(`AuditLogRecorder`)에만 쓴다. `server.forward-headers-strategy: native`와 `server.tomcat.remoteip.internal-proxies`(`TRUSTED_PROXIES`)로 신뢰 프록시의 `X-Forwarded-For`만 반영하고, 어디서든 `HttpServletRequest.getRemoteAddr()`로 구한다.
 - 운영 환경의 `TRUSTED_PROXIES`에는 실제 LB 대역만 넣고, 앱 포트에는 LB만 접근할 수 있게 한다. LB는 접속한 IP를 `X-Forwarded-For` 끝에 덧붙여야 한다.
 
 ## 응답 포맷
 
-`StandardResponse<T>`(`common.response`)가 본문이 있는 모든 응답을 감싼다. 204 응답에는 본문이 없다. 필드는 `boolean ok`, `int status`, `T data`다. 성공은 `StandardResponse.success(status, data)`(반환값 없으면 `data` 없는 오버로드), 에러는 `StandardResponse.fail(status, ErrorResponse)`로 만든다.
+`StandardResponse<T>`(`common.response`)가 본문이 있는 모든 응답을 감싼다. 204 응답에는 본문이 없다. 필드는 `boolean ok`, `int status`, `T data`다. 성공은 `StandardResponse.success(status, data)`, 에러는 `StandardResponse.fail(status, ErrorResponse)`로 만든다.
 
 ## 계층 규칙 검증 범위
 
-- import와 선언만 보고 판정할 수 있는 계층 규칙은 `.claude/scripts/check-architecture.sh`가 grep으로 검사한다. `check-all.sh`가 이 스크립트를 실행한다. 검사 항목은 스크립트가 단일 소스다.
+- import와 선언만 보고 판정할 수 있는 계층 규칙은 `.claude/scripts/check-architecture.sh`가 grep으로 검사한다. 검사 항목은 스크립트가 단일 소스다.
 - 판단이 필요한 규칙(절차적 도메인 로직, 다른 도메인 enum의 메서드 호출, DTO 직접 조립, `*Result`의 엔티티 노출 등)은 `code-reviewer` 에이전트가 검토한다.
-- Konsist, ArchUnit 같은 아키텍처 검증 도구는 도입하지 않는다.
