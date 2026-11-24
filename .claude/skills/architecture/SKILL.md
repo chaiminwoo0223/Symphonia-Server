@@ -40,7 +40,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `domain`은 다른 계층에 의존하지 않는다. Spring, JPA를 포함한 프레임워크를 import하지 않는다. 예외는 에러 코드 enum의 `HttpStatus` 하나다.
 - `domain`과 `application`은 `common`만 참조하고 `global`은 참조하지 않는다. `global`은 Spring 설정과 필터 wiring 목적으로만 `common`을 참조한다.
 - `global`은 wiring 목적으로 도메인 `presentation`의 `*Endpoints`(URL 경로 문자열 상수 클래스)를 참조할 수 있다. `*Request`, `*Response`, `*Api`, `*Controller`는 참조하지 않는다.
-- `*Endpoints`가 경로의 단일 소스다. `*Api`는 매핑 애노테이션에 같은 도메인의 `*Endpoints` 상수를 넣는다(예: `@PostMapping(AuthEndpoints.LOGIN)`). 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 완성한 전체 경로를 쓴다.
+- `*Endpoints`가 경로의 단일 소스다. `*Api`는 매핑 애노테이션에 같은 도메인의 `*Endpoints` 상수를 넣는다. 클래스 레벨 `@RequestMapping`으로 베이스 경로를 나누지 않고, `*Endpoints`가 `BASE + 세부경로`로 완성한 전체 경로를 쓴다.
 - `global.security`의 인증 필터와 인증 실패 핸들러는 `auth`의 `domain` 인터페이스(`AccessTokenProvider`, `BlacklistAccessTokenRepository`, `WithdrawnMemberRepository`)와 에러 코드(`AuthErrorCode`), 예외(`TokenStoreUnavailableException`)를 참조할 수 있다. 구현체와 `infrastructure`는 참조하지 않는다.
 - 토큰 Provider도 `domain`에 인터페이스를 두고 `infrastructure`가 구현한다. 인터페이스가 기본 이름을 갖고, 구현체 이름에 방식을 붙인다(`JwtAccessTokenProvider`, `UuidRefreshTokenProvider`).
 
@@ -138,7 +138,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 ## 인증
 
-- 리프레시 토큰은 RTR로 회전한다. 탈취를 감지하고, 누락되면 거부한다(Tombstone 없음).
+- 리프레시 토큰은 RTR로 회전한다. 새 토큰을 발급한 뒤 기존 토큰을 소비하고, 탈취를 감지하며 누락되면 거부한다(Tombstone 없음).
 - 클라이언트는 회원 기능을 맡는 앱(React Native, Android)과 비회원 전용 웹으로 나뉜다. 로그인은 앱만 한다.
 - 로그인과 가입은 카카오 액세스 토큰이나 구글 ID 토큰을 받는다. `SocialClient` 구현체는 이 서비스를 위해 발급된 토큰일 때만 신원을 반환한다(카카오는 `access_token_info`의 `app_id`, 구글은 `aud`). 유효하지 않은 토큰은 400 `INVALID_SOCIAL_TOKEN`이고, 검증과 사용자 정보 조회의 실패는 503 `OAUTH_*_UNAVAILABLE`이다.
 - 액세스 토큰과 리프레시 토큰은 모두 응답 바디로 전달하고, 재발급과 로그아웃은 리프레시 토큰을 요청 바디로 받는다. 쿠키는 쓰지 않는다. 재발급의 빈 토큰은 요청 DTO의 `@NotBlank`로 400이다.
