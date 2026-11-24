@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -1104,6 +1106,46 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                 // then
                 assertThat(failures).isEmpty();
                 assertThat(events).containsExactly("enter", "exit", "enter", "exit");
+            }
+
+            @Test
+            @DisplayName("잠금 대기가 제한 시간을 넘으면 잠금 실패 예외를 던진다")
+            void shouldThrowPessimisticLockingFailureWhenLockWaitExceedsLimit() {
+                // given
+                gatheringId =
+                        transactionTemplate.execute(
+                                _ ->
+                                        gatheringRepository
+                                                .save(GatheringFixture.FRIDAY_DINNER.create())
+                                                .getId());
+                CountDownLatch locked = new CountDownLatch(1);
+                CountDownLatch waiterFinished = new CountDownLatch(1);
+                CompletableFuture<Void> holder =
+                        CompletableFuture.runAsync(
+                                () ->
+                                        transactionTemplate.executeWithoutResult(
+                                                _ -> {
+                                                    gatheringRepository
+                                                            .findByIdForUpdate(gatheringId)
+                                                            .orElseThrow();
+                                                    locked.countDown();
+                                                    await(waiterFinished);
+                                                }));
+                await(locked);
+
+                // when & then
+                try {
+                    assertThatThrownBy(
+                                    () ->
+                                            transactionTemplate.executeWithoutResult(
+                                                    _ ->
+                                                            gatheringRepository.findByIdForUpdate(
+                                                                    gatheringId)))
+                            .isInstanceOf(PessimisticLockingFailureException.class);
+                } finally {
+                    waiterFinished.countDown();
+                    holder.join();
+                }
             }
 
             // 잠금 구간 안에서 잠시 머물러, 잠금이 없다면 두 요청이 서로의 구간 안에 들어오게 한다.

@@ -5,6 +5,8 @@ spring:
     hikari:
       maximum-pool-size: 4
       minimum-idle: 1
+      # 잠금 대기 제한을 넘는 경우를 짧은 시간에 확인할 수 있도록 운영 값(5초)보다 줄인다.
+      connection-init-sql: SET lock_timeout = '1s'
 
 access-token:
   secret: test-only-fixed-jwt-secret-for-symphonia-integration-tests-do-not-use-in-prod

@@ -6,6 +6,7 @@ import com.symphonia.common.exception.error.ErrorCode;
 import com.symphonia.common.exception.response.ErrorResponse;
 import com.symphonia.common.response.StandardResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,6 +24,15 @@ public class GlobalExceptionHandler {
                 ex.getMessage());
 
         return buildResponse(ex.getErrorCode());
+    }
+
+    // 행 잠금 대기 시간 초과와 데드락은 요청을 다시 보내면 성공할 수 있어 500이 아니라 503으로 알린다.
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<StandardResponse<ErrorResponse>> handlePessimisticLockingFailure(
+            PessimisticLockingFailureException ex) {
+        log.warn("[PessimisticLockingFailure] message={}", ex.getMessage());
+
+        return buildResponse(CommonErrorCode.PESSIMISTIC_LOCKING_FAILURE);
     }
 
     // 500 에러 처리 (예상치 못한 예외)

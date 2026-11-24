@@ -5,6 +5,16 @@ spring:
   profiles:
     default: local
 
+  # 배포 중 처리 중인 요청을 끝낸 뒤 내려가도록, 종료 신호를 받으면 새 요청을 거절하고 진행 중인 요청을 기다린다.
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  datasource:
+    hikari:
+      # 행 잠금(SELECT ... FOR UPDATE)을 기다리는 시간을 5초로 제한한다. Hibernate의 PostgreSQL 방언은 jakarta.persistence.lock.timeout 힌트를 무시하므로, 커넥션에서 직접 제한한다.
+      # 제한이 없으면 트랜잭션 하나가 멈출 때 같은 모임의 요청이 커넥션 풀을 대기로 채운다.
+      connection-init-sql: SET lock_timeout = '5s'
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -13,6 +23,7 @@ spring:
 # LB 뒤에서 감사 로그에 실제 클라이언트 IP를 남기기 위해, 신뢰하는 프록시가 보낸 X-Forwarded-For만 반영한다.
 # TRUSTED_PROXIES가 없으면 Spring Boot 기본값(사설 IP 대역)을 쓴다. 배포 시 LB 대역을 기본값과 같은 쉼표 구분 CIDR 형식으로 넣는다.
 server:
+  shutdown: graceful
   forward-headers-strategy: native
   tomcat:
     remoteip:
