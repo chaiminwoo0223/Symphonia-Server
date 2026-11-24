@@ -15,7 +15,6 @@ import com.symphonia.pairing.presentation.PairingEndpoints;
 import com.symphonia.place.presentation.PlaceEndpoints;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -40,9 +39,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
     CorsProperties.class
 })
 public class SecurityConfig {
-    private static final String[] SWAGGER_PATHS = {
-        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-    };
     private static final String[] PERMIT_ALL_PATHS = {
         AuthEndpoints.SIGNUP,
         AuthEndpoints.LOGIN,
@@ -70,9 +66,7 @@ public class SecurityConfig {
     private final CorsProperties corsProperties;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            @Value("${springdoc.api-docs.enabled:true}") boolean apiDocsEnabled) {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http.csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -85,17 +79,13 @@ public class SecurityConfig {
                                         .authenticationEntryPoint(customAuthenticationEntryPoint)
                                         .accessDeniedHandler(customAccessDeniedHandler))
                 .authorizeHttpRequests(
-                        auth -> {
-                            auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
-                            // API 명세를 만들지 않는 환경(prod)에서는 명세 경로를 열지 않는다.
-                            if (apiDocsEnabled) {
-                                auth.requestMatchers(SWAGGER_PATHS).permitAll();
-                            }
-                            auth.requestMatchers(PERMIT_ALL_PATHS)
-                                    .permitAll()
-                                    .anyRequest()
-                                    .authenticated();
-                        })
+                        auth ->
+                                auth.requestMatchers(HttpMethod.OPTIONS, "/**")
+                                        .permitAll()
+                                        .requestMatchers(PERMIT_ALL_PATHS)
+                                        .permitAll()
+                                        .anyRequest()
+                                        .authenticated())
                 .addFilterBefore(
                         jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
