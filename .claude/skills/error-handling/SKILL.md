@@ -117,7 +117,8 @@ public enum MemberErrorCode implements ErrorCode {
 - `INVALID_`는 400에서만 쓴다. 클라이언트가 보낸 값이 형식이나 규칙을 어겼다는 뜻이다. 500에 쓰면 서버의 실패가 클라이언트 입력의 잘못처럼 읽힌다.
 - 404는 반드시 `*_NOT_FOUND`를 쓴다. `*_NOT_FOUND`는 찾는 대상이 없다는 사실을 나타내므로 다른 상태에도 쓸 수 있다. 상태는 그 대상을 누가 책임지는지로 정한다. 리프레시 토큰은 인증 수단이라 401(`REFRESH_TOKEN_NOT_FOUND`)이고, 서버가 저장한 데이터 키는 500(`GATHERING_DATA_KEY_NOT_FOUND`)이다.
 - 401은 클라이언트가 할 행동별로 코드를 하나씩 둔다. `UNAUTHENTICATED`를 받으면 재발급하고, `REFRESH_TOKEN_NOT_FOUND`를 받으면 다시 로그인한다. 액세스 토큰이 만료됐는지, 위조됐는지, 블랙리스트에 있는지는 응답에서 구분하지 않는다. 실패 이유는 `JwtAccessTokenProvider`가 예외 이름만 debug 로그로 남긴다.
-- `CommonErrorCode`가 프레임워크 예외를 매핑한 코드는 그 예외 이름을 따른다(`METHOD_ARGUMENT_NOT_VALID`, `CONSTRAINT_VIOLATION`).
+- `CommonErrorCode`가 프레임워크 예외를 매핑한 코드는 그 예외 이름을 따른다(`METHOD_ARGUMENT_NOT_VALID`, `CONSTRAINT_VIOLATION`, `PESSIMISTIC_LOCKING_FAILURE`).
+- 행 잠금 대기 시간 초과와 데드락(`PessimisticLockingFailureException`)은 `GlobalExceptionHandler`가 503 `PESSIMISTIC_LOCKING_FAILURE`로 바꾼다. 요청을 다시 보내면 성공할 수 있기 때문이다.
 - 상수로만 들어오는 값처럼 코드상 실행 중에 어길 수 없는 불변식은 검사하지 않는다. 어기면 JVM 예외가 catch-all로 가서 스택트레이스와 함께 `error`로 남는다. `BusinessException`으로 감싸면 `warn`으로 스택트레이스 없이 남아 버그가 덜 보인다.
 - 에러 코드 이름을 바꾸면 클라이언트 계약이 바뀐다. 그래서 PR 본문에 기존 이름과 새 이름을 함께 적는다.
 
