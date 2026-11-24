@@ -33,3 +33,11 @@
 **(2026-11-22 결정, 이슈 #223)**: 소셜 로그인의 검증과 사용자 정보 조회 실패도 외부 서비스를 지금 쓸 수 없는 경우라 `ServiceUnavailableException`을 상속하도록 바꿨다. 근거와 한계는 `auth.md`에 있다.
 
 **(2026-11-24 결정, 이슈 #233)**: 행 잠금 대기 시간 초과와 데드락(`PessimisticLockingFailureException`)을 `GlobalExceptionHandler`가 503 `PESSIMISTIC_LOCKING_FAILURE`로 바꾼다. 다른 요청이 잠금을 쥐고 있어 실패한 것이라 요청을 다시 보내면 성공할 수 있다. 500은 서버의 버그처럼 읽혀 재시도할 수 있다는 사실을 나타내지 못한다. 409로 두는 안은 택하지 않았다. 409는 요청한 대상의 상태가 요청과 맞지 않다는 뜻이고, 이 경우는 대상의 상태가 아니라 처리하는 쪽의 사정으로 실패한 것이다. 코드 이름은 프레임워크 예외를 매핑한 코드의 규칙에 따라 예외 이름을 따랐다. 핸들러는 `ValidationExceptionHandler`가 아니라 `GlobalExceptionHandler`에 둔다. 이 예외는 스프링 웹 계층이 던지는 예외가 아니라 서비스 안의 DB 호출에서 나오고, `BusinessException`이 아니라서 어느 쪽에도 없던 분기이므로 서비스 안에서 나오는 실패를 담당하는 쪽에 맞췄다. 로그는 `BusinessException`처럼 `warn`에 스택트레이스 없이 남기되 잠금 대기 초과와 데드락을 구분하도록 예외 클래스명을 찍는다.
+
+## 프레임워크 예외 폴백
+
+**(2026-11-24 결정, 이슈 #232)**: `ValidationExceptionHandler.handleExceptionInternal`이 상태와 관계없이 본문을 `INTERNAL_SERVER_ERROR`로 만들어, Content-Type이 틀린 요청이 HTTP 415인데 본문 `status`는 500이었다. 클라이언트 오류가 서버 오류로 보이고 ERROR 로그로 남았다. 이제 본문 `status`는 응답 상태를 따르고, 코드는 406 `NOT_ACCEPTABLE`, 415 `UNSUPPORTED_MEDIA_TYPE`, 그 외 4xx `INVALID_REQUEST`, 5xx `INTERNAL_SERVER_ERROR`다. 4xx는 예외 메시지에 거부된 입력값이 들어 있을 수 있어 예외 클래스명과 상태만 `warn`으로 남긴다. 상태마다 `ErrorCode`를 모두 늘리는 안은 택하지 않았다. 전용 핸들러가 없는 예외는 자주 나오지 않으므로 상태를 구분하는 코드는 실제로 나오는 406과 415만 두고 나머지는 범용 코드로 묶는다. 그래서 그 외 4xx와 5xx의 코드는 `getStatus()`가 가리키는 상태와 본문 `status`가 다를 수 있다. 본문 `status`는 항상 응답 상태를 따른다.
+
+## 지정 금액 필수화
+
+**(2026-11-24 결정, 이슈 #232)**: `FixedAmountRequest.amount`는 원시 `long`이라 필드가 빠지면 0으로 읽혀 0원 분담금이 조용히 만들어졌다. `@NotNull Long`으로 바꿔 누락을 400으로 거절한다. `totalAmount`도 원시 `long`이지만 `@Positive`가 0을 거절하므로 누락이 400으로 걸러져 바꾸지 않았다.
