@@ -1075,9 +1075,14 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         class WhenLockedConcurrently {
 
             private Long gatheringId;
+            private final CountDownLatch waiterFinished = new CountDownLatch(1);
+            private CompletableFuture<Void> holder = CompletableFuture.completedFuture(null);
 
             @AfterEach
             void tearDown() {
+                // 잠금을 쥔 스레드를 먼저 놓아 주어야 아래 삭제가 잠금에 막히지 않는다.
+                waiterFinished.countDown();
+                holder.join();
                 jdbcTemplate.update(
                         "DELETE FROM gathering_round WHERE gathering_id = ?", gatheringId);
                 jdbcTemplate.update(
@@ -1119,8 +1124,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                                                 .save(GatheringFixture.FRIDAY_DINNER.create())
                                                 .getId());
                 CountDownLatch locked = new CountDownLatch(1);
-                CountDownLatch waiterFinished = new CountDownLatch(1);
-                CompletableFuture<Void> holder =
+                holder =
                         CompletableFuture.runAsync(
                                 () ->
                                         transactionTemplate.executeWithoutResult(
@@ -1134,18 +1138,13 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                 await(locked);
 
                 // when & then
-                try {
-                    assertThatThrownBy(
-                                    () ->
-                                            transactionTemplate.executeWithoutResult(
-                                                    _ ->
-                                                            gatheringRepository.findByIdForUpdate(
-                                                                    gatheringId)))
-                            .isInstanceOf(PessimisticLockingFailureException.class);
-                } finally {
-                    waiterFinished.countDown();
-                    holder.join();
-                }
+                assertThatThrownBy(
+                                () ->
+                                        transactionTemplate.executeWithoutResult(
+                                                _ ->
+                                                        gatheringRepository.findByIdForUpdate(
+                                                                gatheringId)))
+                        .isInstanceOf(PessimisticLockingFailureException.class);
             }
 
             // 잠금 구간 안에서 잠시 머물러, 잠금이 없다면 두 요청이 서로의 구간 안에 들어오게 한다.
