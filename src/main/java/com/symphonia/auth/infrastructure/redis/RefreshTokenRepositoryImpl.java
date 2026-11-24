@@ -53,8 +53,6 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
 
     @Override
     public void delete(String memberId) {
-        // deleteByMemberId 파생 쿼리는 @Indexed 필드 기반 삭제를 실제로 수행하지 않아 findAllByMemberId + deleteAll로
-        // 대체한다.
         run(
                 () -> {
                     List<RefreshToken> refreshTokens =
