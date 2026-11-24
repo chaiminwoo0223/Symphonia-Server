@@ -1,5 +1,8 @@
 package com.symphonia.auth.infrastructure.redis;
 
+import static com.symphonia.auth.infrastructure.redis.TokenStoreAccess.call;
+import static com.symphonia.auth.infrastructure.redis.TokenStoreAccess.run;
+
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.common.crypto.Sha256;
 import java.time.Duration;
@@ -24,22 +27,38 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     public void save(String value, String memberId, Long expirationTime) {
         RefreshToken refreshToken = RefreshToken.of(Sha256.hash(value), memberId, expirationTime);
 
-        refreshTokenRedisRepository.save(refreshToken);
+        run(() -> refreshTokenRedisRepository.save(refreshToken));
     }
 
     @Override
     public Optional<String> findMemberIdByValue(String value) {
-        return refreshTokenRedisRepository
-                .findById(Sha256.hash(value))
-                .map(RefreshToken::getMemberId);
+        return call(
+                () ->
+                        refreshTokenRedisRepository
+                                .findById(Sha256.hash(value))
+                                .map(RefreshToken::getMemberId));
     }
 
     // 동일 토큰의 동시 재사용을 막기 위해 SET NX로 소비 권한을 선점한 요청만 조회와 삭제를 진행한다.
     // 소비한 토큰 하나만 지우므로 같은 회원의 다른 기기 토큰은 유지된다.
     @Override
     public Optional<String> consume(String value) {
-        String hashedValue = Sha256.hash(value);
+        return call(() -> consumeToken(Sha256.hash(value)));
+    }
 
+    @Override
+    public void delete(String memberId) {
+        // deleteByMemberId 파생 쿼리는 @Indexed 필드 기반 삭제를 실제로 수행하지 않아 findAllByMemberId + deleteAll로
+        // 대체한다.
+        run(
+                () -> {
+                    List<RefreshToken> refreshTokens =
+                            refreshTokenRedisRepository.findAllByMemberId(memberId);
+                    refreshTokenRedisRepository.deleteAll(refreshTokens);
+                });
+    }
+
+    private Optional<String> consumeToken(String hashedValue) {
         if (!tryAcquireConsumeLock(hashedValue)) {
             return Optional.empty();
         }
@@ -51,14 +70,6 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
                             refreshTokenRedisRepository.deleteById(hashedValue);
                             return token.getMemberId();
                         });
-    }
-
-    @Override
-    public void delete(String memberId) {
-        // deleteByMemberId 파생 쿼리는 @Indexed 필드 기반 삭제를 실제로 수행하지 않아 findAllByMemberId + deleteAll로
-        // 대체한다.
-        List<RefreshToken> refreshTokens = refreshTokenRedisRepository.findAllByMemberId(memberId);
-        refreshTokenRedisRepository.deleteAll(refreshTokens);
     }
 
     // setIfAbsent는 파이프라인/트랜잭션에서 null을 반환할 수 있어, null도 획득 실패로 취급한다.
