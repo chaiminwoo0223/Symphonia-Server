@@ -13,6 +13,7 @@ import com.symphonia.auth.application.dto.result.TokenResult;
 import com.symphonia.auth.application.usecase.IssueTokenUseCase;
 import com.symphonia.auth.domain.error.AuthErrorCode;
 import com.symphonia.auth.domain.exception.RefreshTokenNotFoundException;
+import com.symphonia.auth.domain.exception.TokenStoreUnavailableException;
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.member.application.dto.result.MemberResult;
 import com.symphonia.member.application.usecase.GetMemberUseCase;
@@ -55,6 +56,8 @@ class RefreshServiceTest extends UnitTest {
 
             @BeforeEach
             void setUp() {
+                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                        .willReturn(Optional.of(String.valueOf(MEMBER_ID)));
                 given(refreshTokenRepository.consume(REFRESH_TOKEN))
                         .willReturn(Optional.of(String.valueOf(MEMBER_ID)));
                 given(getMemberUseCase.getById(MEMBER_ID)).willReturn(member);
@@ -89,13 +92,68 @@ class RefreshServiceTest extends UnitTest {
         }
 
         @Nested
-        @DisplayName("리프레시 토큰을 소비하지 못한 경우 (멤버 없음 또는 동시 요청 경합)")
+        @DisplayName("저장된 리프레시 토큰이 없는 경우")
+        class WhenRefreshTokenNotStored {
+
+            @Test
+            @DisplayName("RefreshTokenNotFoundException이 발생하고 새 토큰을 발급하지 않는다.")
+            void shouldThrowRefreshTokenNotFoundException() {
+                // given
+                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                        .willReturn(Optional.empty());
+
+                // when & then
+                assertThatThrownBy(
+                                () -> refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP)))
+                        .isInstanceOf(RefreshTokenNotFoundException.class)
+                        .hasMessage(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND.getMessage());
+                verify(issueTokenUseCase, never()).issue(anyString(), anyString());
+            }
+        }
+
+        @Nested
+        @DisplayName("새 토큰 발급이 실패한 경우")
+        class WhenIssueFails {
+
+            @Test
+            @DisplayName("예외를 그대로 던지고 기존 토큰을 소비하지 않는다.")
+            void shouldNotConsumeRefreshToken() {
+                // given
+                MemberResult member =
+                        new MemberResultFixture(MemberFixture.KAKAO).id(MEMBER_ID).build();
+                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                        .willReturn(Optional.of(String.valueOf(MEMBER_ID)));
+                given(getMemberUseCase.getById(MEMBER_ID)).willReturn(member);
+                given(issueTokenUseCase.issue(String.valueOf(MEMBER_ID), member.role().name()))
+                        .willThrow(new TokenStoreUnavailableException(new RuntimeException()));
+
+                // when & then
+                assertThatThrownBy(
+                                () -> refreshService.refresh(RefreshCommand.of(REFRESH_TOKEN, IP)))
+                        .isInstanceOf(TokenStoreUnavailableException.class);
+                verify(refreshTokenRepository, never()).consume(anyString());
+            }
+        }
+
+        @Nested
+        @DisplayName("리프레시 토큰을 소비하지 못한 경우 (동시 요청 경합)")
         class WhenRefreshTokenConsumeFails {
 
             @Test
             @DisplayName("RefreshTokenNotFoundException이 발생한다.")
             void shouldThrowRefreshTokenNotFoundException() {
                 // given
+                MemberResult member =
+                        new MemberResultFixture(MemberFixture.KAKAO).id(MEMBER_ID).build();
+                given(refreshTokenRepository.findMemberIdByValue(REFRESH_TOKEN))
+                        .willReturn(Optional.of(String.valueOf(MEMBER_ID)));
+                given(getMemberUseCase.getById(MEMBER_ID)).willReturn(member);
+                given(issueTokenUseCase.issue(String.valueOf(MEMBER_ID), member.role().name()))
+                        .willReturn(
+                                TokenResult.of(
+                                        NEW_ACCESS_TOKEN,
+                                        NEW_REFRESH_TOKEN,
+                                        String.valueOf(MEMBER_ID)));
                 given(refreshTokenRepository.consume(REFRESH_TOKEN)).willReturn(Optional.empty());
 
                 // when & then
