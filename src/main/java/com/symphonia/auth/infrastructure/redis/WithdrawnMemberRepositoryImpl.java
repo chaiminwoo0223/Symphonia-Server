@@ -1,5 +1,8 @@
 package com.symphonia.auth.infrastructure.redis;
 
+import static com.symphonia.auth.infrastructure.redis.TokenStoreAccess.call;
+import static com.symphonia.auth.infrastructure.redis.TokenStoreAccess.run;
+
 import com.symphonia.auth.domain.repository.WithdrawnMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -11,11 +14,14 @@ public class WithdrawnMemberRepositoryImpl implements WithdrawnMemberRepository 
 
     @Override
     public void save(String memberId, Long expirationTime) {
-        withdrawnMemberRedisRepository.save(WithdrawnMember.of(memberId, expirationTime));
+        run(
+                () ->
+                        withdrawnMemberRedisRepository.save(
+                                WithdrawnMember.of(memberId, expirationTime)));
     }
 
     @Override
     public boolean isWithdrawn(String memberId) {
-        return withdrawnMemberRedisRepository.existsById(memberId);
+        return call(() -> withdrawnMemberRedisRepository.existsById(memberId));
     }
 }

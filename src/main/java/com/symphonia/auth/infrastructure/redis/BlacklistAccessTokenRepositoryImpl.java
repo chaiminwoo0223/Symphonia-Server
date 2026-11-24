@@ -1,5 +1,8 @@
 package com.symphonia.auth.infrastructure.redis;
 
+import static com.symphonia.auth.infrastructure.redis.TokenStoreAccess.call;
+import static com.symphonia.auth.infrastructure.redis.TokenStoreAccess.run;
+
 import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
 import com.symphonia.common.crypto.Sha256;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +24,11 @@ public class BlacklistAccessTokenRepositoryImpl implements BlacklistAccessTokenR
                         memberId,
                         Math.max(expirationTime, MIN_TTL_SECONDS));
 
-        blacklistAccessTokenRedisRepository.save(blacklistAccessToken);
+        run(() -> blacklistAccessTokenRedisRepository.save(blacklistAccessToken));
     }
 
     @Override
     public boolean isBlacklisted(String accessToken) {
-        return blacklistAccessTokenRedisRepository.existsById(Sha256.hash(accessToken));
+        return call(() -> blacklistAccessTokenRedisRepository.existsById(Sha256.hash(accessToken)));
     }
 }

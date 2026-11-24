@@ -9,9 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.symphonia.IntegrationTest;
 import com.symphonia.auth.domain.error.AuthErrorCode;
-import com.symphonia.auth.domain.repository.BlacklistAccessTokenRepository;
-import com.symphonia.auth.domain.repository.WithdrawnMemberRepository;
 import com.symphonia.auth.helper.AuthHelper;
+import com.symphonia.auth.infrastructure.redis.BlacklistAccessTokenRedisRepository;
+import com.symphonia.auth.infrastructure.redis.WithdrawnMemberRedisRepository;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
@@ -29,8 +29,8 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
     @Autowired private MemberHelper memberHelper;
     @Autowired private AuthHelper authHelper;
 
-    @MockitoBean private BlacklistAccessTokenRepository blacklistAccessTokenRepository;
-    @MockitoBean private WithdrawnMemberRepository withdrawnMemberRepository;
+    @MockitoBean private BlacklistAccessTokenRedisRepository blacklistAccessTokenRedisRepository;
+    @MockitoBean private WithdrawnMemberRedisRepository withdrawnMemberRedisRepository;
 
     @Nested
     @DisplayName("공개 엔드포인트 요청은")
@@ -45,7 +45,7 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
             void shouldReturnOk() throws Exception {
                 // given
                 String bearer = bearerTokenOfMember();
-                given(blacklistAccessTokenRepository.isBlacklisted(anyString()))
+                given(blacklistAccessTokenRedisRepository.existsById(anyString()))
                         .willThrow(new QueryTimeoutException("redis down"));
 
                 // when & then
@@ -62,7 +62,7 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
             void shouldReturnOk() throws Exception {
                 // given
                 String bearer = bearerTokenOfMember();
-                given(withdrawnMemberRepository.isWithdrawn(anyString()))
+                given(withdrawnMemberRedisRepository.existsById(anyString()))
                         .willThrow(new QueryTimeoutException("redis down"));
 
                 // when & then
@@ -84,7 +84,7 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
             void shouldReturnServiceUnavailable() throws Exception {
                 // given
                 String bearer = bearerTokenOfMember();
-                given(blacklistAccessTokenRepository.isBlacklisted(anyString()))
+                given(blacklistAccessTokenRedisRepository.existsById(anyString()))
                         .willThrow(new QueryTimeoutException("redis down"));
 
                 // when & then
@@ -106,7 +106,7 @@ class JwtAuthenticationFilterTest extends IntegrationTest {
             void shouldReturnServiceUnavailable() throws Exception {
                 // given
                 String bearer = bearerTokenOfMember();
-                given(withdrawnMemberRepository.isWithdrawn(anyString()))
+                given(withdrawnMemberRedisRepository.existsById(anyString()))
                         .willThrow(new QueryTimeoutException("redis down"));
 
                 // when & then
