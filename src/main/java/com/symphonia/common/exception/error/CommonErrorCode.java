@@ -25,6 +25,10 @@ public enum CommonErrorCode implements ErrorCode {
     // 500
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류입니다. 관리자에게 문의하세요."),
     HASHING_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "토큰 해싱에 실패했습니다."),
+
+    // 503
+    PESSIMISTIC_LOCKING_FAILURE(
+            HttpStatus.SERVICE_UNAVAILABLE, "다른 요청을 처리하는 중입니다. 잠시 뒤 다시 시도해 주세요."),
     ;
 
     private final HttpStatus status;
