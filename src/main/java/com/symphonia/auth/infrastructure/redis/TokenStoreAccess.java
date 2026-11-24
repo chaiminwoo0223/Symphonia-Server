@@ -8,7 +8,7 @@ import org.springframework.dao.DataAccessException;
 final class TokenStoreAccess {
     private TokenStoreAccess() {}
 
-    static <T> T call(Supplier<T> command) {
+    public static <T> T call(Supplier<T> command) {
         try {
             return command.get();
         } catch (DataAccessException e) {
@@ -16,7 +16,7 @@ final class TokenStoreAccess {
         }
     }
 
-    static void run(Runnable command) {
+    public static void run(Runnable command) {
         call(
                 () -> {
                     command.run();
