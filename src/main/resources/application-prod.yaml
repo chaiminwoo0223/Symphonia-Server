@@ -20,7 +20,7 @@ logging:
   level:
     com.symphonia: info
 
-# prod에서는 API 명세와 Swagger UI를 만들지 않는다. SecurityConfig도 이 값을 보고 명세 경로의 허용을 뺀다.
+# prod에서는 API 명세와 Swagger UI를 만들지 않는다. SwaggerSecurityConfig도 이 값이 false이면 빠져 명세 경로가 열리지 않는다.
 springdoc:
   api-docs:
     enabled: false
