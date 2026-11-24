@@ -18,7 +18,7 @@ description: Load when designing layer structure. UseCase/Service/Api/Controller
 
 | 도메인 | 책임 |
 |---|---|
-| `member` | 회원. 탈퇴 시 `MemberDeletedEvent` 발행. 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)이고 수정 요청이 넘으면 400, 가입 시 소셜 닉네임이 넘으면 잘라서 저장. 탈퇴 전 확인은 `gathering`의 `GetOngoingGatheringsUseCase`를 부른다(`member → gathering`) |
+| `member` | 회원. 탈퇴 시 `MemberDeletedEvent` 발행. 닉네임은 최대 20자(`MemberPolicy.MAX_NICKNAME_LENGTH`)이고 수정 요청이 넘으면 400, 가입 시 소셜 닉네임이 넘으면 잘라서 저장. 탈퇴 전 확인은 `gathering`의 `GetOngoingGatheringsUseCase`를 부른다 |
 | `auth` | 로그인, 재발급, 로그아웃(1 UseCase = 1 Service). Redis 기반 리프레시 토큰, 액세스 토큰 블랙리스트, 탈퇴한 회원 id |
 | `catalog` | 음료(`Drink`, `DrinkStyle`), 안주(`Anju`)와 그 맛, 분류 값. 적재 규칙표, `*Reader`, 수동 적재 러너 `ImportCatalogRunner` |
 | `pairing` | 자리(`Occasion`)에 맞는 술과 안주 조합 추천과 점수 계산, `Pairing`, `PairingFeedback`, 조합별 평점 집계 `PairingRatingSummary` |
@@ -145,7 +145,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - CORS는 `allowCredentials`를 켜지 않고 허용 오리진을 명시한다. 와일드카드(`*`)는 쓰지 않는다. 인증 정보를 브라우저가 자동으로 붙이지 않으므로 CSRF 토큰은 두지 않는다.
 - 로그아웃은 인증 없이 호출할 수 있고, 토큰이 없거나 만료돼도 204를 반환한다. 요청 바디의 리프레시 토큰 하나를 `consume`으로 지우고, 필터가 인증한 유효한 액세스 토큰만 블랙리스트에 올린다.
 - 회원 탈퇴는 `MemberDeletedEventListener`가 `BlockWithdrawnMemberUseCase`로 탈퇴한 회원 id를 액세스 토큰 유효시간만큼 Redis에 남기고, `ForceRevokeUseCase`로 리프레시 토큰을 모두 지우고, `LogoutUseCase`로 요청한 액세스 토큰을 블랙리스트에 올린다. 필터는 탈퇴한 회원 id의 액세스 토큰을 인증하지 않는다.
-- 필터가 Redis 조회 중 `DataAccessException`을 만나면 토큰 원문 없이 경고 로그만 남기고 인증하지 않은 채 넘긴다. 공개 엔드포인트는 비회원으로 응답하고, 인증이 필요한 엔드포인트는 401 대신 503 `TOKEN_STORE_UNAVAILABLE`로 응답한다.
+- Redis 토큰 저장소의 실패는 `*RepositoryImpl`이 `TokenStoreUnavailableException`(503 `TOKEN_STORE_UNAVAILABLE`)으로 바꾼다. 필터는 이를 잡아 인증하지 않은 채 넘긴다. 공개 엔드포인트는 비회원으로, 보호 엔드포인트는 401 대신 503으로 응답한다.
 - 블랙리스트 TTL은 최소 1초다. 0이면 Redis 키가 만료되지 않고 남는다.
 - `CustomAuthenticationEntryPoint`는 401 응답에 `WWW-Authenticate: Bearer realm="symphonia"`를 넣는다. `GlobalExceptionHandler`의 401(`REFRESH_TOKEN_NOT_FOUND`)에는 넣지 않는다.
 - 앱 단 rate limit은 두지 않는다. 대량 요청 방어는 LB/WAF가 맡는다.
