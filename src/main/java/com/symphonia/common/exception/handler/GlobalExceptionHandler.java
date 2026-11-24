@@ -30,7 +30,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PessimisticLockingFailureException.class)
     public ResponseEntity<StandardResponse<ErrorResponse>> handlePessimisticLockingFailure(
             PessimisticLockingFailureException ex) {
-        log.warn("[PessimisticLockingFailure] message={}", ex.getMessage());
+        log.warn(
+                "[PessimisticLockingFailure] type={}, message={}",
+                ex.getClass().getSimpleName(),
+                ex.getMessage());
 
         return buildResponse(CommonErrorCode.PESSIMISTIC_LOCKING_FAILURE);
     }
