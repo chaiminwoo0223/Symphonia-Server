@@ -8,7 +8,7 @@ import org.springframework.dao.DataAccessException;
 final class RedisFailureTranslator {
     private RedisFailureTranslator() {}
 
-    public static <T> T translate(Supplier<T> command) {
+    public static <T> T call(Supplier<T> command) {
         try {
             return command.get();
         } catch (DataAccessException e) {
@@ -16,8 +16,8 @@ final class RedisFailureTranslator {
         }
     }
 
-    public static void translateVoid(Runnable command) {
-        translate(
+    public static void run(Runnable command) {
+        call(
                 () -> {
                     command.run();
                     return null;
