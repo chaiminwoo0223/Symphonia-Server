@@ -42,15 +42,7 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode statusCode,
             @NonNull WebRequest request) {
-        if (statusCode.is5xxServerError()) {
-            log.error("[ExceptionInternal] message={}", ex.getMessage(), ex);
-        } else {
-            // 예외 메시지에 거부된 입력값이 들어 있을 수 있어 예외 클래스명과 상태만 남긴다.
-            log.warn(
-                    "[ExceptionInternal] type={}, status={}",
-                    ex.getClass().getSimpleName(),
-                    statusCode.value());
-        }
+        logFallback(ex, statusCode);
 
         HttpStatus status = HttpStatus.valueOf(statusCode.value());
         return super.handleExceptionInternal(
@@ -156,6 +148,18 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getConstraintViolations().stream().map(this::toValidationErrorResponse).toList();
 
         return buildValidationResponse(CommonErrorCode.CONSTRAINT_VIOLATION, violations);
+    }
+
+    private void logFallback(Exception ex, HttpStatusCode statusCode) {
+        if (statusCode.is5xxServerError()) {
+            log.error("[ExceptionInternal] message={}", ex.getMessage(), ex);
+            return;
+        }
+        // 예외 메시지에 거부된 입력값이 들어 있을 수 있어 예외 클래스명과 상태만 남긴다.
+        log.warn(
+                "[ExceptionInternal] type={}, status={}",
+                ex.getClass().getSimpleName(),
+                statusCode.value());
     }
 
     private ErrorCode toFallbackErrorCode(HttpStatus status) {
