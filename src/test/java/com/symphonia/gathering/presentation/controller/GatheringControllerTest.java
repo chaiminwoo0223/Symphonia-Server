@@ -765,7 +765,7 @@ class GatheringControllerTest extends IntegrationTest {
         class WhenPhoneNumberAlreadyJoined {
 
             @Test
-            @DisplayName("PARTICIPANT_ALREADY_JOINED 코드와 함께 409를 반환한다")
+            @DisplayName("PARTICIPANT_PHONE_NUMBER_ALREADY_USED 코드와 함께 409를 반환한다")
             void shouldReturnConflict() throws Exception {
                 // given
                 Member member = memberHelper.save(MemberFixture.KAKAO);
@@ -782,7 +782,8 @@ class GatheringControllerTest extends IntegrationTest {
                         .andExpect(
                                 jsonPath("$.data.code")
                                         .value(
-                                                GatheringErrorCode.PARTICIPANT_ALREADY_JOINED
+                                                GatheringErrorCode
+                                                        .PARTICIPANT_PHONE_NUMBER_ALREADY_USED
                                                         .getCode()));
             }
         }

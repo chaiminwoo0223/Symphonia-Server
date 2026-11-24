@@ -10,7 +10,7 @@ import com.symphonia.RepositoryTest;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.GatheringRound;
 import com.symphonia.gathering.domain.entity.Participant;
-import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.exception.ParticipantPhoneNumberAlreadyUsedException;
 import com.symphonia.gathering.domain.policy.GatheringPolicy;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.vo.HostedGathering;
@@ -346,8 +346,8 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         }
 
         @Test
-        @DisplayName("같은 모임의 다른 참여자가 쓰는 휴대폰으로 바꾸면 ParticipantAlreadyJoinedException이 발생한다")
-        void shouldThrowParticipantAlreadyJoinedExceptionWhenPhoneNumberUsedByOther() {
+        @DisplayName("같은 모임의 다른 참여자가 쓰는 휴대폰으로 바꾸면 ParticipantPhoneNumberAlreadyUsedException이 발생한다")
+        void shouldThrowParticipantPhoneNumberAlreadyUsedExceptionWhenPhoneNumberUsedByOther() {
             // given
             Gathering saved = saveWithKimAndLee();
             Participant kim = saved.getParticipants().get(0);
@@ -365,7 +365,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
                             () ->
                                     gatheringRepository.updateParticipant(
                                             saved.getId(), kimWithLeePhoneNumber))
-                    .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                    .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
         }
 
         private Gathering saveWithKimAndLee() {
@@ -778,8 +778,8 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         class WhenPhoneNumberDuplicated {
 
             @Test
-            @DisplayName("ParticipantAlreadyJoinedException이 발생한다")
-            void shouldThrowParticipantAlreadyJoinedException() {
+            @DisplayName("ParticipantPhoneNumberAlreadyUsedException이 발생한다")
+            void shouldThrowParticipantPhoneNumberAlreadyUsedException() {
                 // given: 동시 참여로 Service의 중복 검사를 둘 다 통과한 상태
                 Gathering gathering =
                         GatheringFixture.FRIDAY_DINNER.createWithParticipants(
@@ -790,7 +790,7 @@ class GatheringRepositoryImplTest extends RepositoryTest {
 
                 // when & then
                 assertThatThrownBy(() -> gatheringRepository.save(gathering))
-                        .isInstanceOf(ParticipantAlreadyJoinedException.class);
+                        .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
             }
         }
     }

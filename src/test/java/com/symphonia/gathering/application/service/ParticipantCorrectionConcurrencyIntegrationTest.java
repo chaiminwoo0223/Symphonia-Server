@@ -8,7 +8,7 @@ import com.symphonia.gathering.application.dto.command.CorrectParticipantByGoogl
 import com.symphonia.gathering.application.usecase.CorrectParticipantByGoogleSubjectUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
-import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
+import com.symphonia.gathering.domain.exception.ParticipantPhoneNumberAlreadyUsedException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.ParticipantGoogleSubjectRepository;
 import com.symphonia.gathering.fixture.GatheringFixture;
@@ -87,7 +87,8 @@ class ParticipantCorrectionConcurrencyIntegrationTest extends IntegrationTest {
 
         @Test
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
-        @DisplayName("같은 새 휴대폰으로 겹쳐 정정해도 한 요청만 성공하고 늦은 요청은 ParticipantAlreadyJoinedException이다")
+        @DisplayName(
+                "같은 새 휴대폰으로 겹쳐 정정해도 한 요청만 성공하고 늦은 요청은 ParticipantPhoneNumberAlreadyUsedException이다")
         void shouldLetOnlyOneParticipantTakePhoneNumberWhenCorrectedConcurrently() {
             // when
             List<Throwable> failures =
@@ -101,7 +102,8 @@ class ParticipantCorrectionConcurrencyIntegrationTest extends IntegrationTest {
 
             // then
             assertThat(failures).hasSize(1);
-            assertThat(failures.getFirst()).isInstanceOf(ParticipantAlreadyJoinedException.class);
+            assertThat(failures.getFirst())
+                    .isInstanceOf(ParticipantPhoneNumberAlreadyUsedException.class);
             assertThat(participantsWithNewPhoneNumber()).hasSize(1);
         }
     }

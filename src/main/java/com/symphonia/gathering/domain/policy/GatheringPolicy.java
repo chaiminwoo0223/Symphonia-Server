@@ -15,6 +15,7 @@ import com.symphonia.gathering.domain.exception.OutdatedConsentVersionException;
 import com.symphonia.gathering.domain.exception.PairingFeedbackAlreadySubmittedException;
 import com.symphonia.gathering.domain.exception.ParticipantAlreadyJoinedException;
 import com.symphonia.gathering.domain.exception.ParticipantNotFoundException;
+import com.symphonia.gathering.domain.exception.ParticipantPhoneNumberAlreadyUsedException;
 import com.symphonia.gathering.domain.exception.ParticipantUnremovableException;
 import com.symphonia.gathering.domain.vo.JoinClosedReason;
 import java.time.Duration;
@@ -120,9 +121,15 @@ public enum GatheringPolicy {
         }
     }
 
-    public static void validateNotJoined(boolean alreadyJoined) {
+    public static void validateGoogleAccountNotJoined(boolean alreadyJoined) {
         if (alreadyJoined) {
             throw new ParticipantAlreadyJoinedException();
+        }
+    }
+
+    public static void validatePhoneNumberNotUsed(boolean alreadyUsed) {
+        if (alreadyUsed) {
+            throw new ParticipantPhoneNumberAlreadyUsedException();
         }
     }
 
