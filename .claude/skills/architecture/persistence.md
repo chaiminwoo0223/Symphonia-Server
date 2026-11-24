@@ -95,7 +95,7 @@
 - dev와 prod는 `spring.docker.compose.enabled: false`로 compose 연결을 끈다.
 - SQL 로그(`show-sql`, `format_sql`)는 local에서만 켠다.
 - prod는 `springdoc.api-docs.enabled`와 `springdoc.swagger-ui.enabled`를 `false`로 두고, 명세 경로(`/v3/api-docs/**`, `/swagger-ui/**`)를 여는 `SwaggerSecurityConfig`는 `@ConditionalOnProperty(springdoc.api-docs.enabled)`라 prod에서는 빠지고, `SecurityConfig`는 명세 경로를 모른다. `SwaggerConfig`는 `@Profile("!prod")`다.
-- `server.shutdown: graceful`과 `spring.lifecycle.timeout-per-shutdown-phase: 30s`로, 종료 신호를 받으면 진행 중인 요청을 끝낸 뒤 내려간다.
+- `server.shutdown: graceful`과 `spring.lifecycle.timeout-per-shutdown-phase: 30s`로, 종료 신호를 받으면 새 요청을 거절하고 진행 중인 요청이 끝나기를 최대 30초 기다린다. 30초 안에 끝나지 않은 요청은 기다리지 않고 종료가 계속 진행되어 끊길 수 있다.
 - 행 잠금 대기는 `spring.datasource.hikari.connection-init-sql`의 `SET lock_timeout = '5s'`로 제한한다. 테스트는 `application-test.yaml`에서 1초로 줄인다. 초과하면 `PessimisticLockingFailureException`이고 API는 503으로 응답한다.
 - JWT, OAuth, CORS는 환경변수로 주입한다. 비밀값은 `${ENV_VAR}`, 만료 시간과 CORS는 `${ENV_VAR:기본값}`이다. `.env`는 Spring이 직접 읽지 않고 실행 환경에서 주입한다.
 
