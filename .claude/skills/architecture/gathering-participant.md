@@ -16,7 +16,7 @@
 ## 참여자의 개인 링크 복구
 
 - 개인 링크를 잃은 참여자는 `POST /participants/link-token`(인증 없음)에 `X-Join-Token` 헤더와 구글 ID 토큰(`googleIdToken`)을 보내 새 링크를 받는다. 201이다. `*Api`는 `ParticipantApi`다.
-- `RecoverParticipantLinkService`(`@Service`)가 트랜잭션 밖에서 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽은 뒤, `ParticipantCommandService`에 재발급을 맡긴다. 토큰이 없으면 400, 유효하지 않으면 400(`INVALID_SOCIAL_TOKEN`), 검증 장애는 503이다.
+- `RecoverParticipantLinkService`(`@Service`)가 트랜잭션 밖에서 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽은 뒤, `ParticipantCommandService`에 재발급을 맡긴다. 토큰 검증 실패는 참여와 같다.
 - 모임은 참여 토큰으로 찾고, 파기 시각이 지난 모임은 404(`JOIN_TOKEN_NOT_FOUND`)다. 참여 토큰은 파기 때까지 남으므로 참여 기간이 끝난 뒤에도 복구에 쓸 수 있고, 모임장이 참여 QR을 재발급하면 옛 토큰으로는 복구할 수 없다.
 - 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 같은 `sub` HMAC의 참여자를 찾는다. 없으면 404(`PARTICIPANT_NOT_FOUND`)다.
 - 기존 개인 링크 토큰을 모두 지우고 새 토큰을 응답에 한 번만 담는다. 모임장의 재발급과 같은 규칙이다.
@@ -27,10 +27,10 @@
 
 - 참여자는 `PUT /participants/profile`(인증 없음)로 본인의 이름과 휴대폰을 정정한다. `X-Join-Token` 헤더의 참여 토큰으로 모임을 찾고 본문 `googleIdToken`으로 본인을 확인하며 204다. 개인 링크는 필요하지 않고 바뀌지 않는다. `*Api`는 `ParticipantApi`다.
 - 본문은 `name`, `phoneNumber`, `googleIdToken`을 모두 받는다. 현재 값과 같아도 된다.
-- `CorrectParticipantService`(`@Service`)가 트랜잭션 밖에서 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽은 뒤, `ParticipantCommandService`에 정정을 맡긴다. 토큰이 없으면 400, 유효하지 않으면 400(`INVALID_SOCIAL_TOKEN`), 검증 장애는 503이다.
+- `CorrectParticipantService`(`@Service`)가 트랜잭션 밖에서 `VerifySocialTokenUseCase`로 검증하고 `sub`만 읽은 뒤, `ParticipantCommandService`에 정정을 맡긴다. 토큰 검증 실패는 참여와 같다.
 - 참여 토큰이 없거나 파기 시각이 지난 모임이면 404(`JOIN_TOKEN_NOT_FOUND`), 같은 `sub`의 참여자가 없으면 404(`PARTICIPANT_NOT_FOUND`)다. 기록 기간 제한은 두지 않고 파기 시각 전까지 허용한다.
 - 정산 건에 든 참여자도 정정할 수 있다. 정산 화면이 이름과 휴대폰을 매번 읽으므로 금액과 분담금 상태는 바뀌지 않는다.
-- 휴대폰은 참여와 같이 010으로 시작하는 11자리만 받고(`PhoneNumber.from`) 오류는 400(`INVALID_PHONE_NUMBER`)이다. 이름은 앞뒤 공백을 제거해 저장한다.
+- 휴대폰과 이름은 참여와 같은 규칙으로 검사하고 저장하며, 휴대폰 형식 오류는 400(`INVALID_PHONE_NUMBER`)이다.
 - 같은 모임의 다른 참여자가 쓰는 휴대폰은 409(`PARTICIPANT_PHONE_NUMBER_ALREADY_USED`)이고 자기 휴대폰은 중복으로 보지 않는다. `Gathering.correctParticipant`가 검사한다.
 - 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤 검사하고 저장한다. `GatheringRepository.save`는 기존 참여자 행을 다시 쓰지 않으므로 `updateParticipant`만 이름, 휴대폰, 휴대폰 HMAC을 바꾼다. 동시 위반은 `uk_participant_phone_number` 제약을 같은 409로 바꾼다.
 - 구글 계정 없이 참여한 모임장과 구글 본인 확인 도입 전 참여자는 `sub`가 없어 정정할 수 없고 404다.
@@ -40,7 +40,7 @@
 - 한 모임의 참여자는 최대 20명(`GatheringPolicy.MAX_PARTICIPANT_COUNT`)이다. 모임을 만든 회원도 참여 화면으로 참여해야 한 명으로 센다.
 - 참여자가 20명 이상이면 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)이고, 이미 참여한 휴대폰 검사 뒤에 검사한다. 이미 20명을 넘은 모임은 줄이지 않고 새 참여만 막는다.
 - 참여 화면 조회는 가득 찬 모임을 참여 불가로 알린다.
-- 참여는 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤 인원을 확인하고 저장한다(`findByIdForUpdate`). 잠금을 기다리는 동안 참여 기간이 끝날 수 있으므로 참여 기간은 잠금을 얻은 뒤 다시 읽은 시각으로 검사한다. 서로 다른 휴대폰의 참여가 동시에 와도 늦은 요청이 기다리므로 최종 인원은 20명을 넘지 않는다. 20명에서 막힌 요청은 400(`GATHERING_PARTICIPANT_COUNT_EXCEEDS_LIMIT`)이다.
+- 참여는 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤 인원을 확인하고 저장한다(`findByIdForUpdate`). 잠금을 기다리는 동안 참여 기간이 끝날 수 있으므로 참여 기간은 잠금을 얻은 뒤 다시 읽은 시각으로 검사한다. 서로 다른 휴대폰의 참여가 동시에 와도 늦은 요청이 기다리므로 최종 인원은 20명을 넘지 않는다.
 
 ## 모임장의 참여자 관리
 
@@ -50,9 +50,8 @@
 - 재발급은 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤, 그 참여자의 기존 개인 링크 토큰을 모두 지우고 새 토큰을 발급해 응답에 한 번만 담는다. 201이다. 같은 모임의 재발급이 겹치면 늦은 요청이 기다리므로 마지막에 발급한 토큰만 남는다. 파기의 `SKIP LOCKED`용 조회(`findByIdForUpdateSkipLocked`)는 기다리지 않으므로 재발급에 쓰지 않는다.
 - 취소하지 않은 정산 건의 결제자나 분담금 인원인 참여자는 제거하거나 철회할 수 없고 409(`PARTICIPANT_UNREMOVABLE`)다. 모임장이 정산 건을 고쳐 빼거나 취소한 뒤에 할 수 있다. 결제자는 정산 건에서 뺄 수 없어 취소해야 한다.
 - 제거와 철회는 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽은 뒤, 개인 링크 토큰, 피드백 제출 표시, 참여자를 한 트랜잭션에서 처리한다. 정산 건이 하나도 참조하지 않으면 참여자 행을 지우고, 취소한 정산 건만 참조하면 행을 익명화한다. 정산 건을 고쳐 참여자를 뺀 뒤에도 제출 표시는 남으므로 함께 지운다. 익명 피드백은 지우지 않는다. 제거는 204다.
-- 익명화는 이름, 휴대폰, 휴대폰 HMAC, 구글 sub HMAC을 비우고 `withdrawn_at`을 남긴다. 익명화한 행은 모임을 읽을 때 불러오지 않아 참여자 목록, 인원 상한, 휴대폰 중복 검사, 모임 목록의 참여자 수에서 빠진다. 같은 구글 계정과 휴대폰의 재참여는 새 행으로 한다.
+- 익명화는 이름, 휴대폰, 휴대폰 HMAC, 구글 sub HMAC을 비우고 `withdrawn_at`을 남긴다. 익명화한 행은 모임을 읽을 때 불러오지 않아 참여자 목록, 인원 상한, 휴대폰 중복 검사, 모임 목록의 참여자 수에서 빠진다. 같은 구글 계정과 휴대폰의 재참여는 막지 않고 새 행으로 한다.
 - 정산 건 기록, 수정, 취소도 모임 행을 `PESSIMISTIC_WRITE`로 잠그고 읽는다.
-- 제거한 휴대폰의 재참여는 막지 않는다.
 
 ## 참여자의 철회
 
