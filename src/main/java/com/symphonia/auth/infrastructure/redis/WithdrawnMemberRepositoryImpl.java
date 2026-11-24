@@ -1,7 +1,7 @@
 package com.symphonia.auth.infrastructure.redis;
 
-import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.translate;
-import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.translateVoid;
+import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.call;
+import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.run;
 
 import com.symphonia.auth.domain.repository.WithdrawnMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +14,7 @@ public class WithdrawnMemberRepositoryImpl implements WithdrawnMemberRepository 
 
     @Override
     public void save(String memberId, Long expirationTime) {
-        translateVoid(
+        run(
                 () ->
                         withdrawnMemberRedisRepository.save(
                                 WithdrawnMember.of(memberId, expirationTime)));
@@ -22,6 +22,6 @@ public class WithdrawnMemberRepositoryImpl implements WithdrawnMemberRepository 
 
     @Override
     public boolean isWithdrawn(String memberId) {
-        return translate(() -> withdrawnMemberRedisRepository.existsById(memberId));
+        return call(() -> withdrawnMemberRedisRepository.existsById(memberId));
     }
 }

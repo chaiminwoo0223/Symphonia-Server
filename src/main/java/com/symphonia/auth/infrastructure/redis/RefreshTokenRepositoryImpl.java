@@ -1,7 +1,7 @@
 package com.symphonia.auth.infrastructure.redis;
 
-import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.translate;
-import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.translateVoid;
+import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.call;
+import static com.symphonia.auth.infrastructure.redis.RedisFailureTranslator.run;
 
 import com.symphonia.auth.domain.repository.RefreshTokenRepository;
 import com.symphonia.common.crypto.Sha256;
@@ -27,12 +27,12 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     public void save(String value, String memberId, Long expirationTime) {
         RefreshToken refreshToken = RefreshToken.of(Sha256.hash(value), memberId, expirationTime);
 
-        translateVoid(() -> refreshTokenRedisRepository.save(refreshToken));
+        run(() -> refreshTokenRedisRepository.save(refreshToken));
     }
 
     @Override
     public Optional<String> findMemberIdByValue(String value) {
-        return translate(
+        return call(
                 () ->
                         refreshTokenRedisRepository
                                 .findById(Sha256.hash(value))
@@ -43,14 +43,14 @@ public class RefreshTokenRepositoryImpl implements RefreshTokenRepository {
     // 소비한 토큰 하나만 지우므로 같은 회원의 다른 기기 토큰은 유지된다.
     @Override
     public Optional<String> consume(String value) {
-        return translate(() -> consumeToken(Sha256.hash(value)));
+        return call(() -> consumeToken(Sha256.hash(value)));
     }
 
     @Override
     public void delete(String memberId) {
         // deleteByMemberId 파생 쿼리는 @Indexed 필드 기반 삭제를 실제로 수행하지 않아 findAllByMemberId + deleteAll로
         // 대체한다.
-        translateVoid(
+        run(
                 () -> {
                     List<RefreshToken> refreshTokens =
                             refreshTokenRedisRepository.findAllByMemberId(memberId);
