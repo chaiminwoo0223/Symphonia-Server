@@ -5,10 +5,10 @@ import java.util.function.Supplier;
 import org.springframework.dao.DataAccessException;
 
 // Redis 조회와 쓰기가 실패하면 도메인이 아는 예외로 바꿔 던진다. 장애 때 500이 아니라 503으로 응답하기 위해서다.
-final class TokenStoreAccess {
-    private TokenStoreAccess() {}
+final class RedisFailureTranslator {
+    private RedisFailureTranslator() {}
 
-    public static <T> T call(Supplier<T> command) {
+    public static <T> T translate(Supplier<T> command) {
         try {
             return command.get();
         } catch (DataAccessException e) {
@@ -16,8 +16,8 @@ final class TokenStoreAccess {
         }
     }
 
-    public static void run(Runnable command) {
-        call(
+    public static void translateVoid(Runnable command) {
+        translate(
                 () -> {
                     command.run();
                     return null;
