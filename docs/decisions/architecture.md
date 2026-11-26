@@ -34,11 +34,13 @@
 
 **(2026-11-18 결정, 이슈 #201)**: 원본과 같은 DB를 바꾸고 원본과 함께 롤백돼야 하는 후속 처리는 `BEFORE_COMMIT` 리스너로 한다. 회원 삭제 때 `pairing_feedback`의 회원 id를 비우는 처리가 그 예다. `AFTER_COMMIT` 리스너가 부른 UseCase의 `@CommandService`는 이미 끝난 트랜잭션에 참여해 쓰기가 반영되지 않는다. 리스너를 `AFTER_COMMIT`으로 바꾸면 통합 테스트가 실패하는 것으로 확인했다. 메서드 단위 `@Transactional(REQUIRES_NEW)`는 규칙상 쓰지 않는다. `BEFORE_COMMIT` 리스너가 실패하면 원본 커밋도 함께 롤백되고 API는 500이다. 통합 테스트로 확인했다. `member`가 `pairing`의 `*UseCase`를 직접 부르는 안은 택하지 않았다. `pairing`, `auth`, `gathering`이 이미 `member`를 의존하고 있어, 호출하면 `member`가 이들을 의존하는 반대 방향이 생기기 때문이다. 이 안이 맞는 경우는 원본이 대상을 이미 의존할 때다. Redis처럼 트랜잭션 밖의 정리(리프레시 토큰, 탈퇴한 회원 id)는 기존대로 `AFTER_COMMIT`이다.
 
+**(2026-11-26 결정, 이슈 #205)**: 모임 데이터는 최대 30일 안에 파기되므로 전환 지표는 DB 조회가 아니라 Micrometer 카운터로 남긴다. 커밋 시점에 실패하는 요청을 세지 않도록 `AFTER_COMMIT` 리스너가 도메인별 기록 인터페이스를 부른다. 리스너가 `Record*MetricUseCase`를 거치는 안은 위임만 하는 클래스가 도메인마다 늘어 택하지 않았다. `common`에 기록 인터페이스 하나를 두는 안은 공유 커널이 각 도메인의 흐름 이름을 알게 되어 택하지 않았다. 추천 요청은 `@QueryService`가 처리하지만 같은 방식으로 센다. 읽기 전용 트랜잭션에서도 커밋 뒤 리스너가 돌고, 직접 호출하면 세는 방식이 두 가지가 되기 때문이다. 동시에 온 같은 요청 id의 정산 건을 구분하도록 `SettlementRepository.saveIfAbsent`는 저장하지 못하면 빈 값을 돌려준다. 문서 예산 때문에 부수효과와 이벤트 규칙은 `architecture/events.md`로 옮겼다. prod 지표 수집을 맡을 이슈와, 14일인 보존 기간으로는 볼 수 없는 30일 전환율의 보존 방식은 정하지 않았다.
+
 **이벤트 컨벤션**:
 - 네이밍: `<Entity><과거분사>Event` (예: `MemberDeletedEvent`). 순수 도메인 개념(ID 등)뿐 아니라 구독 측이 필요로 하는 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다 — 이벤트는 "구독자에게 필요한 계약"이지, 발행 도메인의 순수 도메인 모델 그 자체는 아니다. 다만 그 컨텍스트가 여러 필드로 늘어나 이벤트의 성격이 모호해지면 그 시점에 페이로드 축소를 재검토한다.
 - 정의 위치: 발행하는 도메인의 `application.event` 패키지 (`domain`이 아니다 — `domain`은 프레임워크는 물론, accessToken처럼 다른 도메인/기술 맥락에 속하는 개념도 알지 못해야 한다).
-- 발행 위치: 트랜잭션 경계를 가진 `@CommandService` 구현체 내부에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다 (필드 주입). 트랜잭션 밖(Controller 등)에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
-- 구독 위치: 구독하는 도메인의 `application.listener` 패키지에 `@Component` 클래스를 두고 `@TransactionalEventListener(phase = AFTER_COMMIT)` 메서드로 구독한다. 같은 DB를 바꾸고 원본과 함께 롤백돼야 하는 후속 처리는 `BEFORE_COMMIT`으로 구독한다(#201에서 추가). 리스너는 대상 도메인의 `*UseCase`를 직접 의존해 위임만 하고, 그 안에 비즈니스 로직을 직접 작성하지 않는다 (`@Component`는 기술적 wiring 전용이라는 기존 원칙과 동일).
+- 발행 위치: 트랜잭션 경계를 가진 `@CommandService` 구현체 내부에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다 (필드 주입). 전환 지표 이벤트는 `@QueryService`에서도 발행한다(#205에서 변경). 트랜잭션 밖(Controller 등)에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
+- 구독 위치: 구독하는 도메인의 `application.listener` 패키지에 `@Component` 클래스를 두고 `@TransactionalEventListener(phase = AFTER_COMMIT)` 메서드로 구독한다. 같은 DB를 바꾸고 원본과 함께 롤백돼야 하는 후속 처리는 `BEFORE_COMMIT`으로 구독한다(#201에서 추가). 리스너는 대상 도메인의 `*UseCase`를 직접 의존해 위임만 하고, 그 안에 비즈니스 로직을 직접 작성하지 않는다 (`@Component`는 기술적 wiring 전용이라는 기존 원칙과 동일). 전환 지표 리스너는 `application.recorder` 인터페이스에 위임한다(#205에서 변경).
 - 공유 마커 인터페이스나 베이스 클래스(`common.event` 등)는 두지 않는다. Spring의 `ApplicationEventPublisher`/`@TransactionalEventListener`는 특정 타입을 요구하지 않고, 이벤트가 아직 소수라 공유 추상화를 선제적으로 둘 근거가 없다 (YAGNI). 이벤트 종류가 늘어 정말 공통 로직(로깅, 재시도 등)이 필요해지는 시점에 재검토한다.
 
 ## 외부 호출과 트랜잭션

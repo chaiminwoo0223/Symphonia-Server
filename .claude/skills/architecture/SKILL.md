@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), gathering 모임 관리(gathering-management.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, 크로스 도메인 부수효과와 도메인 이벤트, 전환 지표(events.md), DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), gathering 모임 관리(gathering-management.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -90,17 +90,6 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 - `CatalogResult`를 `PairingDrink`, `PairingAnju`로 바꾸는 코드는 `PairingQueryService`의 private 메서드에 둔다.
 - 타입 이름에 `Candidate`, `Item(s)`를 쓰지 않는다.
 
-## 크로스 도메인 부수효과
-
-- 부수효과가 실패했을 때 원본 작업도 함께 실패해야 하면 원본 도메인의 `@CommandService` 안에서 대상 도메인의 `*UseCase`를 부른다. 두 작업이 한 트랜잭션에서 함께 커밋되거나 함께 롤백된다. Controller에서 UseCase를 차례로 부르면 앞 UseCase가 먼저 커밋되므로 이렇게 조율하지 않는다.
-- 원본이 커밋된 뒤에만 의미가 있고 실패해도 원본을 되돌릴 이유가 없는 후속 정리라면 `@TransactionalEventListener(phase = AFTER_COMMIT)` 도메인 이벤트로 분리한다(예: 회원 삭제 뒤 로그아웃 처리).
-- 원본과 같은 DB를 바꾸고 원본과 함께 롤백돼야 하는 후속 처리는 `@TransactionalEventListener(phase = BEFORE_COMMIT)` 리스너로 한다(예: 회원 삭제 때 `pairing_feedback` 익명화). 원본이 대상 도메인을 이미 의존하면 위처럼 UseCase를 부르고, 대상이 원본을 의존하는 방향이면 원본이 대상을 의존하지 않도록 이 리스너를 쓴다. 커밋 뒤 리스너의 DB 쓰기는 이미 끝난 트랜잭션에 참여해 반영되지 않는다.
-- `AFTER_COMMIT` 리스너가 실패해도 API 응답은 바뀌지 않는다. Spring이 ERROR 로그만 남기고 응답은 원본 그대로다.
-- 이벤트 이름은 `<Entity><과거분사>Event`(예: `MemberDeletedEvent`)다. 구독자에게 필요한 요청 컨텍스트(accessToken, ip 등)도 담을 수 있다.
-- 이벤트는 발행하는 도메인의 `application.event`에 정의하고, `@CommandService` 구현체 안에서 `ApplicationEventPublisher.publishEvent(...)`로 발행한다. 트랜잭션 밖에서 발행하면 `AFTER_COMMIT` 리스너가 걸리지 않는다.
-- 구독은 구독하는 도메인의 `application.listener`에 `@Component` 클래스로 두고, 대상 도메인의 `*UseCase`에 위임만 한다.
-- 공유 마커 인터페이스나 베이스 클래스(`common.event` 등)는 두지 않는다.
-
 ## 트랜잭션 / CQRS
 
 - DB를 직접 쓰는 `*Service`에는 `@CommandService`(`@Service` + `@Transactional`) 또는 `@QueryService`(`@Service` + `@Transactional(readOnly = true)`)를 붙인다.
@@ -112,6 +101,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 
 | 문서 | 읽는 때 |
 |---|---|
+| [`events.md`](events.md) | 크로스 도메인 부수효과, 도메인 이벤트와 리스너, 전환 지표를 바꿀 때 |
 | [`persistence.md`](persistence.md) | 엔티티와 `*JpaEntity` 매핑, `db/migration`, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때. 맛 값 규칙표와 `Drink`, `DrinkStyle` 분리도 여기 있다 |
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표와 `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, API 경로를 바꿀 때 |
