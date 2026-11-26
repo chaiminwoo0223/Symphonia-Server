@@ -14,11 +14,11 @@ public record AnjuEvaluation(
         Anju anju,
         Set<AnjuExclusionReason> exclusionReasons,
         Set<String> unknownIngredients) {
+    // 리포트에 재료가 늘 같은 순서로 나오도록 unknownIngredients를 이름순으로 정렬한다.
     public AnjuEvaluation {
         EnumSet<AnjuExclusionReason> reasons = EnumSet.noneOf(AnjuExclusionReason.class);
         reasons.addAll(exclusionReasons);
         exclusionReasons = Collections.unmodifiableSet(reasons);
-        // 리포트에 재료가 늘 같은 순서로 나오도록 이름순으로 정렬한다.
         unknownIngredients = Collections.unmodifiableSet(new TreeSet<>(unknownIngredients));
     }
 

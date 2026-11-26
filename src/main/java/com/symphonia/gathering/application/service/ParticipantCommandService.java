@@ -141,7 +141,7 @@ public class ParticipantCommandService
                         .findGatheringIdByValue(command.joinToken())
                         .orElseThrow(JoinTokenNotFoundException::new);
         validateRetained(gatheringId, JoinTokenNotFoundException::new);
-        // 참여자를 읽을 필요가 없으므로 모임장의 회원 id만 읽는 잠금 조회로 모임 행만 잠근다.
+
         gatheringRepository
                 .findHostMemberIdByIdForUpdate(gatheringId)
                 .orElseThrow(GatheringNotFoundException::new);

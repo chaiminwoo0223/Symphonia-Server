@@ -45,7 +45,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             authenticateIfValid(accessToken);
         } catch (TokenStoreUnavailableException e) {
-            // 토큰 원문이 로그에 남지 않도록 예외 메시지 대신 원인의 클래스 이름만 남긴다.
             log.warn(
                     "토큰 저장소를 조회하지 못해 인증하지 않고 요청을 넘깁니다. 원인: {}",
                     e.getCause().getClass().getSimpleName());

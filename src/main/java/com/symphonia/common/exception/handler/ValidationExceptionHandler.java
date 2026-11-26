@@ -109,7 +109,6 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             @Nullable HttpStatusCode statusCode,
             @Nullable WebRequest request) {
         List<FieldError> fieldErrors = ex.getBindingResult().getFieldErrors();
-        // 예외 메시지에는 거부된 입력값이 그대로 들어가 개인정보가 로그에 남을 수 있어 필드 이름만 남긴다.
         log.warn(
                 "[MethodArgumentNotValidException] fields={}",
                 fieldErrors.stream().map(FieldError::getField).toList());
@@ -155,7 +154,7 @@ public class ValidationExceptionHandler extends ResponseEntityExceptionHandler {
             log.error("[ExceptionInternal] message={}", ex.getMessage(), ex);
             return;
         }
-        // 예외 메시지에 거부된 입력값이 들어 있을 수 있어 예외 클래스명과 상태만 남긴다.
+
         log.warn(
                 "[ExceptionInternal] type={}, status={}",
                 ex.getClass().getSimpleName(),
