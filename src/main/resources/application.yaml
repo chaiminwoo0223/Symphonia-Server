@@ -29,6 +29,15 @@ server:
     remoteip:
       internal-proxies: "${TRUSTED_PROXIES:192.168.0.0/16, 172.16.0.0/12, 169.254.0.0/16, fc00::/7, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, fe80::/10, ::1/128}"
 
+# 지표 수집과 헬스 확인은 앱 포트와 분리한 management 포트로만 받는다. 인증 없이 열리므로 이 포트는 외부에 열지 않는다.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+
 access-token:
   secret: ${JWT_SECRET}
   expiration-time: ${ACCESS_TOKEN_EXPIRATION_TIME:7200}
