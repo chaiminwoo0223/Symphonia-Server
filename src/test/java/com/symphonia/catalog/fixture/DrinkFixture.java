@@ -108,12 +108,8 @@ public enum DrinkFixture {
 
     // 알레르기만 바꿔 참석자 알레르기에 따른 제외를 검증할 때 쓴다.
     public Drink createWithAllergyTypes(Set<AllergyType> allergyTypes) {
-        return createWithIdAndAllergyTypes(ordinal() + 1L, allergyTypes);
-    }
-
-    public Drink createWithIdAndAllergyTypes(Long id, Set<AllergyType> allergyTypes) {
         return build(
-                id,
+                ordinal() + 1L,
                 defaultDrinkStyleId(),
                 getExternalId(),
                 flavorProfile,
@@ -136,7 +132,7 @@ public enum DrinkFixture {
         return build(null, drinkStyleId, getExternalId(), flavorProfile, harmonizes);
     }
 
-    // 다시 적재할 때 같은 식별 키의 음료가 알레르기만 바뀐 상황을 만든다.
+    // 저장된 스타일 id와 알레르기를 받아 아직 저장 전인 음료를 만든다. 다시 적재할 때 알레르기만 바뀐 상황에도 쓴다.
     public Drink createWithStyleAndAllergyTypes(Long drinkStyleId, Set<AllergyType> allergyTypes) {
         return build(null, drinkStyleId, getExternalId(), flavorProfile, harmonizes, allergyTypes);
     }

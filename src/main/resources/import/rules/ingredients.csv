@@ -23,7 +23,7 @@ keyword,allergy_types,spicy,acidity,bitterness,excluded_words
 호두,WALNUT,false,0,0,
 잣,PINE_NUT,false,0,0,
 새우,SHRIMP,false,0,0,
-게,CRAB,false,0,0,바게트
+게,CRAB,false,0,0,바게트|멍게
 오징어,SQUID,false,0,0,
 고등어,MACKEREL,false,0,0,
 조개,SHELLFISH,false,0,0,

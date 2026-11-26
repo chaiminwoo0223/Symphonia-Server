@@ -100,7 +100,7 @@ class CsvAnjuRuleReaderTest {
         }
 
         @Test
-        @DisplayName("게 규칙은 바게트를 제외 단어로 읽는다")
+        @DisplayName("게 규칙은 바게트와 멍게를 제외 단어로 읽는다")
         void shouldReadExcludedWordsOfCrab() {
             // when
             AnjuRule anjuRule = csvAnjuRuleReader.read();
@@ -109,7 +109,12 @@ class CsvAnjuRuleReaderTest {
             assertThat(anjuRule.ingredientRules())
                     .contains(
                             new IngredientRule(
-                                    "게", Set.of(AllergyType.CRAB), false, 0, 0, Set.of("바게트")));
+                                    "게",
+                                    Set.of(AllergyType.CRAB),
+                                    false,
+                                    0,
+                                    0,
+                                    Set.of("바게트", "멍게")));
         }
 
         @Test

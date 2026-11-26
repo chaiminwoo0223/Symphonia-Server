@@ -179,6 +179,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 CuratedDrink curatedDrink = CuratedDrinkFixture.HOEGAARDEN.create();
                 givenMappedStyle(curatedDrink);
                 given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
+                given(beerAllergyRuleReader.read())
+                        .willReturn(List.of(new BeerAllergyRule("24A", LAGER_ALLERGY_TYPES)));
 
                 // when
                 ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
