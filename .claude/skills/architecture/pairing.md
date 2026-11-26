@@ -26,6 +26,13 @@
 - 추천 사유는 최종 조합에만 계산한다.
 - 도수 상한은 catalog의 `GetCatalogUseCase`가 캐시에서 읽은 카탈로그에서 메모리로 거르고, `Pairing`도 같은 규칙을 다시 검사한다. `drink.abv` 인덱스는 두지 않는다.
 
+## 알레르기 제외
+
+- 참석자 알레르기와 겹치는 음료와 안주는 추천에서 뺀다. 둘 다 `Occasion.hasAllergyConflict`가 판정한다.
+- 추천 응답은 `drinkAllergyTypes`와 `anjuAllergyTypes`를 담는다.
+- 추천 사유 `ALLERGY_EXCLUDED`의 문구는 데이터에 있는 성분만 걸렀다고 말한다("확인된 알레르기 성분을 피했어요").
+- 음료가 알레르기로 모두 빠지는 경우의 안내 코드는 두지 않는다.
+
 ## 회원이 싫어요를 남긴 조합 제외
 
 - 로그인한 회원이 추천을 요청하면 그 회원이 `DISLIKE`를 남긴 음료×안주 조합(`CombinationId`)을 결과에서 뺀다. 빠진 자리는 다음 순위 조합이 채운다.
