@@ -12,6 +12,7 @@ import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.command.RenameGatheringCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
+import com.symphonia.gathering.application.event.GatheringOpenedEvent;
 import com.symphonia.gathering.application.usecase.ChooseGatheringPairingUseCase;
 import com.symphonia.gathering.application.usecase.DeleteGatheringUseCase;
 import com.symphonia.gathering.application.usecase.ExtendRecordingUseCase;
@@ -32,6 +33,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 
 @CommandService
 @RequiredArgsConstructor
@@ -49,11 +51,11 @@ public class GatheringCommandService
     private final GatheringTokenProvider gatheringTokenProvider;
     private final VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
     private final PurgeGatheringUseCase purgeGatheringUseCase;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Override
     public GatheringJoinTokenResult open(OpenGatheringCommand command) {
-        // 같은 요청 id로 다시 온 요청은 내용이 달라도 처음 연 모임을 돌려준다. 참여 토큰은 해시만 저장하므로 새로 발급하고 기존 토큰은 무효가 된다.
         Gathering gathering =
                 gatheringRepository
                         .findByHostMemberIdAndClientRequestId(
@@ -154,6 +156,8 @@ public class GatheringCommandService
                         .saveIfAbsent(gathering)
                         .orElseThrow(GatheringOpenConflictException::new);
         command.findPairing().ifPresent(pairing -> savePairing(savedGathering.getId(), pairing));
+
+        eventPublisher.publishEvent(new GatheringOpenedEvent());
 
         return savedGathering;
     }

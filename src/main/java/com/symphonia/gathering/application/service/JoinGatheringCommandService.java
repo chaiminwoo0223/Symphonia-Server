@@ -5,6 +5,7 @@ import com.symphonia.common.exception.BusinessException;
 import com.symphonia.gathering.application.dto.command.AddParticipantCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.event.ParticipantJoinedEvent;
 import com.symphonia.gathering.application.usecase.AddParticipantUseCase;
 import com.symphonia.gathering.application.usecase.JoinGatheringAsHostUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
@@ -23,6 +24,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 
 @CommandService
 @RequiredArgsConstructor
@@ -34,6 +36,7 @@ public class JoinGatheringCommandService
     private final ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
     private final GatheringRetentionRepository gatheringRetentionRepository;
     private final GatheringTokenProvider gatheringTokenProvider;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Override
@@ -62,6 +65,8 @@ public class JoinGatheringCommandService
         participantGoogleSubjectRepository.save(
                 gatheringId, participant.getId(), command.googleSubject());
 
+        eventPublisher.publishEvent(ParticipantJoinedEvent.byQr());
+
         return issueLinkToken(participant);
     }
 
@@ -85,6 +90,8 @@ public class JoinGatheringCommandService
                         command.consentAgreed(),
                         command.consentVersion(),
                         false);
+
+        eventPublisher.publishEvent(ParticipantJoinedEvent.byHost());
 
         return issueLinkToken(participant);
     }

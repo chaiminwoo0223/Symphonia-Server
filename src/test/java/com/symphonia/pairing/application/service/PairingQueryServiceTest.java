@@ -26,6 +26,7 @@ import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingNoticeResult;
 import com.symphonia.pairing.application.dto.result.PairingRecommendationResult;
 import com.symphonia.pairing.application.dto.result.PairingResult;
+import com.symphonia.pairing.application.event.PairingRecommendedEvent;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
 import com.symphonia.pairing.domain.vo.AttendeeConstraint;
@@ -45,6 +46,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("PairingQueryService 단위 테스트")
 class PairingQueryServiceTest extends UnitTest {
@@ -57,6 +59,7 @@ class PairingQueryServiceTest extends UnitTest {
     @Mock private CatalogCache catalogCache;
     @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
     @Mock private PairingFeedbackRepository pairingFeedbackRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     // 카탈로그 조회는 실제 CatalogQueryService에 맡긴다. 그래서 Repository 스텁만으로 카탈로그 상태를 준비한다.
     @BeforeEach
@@ -73,7 +76,8 @@ class PairingQueryServiceTest extends UnitTest {
                                         anjuRepository,
                                         catalogCache)),
                         pairingRatingSummaryRepository,
-                        pairingFeedbackRepository);
+                        pairingFeedbackRepository,
+                        eventPublisher);
     }
 
     @Nested
@@ -112,6 +116,20 @@ class PairingQueryServiceTest extends UnitTest {
             // then
             assertThat(results).isNotEmpty();
             assertThat(results).isSortedAccordingTo((a, b) -> Double.compare(b.score(), a.score()));
+        }
+
+        @Test
+        @DisplayName("추천에 성공하면 추천한 이벤트를 발행한다")
+        void shouldPublishPairingRecommendedEventWhenRecommended() {
+            // given
+            givenStandardCatalog();
+            RecommendPairingQuery query = new RecommendPairingQueryFixture().build();
+
+            // when
+            pairingQueryService.recommend(query);
+
+            // then
+            then(eventPublisher).should().publishEvent(new PairingRecommendedEvent());
         }
 
         @Test
@@ -530,6 +548,7 @@ class PairingQueryServiceTest extends UnitTest {
             assertThatThrownBy(() -> pairingQueryService.recommend(query))
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("Drink");
+            then(eventPublisher).shouldHaveNoInteractions();
         }
 
         @Test

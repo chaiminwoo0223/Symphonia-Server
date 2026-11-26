@@ -32,9 +32,15 @@ import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
 import com.symphonia.pairing.domain.vo.PairingRating;
 import com.symphonia.pairing.helper.PairingHelper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -66,6 +72,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
     @Autowired private PurgeGatheringUseCase purgeGatheringUseCase;
     @Autowired private PairingHelper pairingHelper;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private MeterRegistry meterRegistry;
 
     @MockitoBean(name = "google")
     private SocialClient googleSocialClient;
@@ -98,6 +105,7 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
             drinkId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM drink", Long.class);
             anjuId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM anju", Long.class);
             givenGoogleAccounts(ParticipantFixture.KIM, ParticipantFixture.LEE);
+            Map<String, Double> countsBefore = flowCounts();
 
             // when & then: 모임을 열고 두 사람이 참여 토큰으로 참여한다
             JsonNode opened = openGathering(hostToken);
@@ -150,6 +158,16 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                                                     drinkId, anjuId, PairingRating.LIKE))),
                     201);
             assertThat(countPairingRows("pairing_feedback")).isOne();
+
+            // 그다음 커밋된 흐름마다 전환 지표가 올라 있다. 지표는 컨텍스트를 같이 쓰는 테스트와 누적되므로 늘어난 만큼만 본다
+            assertThat(increasesSince(countsBefore))
+                    .containsExactlyInAnyOrderEntriesOf(
+                            Map.of(
+                                    "symphonia.gathering.opened", 1.0,
+                                    "symphonia.gathering.participant.joined", 2.0,
+                                    "symphonia.gathering.settlement.recorded", 1.0,
+                                    "symphonia.gathering.share.sent.requests", 1.0,
+                                    "symphonia.pairing.feedback.submitted", 1.0));
 
             // 그다음 모임장이 탈퇴하면 다른 기기에서 발급한 액세스 토큰도 거부되지만 참여자의 개인 링크는 그대로 쓸 수 있다
             mockMvc.perform(
@@ -280,6 +298,31 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                 Long.class,
                 drinkId,
                 anjuId);
+    }
+
+    // 지표 이름마다 type 라벨의 값을 합한 건수다.
+    private Map<String, Double> flowCounts() {
+        return Stream.of(
+                        "symphonia.gathering.opened",
+                        "symphonia.gathering.participant.joined",
+                        "symphonia.gathering.settlement.recorded",
+                        "symphonia.gathering.share.sent.requests",
+                        "symphonia.pairing.feedback.submitted")
+                .collect(
+                        Collectors.toMap(
+                                Function.identity(),
+                                name ->
+                                        meterRegistry.get(name).counters().stream()
+                                                .mapToDouble(Counter::count)
+                                                .sum()));
+    }
+
+    private Map<String, Double> increasesSince(Map<String, Double> countsBefore) {
+        return flowCounts().entrySet().stream()
+                .collect(
+                        Collectors.toMap(
+                                Map.Entry::getKey,
+                                count -> count.getValue() - countsBefore.get(count.getKey())));
     }
 
     private String participantsPath() {

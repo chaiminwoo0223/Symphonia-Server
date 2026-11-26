@@ -8,6 +8,7 @@ import com.symphonia.catalog.application.usecase.GetCatalogUseCase;
 import com.symphonia.common.annotation.QueryService;
 import com.symphonia.pairing.application.dto.query.RecommendPairingQuery;
 import com.symphonia.pairing.application.dto.result.PairingRecommendationResult;
+import com.symphonia.pairing.application.event.PairingRecommendedEvent;
 import com.symphonia.pairing.application.usecase.RecommendPairingUseCase;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
@@ -24,6 +25,7 @@ import com.symphonia.pairing.domain.vo.PairingSituation;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 
 @QueryService
 @RequiredArgsConstructor
@@ -31,6 +33,7 @@ public class PairingQueryService implements RecommendPairingUseCase {
     private final GetCatalogUseCase getCatalogUseCase;
     private final PairingRatingSummaryRepository pairingRatingSummaryRepository;
     private final PairingFeedbackRepository pairingFeedbackRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public PairingRecommendationResult recommend(RecommendPairingQuery query) {
@@ -41,14 +44,12 @@ public class PairingQueryService implements RecommendPairingUseCase {
                         query.attendeeConstraints(),
                         query.attendeeAllergies());
 
-        // 도수 상한을 넘는 음료는 카탈로그 조회가 캐시에서 읽은 뒤 메모리에서 거른다.
         CatalogResult catalog = getCatalogUseCase.get(CatalogQuery.of(occasion.maxAbv()));
         List<PairingDrink> drinks =
                 catalog.drinks().stream().map(PairingQueryService::toPairingDrink).toList();
         List<PairingAnju> anjus =
                 catalog.anjus().stream().map(PairingQueryService::toPairingAnju).toList();
 
-        // 조합마다 집계를 조회하지 않도록 표본이 충분한 집계를 요청한 상황의 집계와 함께 요청마다 한 번에 읽는다.
         List<PairingRatingSummary> ratingSummaries =
                 pairingRatingSummaryRepository.findAllWithSampleAtLeast(
                         PairingRatingSummary.MINIMUM_SAMPLE,
@@ -60,6 +61,8 @@ public class PairingQueryService implements RecommendPairingUseCase {
         List<PairingNotice> notices =
                 PairingNotice.allApplicableTo(
                         PairingNoticeContext.of(drinks, anjus, occasion, pairings));
+
+        eventPublisher.publishEvent(new PairingRecommendedEvent());
 
         return PairingRecommendationResult.of(pairings, notices);
     }

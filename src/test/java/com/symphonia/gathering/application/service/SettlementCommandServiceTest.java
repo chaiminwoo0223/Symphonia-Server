@@ -14,6 +14,7 @@ import com.symphonia.gathering.application.dto.command.RecordSettlementCommand;
 import com.symphonia.gathering.application.dto.command.UpdateSettlementCommand;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
+import com.symphonia.gathering.application.event.SettlementRecordedEvent;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -51,6 +52,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("SettlementCommandService 단위 테스트")
 class SettlementCommandServiceTest extends UnitTest {
@@ -83,6 +85,7 @@ class SettlementCommandServiceTest extends UnitTest {
     @Mock private GatheringRepository gatheringRepository;
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private SettlementRepository settlementRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
@@ -459,6 +462,21 @@ class SettlementCommandServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("정산 건을 기록한 이벤트를 발행한다")
+            void shouldPublishSettlementRecordedEvent() {
+                // given
+                givenRecordableGathering();
+                givenSaveIfAbsentReturnsSettlement();
+                RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
+
+                // when
+                settlementCommandService.record(command);
+
+                // then
+                then(eventPublisher).should().publishEvent(new SettlementRecordedEvent());
+            }
+
+            @Test
             @DisplayName("요청 id를 담아 정산 건을 저장한다")
             void shouldSaveSettlementWithClientRequestId() {
                 // given
@@ -775,7 +793,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
                 assertThat(result.roundNumber())
                         .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
-                then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
+                thenSettlementNotRecorded();
             }
 
             @Test
@@ -794,7 +812,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
                 // then
                 assertThat(result.id()).isEqualTo(SETTLEMENT_ID);
-                then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
+                thenSettlementNotRecorded();
             }
         }
 
@@ -841,8 +859,7 @@ class SettlementCommandServiceTest extends UnitTest {
             void shouldReturnRecordedSettlementWithItsRound() {
                 // given
                 givenRecordableGathering();
-                given(settlementRepository.saveIfAbsent(any(Settlement.class)))
-                        .willReturn(recordedSecondRoundSettlement());
+                givenSecondRoundSettlementRecordedConcurrently();
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -853,6 +870,7 @@ class SettlementCommandServiceTest extends UnitTest {
                 assertThat(result.roundId()).isEqualTo(SECOND_ROUND_ID);
                 assertThat(result.roundNumber())
                         .isEqualTo(GatheringRoundFixture.SECOND.getNumber());
+                then(eventPublisher).shouldHaveNoInteractions();
             }
 
             @Test
@@ -870,8 +888,7 @@ class SettlementCommandServiceTest extends UnitTest {
                                                 List.of(GatheringRoundFixture.FIRST.create()))));
                 given(gatheringRepository.findById(GATHERING_ID))
                         .willReturn(Optional.of(gathering(OPEN_PERIOD_OPENED_AT)));
-                given(settlementRepository.saveIfAbsent(any(Settlement.class)))
-                        .willReturn(recordedSecondRoundSettlement());
+                givenSecondRoundSettlementRecordedConcurrently();
                 RecordSettlementCommand command = command(9_000L, PARTICIPANT_IDS, Map.of());
 
                 // when
@@ -887,6 +904,17 @@ class SettlementCommandServiceTest extends UnitTest {
         // 요청 id로 기록된 정산 건을 먼저 찾으므로, 저장소를 아예 부르지 않았는지가 아니라 저장하지 않았는지를 확인한다.
         private void thenSettlementNotRecorded() {
             then(settlementRepository).should(never()).saveIfAbsent(any(Settlement.class));
+            then(eventPublisher).shouldHaveNoInteractions();
+        }
+
+        // 처음 찾을 때는 없고, 저장하지 못한 뒤 다시 찾으면 먼저 기록된 정산 건이 있다.
+        private void givenSecondRoundSettlementRecordedConcurrently() {
+            given(
+                            settlementRepository.findByPayerParticipantIdAndClientRequestId(
+                                    PAYER_ID, CLIENT_REQUEST_ID))
+                    .willReturn(Optional.empty(), Optional.of(recordedSecondRoundSettlement()));
+            given(settlementRepository.saveIfAbsent(any(Settlement.class)))
+                    .willReturn(Optional.empty());
         }
 
         private Settlement recordedSecondRoundSettlement() {
@@ -1565,7 +1593,7 @@ class SettlementCommandServiceTest extends UnitTest {
 
     private void givenSaveIfAbsentReturnsSettlement() {
         given(settlementRepository.saveIfAbsent(any(Settlement.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+                .willAnswer(invocation -> Optional.of(invocation.getArgument(0)));
     }
 
     private void givenSaveReturnsSettlement() {
@@ -1582,6 +1610,7 @@ class SettlementCommandServiceTest extends UnitTest {
                         gatheringRepository,
                         gatheringRetentionRepository,
                         settlementRepository,
+                        eventPublisher,
                         clock);
     }
 

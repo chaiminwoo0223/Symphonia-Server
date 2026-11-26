@@ -18,6 +18,7 @@ import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.dto.result.SettlementShareResult;
 import com.symphonia.gathering.application.dto.result.ShareBreakdownResult;
+import com.symphonia.gathering.application.event.SharesSentEvent;
 import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Settlement;
@@ -45,6 +46,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("ShareCommandService 단위 테스트")
 class ShareCommandServiceTest extends UnitTest {
@@ -71,6 +73,7 @@ class ShareCommandServiceTest extends UnitTest {
     @Mock private GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     @Mock private GatheringRepository gatheringRepository;
     @Mock private SettlementRepository settlementRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
@@ -118,6 +121,7 @@ class ShareCommandServiceTest extends UnitTest {
                         .isInstanceOf(SettlementShareNotFoundException.class);
                 thenSettlementNotSaved();
                 then(gatheringRepository).shouldHaveNoInteractions();
+                then(eventPublisher).shouldHaveNoInteractions();
             }
         }
 
@@ -170,6 +174,7 @@ class ShareCommandServiceTest extends UnitTest {
                         .extracting(
                                 settlement -> settlement.getShareOf(LEE_ID).getStatusChangedAt())
                         .containsOnly(NOW);
+                then(eventPublisher).should().publishEvent(new SharesSentEvent());
             }
         }
 
@@ -364,6 +369,7 @@ class ShareCommandServiceTest extends UnitTest {
 
                 // then
                 thenSettlementNotSaved();
+                then(eventPublisher).shouldHaveNoInteractions();
                 assertThat(result.hasUnpaidShares()).isFalse();
                 assertThat(result.unpaidAmount()).isZero();
                 assertThat(result.shares())
@@ -864,6 +870,7 @@ class ShareCommandServiceTest extends UnitTest {
                         getLinkedParticipantUseCase,
                         gatheringRepository,
                         settlementRepository,
+                        eventPublisher,
                         clock);
     }
 
