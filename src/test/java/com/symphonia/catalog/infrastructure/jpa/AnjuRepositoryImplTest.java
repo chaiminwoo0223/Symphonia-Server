@@ -195,6 +195,27 @@ class AnjuRepositoryImplTest extends RepositoryTest {
             // then
             assertThat(result).isEmpty();
         }
+
+        @Test
+        @DisplayName("Anju 개수와 무관하게 쿼리를 한 번만 실행한다")
+        void shouldExecuteSingleQueryRegardlessOfAnjuCount() {
+            // given
+            List<Long> anjuIds =
+                    List.of(
+                            saveAnju(AnjuFixture.GOLBAENGI_MUCHIM),
+                            saveAnju(AnjuFixture.FRIED_CHICKEN),
+                            saveAnju(AnjuFixture.DRIED_SNACK));
+            entityManager.flush();
+            entityManager.clear();
+            Statistics statistics = enabledStatistics();
+
+            // when
+            List<Anju> result = anjuRepository.findAllByIds(anjuIds);
+
+            // then
+            assertThat(result).hasSize(3);
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
+        }
     }
 
     @Nested
