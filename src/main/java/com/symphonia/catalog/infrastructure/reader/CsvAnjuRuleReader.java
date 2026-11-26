@@ -13,6 +13,7 @@ import com.symphonia.catalog.domain.vo.ServingRichnessRule;
 import com.symphonia.catalog.domain.vo.ServingStyle;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -60,6 +61,7 @@ public class CsvAnjuRuleReader implements AnjuRuleReader {
                         .collect(Collectors.toSet()),
                 Boolean.parseBoolean(column(row, "spicy")),
                 Integer.parseInt(column(row, "acidity")),
-                Integer.parseInt(column(row, "bitterness")));
+                Integer.parseInt(column(row, "bitterness")),
+                Set.copyOf(values(column(row, "excluded_words"))));
     }
 }

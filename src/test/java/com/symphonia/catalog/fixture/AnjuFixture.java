@@ -156,7 +156,7 @@ public enum AnjuFixture {
     CATALOG_TOFU_KIMCHI(
             "두부김치",
             FlavorProfile.of(1, 0, 0, 2, 3),
-            Set.of(AllergyType.PORK, AllergyType.SOYBEAN),
+            Set.of(AllergyType.PORK, AllergyType.SOYBEAN, AllergyType.SHRIMP),
             AnjuBase.PORK,
             ServingStyle.MAIN,
             true),
@@ -167,7 +167,7 @@ public enum AnjuFixture {
     CATALOG_KIMCHI_JJIGAE(
             "김치찌개",
             FlavorProfile.of(1, 0, 0, 2, 3),
-            Set.of(AllergyType.PORK, AllergyType.SOYBEAN),
+            Set.of(AllergyType.PORK, AllergyType.SOYBEAN, AllergyType.SHRIMP),
             AnjuBase.PORK,
             ServingStyle.MAIN,
             true),
@@ -181,7 +181,7 @@ public enum AnjuFixture {
     CATALOG_BUDAE_JJIGAE(
             "부대찌개",
             FlavorProfile.of(1, 0, 0, 2, 3),
-            Set.of(AllergyType.MILK, AllergyType.PORK, AllergyType.WHEAT),
+            Set.of(AllergyType.MILK, AllergyType.PORK, AllergyType.WHEAT, AllergyType.SHRIMP),
             AnjuBase.CURED_MEAT,
             ServingStyle.MAIN,
             true),
