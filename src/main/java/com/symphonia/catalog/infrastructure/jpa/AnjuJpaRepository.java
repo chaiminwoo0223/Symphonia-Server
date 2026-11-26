@@ -11,6 +11,9 @@ public interface AnjuJpaRepository extends JpaRepository<AnjuJpaEntity, Long> {
     @Query("select a from AnjuJpaEntity a left join fetch a.allergyTypes")
     List<AnjuJpaEntity> findAllWithAllergyTypes();
 
+    @Query("select a from AnjuJpaEntity a left join fetch a.allergyTypes where a.id in :anjuIds")
+    List<AnjuJpaEntity> findAllWithAllergyTypesByIds(@Param("anjuIds") Collection<Long> anjuIds);
+
     // 안주를 FK로 참조하는 테이블은 pairing 도메인의 pairing_feedback과 조합별 집계 두 개다.
     // 조합별 집계는 pairing_rating_summary와 pairing_situation_rating_summary다.
     // 집계 행은 피드백이 있는 조합에만 생기고 피드백을 지우는 경로가 없으므로 pairing_feedback만 확인한다.

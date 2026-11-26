@@ -35,7 +35,7 @@ public class AnjuRepositoryImpl implements AnjuRepository {
 
     @Override
     public List<Anju> findAllByIds(Collection<Long> anjuIds) {
-        return anjuJpaRepository.findAllById(anjuIds).stream()
+        return anjuJpaRepository.findAllWithAllergyTypesByIds(anjuIds).stream()
                 .map(AnjuJpaEntity::toDomain)
                 .toList();
     }
