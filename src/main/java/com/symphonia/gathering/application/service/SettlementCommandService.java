@@ -125,8 +125,7 @@ public class SettlementCommandService
                         now);
         Optional<Settlement> savedSettlement = settlementRepository.saveIfAbsent(settlement);
 
-        savedSettlement.ifPresent(
-                saved -> eventPublisher.publishEvent(new SettlementRecordedEvent()));
+        savedSettlement.ifPresent(_ -> eventPublisher.publishEvent(new SettlementRecordedEvent()));
 
         return toResult(
                 savedSettlement.orElseGet(() -> findRecordedConcurrently(command)), gathering);
