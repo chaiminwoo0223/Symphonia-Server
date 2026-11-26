@@ -18,6 +18,7 @@ description: Load when a design discussion among multiple viable alternatives co
 | 결정 주제 | 규칙 (스킬) | 근거 (`docs/decisions/`) |
 |---|---|---|
 | 계층 구조, 크로스 도메인 규칙, 검증 범위 | `architecture/SKILL.md` | `architecture.md` |
+| 크로스 도메인 부수효과, 도메인 이벤트, 전환 지표 | `architecture/events.md` | `architecture.md` |
 | 인증, 토큰, 보안 wiring | `architecture/SKILL.md`의 인증 절 | `auth.md` |
 | catalog 분리와 다른 도메인에 여는 UseCase | `architecture/SKILL.md` | `catalog.md` |
 | DB 스키마, 마이그레이션, 프로파일 설정, 카탈로그 적재 | `architecture/persistence.md` | `persistence.md` |

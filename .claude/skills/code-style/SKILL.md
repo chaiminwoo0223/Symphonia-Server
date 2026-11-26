@@ -1,6 +1,6 @@
 ---
 name: code-style
-description: Load when writing or formatting Java code. 포맷터(Spotless + Google Java Format), 자동 적용/검증 방식, 타입 선언 뒤 빈 줄, 긴 주석 줄바꿈, 멤버 선언 순서.
+description: Load when writing or formatting Java code. 포맷터(Spotless + Google Java Format), 자동 적용/검증 방식, 타입 선언 뒤 빈 줄, 긴 주석 줄바꿈, 메서드 본문의 주석과 빈 줄, 멤버 선언 순서.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -36,6 +36,10 @@ spotless {
 `//` 주석이 한 줄 100자를 넘을 것 같으면 포맷터에 맡기지 않고 문장 경계에서 직접 줄을 나눈다. 한 줄에는 완결된 문장을 하나 이상 담고, 문장 하나가 100자를 넘으면 쉼표나 절 경계에서 나눈다. Google Java Format은 100자를 넘는 `//` 주석을 글자 수 기준으로 다시 감싼다. 그래서 "거리 감점이"와 "됐다"처럼 문장 중간에서 잘린 줄이 생긴다. 포맷터가 정하지 않는 것이 아니라 의미를 모르고 정하는 영역이라, 위 "직접 스타일을 맞추려 하지 않는다" 원칙의 예외다.
 
 **(2026-10-22 결정, 이슈 #106)**: #106에서 라거 골든 테스트의 주석 한 줄이 100자를 넘어 `spotlessApply`가 "거리 감점이 / 됐다"로 잘랐다. 문장 중간 줄바꿈은 읽는 흐름을 끊는 안티패턴이라 규칙으로 정했다. 포맷터 설정으로 주석 재배치를 끄는 안은 택하지 않았다. Google Java Format은 주석 감싸기를 끄는 옵션이 없고, 끄더라도 100자를 넘는 줄이 그대로 남기 때문이다. 결정론적 검사도 넣지 않았다. 잘린 줄인지 의도한 줄바꿈인지는 문장 구조를 봐야 알 수 있어 `code-reviewer` 체크리스트로 검토한다.
+
+## 메서드 본문의 주석과 빈 줄
+
+**(2026-11-26 결정, 이슈 #205)**: `src/main`의 메서드 본문에는 주석을 두지 않는다. 코드로 드러나지 않는 이유는 메서드 위나 결정 기록에 적는다. 본문은 조회와 검증, 상태 변경, 이벤트 발행, 반환을 빈 줄로 나눈다.
 
 ## 멤버 선언 순서
 
