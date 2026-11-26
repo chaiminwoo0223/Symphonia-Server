@@ -59,7 +59,6 @@
 - 다시 적재할 때 덮어쓸 필드는 엔티티의 `overwriteWith(imported)`가 정한다. 자연키로 찾아 있으면 덮어쓰고 없으면 넣는 흐름은 Service에 둔다.
 - 기존 행은 행마다 조회하지 않고 출처별 `findAllBySource` 한 번(안주는 fetch join `findAll` 한 번)으로 불러와 Map에서 찾는다.
 - 규칙표에 없는 값이 있는 행은 기본값으로 채우지 않고 적재에서 빼 리포트에 남긴다.
-
 - 음료 알레르기는 `drink.allergy_types` `VARCHAR(255)[]` 컬럼에 담고, 허용 값은 `ck_drink_allergy_types` 제약으로 막는다. 주원료 기준으로 와인은 아황산류, 밀맥주와 막걸리는 밀을 붙인다.
 - 와인은 `wine-type.csv`, 맥주는 BJCP 스타일별 `beer-allergy.csv`로 정한다. 알레르기가 없는 스타일도 행을 두고, 시드 술은 마이그레이션이 넣는다.
 

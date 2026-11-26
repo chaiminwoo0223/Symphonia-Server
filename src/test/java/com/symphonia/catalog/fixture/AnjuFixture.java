@@ -38,7 +38,7 @@ public enum AnjuFixture {
     TOFU_KIMCHI(
             "두부김치",
             FlavorProfile.of(1, 2, 0, 2, 2),
-            Set.of(AllergyType.SOYBEAN, AllergyType.PORK),
+            Set.of(AllergyType.SOYBEAN, AllergyType.PORK, AllergyType.SHRIMP),
             AnjuBase.PORK,
             ServingStyle.MAIN,
             true),
