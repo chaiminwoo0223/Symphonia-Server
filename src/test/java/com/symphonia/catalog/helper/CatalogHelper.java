@@ -2,6 +2,7 @@ package com.symphonia.catalog.helper;
 
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.infrastructure.jpa.AnjuJpaEntity;
@@ -10,6 +11,7 @@ import com.symphonia.catalog.infrastructure.jpa.DrinkJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkJpaRepository;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaEntity;
 import com.symphonia.catalog.infrastructure.jpa.DrinkStyleJpaRepository;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +24,10 @@ public class CatalogHelper {
     private final AnjuJpaRepository anjuJpaRepository;
 
     public Drink saveDrink(DrinkFixture drinkFixture) {
+        return saveDrink(drinkFixture, Set.of());
+    }
+
+    public Drink saveDrink(DrinkFixture drinkFixture, Set<AllergyType> allergyTypes) {
         Long drinkStyleId =
                 drinkStyleJpaRepository
                         .save(
@@ -30,7 +36,10 @@ public class CatalogHelper {
                         .getId();
 
         return drinkJpaRepository
-                .save(DrinkJpaEntity.from(drinkFixture.createWithStyle(drinkStyleId)))
+                .save(
+                        DrinkJpaEntity.from(
+                                drinkFixture.createWithStyleAndAllergyTypes(
+                                        drinkStyleId, allergyTypes)))
                 .toDomain();
     }
 

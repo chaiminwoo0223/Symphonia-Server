@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum PairingReason {
     ABV_LIMIT("자리의 도수 제한에 맞는 술이에요", PairingReasonCriteria::abvLimit),
-    ALLERGY_EXCLUDED("알레르기 유발 성분을 피했어요", PairingReasonCriteria::allergyExcluded),
+    ALLERGY_EXCLUDED("확인된 알레르기 성분을 피했어요", PairingReasonCriteria::allergyExcluded),
     LIGHT_ANJU("가벼운 안주를 골랐어요", PairingReasonCriteria::lightAnju),
     NON_ALCOHOLIC_OPTION("무알코올 옵션이에요", PairingReasonCriteria::nonAlcoholicOption),
     FLAVOR_MATCH("술과 안주의 맛이 잘 어울려요", PairingReasonCriteria::flavorMatch),

@@ -6,6 +6,7 @@ import static com.symphonia.catalog.infrastructure.reader.HeaderCsv.values;
 import static java.util.stream.Collectors.toSet;
 
 import com.symphonia.catalog.domain.reader.WineFlavorRuleReader;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.domain.vo.WineAcidityRule;
@@ -44,7 +45,10 @@ public class CsvWineFlavorRuleReader implements WineFlavorRuleReader {
                         Integer.parseInt(column(row, "bitterness")),
                         Integer.parseInt(column(row, "carbonation")),
                         Integer.parseInt(column(row, "richness")),
-                        Integer.parseInt(column(row, "acidity"))));
+                        Integer.parseInt(column(row, "acidity"))),
+                values(column(row, "allergy_types")).stream()
+                        .map(AllergyType::valueOf)
+                        .collect(toSet()));
     }
 
     private WineBodyRule toBodyRule(Map<String, String> row) {

@@ -8,7 +8,7 @@ public record ImportCuratedDrinkResult(int importedCount, List<UnmappedDrink> un
         unmappedDrinks = List.copyOf(unmappedDrinks);
     }
 
-    // 매핑표의 전체 행 중 스타일이나 스타일의 음식 계열 규칙을 찾지 못한 행을 뺀 나머지가 적재된 제품이다.
+    // 매핑표의 전체 행 중 스타일이나 스타일의 음식 계열, 알레르기 규칙을 찾지 못한 행을 뺀 나머지가 적재된 제품이다.
     public static ImportCuratedDrinkResult of(int totalCount, List<UnmappedDrink> unmappedDrinks) {
         return new ImportCuratedDrinkResult(totalCount - unmappedDrinks.size(), unmappedDrinks);
     }

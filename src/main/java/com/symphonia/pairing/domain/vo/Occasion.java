@@ -61,6 +61,10 @@ public class Occasion {
                 || attendeeConstraints.contains(AttendeeConstraint.NON_DRINKER);
     }
 
+    public boolean hasAllergyConflict(PairingDrink drink) {
+        return drink.conflictsWith(attendeeAllergies);
+    }
+
     public boolean hasAllergyConflict(PairingAnju anju) {
         return anju.conflictsWith(attendeeAllergies);
     }

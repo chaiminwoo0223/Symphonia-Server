@@ -81,7 +81,8 @@ public class PairingQueryService implements RecommendPairingUseCase {
                         drink.carbonation(),
                         drink.richness(),
                         drink.acidity()),
-                drink.harmonizeMask());
+                drink.harmonizeMask(),
+                drink.allergyTypes());
     }
 
     private static PairingAnju toPairingAnju(AnjuResult anju) {

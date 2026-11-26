@@ -16,6 +16,7 @@ import com.symphonia.catalog.domain.reader.WineFlavorRuleReader;
 import com.symphonia.catalog.domain.reader.XWineReader;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
 import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.DrinkCategory;
 import com.symphonia.catalog.domain.vo.DrinkSource;
 import com.symphonia.catalog.domain.vo.DrinkStyleSource;
@@ -50,7 +51,13 @@ class ImportXWineServiceTest extends UnitTest {
     // ORIGEM_MERLOT의 Harmonize 태그 중 Grilled, Pizza는 맞는 계열이 없는 태그로 둔다.
     private static final WineFlavorRule WINE_FLAVOR_RULE =
             new WineFlavorRule(
-                    List.of(new WineTypeRule("Red", "red", "Red Wine", RED_STYLE_PROFILE)),
+                    List.of(
+                            new WineTypeRule(
+                                    "Red",
+                                    "red",
+                                    "Red Wine",
+                                    RED_STYLE_PROFILE,
+                                    Set.of(AllergyType.SULFITE))),
                     List.of(new WineBodyRule("Full-bodied", 4)),
                     List.of(new WineAcidityRule("Medium", 3)),
                     List.of(
@@ -166,6 +173,7 @@ class ImportXWineServiceTest extends UnitTest {
                 assertThat(saved.getHarmonizes())
                         .containsExactlyInAnyOrder(
                                 Harmonize.BEEF, Harmonize.LAMB, Harmonize.VEAL, Harmonize.PASTA);
+                assertThat(saved.getAllergyTypes()).containsExactly(AllergyType.SULFITE);
                 assertThat(result.importedDrinkCount()).isEqualTo(1);
                 assertThat(result.abvExceededWines()).isEmpty();
                 assertThat(result.undeterminedWines()).isEmpty();
@@ -177,7 +185,7 @@ class ImportXWineServiceTest extends UnitTest {
         class WhenWineAlreadyImported {
 
             @Test
-            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛, 음식 계열을 갱신해 저장한다")
+            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛, 음식 계열, 알레르기를 갱신해 저장한다")
             void shouldUpdateExistingWine() {
                 // given
                 XWine wine = XWineFixture.ORIGEM_MERLOT.createWithAbv(13.5);
@@ -205,6 +213,7 @@ class ImportXWineServiceTest extends UnitTest {
                 assertThat(saved.getHarmonizes())
                         .containsExactlyInAnyOrder(
                                 Harmonize.BEEF, Harmonize.LAMB, Harmonize.VEAL, Harmonize.PASTA);
+                assertThat(saved.getAllergyTypes()).containsExactly(AllergyType.SULFITE);
             }
         }
 

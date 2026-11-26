@@ -121,7 +121,8 @@ class CatalogQueryServiceTest extends UnitTest {
         }
 
         private DrinkResult drink(Long id, double abv) {
-            return new DrinkResult(id, 1L, DrinkCategory.BEER, "음료", abv, false, 1, 1, 1, 1, 1, 0L);
+            return new DrinkResult(
+                    id, 1L, DrinkCategory.BEER, "음료", abv, false, 1, 1, 1, 1, 1, 0L, Set.of());
         }
 
         private AnjuResult anju() {

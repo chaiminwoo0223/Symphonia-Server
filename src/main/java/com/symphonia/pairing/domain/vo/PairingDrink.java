@@ -1,6 +1,8 @@
 package com.symphonia.pairing.domain.vo;
 
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.DrinkCategory;
+import java.util.Collections;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -24,6 +26,8 @@ public class PairingDrink {
     @Getter(AccessLevel.NONE)
     private final long harmonizeMask;
 
+    private final Set<AllergyType> allergyTypes;
+
     public static PairingDrink of(
             Long id,
             Long drinkStyleId,
@@ -32,9 +36,22 @@ public class PairingDrink {
             double abv,
             boolean nonAlcoholic,
             FlavorProfile flavorProfile,
-            long harmonizeMask) {
+            long harmonizeMask,
+            Set<AllergyType> allergyTypes) {
         return new PairingDrink(
-                id, drinkStyleId, category, name, abv, nonAlcoholic, flavorProfile, harmonizeMask);
+                id,
+                drinkStyleId,
+                category,
+                name,
+                abv,
+                nonAlcoholic,
+                flavorProfile,
+                harmonizeMask,
+                allergyTypes == null ? Set.of() : Set.copyOf(allergyTypes));
+    }
+
+    public boolean conflictsWith(Set<AllergyType> attendeeAllergies) {
+        return !Collections.disjoint(allergyTypes, attendeeAllergies);
     }
 
     // 종류를 모르는 음료는 어느 종류에도 속하지 않는다.

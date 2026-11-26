@@ -3,6 +3,7 @@ package com.symphonia.catalog.infrastructure.reader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.domain.vo.WineAcidityRule;
 import com.symphonia.catalog.domain.vo.WineBodyRule;
@@ -24,6 +25,18 @@ class CsvWineFlavorRuleReaderTest {
     @Nested
     @DisplayName("read 메서드는")
     class Read {
+
+        @Test
+        @DisplayName("모든 와인 Type에 아황산류 알레르기를 붙인다")
+        void shouldReadSulfiteAllergyOfEveryWineType() {
+            // when
+            WineFlavorRule rule = csvWineFlavorRuleReader.read();
+
+            // then
+            assertThat(rule.typeRules())
+                    .extracting(WineTypeRule::allergyTypes)
+                    .containsOnly(Set.of(AllergyType.SULFITE));
+        }
 
         @Test
         @DisplayName("X-Wines의 Type 6종, Body 5단계, Acidity 3단계 규칙을 모두 읽는다")
