@@ -60,6 +60,9 @@
 - 기존 행은 행마다 조회하지 않고 출처별 `findAllBySource` 한 번(안주는 fetch join `findAll` 한 번)으로 불러와 Map에서 찾는다.
 - 규칙표에 없는 값이 있는 행은 기본값으로 채우지 않고 적재에서 빼 리포트에 남긴다.
 
+- 음료 알레르기는 `drink.allergy_types` `VARCHAR(255)[]` 컬럼에 담고, 허용 값은 `ck_drink_allergy_types` 제약으로 막는다. 주원료 기준으로 와인은 아황산류, 밀맥주와 막걸리는 밀을 붙인다.
+- 와인은 `wine-type.csv`, 맥주는 BJCP 스타일별 `beer-allergy.csv`로 정한다. 알레르기가 없는 스타일도 행을 두고, 시드 술은 마이그레이션이 넣는다.
+
 ### 출처별 규칙
 
 - BJCP 원본 JSON은 커밋하지 않는다. `scripts/import/fetch-bjcp.sh`가 beerjson/bjcp-json의 고정 커밋에서 받아 체크섬으로 검증한다.
@@ -68,7 +71,7 @@
 - 와인 맛은 `Type`의 기본 맛에서 무게감을 `Body`로, 산미를 `Acidity`로 덮어쓴다. 값은 `wine-type.csv`, `wine-body.csv`, `wine-acidity.csv`에 둔다. 도수 25% 초과 행은 적재하지 않는다.
 - 안주는 매핑표 `import/curated/anjus.csv`에 이름, `external_id`, `kfind_code`, 주재료, 부재료, 주재료 계열, 형태, 튀김 여부, 맛집 검색어를 적는다. `external_id`는 사람이 정한 `anju-001` 같은 키이고, 한 번 정하면 바꾸거나 다시 쓰지 않는다. `kfind_code`는 적재에서만 쓰는 조회 키라 `anju` 테이블에 넣지 않는다.
 - 맛집 검색어(`place_keyword`)는 이름으로 맞는 가게를 찾지 못하는 안주에만 매핑표에 적는다. 비워 두면 `Anju`가 이름을 검색어로 쓰므로 `anju.place_keyword`는 `NOT NULL`이다.
-- 안주의 단맛은 당류 구간, 무게감은 지방 구간으로 정한 뒤 형태와 튀김 여부로 보정한다. 산미와 쓴맛은 재료 규칙표(`ingredients.csv`)의 맛 태그 중 재료 전체에서 가장 큰 값을 쓴다. 탄산은 0이다. 알레르기는 주재료와 부재료 전체에서, 매운맛은 주재료에서만 계산한다.
+- 안주의 단맛은 당류 구간, 무게감은 지방 구간으로 정한 뒤 형태와 튀김 여부로 보정한다. 산미와 쓴맛은 재료 규칙표(`ingredients.csv`)의 맛 태그 중 재료 전체에서 가장 큰 값을 쓴다. 탄산은 0이다. 알레르기는 주재료와 부재료 전체에서, 매운맛은 주재료에서만 계산한다. 김치에는 새우를 붙인다. 키워드를 품은 다른 재료는 `ingredients.csv`의 `excluded_words`로 뺀다.
 - 안주의 표시명은 업체명과 제품명을 합치고, `uk_anju_name`을 유지한다.
 - 적재가 소유한 K_FIND 안주 중 이번에 적재하지 않은 안주는 지운다. 피드백이 참조해 지울 수 없는 안주는 리포트에 남긴다. 지우기를 바로 반영한 뒤 저장한다.
 - K-FIND 식품코드는 공공데이터포털 표준데이터(음식 15100070, 가공식품 15100066) CSV에서 `scripts/import/extract-kfind.py`로 고르고, 안주에 쓰는 행만 뽑은 `import/kfind/nutrition.csv`를 커밋한다.
@@ -78,7 +81,7 @@
 
 ## 카탈로그 캐시
 
-- 카탈로그 전체(`CatalogResult`)를 Redis 키 `catalog:v1` 하나에 JSON으로 캐시하고, 만료 시간은 24시간이다. `CatalogResult` 필드를 바꾸면 키의 버전을 올린다. 모르는 필드와 빠진 필드는 오류 없이 넘어가므로 옛 값이 조용히 잘못 읽힌다. 버전을 올리면 배포 중인 옛 서버는 옛 키를 읽으므로 서버를 모두 바꾼 뒤에 적재한다.
+- 카탈로그 전체(`CatalogResult`)를 Redis 키 `catalog:v2` 하나에 JSON으로 캐시하고, 만료 시간은 24시간이다. `CatalogResult` 필드를 바꾸면 키의 버전을 올린다. 모르는 필드와 빠진 필드는 오류 없이 넘어가므로 옛 값이 조용히 잘못 읽힌다. 버전을 올리면 배포 중인 옛 서버는 옛 키를 읽으므로 서버를 모두 바꾼 뒤에 적재한다.
 - 읽기는 Cache-Aside다. `CatalogQueryService.get`이 캐시에서 읽고, 없으면 `RefreshCatalogCacheUseCase`로 DB에서 읽어 채운다. 도수 상한은 `CatalogResult.filterByMaxAbv`로 메모리에서 적용하고, 상한별로 키를 나누지 않는다.
 - 갱신은 Write-Through다. `ImportCatalogRunner`가 적재를 모두 마친 뒤 새 카탈로그로 덮어쓴다. 적재가 중간에 실패하면 갱신하지 않으므로 캐시는 적재 전 카탈로그로 남고, 다시 적재하거나 만료되면 갱신된다.
 - 캐시 인터페이스 `CatalogCache`는 `catalog.application.cache`에, 구현체 `RedisCatalogCache`은 `catalog.infrastructure.redis`에 두고 `StringRedisTemplate`을 쓴다. Spring Cache와 Caffeine은 쓰지 않는다.
