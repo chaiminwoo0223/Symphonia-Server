@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.symphonia.RepositoryTest;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.AnjuBase;
 import com.symphonia.catalog.domain.vo.AnjuSource;
 import com.symphonia.catalog.domain.vo.DrinkSource;
@@ -84,6 +85,44 @@ class CatalogSeedMigrationTest extends RepositoryTest {
                 .singleElement()
                 .extracting(drink -> drink.toDomain().getHarmonizes())
                 .isEqualTo(Set.of(Harmonize.PORK, Harmonize.BEEF));
+    }
+
+    // 시드 막걸리와 시드 레드 와인을 바꾼 와인은 적재 전에도 알레르기로 걸러져야 한다.
+    @Test
+    @DisplayName("시드 막걸리에는 밀, 시드 와인에는 아황산류 알레르기가 채워진다")
+    void shouldFillSeedDrinkAllergyTypes() {
+        // given: 시드 마이그레이션이 적재된 상태
+
+        // when
+        List<DrinkJpaEntity> seedDrinks = drinkJpaRepository.findAllById(List.of(1L, 3L, 4L));
+
+        // then
+        assertThat(seedDrinks)
+                .extracting(DrinkJpaEntity::getId, drink -> drink.toDomain().getAllergyTypes())
+                .containsExactlyInAnyOrder(
+                        tuple(1L, Set.of()),
+                        tuple(3L, Set.of(AllergyType.WHEAT)),
+                        tuple(4L, Set.of(AllergyType.SULFITE)));
+    }
+
+    @Test
+    @DisplayName("시드 두부김치에는 김치의 새우 알레르기가 채워진다")
+    void shouldFillSeedTofuKimchiShrimpAllergy() {
+        // given: 시드 마이그레이션이 적재된 상태
+
+        // when
+        List<AnjuJpaEntity> seedAnjus = anjuJpaRepository.findAllById(List.of(3L));
+
+        // then
+        assertThat(seedAnjus)
+                .singleElement()
+                .satisfies(
+                        anju ->
+                                assertThat(anju.toDomain().getAllergyTypes())
+                                        .containsExactlyInAnyOrder(
+                                                AllergyType.PORK,
+                                                AllergyType.SOYBEAN,
+                                                AllergyType.SHRIMP));
     }
 
     // check 제약에 X_WINES가 빠지면 와인 적재의 첫 INSERT가 제약 위반으로 실패한다.

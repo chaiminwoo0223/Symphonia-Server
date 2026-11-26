@@ -3,6 +3,7 @@ package com.symphonia.catalog.infrastructure.jpa;
 import static java.util.stream.Collectors.toCollection;
 
 import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.DrinkSource;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import jakarta.persistence.Column;
@@ -59,6 +60,11 @@ public class DrinkJpaEntity {
     @Column(nullable = false)
     private String[] harmonizes;
 
+    // 음식 계열과 같은 이유로 배열 컬럼에 담는다. 값은 AllergyType 이름이다.
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(nullable = false)
+    private String[] allergyTypes;
+
     public static DrinkJpaEntity from(Drink drink) {
         return DrinkJpaEntity.builder()
                 .id(drink.getId())
@@ -72,6 +78,11 @@ public class DrinkJpaEntity {
                 .harmonizes(
                         drink.getHarmonizes().stream()
                                 .map(Harmonize::name)
+                                .sorted()
+                                .toArray(String[]::new))
+                .allergyTypes(
+                        drink.getAllergyTypes().stream()
+                                .map(AllergyType::name)
                                 .sorted()
                                 .toArray(String[]::new))
                 .build();
@@ -91,6 +102,10 @@ public class DrinkJpaEntity {
                         Arrays.stream(harmonizes)
                                 .map(Harmonize::valueOf)
                                 .collect(toCollection(() -> EnumSet.noneOf(Harmonize.class))))
+                .allergyTypes(
+                        Arrays.stream(allergyTypes)
+                                .map(AllergyType::valueOf)
+                                .collect(toCollection(() -> EnumSet.noneOf(AllergyType.class))))
                 .build();
     }
 }

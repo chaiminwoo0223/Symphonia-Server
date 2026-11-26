@@ -25,7 +25,7 @@ import tools.jackson.databind.json.JsonMapper;
 @DisplayName("RedisCatalogCache 테스트")
 class RedisCatalogCacheTest extends RedisRepositoryTest {
 
-    private static final String KEY = "catalog:v1";
+    private static final String KEY = "catalog:v2";
 
     @Autowired private StringRedisTemplate redisTemplate;
 
@@ -127,8 +127,33 @@ class RedisCatalogCacheTest extends RedisRepositoryTest {
         return new CatalogResult(
                 List.of(
                         new DrinkResult(
-                                1L, 10L, DrinkCategory.BEER, "카스", 4.5, false, 1, 2, 3, 4, 5, 6L),
-                        new DrinkResult(2L, 11L, null, "스타일 없는 음료", 0.0, true, 0, 0, 0, 0, 0, 0L)),
+                                1L,
+                                10L,
+                                DrinkCategory.BEER,
+                                "밀맥주",
+                                4.5,
+                                false,
+                                1,
+                                2,
+                                3,
+                                4,
+                                5,
+                                6L,
+                                Set.of(AllergyType.WHEAT)),
+                        new DrinkResult(
+                                2L,
+                                11L,
+                                null,
+                                "스타일 없는 음료",
+                                0.0,
+                                true,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0,
+                                0L,
+                                Set.of())),
                 List.of(
                         new AnjuResult(
                                 3L,

@@ -77,7 +77,8 @@ class RefreshCatalogCacheServiceTest extends UnitTest {
                                     3,
                                     4,
                                     5,
-                                    beer.getHarmonizeMask()));
+                                    beer.getHarmonizeMask(),
+                                    beer.getAllergyTypes()));
             assertThat(result.anjus())
                     .containsExactly(
                             new AnjuResult(

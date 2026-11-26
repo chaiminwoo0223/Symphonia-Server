@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.symphonia.RepositoryTest;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.DrinkSource;
 import com.symphonia.catalog.domain.vo.Harmonize;
 import com.symphonia.catalog.fixture.DrinkFixture;
@@ -71,6 +72,30 @@ class DrinkRepositoryImplTest extends RepositoryTest {
             assertThat(result.get().getFlavorProfile())
                     .usingRecursiveComparison()
                     .isEqualTo(DrinkFixture.WINE.getFlavorProfile());
+        }
+
+        @Test
+        @DisplayName("id가 있는 Drink면 알레르기를 새 값으로 바꾼다")
+        void shouldReplaceAllergyTypesWhenIdExists() {
+            // given
+            Long drinkStyleId = saveDrinkStyle(DrinkFixture.BEER);
+            Drink saved = drinkRepository.save(DrinkFixture.BEER.createWithStyle(drinkStyleId));
+            entityManager.flush();
+            entityManager.clear();
+            saved.overwriteWith(
+                    DrinkFixture.BEER.createWithStyleAndAllergyTypes(
+                            drinkStyleId, Set.of(AllergyType.WHEAT, AllergyType.SULFITE)));
+
+            // when
+            drinkRepository.save(saved);
+
+            // then
+            entityManager.flush();
+            entityManager.clear();
+            assertThat(drinkRepository.findById(saved.getId()))
+                    .get()
+                    .extracting(Drink::getAllergyTypes)
+                    .isEqualTo(Set.of(AllergyType.WHEAT, AllergyType.SULFITE));
         }
 
         @Test

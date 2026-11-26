@@ -56,7 +56,8 @@ public record CatalogResult(List<DrinkResult> drinks, List<AnjuResult> anjus) {
             int carbonation,
             int richness,
             int acidity,
-            long harmonizeMask) {
+            long harmonizeMask,
+            Set<AllergyType> allergyTypes) {
         public static DrinkResult from(Drink drink, DrinkCategory category) {
             return new DrinkResult(
                     drink.getId(),
@@ -70,7 +71,8 @@ public record CatalogResult(List<DrinkResult> drinks, List<AnjuResult> anjus) {
                     drink.getFlavorProfile().getCarbonation(),
                     drink.getFlavorProfile().getRichness(),
                     drink.getFlavorProfile().getAcidity(),
-                    drink.getHarmonizeMask());
+                    drink.getHarmonizeMask(),
+                    drink.getAllergyTypes());
         }
     }
 

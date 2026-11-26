@@ -12,13 +12,13 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
-// 키 이름의 v1은 값의 형식 버전이다. CatalogResult의 필드를 바꾸면 옛 값이 빈 값으로 읽혀도 오류가 나지 않으므로 버전을 올린다.
+// 키 이름의 v2는 값의 형식 버전이다. CatalogResult의 필드를 바꾸면 옛 값이 빈 값으로 읽혀도 오류가 나지 않으므로 버전을 올린다.
 // 만료 시간은 마이그레이션처럼 적재 러너를 거치지 않는 변경이 캐시에 영구히 남지 않게 하는 안전망이다.
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RedisCatalogCache implements CatalogCache {
-    private static final String KEY = "catalog:v1";
+    private static final String KEY = "catalog:v2";
     private static final Duration TTL = Duration.ofHours(24);
 
     private final StringRedisTemplate redisTemplate;

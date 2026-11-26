@@ -11,6 +11,7 @@ import com.symphonia.IntegrationTest;
 import com.symphonia.auth.helper.AuthHelper;
 import com.symphonia.catalog.domain.entity.Anju;
 import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.fixture.AnjuFixture;
 import com.symphonia.catalog.fixture.DrinkFixture;
 import com.symphonia.catalog.helper.CatalogHelper;
@@ -29,6 +30,7 @@ import com.symphonia.pairing.domain.vo.PairingSituation;
 import com.symphonia.pairing.domain.vo.RelationshipType;
 import com.symphonia.pairing.fixture.PairingFeedbackFixture;
 import com.symphonia.pairing.presentation.dto.request.SubmitPairingFeedbackRequest;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -120,6 +122,27 @@ class PairingControllerTest extends IntegrationTest {
                                             "$.data.pairings[?(@.anjuName=='%s')]",
                                             AnjuFixture.DRIED_SNACK.getName())
                                     .isEmpty());
+        }
+
+        @Test
+        @DisplayName("술의 알레르기를 drinkAllergyTypes로 응답한다")
+        void shouldRespondDrinkAllergyTypes() throws Exception {
+            // given
+            catalogHelper.saveDrink(DrinkFixture.WINE, Set.of(AllergyType.SULFITE));
+            catalogHelper.saveAnju(AnjuFixture.DRIED_SNACK);
+
+            // when & then
+            mockMvc.perform(
+                            get("/api/v1/pairings/recommendations")
+                                    .param("relationshipType", "FRIEND")
+                                    .param("isAdultConfirmed", "true")
+                                    .param("attendeeAllergies", "WHEAT"))
+                    .andExpect(status().isOk())
+                    .andExpect(
+                            jsonPath(
+                                            "$.data.pairings[?(@.drinkName=='%s')].drinkAllergyTypes[0]",
+                                            DrinkFixture.WINE.getName())
+                                    .value("SULFITE"));
         }
 
         @Test

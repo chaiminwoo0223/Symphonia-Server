@@ -1,6 +1,7 @@
 package com.symphonia.catalog.fixture;
 
 import com.symphonia.catalog.domain.entity.Drink;
+import com.symphonia.catalog.domain.vo.AllergyType;
 import com.symphonia.catalog.domain.vo.DrinkSource;
 import com.symphonia.catalog.domain.vo.FlavorProfile;
 import com.symphonia.catalog.domain.vo.Harmonize;
@@ -105,6 +106,21 @@ public enum DrinkFixture {
                 ordinal() + 1L, defaultDrinkStyleId(), getExternalId(), flavorProfile, harmonizes);
     }
 
+    // 알레르기만 바꿔 참석자 알레르기에 따른 제외를 검증할 때 쓴다.
+    public Drink createWithAllergyTypes(Set<AllergyType> allergyTypes) {
+        return createWithIdAndAllergyTypes(ordinal() + 1L, allergyTypes);
+    }
+
+    public Drink createWithIdAndAllergyTypes(Long id, Set<AllergyType> allergyTypes) {
+        return build(
+                id,
+                defaultDrinkStyleId(),
+                getExternalId(),
+                flavorProfile,
+                harmonizes,
+                allergyTypes);
+    }
+
     // FK가 걸린 drink style은 실제로 저장된 id를 받아 아직 저장 전인 음료를 만든다.
     public Drink createWithStyle(Long drinkStyleId) {
         return build(null, drinkStyleId, flavorProfile);
@@ -118,6 +134,11 @@ public enum DrinkFixture {
     // 다시 적재할 때 같은 식별 키의 음료가 음식 계열만 바뀐 상황을 만든다.
     public Drink createWithStyleAndHarmonizes(Long drinkStyleId, Set<Harmonize> harmonizes) {
         return build(null, drinkStyleId, getExternalId(), flavorProfile, harmonizes);
+    }
+
+    // 다시 적재할 때 같은 식별 키의 음료가 알레르기만 바뀐 상황을 만든다.
+    public Drink createWithStyleAndAllergyTypes(Long drinkStyleId, Set<AllergyType> allergyTypes) {
+        return build(null, drinkStyleId, getExternalId(), flavorProfile, harmonizes, allergyTypes);
     }
 
     // 단위 테스트에서 여러 음료가 같은 스타일을 공유하거나 서로 다른 스타일로 나뉘게 만들 때 쓴다.
@@ -144,6 +165,16 @@ public enum DrinkFixture {
             String externalId,
             FlavorProfile profile,
             Set<Harmonize> harmonizes) {
+        return build(id, drinkStyleId, externalId, profile, harmonizes, Set.of());
+    }
+
+    private Drink build(
+            Long id,
+            Long drinkStyleId,
+            String externalId,
+            FlavorProfile profile,
+            Set<Harmonize> harmonizes,
+            Set<AllergyType> allergyTypes) {
         return Drink.builder()
                 .id(id)
                 .drinkStyleId(drinkStyleId)
@@ -154,6 +185,7 @@ public enum DrinkFixture {
                 .flavorProfile(profile)
                 .nonAlcoholic(nonAlcoholic)
                 .harmonizes(harmonizes)
+                .allergyTypes(allergyTypes)
                 .build();
     }
 }

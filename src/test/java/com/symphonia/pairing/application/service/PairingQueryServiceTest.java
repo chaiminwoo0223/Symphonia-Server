@@ -516,6 +516,34 @@ class PairingQueryServiceTest extends UnitTest {
         }
 
         @Test
+        @DisplayName("attendeeAllergies와 겹치는 Drink는 추천 결과에서 제외한다")
+        void shouldExcludeDrinkWhenAllergyConflicts() {
+            // given
+            Drink wheatBeer = DrinkFixture.BEER.createWithAllergyTypes(Set.of(AllergyType.WHEAT));
+            Drink wine = DrinkFixture.WINE.createWithAllergyTypes(Set.of(AllergyType.SULFITE));
+            given(drinkRepository.findAll())
+                    .willReturn(List.of(DrinkFixture.SOJU.createWithId(), wheatBeer, wine));
+            given(anjuRepository.findAll())
+                    .willReturn(List.of(AnjuFixture.DRIED_SNACK.createWithId()));
+            RecommendPairingQuery query =
+                    new RecommendPairingQueryFixture().attendeeAllergies(AllergyType.WHEAT).build();
+
+            // when
+            List<PairingResult> results = pairingQueryService.recommend(query).pairings();
+
+            // then
+            assertThat(results)
+                    .extracting(PairingResult::drinkName)
+                    .containsExactlyInAnyOrder(
+                            DrinkFixture.SOJU.getName(), DrinkFixture.WINE.getName());
+            assertThat(results)
+                    .filteredOn(result -> result.drinkName().equals(DrinkFixture.WINE.getName()))
+                    .singleElement()
+                    .extracting(PairingResult::drinkAllergyTypes)
+                    .isEqualTo(Set.of(AllergyType.SULFITE));
+        }
+
+        @Test
         @DisplayName("attendeeAllergies로 모든 Anju가 제외되면 예외 없이 빈 목록을 반환한다")
         void shouldReturnEmptyListWhenAnjusExcludedByAllergies() {
             // given

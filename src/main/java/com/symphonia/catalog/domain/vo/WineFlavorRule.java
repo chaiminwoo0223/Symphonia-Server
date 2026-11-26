@@ -75,7 +75,11 @@ public record WineFlavorRule(
                         .withRichness(bodyRule.richness())
                         .withAcidity(acidityRule.value());
         return WineEvaluation.determined(
-                wine, typeRule.externalId(), flavorProfile, harmonizesOf(wine.harmonizeTags()));
+                wine,
+                typeRule.externalId(),
+                flavorProfile,
+                harmonizesOf(wine.harmonizeTags()),
+                typeRule.allergyTypes());
     }
 
     private Set<Harmonize> harmonizesOf(List<String> wineTags) {

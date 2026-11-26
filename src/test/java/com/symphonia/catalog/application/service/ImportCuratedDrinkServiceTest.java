@@ -11,10 +11,13 @@ import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult;
 import com.symphonia.catalog.application.dto.result.ImportCuratedDrinkResult.UnmappedDrink;
 import com.symphonia.catalog.domain.entity.Drink;
 import com.symphonia.catalog.domain.entity.DrinkStyle;
+import com.symphonia.catalog.domain.reader.BeerAllergyRuleReader;
 import com.symphonia.catalog.domain.reader.BeerHarmonizeRuleReader;
 import com.symphonia.catalog.domain.reader.CuratedDrinkReader;
 import com.symphonia.catalog.domain.repository.DrinkRepository;
 import com.symphonia.catalog.domain.repository.DrinkStyleRepository;
+import com.symphonia.catalog.domain.vo.AllergyType;
+import com.symphonia.catalog.domain.vo.BeerAllergyRule;
 import com.symphonia.catalog.domain.vo.BeerHarmonizeRule;
 import com.symphonia.catalog.domain.vo.CuratedDrink;
 import com.symphonia.catalog.domain.vo.DrinkSource;
@@ -39,10 +42,14 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
     private static final Set<Harmonize> LAGER_HARMONIZES =
             Set.of(Harmonize.POULTRY, Harmonize.VEGETARIAN);
 
+    // 규칙이 복사되는지 구분할 수 있도록 실제 라거 규칙과 달리 알레르기를 둔다.
+    private static final Set<AllergyType> LAGER_ALLERGY_TYPES = Set.of(AllergyType.WHEAT);
+
     @InjectMocks private ImportCuratedDrinkService importCuratedDrinkService;
 
     @Mock private CuratedDrinkReader curatedDrinkReader;
     @Mock private BeerHarmonizeRuleReader beerHarmonizeRuleReader;
+    @Mock private BeerAllergyRuleReader beerAllergyRuleReader;
     @Mock private DrinkStyleRepository drinkStyleRepository;
     @Mock private DrinkRepository drinkRepository;
 
@@ -54,6 +61,8 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         void setUp() {
             given(beerHarmonizeRuleReader.read())
                     .willReturn(List.of(new BeerHarmonizeRule("2A", LAGER_HARMONIZES)));
+            given(beerAllergyRuleReader.read())
+                    .willReturn(List.of(new BeerAllergyRule("2A", LAGER_ALLERGY_TYPES)));
         }
 
         @Nested
@@ -61,7 +70,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         class WhenDrinkNotImported {
 
             @Test
-            @DisplayName("source는 CURATED, externalId는 매핑표 값, 스타일의 id와 맛, 음식 계열을 복사해 새로 저장한다")
+            @DisplayName("source는 CURATED, externalId는 매핑표 값, 스타일의 id와 맛, 음식 계열, 알레르기를 복사해 새로 저장한다")
             void shouldSaveNewDrinkWithMappedStyle() {
                 // given
                 CuratedDrink curatedDrink = CuratedDrinkFixture.CASS_FRESH.create();
@@ -85,6 +94,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                         .usingRecursiveComparison()
                         .isEqualTo(mappedStyle.getFlavorProfile());
                 assertThat(saved.getHarmonizes()).isEqualTo(LAGER_HARMONIZES);
+                assertThat(saved.getAllergyTypes()).isEqualTo(LAGER_ALLERGY_TYPES);
                 assertThat(result.importedCount()).isEqualTo(1);
                 assertThat(result.unmappedDrinks()).isEmpty();
             }
@@ -95,7 +105,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
         class WhenDrinkAlreadyImported {
 
             @Test
-            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛, 음식 계열을 갱신해 저장한다")
+            @DisplayName("id를 유지한 채 스타일, 이름, 도수, 맛, 음식 계열, 알레르기를 갱신해 저장한다")
             void shouldUpdateExistingDrink() {
                 // given
                 CuratedDrink curatedDrink =
@@ -125,6 +135,7 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                         .usingRecursiveComparison()
                         .isEqualTo(mappedStyle.getFlavorProfile());
                 assertThat(saved.getHarmonizes()).isEqualTo(LAGER_HARMONIZES);
+                assertThat(saved.getAllergyTypes()).isEqualTo(LAGER_ALLERGY_TYPES);
                 assertThat(result.importedCount()).isEqualTo(1);
             }
         }
@@ -175,6 +186,31 @@ class ImportCuratedDrinkServiceTest extends UnitTest {
                 // then
                 verify(drinkRepository, never()).save(any());
                 assertThat(result.importedCount()).isZero();
+                assertThat(result.unmappedDrinks())
+                        .extracting(UnmappedDrink::externalId)
+                        .containsExactly(curatedDrink.externalId());
+            }
+        }
+
+        @Nested
+        @DisplayName("매핑한 BJCP 스타일의 알레르기 규칙이 없는 경우")
+        class WhenAllergyRuleNotFound {
+
+            @Test
+            @DisplayName("음식 계열 규칙이 있어도 저장하지 않고 unmappedDrinks에 담는다")
+            void shouldLeaveUnmappedDrinkWithoutSaving() {
+                // given
+                CuratedDrink curatedDrink = CuratedDrinkFixture.HOEGAARDEN.create();
+                givenMappedStyle(curatedDrink);
+                given(curatedDrinkReader.read()).willReturn(List.of(curatedDrink));
+                given(beerHarmonizeRuleReader.read())
+                        .willReturn(List.of(new BeerHarmonizeRule("24A", LAGER_HARMONIZES)));
+
+                // when
+                ImportCuratedDrinkResult result = importCuratedDrinkService.importCuratedBeers();
+
+                // then
+                verify(drinkRepository, never()).save(any());
                 assertThat(result.unmappedDrinks())
                         .extracting(UnmappedDrink::externalId)
                         .containsExactly(curatedDrink.externalId());
