@@ -17,6 +17,12 @@ spring:
       hibernate:
         format_sql: true
 
+# 개발 기기와 같은 네트워크의 다른 기기가 management 포트에 접근하지 못하게 한다.
+# dev와 prod는 컨테이너 밖의 수집기와 헬스 확인이 접근해야 하므로 주소를 좁히지 않고 방화벽으로 막는다.
+management:
+  server:
+    address: 127.0.0.1
+
 logging:
   level:
     com.symphonia: debug
