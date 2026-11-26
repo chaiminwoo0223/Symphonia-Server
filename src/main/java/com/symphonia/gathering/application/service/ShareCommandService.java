@@ -6,6 +6,7 @@ import com.symphonia.gathering.application.dto.command.MarkSharesSentCommand;
 import com.symphonia.gathering.application.dto.command.RevertShareCommand;
 import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
+import com.symphonia.gathering.application.event.SharesSentEvent;
 import com.symphonia.gathering.application.usecase.ConfirmShareUseCase;
 import com.symphonia.gathering.application.usecase.GetLinkedParticipantUseCase;
 import com.symphonia.gathering.application.usecase.MarkSharesSentUseCase;
@@ -21,6 +22,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 
 // 분담금 상태는 참여자가 "보냈어요"로 바꾸고, 결제자가 정산 건 단위로 정정한다. 둘 다 개인 링크 토큰으로 요청한다.
 @CommandService
@@ -30,11 +32,13 @@ public class ShareCommandService
     private final GetLinkedParticipantUseCase getLinkedParticipantUseCase;
     private final GatheringRepository gatheringRepository;
     private final SettlementRepository settlementRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
     // 취소나 수정과 겹치면 잠금 없이 읽은 늦은 쪽이 버전 충돌로 실패하고, 먼저 취소된 정산 건은 잠금 조회에서 빠진다.
     // 이미 보냄이나 확인 완료인 분담금은 건너뛰어, 모두 보냈으면 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
+    // 차수의 참여자 이름은 잠그지 않고 읽는다. 이름만 보여 주고 상태는 바꾸지 않아 다른 정산 건의 변경과 겹쳐도 충돌하지 않는다.
     @Override
     public PayerSharesResult markSent(MarkSharesSentCommand command) {
         Long participantId = findParticipantId(command.linkToken());
@@ -42,22 +46,28 @@ public class ShareCommandService
                 settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(
                         participantId, command.payerParticipantId());
         SettlementPolicy.validateSharesFound(!settlements.isEmpty());
+
         Gathering gathering =
                 gatheringRepository
                         .findByParticipantId(participantId)
                         .orElseThrow(GatheringNotFoundException::new);
-        // 차수의 참여자 이름은 잠그지 않고 읽는다. 이름만 보여 주고 상태는 바꾸지 않아 다른 정산 건의 변경과 겹쳐도 충돌하지 않는다.
         List<Settlement> gatheringSettlements =
                 settlementRepository.findAllByGatheringId(gathering.getId());
         LocalDateTime now = LocalDateTime.now(clock);
 
-        settlements.stream()
-                .filter(settlement -> settlement.hasUnpaidShareOf(participantId))
-                .forEach(
-                        settlement -> {
-                            settlement.markShareSent(participantId, now);
-                            settlementRepository.save(settlement);
-                        });
+        List<Settlement> unpaidSettlements =
+                settlements.stream()
+                        .filter(settlement -> settlement.hasUnpaidShareOf(participantId))
+                        .toList();
+        unpaidSettlements.forEach(
+                settlement -> {
+                    settlement.markShareSent(participantId, now);
+                    settlementRepository.save(settlement);
+                });
+
+        unpaidSettlements.stream()
+                .findAny()
+                .ifPresent(_ -> eventPublisher.publishEvent(new SharesSentEvent()));
 
         return PayerSharesResult.of(
                 gathering.getParticipant(command.payerParticipantId()),

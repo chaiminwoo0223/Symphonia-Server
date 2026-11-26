@@ -23,6 +23,7 @@ import com.symphonia.gathering.application.dto.command.ReissueJoinTokenCommand;
 import com.symphonia.gathering.application.dto.command.RenameGatheringCommand;
 import com.symphonia.gathering.application.dto.result.GatheringJoinTokenResult;
 import com.symphonia.gathering.application.dto.result.RecordingExtensionResult;
+import com.symphonia.gathering.application.event.GatheringOpenedEvent;
 import com.symphonia.gathering.application.usecase.PurgeGatheringUseCase;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.exception.GatheringJoinClosedException;
@@ -51,6 +52,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("GatheringCommandService 단위 테스트")
 class GatheringCommandServiceTest extends UnitTest {
@@ -77,6 +79,7 @@ class GatheringCommandServiceTest extends UnitTest {
     @Mock private GatheringPairingRepository gatheringPairingRepository;
     @Mock private VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
     @Mock private PurgeGatheringUseCase purgeGatheringUseCase;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
@@ -89,6 +92,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         gatheringTokenProvider,
                         verifyCatalogReferencesUseCase,
                         purgeGatheringUseCase,
+                        eventPublisher,
                         Clock.fixed(
                                 NOW.atZone(TimeConfig.SERVICE_ZONE).toInstant(),
                                 TimeConfig.SERVICE_ZONE));
@@ -190,6 +194,26 @@ class GatheringCommandServiceTest extends UnitTest {
                 // then
                 then(verifyCatalogReferencesUseCase).shouldHaveNoInteractions();
                 then(gatheringPairingRepository).shouldHaveNoInteractions();
+            }
+
+            @Test
+            @DisplayName("모임을 연 이벤트를 발행한다")
+            void shouldPublishGatheringOpenedEvent() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                givenSavedGathering(fixture);
+                OpenGatheringCommand command =
+                        new OpenGatheringCommand(
+                                fixture.getHostMemberId(),
+                                CLIENT_REQUEST_ID,
+                                fixture.getName(),
+                                null);
+
+                // when
+                gatheringCommandService.open(command);
+
+                // then
+                then(eventPublisher).should().publishEvent(new GatheringOpenedEvent());
             }
         }
 
@@ -293,6 +317,25 @@ class GatheringCommandServiceTest extends UnitTest {
                 then(verifyCatalogReferencesUseCase).shouldHaveNoInteractions();
                 then(gatheringPairingRepository).shouldHaveNoInteractions();
             }
+
+            @Test
+            @DisplayName("모임을 연 이벤트를 발행하지 않는다")
+            void shouldNotPublishEvent() {
+                // given
+                GatheringFixture fixture = GatheringFixture.FRIDAY_DINNER;
+                given(
+                                gatheringRepository.findByHostMemberIdAndClientRequestId(
+                                        fixture.getHostMemberId(), CLIENT_REQUEST_ID))
+                        .willReturn(
+                                Optional.of(fixture.createWithIdAndOpenedAt(GATHERING_ID, NOW)));
+                given(gatheringTokenProvider.generate()).willReturn(NEW_JOIN_TOKEN);
+
+                // when
+                gatheringCommandService.open(command(GatheringPairingFixture.FRIEND_CASUAL));
+
+                // then
+                then(eventPublisher).shouldHaveNoInteractions();
+            }
         }
 
         @Nested
@@ -312,6 +355,7 @@ class GatheringCommandServiceTest extends UnitTest {
                         .isInstanceOf(GatheringOpenConflictException.class);
                 then(gatheringJoinTokenRepository).shouldHaveNoInteractions();
                 then(gatheringPairingRepository).shouldHaveNoInteractions();
+                then(eventPublisher).shouldHaveNoInteractions();
             }
         }
 

@@ -35,9 +35,9 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     }
 
     // 정산 건 행은 요청 id 충돌 없이 넣었을 때만 만들어진다. 새 정산 건이라 지울 분담금과 버전 충돌이 없어 버전을 더 올리지 않는다.
-    // 충돌하면 먼저 저장한 요청이 커밋한 정산 건을 읽는다. 충돌이 났다는 것은 그 행이 이미 커밋됐다는 뜻이다.
+    // 충돌하면 빈 값을 돌려준다. 충돌이 났다는 것은 먼저 저장한 요청의 행이 이미 커밋됐다는 뜻이다.
     @Override
-    public Settlement saveIfAbsent(Settlement settlement) {
+    public Optional<Settlement> saveIfAbsent(Settlement settlement) {
         return settlementJpaRepository
                 .insertIfAbsent(
                         settlement.getGatheringId(),
@@ -52,13 +52,7 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                                         settlementJpaRepository
                                                 .findById(settlementId)
                                                 .orElseThrow(),
-                                        settlement))
-                .orElseGet(
-                        () ->
-                                findByPayerParticipantIdAndClientRequestId(
-                                                settlement.getPayerParticipantId(),
-                                                settlement.getClientRequestId())
-                                        .orElseThrow());
+                                        settlement));
     }
 
     @Override
@@ -89,8 +83,6 @@ public class SettlementRepositoryImpl implements SettlementRepository {
     @Override
     public List<Settlement> findAllByShareParticipantIdAndPayerForUpdate(
             Long participantId, Long payerParticipantId) {
-        // 수정이 먼저 커밋되면 잠금을 기다리던 조회가 버전이 달라진 정산 건을 읽고 낙관적 락 예외로 실패한다.
-        // 저장할 때의 버전 충돌과 같은 상황이므로 같은 예외로 바꾼다.
         try {
             return toDomains(
                     settlementJpaRepository.findAllByShareParticipantIdAndPayerForUpdate(

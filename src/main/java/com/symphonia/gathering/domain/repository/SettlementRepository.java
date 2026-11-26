@@ -9,9 +9,10 @@ import java.util.UUID;
 public interface SettlementRepository {
     Settlement save(Settlement settlement);
 
-    // 같은 결제자가 같은 요청 id로 기록한 정산 건이 이미 있으면 새로 저장하지 않고 그 정산 건을 돌려준다. 정산 건 기록에만 쓴다.
-    // 동시에 같은 요청이 오면 늦은 요청은 먼저 저장한 요청이 커밋한 뒤 그 정산 건을 읽는다.
-    Settlement saveIfAbsent(Settlement settlement);
+    // 같은 결제자가 같은 요청 id로 기록한 정산 건이 이미 있으면 새로 저장하지 않고 빈 값을 돌려준다. 정산 건 기록에만 쓴다.
+    // 동시에 같은 요청이 오면 늦은 요청은 먼저 저장한 요청이 커밋한 뒤 빈 값을 받는다.
+    // 부르는 쪽이 트랜잭션을 열어 둔 상태여야 한다.
+    Optional<Settlement> saveIfAbsent(Settlement settlement);
 
     // 같은 결제자가 같은 요청 id로 이미 기록한 정산 건을 찾는다. 같은 요청을 다시 받았을 때 검증보다 먼저 처음 정산 건을 돌려주는 데 쓴다.
     Optional<Settlement> findByPayerParticipantIdAndClientRequestId(

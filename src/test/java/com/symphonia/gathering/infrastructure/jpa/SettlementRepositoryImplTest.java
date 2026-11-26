@@ -405,7 +405,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
 
                 // when
-                Settlement saved = settlementRepository.saveIfAbsent(settlement);
+                Settlement saved = settlementRepository.saveIfAbsent(settlement).orElseThrow();
 
                 // then
                 clearPersistenceContext();
@@ -429,7 +429,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
 
                 // when
-                Settlement saved = settlementRepository.saveIfAbsent(settlement);
+                Settlement saved = settlementRepository.saveIfAbsent(settlement).orElseThrow();
 
                 // then
                 assertThat(
@@ -451,12 +451,14 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             void shouldSaveChangeOfSavedSettlementWithoutConflict() {
                 // given
                 Settlement saved =
-                        settlementRepository.saveIfAbsent(
-                                SettlementFixture.DINNER.create(
-                                        gatheringId,
-                                        roundId,
-                                        kimId,
-                                        List.of(kimId, leeId, parkId)));
+                        settlementRepository
+                                .saveIfAbsent(
+                                        SettlementFixture.DINNER.create(
+                                                gatheringId,
+                                                roundId,
+                                                kimId,
+                                                List.of(kimId, leeId, parkId)))
+                                .orElseThrow();
                 saved.markShareSent(leeId, LocalDateTime.now());
 
                 // when
@@ -472,16 +474,18 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         class WhenSameClientRequestIdSaved {
 
             @Test
-            @DisplayName("새로 저장하지 않고 처음 저장한 정산 건을 반환한다")
-            void shouldReturnFirstSettlementWithoutSavingAgain() {
+            @DisplayName("새로 저장하지 않고 빈 값을 반환한다")
+            void shouldReturnEmptyWithoutSavingAgain() {
                 // given
                 Settlement first =
-                        settlementRepository.saveIfAbsent(
-                                SettlementFixture.DINNER.create(
-                                        gatheringId,
-                                        roundId,
-                                        kimId,
-                                        List.of(kimId, leeId, parkId)));
+                        settlementRepository
+                                .saveIfAbsent(
+                                        SettlementFixture.DINNER.create(
+                                                gatheringId,
+                                                roundId,
+                                                kimId,
+                                                List.of(kimId, leeId, parkId)))
+                                .orElseThrow();
                 Settlement retry =
                         Settlement.record(
                                 gatheringId,
@@ -492,14 +496,20 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 LocalDateTime.now());
 
                 // when
-                Settlement result = settlementRepository.saveIfAbsent(retry);
+                Optional<Settlement> result = settlementRepository.saveIfAbsent(retry);
 
                 // then
-                assertThat(result.getId()).isEqualTo(first.getId());
-                assertThat(result.getRoundId()).isEqualTo(roundId);
-                assertThat(result.getTotalAmount())
-                        .isEqualTo(SettlementFixture.DINNER.getTotalAmount());
-                assertThat(settlementRepository.findAllByGatheringId(gatheringId)).hasSize(1);
+                assertThat(result).isEmpty();
+                assertThat(settlementRepository.findAllByGatheringId(gatheringId))
+                        .extracting(
+                                Settlement::getId,
+                                Settlement::getRoundId,
+                                Settlement::getTotalAmount)
+                        .containsExactly(
+                                tuple(
+                                        first.getId(),
+                                        roundId,
+                                        SettlementFixture.DINNER.getTotalAmount()));
             }
         }
 
@@ -512,12 +522,14 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             void shouldSaveBothSettlements() {
                 // given
                 Settlement first =
-                        settlementRepository.saveIfAbsent(
-                                SettlementFixture.DINNER.create(
-                                        gatheringId,
-                                        roundId,
-                                        kimId,
-                                        List.of(kimId, leeId, parkId)));
+                        settlementRepository
+                                .saveIfAbsent(
+                                        SettlementFixture.DINNER.create(
+                                                gatheringId,
+                                                roundId,
+                                                kimId,
+                                                List.of(kimId, leeId, parkId)))
+                                .orElseThrow();
                 Settlement otherPayer =
                         Settlement.record(
                                 gatheringId,
@@ -528,7 +540,7 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                                 LocalDateTime.now());
 
                 // when
-                Settlement result = settlementRepository.saveIfAbsent(otherPayer);
+                Settlement result = settlementRepository.saveIfAbsent(otherPayer).orElseThrow();
 
                 // then
                 assertThat(result.getId()).isNotEqualTo(first.getId());
@@ -548,14 +560,14 @@ class SettlementRepositoryImplTest extends RepositoryTest {
             }
 
             @Test
-            @DisplayName("정산 건을 하나만 두고 두 요청 모두 예외 없이 같은 정산 건을 반환받는다")
-            void shouldKeepSingleSettlementAndReturnSameSettlement() {
+            @DisplayName("정산 건을 하나만 두고 두 요청 모두 예외 없이 끝나며 한 요청만 저장한 정산 건을 반환받는다")
+            void shouldKeepSingleSettlementAndReturnItToSingleRequest() {
                 // given
                 Settlement settlement =
                         SettlementFixture.DINNER.create(
                                 gatheringId, roundId, kimId, List.of(kimId, leeId, parkId));
                 CountDownLatch ready = new CountDownLatch(2);
-                List<Long> savedIds = new CopyOnWriteArrayList<>();
+                List<Optional<Long>> savedIds = new CopyOnWriteArrayList<>();
 
                 // when
                 List<Throwable> failures =
@@ -567,17 +579,22 @@ class SettlementRepositoryImplTest extends RepositoryTest {
                 assertThat(failures).isEmpty();
                 List<Settlement> stored = settlementRepository.findAllByGatheringId(gatheringId);
                 assertThat(stored).hasSize(1);
-                assertThat(savedIds).hasSize(2).containsOnly(stored.getFirst().getId());
+                assertThat(savedIds)
+                        .containsExactlyInAnyOrder(
+                                Optional.of(stored.getFirst().getId()), Optional.empty());
                 assertThat(stored.getFirst().getShares()).hasSize(2);
             }
 
             // 두 요청이 같은 순간에 저장을 시작하도록 맞춘다.
-            private Long saveIfAbsentAfterBothReady(Settlement settlement, CountDownLatch ready) {
+            private Optional<Long> saveIfAbsentAfterBothReady(
+                    Settlement settlement, CountDownLatch ready) {
                 return transactionTemplate.execute(
                         _ -> {
                             ready.countDown();
                             await(ready);
-                            return settlementRepository.saveIfAbsent(settlement).getId();
+                            return settlementRepository
+                                    .saveIfAbsent(settlement)
+                                    .map(Settlement::getId);
                         });
             }
         }
@@ -592,9 +609,14 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         void shouldFindSettlementOfPayerWithShares() {
             // given
             Settlement saved =
-                    settlementRepository.saveIfAbsent(
-                            SettlementFixture.DINNER.create(
-                                    gatheringId, roundId, kimId, List.of(kimId, leeId, parkId)));
+                    settlementRepository
+                            .saveIfAbsent(
+                                    SettlementFixture.DINNER.create(
+                                            gatheringId,
+                                            roundId,
+                                            kimId,
+                                            List.of(kimId, leeId, parkId)))
+                            .orElseThrow();
 
             // when
             Optional<Settlement> result =
@@ -612,9 +634,14 @@ class SettlementRepositoryImplTest extends RepositoryTest {
         void shouldReturnEmptyWhenOtherPayer() {
             // given
             Settlement saved =
-                    settlementRepository.saveIfAbsent(
-                            SettlementFixture.DINNER.create(
-                                    gatheringId, roundId, kimId, List.of(kimId, leeId, parkId)));
+                    settlementRepository
+                            .saveIfAbsent(
+                                    SettlementFixture.DINNER.create(
+                                            gatheringId,
+                                            roundId,
+                                            kimId,
+                                            List.of(kimId, leeId, parkId)))
+                            .orElseThrow();
 
             // when
             Optional<Settlement> result =

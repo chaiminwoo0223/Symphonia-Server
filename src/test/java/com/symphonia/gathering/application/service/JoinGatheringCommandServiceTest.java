@@ -15,6 +15,7 @@ import com.symphonia.UnitTest;
 import com.symphonia.gathering.application.dto.command.AddParticipantCommand;
 import com.symphonia.gathering.application.dto.command.JoinGatheringAsHostCommand;
 import com.symphonia.gathering.application.dto.result.ParticipantResult;
+import com.symphonia.gathering.application.event.ParticipantJoinedEvent;
 import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.exception.ConsentRequiredException;
@@ -51,6 +52,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("JoinGatheringCommandService 단위 테스트")
 class JoinGatheringCommandServiceTest extends UnitTest {
@@ -78,6 +80,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
     @Mock private ParticipantGoogleSubjectRepository participantGoogleSubjectRepository;
     @Mock private GatheringRetentionRepository gatheringRetentionRepository;
     @Mock private GatheringTokenProvider gatheringTokenProvider;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @BeforeEach
     void setUp() {
@@ -357,6 +360,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                         .isInstanceOf(ParticipantAlreadyJoinedException.class);
                 then(gatheringTokenProvider).shouldHaveNoInteractions();
                 then(participantLinkTokenRepository).shouldHaveNoInteractions();
+                then(eventPublisher).shouldHaveNoInteractions();
             }
         }
 
@@ -546,6 +550,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 then(participantGoogleSubjectRepository)
                         .should()
                         .save(GATHERING_ID, PARTICIPANT_ID, GOOGLE_SUBJECT);
+                then(eventPublisher).should().publishEvent(ParticipantJoinedEvent.byQr());
                 assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
                 assertThat(result.name()).isEqualTo(ParticipantFixture.KIM.getName());
                 assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
@@ -594,6 +599,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             then(participantGoogleSubjectRepository)
                     .should(never())
                     .save(anyLong(), anyLong(), anyString());
+            then(eventPublisher).shouldHaveNoInteractions();
         }
     }
 
@@ -817,6 +823,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 assertThat(joined.getConsentVersion()).isEqualTo(GatheringPolicy.CONSENT_VERSION);
                 then(participantLinkTokenRepository).should().save(LINK_TOKEN, PARTICIPANT_ID);
                 then(participantGoogleSubjectRepository).shouldHaveNoInteractions();
+                then(eventPublisher).should().publishEvent(ParticipantJoinedEvent.byHost());
                 assertThat(result.id()).isEqualTo(PARTICIPANT_ID);
                 assertThat(result.maskedPhoneNumber()).isEqualTo(MASKED_PHONE_NUMBER);
                 assertThat(result.linkToken()).isEqualTo(LINK_TOKEN);
@@ -846,6 +853,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
             then(gatheringRepository).should(never()).save(any(Gathering.class));
             then(participantLinkTokenRepository).should(never()).save(anyString(), anyLong());
             then(participantGoogleSubjectRepository).shouldHaveNoInteractions();
+            then(eventPublisher).shouldHaveNoInteractions();
         }
     }
 
@@ -868,6 +876,7 @@ class JoinGatheringCommandServiceTest extends UnitTest {
                 participantGoogleSubjectRepository,
                 gatheringRetentionRepository,
                 gatheringTokenProvider,
+                eventPublisher,
                 clock);
     }
 

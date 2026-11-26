@@ -17,6 +17,7 @@ import com.symphonia.catalog.domain.exception.DrinkNotFoundException;
 import com.symphonia.pairing.application.dto.command.SubmitAnonymousPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.command.SubmitPairingFeedbackCommand;
 import com.symphonia.pairing.application.dto.result.PairingFeedbackResult;
+import com.symphonia.pairing.application.event.PairingFeedbackSubmittedEvent;
 import com.symphonia.pairing.domain.entity.PairingFeedback;
 import com.symphonia.pairing.domain.repository.PairingFeedbackRepository;
 import com.symphonia.pairing.domain.repository.PairingRatingSummaryRepository;
@@ -34,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("PairingCommandService 단위 테스트")
 class PairingCommandServiceTest extends UnitTest {
@@ -48,6 +50,7 @@ class PairingCommandServiceTest extends UnitTest {
     @Mock private VerifyCatalogReferencesUseCase verifyCatalogReferencesUseCase;
     @Mock private PairingFeedbackRepository pairingFeedbackRepository;
     @Mock private PairingRatingSummaryRepository pairingRatingSummaryRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @Nested
     @DisplayName("submit 메서드는")
@@ -70,6 +73,7 @@ class PairingCommandServiceTest extends UnitTest {
                         .isInstanceOf(DrinkNotFoundException.class);
                 then(pairingFeedbackRepository).shouldHaveNoInteractions();
                 then(pairingRatingSummaryRepository).shouldHaveNoInteractions();
+                then(eventPublisher).shouldHaveNoInteractions();
             }
         }
 
@@ -114,6 +118,9 @@ class PairingCommandServiceTest extends UnitTest {
                 assertThat(result.anjuId()).isEqualTo(ANJU_ID);
                 assertThat(result.rating()).isEqualTo(PairingRating.LIKE);
                 assertThat(result.created()).isTrue();
+                then(eventPublisher)
+                        .should()
+                        .publishEvent(PairingFeedbackSubmittedEvent.byMember());
             }
         }
 
@@ -147,6 +154,7 @@ class PairingCommandServiceTest extends UnitTest {
                         .accumulate(DRINK_ID, ANJU_ID, new PairingRatingChange(-1, 1));
                 assertThat(result.rating()).isEqualTo(PairingRating.DISLIKE);
                 assertThat(result.created()).isFalse();
+                then(eventPublisher).shouldHaveNoInteractions();
             }
 
             @Test
@@ -311,6 +319,7 @@ class PairingCommandServiceTest extends UnitTest {
 
                 // then
                 then(pairingRatingSummaryRepository).shouldHaveNoInteractions();
+                then(eventPublisher).shouldHaveNoInteractions();
                 assertThat(result.created()).isFalse();
             }
 
@@ -367,6 +376,7 @@ class PairingCommandServiceTest extends UnitTest {
                         .isInstanceOf(DrinkNotFoundException.class);
                 then(pairingFeedbackRepository).shouldHaveNoInteractions();
                 then(pairingRatingSummaryRepository).shouldHaveNoInteractions();
+                then(eventPublisher).shouldHaveNoInteractions();
             }
         }
 
@@ -413,6 +423,9 @@ class PairingCommandServiceTest extends UnitTest {
                 assertThat(result.memberId()).isNull();
                 assertThat(result.rating()).isEqualTo(PairingRating.DISLIKE);
                 assertThat(result.created()).isTrue();
+                then(eventPublisher)
+                        .should()
+                        .publishEvent(PairingFeedbackSubmittedEvent.byParticipant());
             }
         }
 

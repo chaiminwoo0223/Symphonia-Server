@@ -5,6 +5,7 @@ import com.symphonia.gathering.application.dto.command.CancelSettlementCommand;
 import com.symphonia.gathering.application.dto.command.RecordSettlementCommand;
 import com.symphonia.gathering.application.dto.command.UpdateSettlementCommand;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
+import com.symphonia.gathering.application.event.SettlementRecordedEvent;
 import com.symphonia.gathering.application.usecase.CancelSettlementUseCase;
 import com.symphonia.gathering.application.usecase.RecordSettlementUseCase;
 import com.symphonia.gathering.application.usecase.UpdateSettlementUseCase;
@@ -20,7 +21,9 @@ import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.SplitMethod;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 
 // 정산 건은 모임을 만든 회원이 JWT로 기록하고 수정하고 취소한다. 결제자는 기록할 때 모임장이 지정한다.
 // 결제자가 직접 기록하면 모임장이 없던 자리의 정산 건에 모임장이 인원으로 들어갈 수 있기 때문이다.
@@ -31,6 +34,7 @@ public class SettlementCommandService
     private final GatheringRepository gatheringRepository;
     private final GatheringRetentionRepository gatheringRetentionRepository;
     private final SettlementRepository settlementRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Override
@@ -40,7 +44,6 @@ public class SettlementCommandService
         GatheringPolicy.validateParticipantExists(
                 gathering.hasParticipant(command.payerParticipantId()));
 
-        // 같은 요청 id로 다시 온 요청은 내용이 달라도 처음 기록한 정산 건을 돌려주므로, 차수와 인원 검증보다 먼저 찾는다.
         return settlementRepository
                 .findByPayerParticipantIdAndClientRequestId(
                         command.payerParticipantId(), command.clientRequestId())
@@ -53,6 +56,7 @@ public class SettlementCommandService
         LocalDateTime now = LocalDateTime.now(clock);
         Gathering gathering = findManagedGathering(command.gatheringId(), command.memberId(), now);
         Settlement settlement = findSettlement(command.settlementId(), gathering.getId());
+
         SettlementPolicy.validateRecordable(gathering.getRecordingClosesAt(), now);
         SettlementPolicy.validateGatheringRound(gathering.hasRound(command.roundId()));
         SettlementPolicy.validateGatheringParticipants(
@@ -76,7 +80,6 @@ public class SettlementCommandService
         Gathering gathering = findManagedGathering(command.gatheringId(), command.memberId(), now);
         Settlement settlement = findSettlement(command.settlementId(), gathering.getId());
 
-        // 이미 취소한 정산 건이면 저장하지 않는다. 다시 보낸 요청이 버전을 올려 다른 요청과 충돌하지 않게 하기 위해서다.
         if (settlement.cancel(now)) {
             settlementRepository.save(settlement);
         }
@@ -90,6 +93,7 @@ public class SettlementCommandService
                 .findByGatheringId(gatheringId)
                 .filter(retention -> !retention.isExpired(now))
                 .orElseThrow(GatheringNotFoundException::new);
+
         Gathering gathering =
                 gatheringRepository
                         .findByIdForUpdate(gatheringId)
@@ -119,10 +123,21 @@ public class SettlementCommandService
                         splitMethod,
                         command.clientRequestId(),
                         now);
-        // 먼저 찾은 뒤에 같은 요청 id가 동시에 기록됐으면 먼저 기록한 정산 건이 돌아오므로, 차수도 그 정산 건의 차수를 쓴다.
-        Settlement savedSettlement = settlementRepository.saveIfAbsent(settlement);
+        Optional<Settlement> savedSettlement = settlementRepository.saveIfAbsent(settlement);
 
-        return toResult(savedSettlement, gathering);
+        savedSettlement.ifPresent(
+                saved -> eventPublisher.publishEvent(new SettlementRecordedEvent()));
+
+        return toResult(
+                savedSettlement.orElseGet(() -> findRecordedConcurrently(command)), gathering);
+    }
+
+    // 저장하지 못했다면 같은 요청 id의 정산 건이 이미 커밋된 것이므로 반드시 찾는다.
+    private Settlement findRecordedConcurrently(RecordSettlementCommand command) {
+        return settlementRepository
+                .findByPayerParticipantIdAndClientRequestId(
+                        command.payerParticipantId(), command.clientRequestId())
+                .orElseThrow();
     }
 
     // 처음 읽은 모임 뒤에 다른 요청이 차수를 더하고 그 차수에 기록했다면 정산 건의 차수가 처음 읽은 모임에 없다. 그때는 모임을 다시 읽는다.
