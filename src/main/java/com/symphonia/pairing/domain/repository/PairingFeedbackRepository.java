@@ -10,6 +10,7 @@ public interface PairingFeedbackRepository {
     PairingFeedback save(PairingFeedback pairingFeedback);
 
     // 회원이 같은 조합에 낸 피드백이 없을 때만 저장하고, 저장했으면 true를 반환한다.
+    // 동시에 같은 요청이 오면 늦은 요청은 먼저 저장한 요청이 커밋한 뒤 false를 받는다.
     boolean saveIfAbsent(PairingFeedback pairingFeedback);
 
     Optional<PairingFeedback> findByMemberIdAndCombinationForUpdate(
