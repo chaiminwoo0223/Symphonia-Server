@@ -39,7 +39,7 @@ public class ParticipantPairingFeedbackService implements SubmitParticipantPairi
                 gatheringPairingRepository
                         .findByParticipantId(participantId)
                         .orElseThrow(GatheringPairingNotFoundException::new);
-        // 참여자가 본 조합과 지금 모임의 페어링이 다르면 제출 표시를 남기기 전에 거절해, 참여자가 다시 불러온 조합에 낼 수 있게 한다.
+
         GatheringPolicy.validatePairingNotChanged(
                 gatheringPairing.isCombinationOf(command.drinkId(), command.anjuId()));
         SettlementPolicy.validatePairingFeedbackSubmittable(
@@ -47,7 +47,7 @@ public class ParticipantPairingFeedbackService implements SubmitParticipantPairi
                         participantId,
                         settlementRepository.findAllByPayerParticipantId(participantId),
                         settlementRepository.findAllByShareParticipantId(participantId)));
-        // 다시 내는 요청과 동시에 내는 요청 모두 표시를 넣지 못하므로, 표시를 넣은 결과 하나로 중복 제출을 막는다.
+
         boolean marked =
                 participantPairingFeedbackRepository.markSubmittedIfAbsent(
                         participantId, LocalDateTime.now(clock));

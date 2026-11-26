@@ -26,10 +26,8 @@ public class GoogleSocialClient implements SocialClient {
         try {
             return googleIdTokenDecoder.decode(idToken);
         } catch (BadJwtException e) {
-            // 서명, 발급자, aud, 만료 검증에 실패한 토큰은 클라이언트 잘못이다.
             throw new InvalidSocialTokenException();
         } catch (JwtException e) {
-            // 공개키 목록(JWKS)을 가져오지 못하는 등 토큰이 아니라 검증 과정의 실패다.
             throw new SocialTokenVerificationUnavailableException();
         }
     }

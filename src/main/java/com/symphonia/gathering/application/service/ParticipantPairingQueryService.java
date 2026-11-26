@@ -41,7 +41,6 @@ public class ParticipantPairingQueryService implements GetParticipantPairingUseC
 
         boolean feedbackSubmitted =
                 participantPairingFeedbackRepository.existsByParticipantId(participantId);
-        // 이미 낸 참여자는 낼 수 있는지 볼 필요가 없어 정산 건을 읽지 않는다.
         boolean feedbackSubmittable =
                 !feedbackSubmitted
                         && SettlementPolicy.isPairingFeedbackSubmittable(

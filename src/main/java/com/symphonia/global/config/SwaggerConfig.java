@@ -26,9 +26,9 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
-                .addSecurityItem(securityRequirement()) // 전역 보안 요구사항 적용 (모든 API에 JWT 인증 적용)
-                .components(securityComponents()) // JWT 보안 스킴 컴포넌트 등록
-                .info(apiInfo()); // API 문서 기본 정보 설정
+                .addSecurityItem(securityRequirement())
+                .components(securityComponents())
+                .info(apiInfo());
     }
 
     private SecurityRequirement securityRequirement() {

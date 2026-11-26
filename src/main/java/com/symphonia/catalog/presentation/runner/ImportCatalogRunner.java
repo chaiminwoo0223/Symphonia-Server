@@ -51,9 +51,6 @@ public class ImportCatalogRunner implements ApplicationRunner {
         reportXWines(importXWineUseCase.importXWines());
         reportAnjus(importAnjuUseCase.importCuratedAnjus());
 
-        // 적재가 모두 끝난 뒤에 새 카탈로그로 덮어쓴다(Write-Through).
-        // 적재가 중간에 실패하면 여기까지 오지 않아 캐시는 적재 전 카탈로그로 남고, 다시 적재하거나 만료되면 갱신된다.
-        // 캐시에 쓰지 못하면 구현체가 경고 로그를 남기므로 여기서는 성공을 따로 알리지 않는다.
         refreshCatalogCacheUseCase.refresh();
     }
 

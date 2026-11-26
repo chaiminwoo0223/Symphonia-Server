@@ -33,10 +33,10 @@ public class NaverPlaceSearchClient implements PlaceSearchClient {
     private final RestClient restClient;
     private final NaverLocalSearchProperties properties;
 
+    // 본문 없는 200이나 204는 예외 없이 null로 읽히므로 검색 불가로 바꾼다.
     @Override
     public List<Place> search(PlaceSearchQuery query) {
         try {
-            // 본문 없는 200이나 204는 예외 없이 null로 읽히므로 검색 불가로 바꾼다.
             return Optional.ofNullable(
                             restClient
                                     .get()

@@ -37,8 +37,7 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                 gathering.getId() == null
                         ? createDataKey(gatheringId)
                         : gatheringDataKeyLoader.load(gatheringId);
-        // 참여자는 참여할 때 더해지기만 하므로 새 참여자만 INSERT한다.
-        // 기존 참여자까지 다시 저장하면 동시에 들어온 요청이 메모리에 있던 옛 값으로 덮어쓸 수 있다.
+
         List<ParticipantJpaEntity> participantEntities =
                 gathering.getParticipants().stream()
                         .filter(participant -> participant.getId() == null)
@@ -48,7 +47,6 @@ public class GatheringRepositoryImpl implements GatheringRepository {
                                                 participant, gatheringId, dataKey))
                         .toList();
 
-        // 차수도 새로 더해진 것만 넣는다. 같은 번호를 동시에 추가하면 먼저 넣은 쪽의 행만 남고, 읽을 때 그 행을 받는다.
         gathering.getRounds().stream()
                 .filter(round -> round.getId() == null)
                 .forEach(
