@@ -211,6 +211,37 @@ class ImportAnjuServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("재료 이름이 제외 단어이면 그 안의 키워드를 알레르기로 보지 않는다")
+            void shouldNotTakeKeywordInsideExcludedWordAsAllergy() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.GARLIC_BAGUETTE;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getAllergyTypes()).containsExactly(AllergyType.WHEAT);
+            }
+
+            @Test
+            @DisplayName("원재료명에 제외 단어와 함께 있는 재료의 알레르기는 넣는다")
+            void shouldTakeKeywordOutsideExcludedWordAsAllergy() {
+                // given
+                CuratedAnjuFixture fixture = CuratedAnjuFixture.CRAB_BAGUETTE;
+                givenCuratedAnjus(List.of(fixture.create()), List.of(fixture.createNutrition()));
+                givenNotImported();
+
+                // when
+                importAnjuService.importCuratedAnjus();
+
+                // then
+                assertThat(captureSavedAnju().getAllergyTypes())
+                        .containsExactlyInAnyOrder(AllergyType.WHEAT, AllergyType.CRAB);
+            }
+
+            @Test
             @DisplayName("가공식품이면 원재료명에서 찾은 알레르기도 함께 넣는다")
             void shouldIncludeAllergiesOfRawMaterials() {
                 // given

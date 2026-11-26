@@ -72,6 +72,34 @@ public enum CuratedAnjuFixture {
             20.0,
             4.0,
             "쇠고기, 간장, 설탕, 땅콩분태"),
+    // 재료 이름 "바게트"에 게 규칙의 키워드가 들어 있다.
+    GARLIC_BAGUETTE(
+            AnjuSource.K_FIND,
+            "fixture-anju-006",
+            "fixture-D106",
+            "마늘바게트",
+            List.of("바게트"),
+            List.of("마늘"),
+            AnjuBase.VEGETABLE,
+            ServingStyle.SNACK,
+            false,
+            3.0,
+            4.0,
+            ""),
+    // 원재료명에 제외 단어(바게트)와 진짜 게가 함께 있다.
+    CRAB_BAGUETTE(
+            AnjuSource.K_FIND,
+            "fixture-anju-007",
+            "fixture-P202",
+            "게살바게트",
+            List.of("바게트"),
+            List.of(),
+            AnjuBase.SEAFOOD,
+            ServingStyle.SNACK,
+            false,
+            3.0,
+            4.0,
+            "바게트, 꽃게살"),
     // 집어 먹는 안주지만 튀긴 요리라 무게감 형태 보정을 받지 않는다.
     CHICKEN_NUGGET(
             AnjuSource.K_FIND,
