@@ -26,14 +26,6 @@ output "db_url" {
   value = "jdbc:postgresql://${google_sql_database_instance.main.public_ip_address}:5432/${google_sql_database.app.name}?sslmode=verify-ca&sslrootcert=/app/certs/server-ca.pem"
 }
 
-output "db_host" {
-  value = google_sql_database_instance.main.public_ip_address
-}
-
-output "db_name" {
-  value = google_sql_database.app.name
-}
-
 output "db_username" {
   value = google_sql_user.app.name
 }

@@ -85,21 +85,10 @@ import_catalog() {
     rm -rf "$data"
 }
 
-# 표준 출력은 덤프 데이터만 쓴다.
-dump() {
-    local host="$1" database="$2" username="$3" password
-    password="$(sed -n "s/^DB_PASSWORD='\(.*\)'$/\1/p" "$ENV_FILE")"
-    PGPASSWORD="$password" docker run --rm -e PGPASSWORD -v "${APP_DIR}/certs:/certs:ro" postgres:17 \
-        pg_dump --no-owner --no-privileges \
-        "host=${host} dbname=${database} user=${username} sslmode=verify-ca sslrootcert=/certs/server-ca.pem" |
-        gzip
-}
-
 command="${1:-}"
 shift || true
 case "$command" in
     deploy) deploy "$@" ;;
     import) import_catalog ;;
-    dump) dump "$@" ;;
-    *) die "사용법: remote.sh deploy|import|dump" ;;
+    *) die "사용법: remote.sh deploy|import" ;;
 esac

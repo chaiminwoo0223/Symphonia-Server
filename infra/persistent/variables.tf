@@ -36,7 +36,7 @@ variable "db_disk_size_gb" {
 }
 
 variable "db_backup_enabled" {
-  description = "Cloud SQL 자동 백업. dev는 비용과 잔여물을 줄이려고 끈다."
+  description = "Cloud SQL 자동 백업. dev 데이터는 보존하지 않고, 백업에는 파기한 개인정보가 남아서 끈다."
   type        = bool
   default     = false
 }

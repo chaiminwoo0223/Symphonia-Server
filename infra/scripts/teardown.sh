@@ -8,22 +8,10 @@ echo "프로젝트 ${PROJECT_ID}의 dev 환경을 모두 지웁니다. DB 데이
 read -r -p "계속하려면 프로젝트 ID를 입력하세요: " answer
 [ "$answer" = "$PROJECT_ID" ] || die "입력이 달라 중단합니다"
 
-read -r -p "지우기 전에 DB를 덤프할까요? (y/n): " answer
-case "$answer" in
-    y | Y)
-        "${INFRA}/scripts/dump-db.sh"
-        echo "덤프를 복원해 참여자 정보를 읽으려면 GATHERING_MASTER_KEY도 보관해야 합니다."
-        read -r -p "보관을 마쳤으면 Enter를 누르세요: " _
-        ;;
-    n | N) ;;
-    *) die "y 또는 n으로 답하세요" ;;
-esac
-
 "${INFRA}/scripts/down.sh"
 
 tf_init persistent
 if has_resources persistent; then
-    resume_if_stopped
     export_db_password
     export TF_VAR_db_deletion_protection=false
     # 삭제 보호는 상태에 먼저 반영해야 destroy가 인스턴스를 지울 수 있다.

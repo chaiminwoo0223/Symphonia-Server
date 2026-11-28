@@ -6,7 +6,7 @@
 
 | 모듈 | 리소스 | 수명 |
 |---|---|---|
-| `persistent` | API, VPC, IAP SSH 방화벽, 고정 IP, Cloud SQL, Artifact Registry, Secret Manager | 완전 철거 때만 삭제 |
+| `persistent` | API, VPC, IAP SSH 방화벽, 고정 IP, Cloud SQL, Artifact Registry, Secret Manager | `teardown.sh`로 삭제 |
 | `app` | 서비스 계정, 80·443 방화벽, 앱 VM(e2-small, swap 4GB) | `down.sh`로 삭제 |
 | `loadgen` | k6 VM | 테스트할 때만 생성 |
 
@@ -29,22 +29,25 @@
 ./infra/scripts/import-catalog.sh
 ```
 
-- `up.sh`는 값이 없는 비밀값만 등록한다. `GATHERING_MASTER_KEY`는 안내에 따라 비밀번호 관리자에도 보관한다.
+- `up.sh`는 값이 없는 비밀값만 등록한다. 외부에서 발급받은 값 4개는 입력을 요청한다.
 - 반복해서 다시 만들며 검증할 때는 `ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory`를 붙여 `deploy.sh`를 실행한다. 같은 도메인의 인증서는 발급 횟수에 제한이 있다.
 
 ## 내리기
 
-| 명령 | 하는 일 | 다시 올리기 |
-|---|---|---|
-| `pause.sh` | VM과 DB 중지. 보관 비용은 계속 발생 | `resume.sh` |
-| `down.sh` | `loadgen`과 `app` 삭제. DB, IP, 이미지, 비밀값 유지 | `up.sh`, `deploy.sh` |
-| `teardown.sh` | 전부 삭제하고 상태 버킷까지 제거 | 처음 배포부터 |
+dev 데이터는 보존하지 않는다. 쓰지 않을 때는 전부 삭제한다.
 
-`teardown.sh`는 DB 덤프 여부를 묻고, 마지막에 `check-leftovers.sh`로 남은 리소스를 확인한다. GCP 감사 로그, 결제 내역, 인증서 투명성 로그는 바로 지울 수 없다.
+```bash
+./infra/scripts/teardown.sh        # 프로젝트 ID를 입력해 확인한다
+```
+
+`teardown.sh`는 `loadgen`, `app`, `persistent`를 차례로 삭제하고 상태 버킷을 지운 뒤, `check-leftovers.sh`로 남은 리소스를 확인한다. 실패하면 원인을 고친 뒤 다시 실행한다. 삭제 후에는 DuckDNS 레코드를 지우거나 바꾼다. GCP 감사 로그, 결제 내역, 인증서 투명성 로그는 바로 지울 수 없다.
+
+`down.sh`는 `teardown.sh`가 VM을 지울 때 쓴다. 단독으로 실행하면 DB와 고정 IP의 요금이 계속 발생한다.
+
+다시 올릴 때는 "처음 배포" 절차를 그대로 따른다. IP가 새로 발급되고 DB 데이터와 내부 비밀값이 새로 만들어진다.
 
 ## 그 밖의 작업
 
-- DB 덤프: `dump-db.sh`는 `$DUMP_DIR`(기본값 홈 디렉터리)에 저장한다.
 - 부하 생성기: `loadgen.sh up`과 `loadgen.sh down`을 쓴다. dev는 웹이 함께 쓰므로 사용자가 없는 시간에 테스트한다.
 - VM 접속: `gcloud compute ssh mariajou-dev-app --tunnel-through-iap --zone asia-northeast3-a --project "$PROJECT_ID"`
 - 사양 변경: `app`의 `machine_type`, `persistent`의 `db_tier`를 `TF_VAR_machine_type`, `TF_VAR_db_tier`로 바꾼다. DB 사양을 바꾸면 `DB_POOL_SIZE`를 함께 확인한다.

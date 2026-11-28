@@ -24,9 +24,4 @@ while read -r secret <&3; do
     case "$value" in *"'"*) die "작은따옴표가 든 값은 쓸 수 없습니다: ${secret}" ;; esac
     add_version "$secret" "$value"
     log "등록했습니다: ${secret}"
-
-    if [ "$secret" = GATHERING_MASTER_KEY ]; then
-        echo "  이 값을 잃으면 참여자 정보를 복호화할 수 없습니다. 아래 명령으로 확인해 비밀번호 관리자에 보관하세요."
-        echo "  gcloud --project ${PROJECT_ID} secrets versions access latest --secret=GATHERING_MASTER_KEY"
-    fi
 done 3< "${INFRA}/secrets.txt"

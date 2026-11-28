@@ -14,6 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 INFRA="${ROOT}/infra"
 
 export TF_VAR_project_id="$PROJECT_ID" TF_VAR_region="$REGION" TF_VAR_zone="$ZONE"
+# 출력을 버리는 조회에서 gcloud가 확인 질문을 하면 보이지 않은 채 입력을 기다리므로, 질문하지 않게 한다.
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf '✗ %s\n' "$*" >&2; exit 1; }
@@ -46,8 +48,6 @@ has_resources() {
 }
 
 db_instance() { gc sql instances list --filter="name~^${NAME}-db-" --format='value(name)'; }
-
-vm_exists() { [ -n "$(gc compute instances list --filter="name=${APP_VM}" --format='value(name)')" ]; }
 
 secret_exists() { gc secrets describe "$1" > /dev/null 2>&1; }
 
@@ -90,17 +90,4 @@ upload() {
     vm_ssh 'rm -rf /tmp/mariajou-upload && mkdir -m 700 /tmp/mariajou-upload'
     gc compute scp --zone "$ZONE" --tunnel-through-iap --ssh-key-expire-after="$SSH_KEY_TTL" --recurse \
         "$@" "${APP_VM}:/tmp/mariajou-upload/"
-}
-
-resume_if_stopped() {
-    local db
-    db="$(db_instance)"
-    if [ -n "$db" ] && [ "$(gc sql instances describe "$db" --format='value(settings.activationPolicy)')" = "NEVER" ]; then
-        log "중지된 DB를 다시 시작합니다"
-        gc sql instances patch "$db" --activation-policy=ALWAYS --quiet
-    fi
-    if vm_exists && [ "$(gc compute instances describe "$APP_VM" --zone "$ZONE" --format='value(status)')" = "TERMINATED" ]; then
-        log "중지된 VM을 다시 시작합니다"
-        gc compute instances start "$APP_VM" --zone "$ZONE"
-    fi
 }

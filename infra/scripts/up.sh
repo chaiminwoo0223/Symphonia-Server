@@ -5,10 +5,6 @@ source "$(dirname "$0")/common.sh"
 "${INFRA}/scripts/bootstrap.sh"
 
 tf_init persistent
-# 처음 실행할 때는 API가 꺼져 있어 조회가 실패하므로, 만든 리소스가 있을 때만 중지 여부를 확인한다.
-if has_resources persistent; then
-    resume_if_stopped
-fi
 
 # DB 사용자를 만들기 전에 비밀번호가 등록돼 있어야 해서, 처음 한 번은 secret부터 만든다.
 if ! secret_has_version DB_PASSWORD; then

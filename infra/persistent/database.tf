@@ -42,11 +42,6 @@ resource "google_sql_database_instance" "main" {
     }
   }
 
-  lifecycle {
-    # 일시 중지와 재개는 pause.sh와 resume.sh가 gcloud로 한다.
-    ignore_changes = [settings[0].activation_policy]
-  }
-
   depends_on = [google_project_service.required]
 }
 
