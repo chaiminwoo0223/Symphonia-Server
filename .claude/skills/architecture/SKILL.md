@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, 크로스 도메인 부수효과와 도메인 이벤트, 전환 지표(events.md), DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 분담금 상태와 개인 링크 화면(gathering-share.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), gathering 모임 관리(gathering-management.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, 크로스 도메인 부수효과와 도메인 이벤트, 전환 지표(events.md), DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 분담금 상태와 개인 링크 화면(gathering-share.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), gathering 모임 관리(gathering-management.md), place 맛집 조회 규칙(place.md), dev 인프라와 Terraform(infra.md), 메시지 큐 도입 조건.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -111,6 +111,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`gathering-recording-period.md`](gathering-recording-period.md) | 기록 기간의 시작 시각과 연장을 바꿀 때 |
 | [`gathering-management.md`](gathering-management.md) | 모임 열기의 중복 방지와 모임장의 모임 목록, 이름 수정, 삭제를 바꿀 때 |
 | [`place.md`](place.md) | 맛집 조회 API, 외부 검색, 안주의 맛집 검색어를 바꿀 때 |
+| [`infra.md`](infra.md) | `infra/`, `deploy/`, `Dockerfile`을 바꿀 때 |
 
 ## 메시지 큐
 

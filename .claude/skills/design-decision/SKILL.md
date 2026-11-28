@@ -30,6 +30,7 @@ description: Load when a design discussion among multiple viable alternatives co
 | 기록 기간 연장 | `architecture/gathering-recording-period.md` | `gathering.md` |
 | 모임 열기 중복 방지, 모임장의 모임 목록과 이름 수정, 삭제 | `architecture/gathering-management.md` | `gathering.md` |
 | 예외, 에러 코드 | `error-handling` | `error-handling.md` |
+| dev 인프라, Terraform, 배포 구성 | `architecture/infra.md` | `infra.md` |
 | 테스트 전략 | `testing` | `testing.md` |
 | 하네스(스킬, 훅, 스크립트, 에이전트) | `harness` | `harness.md` |
 
