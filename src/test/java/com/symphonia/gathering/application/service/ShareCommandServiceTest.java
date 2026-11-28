@@ -411,6 +411,41 @@ class ShareCommandServiceTest extends UnitTest {
             }
 
             @Test
+            @DisplayName("보냄인 분담금이 요청에 없어도 요청에 담긴 미입금 정산 건을 보냄으로 바꾼다")
+            void shouldMarkUnpaidShareWhenSentShareNotSeen() {
+                // given
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(
+                        SettlementFixture.DINNER.createWithFirstShareStatus(
+                                SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS,
+                                ShareStatus.SENT),
+                        SettlementFixture.DINNER.createWithId(
+                                SECOND_SETTLEMENT_ID,
+                                GATHERING_ID,
+                                ROUND_ID,
+                                PAYER_ID,
+                                PARTICIPANT_IDS));
+                givenGathering();
+                givenSaveReturnsSettlement();
+                MarkSharesSentCommand command = command(Map.of(SECOND_SETTLEMENT_ID, 3_333L));
+
+                // when
+                PayerSharesResult result = shareCommandService.markSent(command);
+
+                // then
+                assertThat(result.shares())
+                        .extracting(
+                                ShareBreakdownResult::settlementId, ShareBreakdownResult::status)
+                        .containsExactly(
+                                tuple(SETTLEMENT_ID, ShareStatus.SENT),
+                                tuple(SECOND_SETTLEMENT_ID, ShareStatus.SENT));
+            }
+
+            @Test
             @DisplayName("본 분담금이 모두 보냄이나 확인 완료면 아무것도 저장하지 않고 예외 없이 반환한다")
             void shouldReturnWithoutSavingWhenUnpaidSharesNotExist() {
                 // given

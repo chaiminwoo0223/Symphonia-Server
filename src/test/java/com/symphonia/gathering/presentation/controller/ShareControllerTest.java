@@ -18,7 +18,7 @@ import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest;
-import com.symphonia.gathering.presentation.dto.request.SeenShareRequest;
+import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest.SeenShare;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
@@ -189,7 +189,7 @@ class ShareControllerTest extends IntegrationTest {
             @DisplayName("payerParticipantId 필드 검증 실패와 함께 400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // when & then
-                performMarkSent(request(null, new SeenShareRequest(1L, 3_333L)))
+                performMarkSent(request(null, new SeenShare(1L, 3_333L)))
                         .andExpect(status().isBadRequest())
                         .andExpect(
                                 jsonPath("$.data.code")
@@ -224,7 +224,7 @@ class ShareControllerTest extends IntegrationTest {
             @DisplayName("중복 검증 실패와 함께 400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // given
-                SeenShareRequest seenShare = new SeenShareRequest(1L, 3_333L);
+                SeenShare seenShare = new SeenShare(1L, 3_333L);
 
                 // when & then
                 performMarkSent(request(payer.getId(), seenShare, seenShare))
@@ -247,10 +247,7 @@ class ShareControllerTest extends IntegrationTest {
                         settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
 
                 // when & then
-                performMarkSent(
-                                request(
-                                        payer.getId(),
-                                        new SeenShareRequest(dinner.getId(), 3_000L)))
+                performMarkSent(request(payer.getId(), new SeenShare(dinner.getId(), 3_000L)))
                         .andExpect(status().isConflict())
                         .andExpect(
                                 jsonPath("$.data.code")
@@ -258,12 +255,12 @@ class ShareControllerTest extends IntegrationTest {
             }
         }
 
-        private MarkSharesSentRequest request(Long payerParticipantId, SeenShareRequest... shares) {
+        private MarkSharesSentRequest request(Long payerParticipantId, SeenShare... shares) {
             return new MarkSharesSentRequest(payerParticipantId, List.of(shares));
         }
 
-        private SeenShareRequest seenShare(Settlement settlement) {
-            return new SeenShareRequest(
+        private SeenShare seenShare(Settlement settlement) {
+            return new SeenShare(
                     settlement.getId(), settlement.getShareOf(lee.getId()).getAmount());
         }
 

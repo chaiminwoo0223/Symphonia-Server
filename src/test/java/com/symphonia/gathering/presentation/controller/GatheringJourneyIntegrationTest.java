@@ -22,9 +22,9 @@ import com.symphonia.gathering.presentation.dto.request.FixedAmountRequest;
 import com.symphonia.gathering.presentation.dto.request.GatheringPairingRequest;
 import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest;
+import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest.SeenShare;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
-import com.symphonia.gathering.presentation.dto.request.SeenShareRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
 import com.symphonia.gathering.presentation.scheduler.GatheringPurgeScheduler;
 import com.symphonia.member.domain.entity.Member;
@@ -141,9 +141,8 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                                             .header(GatheringHeaders.LINK_TOKEN, kimLinkToken),
                                     200)
                             .at("/payers/0/shares/0");
-            SeenShareRequest seenShare =
-                    new SeenShareRequest(
-                            seen.at("/settlementId").asLong(), seen.at("/amount").asLong());
+            SeenShare seenShare =
+                    new SeenShare(seen.at("/settlementId").asLong(), seen.at("/amount").asLong());
             JsonNode shares =
                     json(
                             post("/api/v1/shares/sent")
