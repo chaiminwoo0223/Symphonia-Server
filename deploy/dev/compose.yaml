@@ -1,0 +1,110 @@
+# dev VM(e2-small, 2GB)에서 실행하는 구성이다. 루트의 compose.yaml은 로컬 실행에 자동으로 쓰이므로 경로를 분리한다.
+# PostgreSQL은 Cloud SQL을 쓰므로 여기에 두지 않는다.
+name: mariajou-dev
+
+x-app-environment: &app-environment
+  SPRING_PROFILES_ACTIVE: dev
+  JAVA_TOOL_OPTIONS: -Xms128m -Xmx384m -XX:+ExitOnOutOfMemoryError
+  # glibc가 스레드마다 늘리는 메모리 영역을 제한한다. 로컬 부하 측정에서 제한하지 않으면 앱이 상한 768MiB에 닿아 swap했고, 제한하면 최대 680MiB였다.
+  MALLOC_ARENA_MAX: 2
+  DB_URL: ${DB_URL:?}
+  DB_USERNAME: ${DB_USERNAME:?}
+  DB_PASSWORD: ${DB_PASSWORD:?}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+  JWT_SECRET: ${JWT_SECRET:?}
+  KAKAO_APP_ID: ${KAKAO_APP_ID:?}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?}
+  NAVER_LOCAL_SEARCH_CLIENT_ID: ${NAVER_LOCAL_SEARCH_CLIENT_ID:?}
+  NAVER_LOCAL_SEARCH_CLIENT_SECRET: ${NAVER_LOCAL_SEARCH_CLIENT_SECRET:?}
+  GATHERING_MASTER_KEY: ${GATHERING_MASTER_KEY:?}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://mariajou.vercel.app}
+  # 앱 포트에는 같은 네트워크의 Caddy만 접근한다. Caddy가 보낸 X-Forwarded-For만 신뢰한다.
+  TRUSTED_PROXIES: 172.30.0.0/24
+
+services:
+  app:
+    image: ${APP_IMAGE:?}
+    environment: *app-environment
+    ports:
+      # management 포트는 VM 안에서만 접근한다. 앱 포트는 게시하지 않고 Caddy를 거친다.
+      - '127.0.0.1:8081:8081'
+    mem_limit: 768m
+    restart: unless-stopped
+    # 앱이 진행 중인 요청을 최대 30초 기다리므로 Docker의 기본 종료 대기 10초보다 길게 둔다.
+    stop_grace_period: 40s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:8.8
+    # 이미지의 entrypoint를 거쳐야 redis 사용자로 실행한다. 리프레시 토큰이 밀려나지 않게 noeviction으로 두고, 재시작에도 남게 AOF를 켠다.
+    command:
+      - sh
+      - -c
+      - >-
+        exec docker-entrypoint.sh redis-server
+        --requirepass "$$REDIS_PASSWORD"
+        --maxmemory 128mb
+        --maxmemory-policy noeviction
+        --appendonly yes
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+    volumes:
+      - redis-data:/data
+    mem_limit: 256m
+    # mem_limit과 같게 두면 이 컨테이너는 swap을 쓰지 않는다. swap된 Redis는 명령 타임아웃(300ms)을 넘길 수 있다.
+    memswap_limit: 256m
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  caddy:
+    image: caddy:2
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-mariajou.duckdns.org}
+      # VM을 반복해서 다시 만들며 검증할 때는 Let's Encrypt 스테이징 주소를 넣어 중복 발급 한도를 피한다.
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 128m
+    restart: unless-stopped
+
+  # 카탈로그 적재는 배포와 분리해 수동으로 실행한다: docker compose run --rm import-catalog
+  import-catalog:
+    profiles: [import]
+    image: ${APP_IMAGE:?}
+    command:
+      - --import.catalog.enabled=true
+      - --spring.main.web-application-type=none
+    environment:
+      <<: *app-environment
+      # db-f1-micro의 연결 수 25개를 앱 컨테이너와 나눠 쓴다.
+      DB_POOL_SIZE: 3
+    volumes:
+      - ${IMPORT_DATA_DIR:-./import-data}:/app/scripts/import/data:ro
+    mem_limit: 768m
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  redis-data:
+  caddy-data:
+  caddy-config:

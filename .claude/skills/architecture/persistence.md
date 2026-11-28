@@ -97,6 +97,7 @@
 - dev와 prod에 Redis를 만들 때 `maxmemory-policy`를 확인한다. 리프레시 토큰과 카탈로그 캐시가 같은 Redis를 쓰므로, 메모리가 차도 리프레시 토큰이 밀려나지 않는 `noeviction`으로 두고 `maxmemory`는 카탈로그 값 크기(약 250KB)보다 충분히 크게 정한다.
 - dev와 prod는 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`로 주입한다. 6개 모두 필수이고, 비밀번호가 없는 Redis라도 `REDIS_PASSWORD`는 빈 값으로 넣는다.
 - dev와 prod는 `spring.docker.compose.enabled: false`로 compose 연결을 끈다.
+- dev의 Hikari 연결 풀 크기는 `DB_POOL_SIZE`(기본값 8)로 정한다. 앱 컨테이너와 카탈로그 적재의 연결 수 합이 DB의 최대 연결 수를 넘지 않게 한다.
 - SQL 로그(`show-sql`, `format_sql`)는 local에서만 켠다.
 - prod는 `springdoc.api-docs.enabled`와 `springdoc.swagger-ui.enabled`를 `false`로 두고, 명세 경로(`/v3/api-docs/**`, `/swagger-ui/**`)를 여는 `SwaggerSecurityConfig`는 `@ConditionalOnProperty(springdoc.api-docs.enabled)`라 prod에서는 빠지고, `SecurityConfig`는 명세 경로를 모른다. `SwaggerConfig`는 `@Profile("!prod")`다.
 - `server.shutdown: graceful`과 `spring.lifecycle.timeout-per-shutdown-phase: 30s`로, 종료 신호를 받으면 새 요청을 거절하고 진행 중인 요청이 끝나기를 최대 30초 기다린다. 30초 안에 끝나지 않은 요청은 기다리지 않고 종료가 계속 진행되어 끊길 수 있다.

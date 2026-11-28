@@ -1,0 +1,7 @@
+{
+	acme_ca {$ACME_CA}
+}
+
+{$APP_DOMAIN} {
+	reverse_proxy app:8080
+}

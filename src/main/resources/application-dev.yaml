@@ -3,6 +3,9 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    hikari:
+      # dev의 Cloud SQL db-f1-micro는 연결 수가 25개다. 블루그린 배포 중의 앱 2개와 카탈로그 적재가 나눠 쓴다.
+      maximum-pool-size: ${DB_POOL_SIZE:8}
   data:
     redis:
       host: ${REDIS_HOST}
