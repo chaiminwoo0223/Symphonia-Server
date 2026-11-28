@@ -1,7 +1,7 @@
 # Symphonia
 
 - 술과 안주를 자리의 분위기에 맞게 조합해 추천하는 페어링 서비스이고, 술자리 정산 기능을 함께 제공한다.
-- 웹 클라이언트를 대상으로 하는 Spring Boot API 서버로 제공된다.
+- 회원용 Android 앱과 비회원용 웹을 대상으로 하는 Spring Boot API 서버로 제공된다.
 - 베이스 패키지는 `com.symphonia`이다.
 
 ## Claude 협업 규칙 (필독)
