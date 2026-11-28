@@ -53,6 +53,7 @@
 ## 카탈로그 적재
 
 - 적재는 Spring Boot 적재 러너로 한다. `./gradlew importCatalog`가 `import.catalog.enabled=true`를 넘기면 `catalog.presentation.runner`의 `ImportCatalogRunner`가 BJCP 스타일, 국내 유통 맥주, X-Wines 와인, 안주 적재 UseCase를 차례로 호출한다. 일반 기동에서는 `@ConditionalOnProperty`로 러너 빈이 만들어지지 않는다. 적재 전용 프로필과 Spring Batch는 쓰지 않는다.
+- 스케줄러는 웹 애플리케이션에서만 켠다(`SchedulingConfig`의 `@ConditionalOnWebApplication`). 카탈로그 적재는 `web-application-type=none`으로 실행한다.
 - 스타일을 먼저 적재한다. UseCase마다 트랜잭션이 따로라 스타일 적재가 먼저 커밋된다.
 - 맛은 규칙표로만 계산한다. 사람이 제품마다 맛 값을 적지 않는다. 규칙은 도메인의 `FlavorRule`, `WineFlavorRule`, `AnjuRule`에, 값은 `src/main/resources/import/rules/`의 CSV 규칙표에 둔다.
 - 파일 읽기는 `catalog.domain.reader` 인터페이스를 `catalog.infrastructure.reader`의 `*Reader` 구현체가 구현한다.
