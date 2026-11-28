@@ -34,7 +34,7 @@ Symphonia-Server/
 │   └── global/        # Security, JPA, Swagger 등 기술 설정
 ├── src/main/resources/
 │   ├── db/migration/  # Flyway 마이그레이션
-│   └── import/        # 카탈로그 적재 규칙표
+│   └── import/        # 카탈로그 적재 규칙표, 매핑표, 영양 데이터
 ├── docs/decisions/    # 설계 결정과 근거
 ├── k6/                # 부하테스트 스크립트
 └── scripts/import/    # 카탈로그 원본 데이터 준비
@@ -75,7 +75,7 @@ set -a; source .env; set +a
 
 ### 3. 카탈로그 적재 (선택)
 
-기본 시드 외의 술과 안주 데이터를 적재합니다. 2번과 같이 환경 변수를 불러온 셸에서 실행합니다.
+기본 시드 외의 술과 안주 데이터를 적재합니다. `curl`과 `jq`가 필요합니다. 2번과 같이 환경 변수를 불러온 셸에서 실행합니다.
 
 ```bash
 ./scripts/import/fetch-bjcp.sh
