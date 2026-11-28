@@ -50,6 +50,7 @@ public enum SettlementPolicy {
                 .orElseThrow(UnpaidShareConflictException::new);
     }
 
+    // 차수의 참여자는 그 차수에 속한 취소하지 않은 정산 건 인원의 합집합이다. 정산 건이 없거나 모두 취소한 차수는 키가 없다.
     public static Map<Long, Set<Long>> getParticipantIdsByRoundId(List<Settlement> settlements) {
         return settlements.stream()
                 .filter(settlement -> !settlement.isCancelled())
@@ -61,6 +62,7 @@ public enum SettlementPolicy {
                                         Collectors.toCollection(HashSet::new))));
     }
 
+    // 정산에서 돈이 오간 참여자만 페어링 피드백을 낼 수 있다. 결제자로 지정된 정산 건과 분담금이 있는 정산 건을 함께 본다.
     public static boolean isPairingFeedbackSubmittable(
             Long participantId,
             List<Settlement> payerSettlements,
