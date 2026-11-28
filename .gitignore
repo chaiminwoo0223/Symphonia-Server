@@ -53,3 +53,15 @@ scripts/import/data/bjcp/
 scripts/import/data/kfind/
 scripts/import/data/x-wines/*ratings*
 scripts/import/data/x-wines/*labels*
+
+### Terraform ###
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+crash.log
+
+### Dev Deploy ###
+deploy/dev/certs/
+deploy/dev/import-data/

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# VM이 부팅할 때마다 실행되므로, 여러 번 실행해도 같은 결과가 되게 작성한다.
+set -euo pipefail
+
+if [ ! -f /swapfile ]; then
+    fallocate -l ${swap_size_gb}G /swapfile.tmp
+    chmod 600 /swapfile.tmp
+    mkswap /swapfile.tmp
+    mv /swapfile.tmp /swapfile
+fi
+swapon --show=NAME --noheadings | grep -qx /swapfile || swapon /swapfile
+grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+# swap은 메모리가 모자랄 때만 쓰게 한다. overcommit_memory는 Redis의 AOF 재작성이 fork에 실패하지 않게 한다.
+cat > /etc/sysctl.d/99-mariajou.conf <<'EOF'
+vm.swappiness = 10
+vm.overcommit_memory = 1
+EOF
+sysctl --system > /dev/null
+
+if ! command -v docker > /dev/null || ! docker compose version > /dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    # 첫 부팅에는 자동 업데이트가 패키지 잠금을 잡고 있을 수 있어 기다린다.
+    apt-get -o DPkg::Lock::Timeout=300 update
+    apt-get -o DPkg::Lock::Timeout=300 install -y docker.io docker-compose-v2 jq curl
+fi
+systemctl enable --now docker
+
+install -d -m 750 /opt/mariajou
