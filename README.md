@@ -2,6 +2,10 @@
 
 "오늘 자리에는 어떤 술과 안주가 어울릴까?"에서 시작해 "누가 얼마를 보내면 될까?"까지, 술자리의 시작과 끝을 돕는 서비스입니다. 술과 안주를 자리의 분위기에 맞게 조합해 추천하고, 술자리 정산 기능을 함께 제공합니다. 회원은 Android 앱에서, 비회원은 웹에서 이용할 수 있습니다.
 
+---
+
+## ✨ 주요 기능
+
 ### 🍶 페어링 추천
 
 - 함께하는 사람과의 관계, 분위기, 도수 상한, 알레르기를 반영해 술과 안주 조합을 추천 이유와 함께 알려 줍니다.
@@ -19,8 +23,6 @@
 
 - 지역명과 안주를 고르면 그 안주를 곁들일 가게를 찾아 줍니다.
 
-서버는 도메인 주도 설계(DDD) 기반의 계층형 아키텍처를 단일 모듈, 도메인별 패키지 구조로 구성했습니다.
-
 ---
 
 ## 🛠 Tech Stack
@@ -37,6 +39,8 @@
 ---
 
 ## 📁 패키지 구조
+
+도메인 주도 설계(DDD) 기반의 계층형 아키텍처를 단일 모듈, 도메인별 패키지 구조로 구성했습니다.
 
 ```text
 Symphonia-Server/
@@ -109,7 +113,7 @@ set -a; source .env; set +a
 서비스와 설계에 대한 상세 내용은 [**Wiki**](https://github.com/chaiminwoo0223/Symphonia-Server/wiki)를 참고하세요.
 
 - [아키텍처](https://github.com/chaiminwoo0223/Symphonia-Server/wiki/아키텍처): 도메인 구성, 계층, 트랜잭션, 이벤트
-- [API 공통 규칙](https://github.com/chaiminwoo0223/Symphonia-Server/wiki/API-공통-규칙): 인증 헤더, 응답 형식, 에러 코드, 엔드포인트
+- [API 설계](https://github.com/chaiminwoo0223/Symphonia-Server/wiki/API-설계): 인증 헤더, 응답 형식, 에러 코드, 엔드포인트
 - [모임과 정산](https://github.com/chaiminwoo0223/Symphonia-Server/wiki/모임과-정산): 정산 흐름, 분담금 상태, 동시성
 - [페어링 추천](https://github.com/chaiminwoo0223/Symphonia-Server/wiki/페어링-추천): 점수 계산과 피드백 집계
 - [테스트와 성능](https://github.com/chaiminwoo0223/Symphonia-Server/wiki/테스트와-성능): 테스트 전략과 성능 개선 기록
