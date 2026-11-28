@@ -1,6 +1,6 @@
 # gathering 정산 규칙
 
-`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 모임 페어링 규칙은 `gathering-pairing.md`, 참여자 상한과 참여자 관리 규칙은 `gathering-participant.md`, 기록 기간 연장 규칙은 `gathering-recording-period.md`, 모임 열기와 모임장의 모임 관리 규칙은 `gathering-management.md`에 있다. 근거는 `docs/decisions/gathering.md`에 있다.
+`architecture` 스킬의 하위 문서다. 언제 읽는지는 `SKILL.md`의 하위 문서 표를 참고한다. 분담금 상태와 개인 링크 화면 규칙은 `gathering-share.md`, 모임 페어링 규칙은 `gathering-pairing.md`, 참여자 상한과 참여자 관리 규칙은 `gathering-participant.md`, 기록 기간 연장 규칙은 `gathering-recording-period.md`, 모임 열기와 모임장의 모임 관리 규칙은 `gathering-management.md`에 있다. 근거는 `docs/decisions/gathering.md`에 있다.
 
 ## 애그리거트와 application
 
@@ -64,28 +64,9 @@
 
 - `Settlement`는 애그리거트 버전(`version`)을 domain 모델에 갖고, `settlement.version`으로 낙관적 락을 건다. 분담금만 바뀌어도 버전을 올린다.
 - 기존 정산 건은 저장할 때마다 `PESSIMISTIC_FORCE_INCREMENT`로 버전을 바로 올린다. 분담금 행만 UPDATE하는 저장 경로를 따로 두지 않는다.
-- `SettlementRepositoryImpl`은 `saveAndFlush`로 저장하고, 버전 충돌을 `SettlementConflictException`(409)으로 바꾼다. "보냈어요"의 잠금 조회에서 난 충돌도 같다.
-- "보냈어요"는 그 결제자의 정산 건을 id 순으로 행 잠금하고 읽는다. 취소나 수정과 겹치면 버전 충돌로 막는다.
+- `SettlementRepositoryImpl`은 `saveAndFlush`로 저장하고, 버전 충돌을 `SettlementConflictException`(409)으로 바꾼다.
+- "보냈어요"는 그 결제자의 정산 건을 id 순으로 행 잠금한 뒤 다시 읽는다. 같은 트랜잭션이 앞서 읽은 정산 건이 있어도 잠금 뒤의 상태를 쓰고, 그사이 참여자가 인원에서 빠진 정산 건은 거른다. 늦게 온 수정이나 취소는 버전 충돌로 막는다.
 - 정산 API는 모임을 읽을 때 참여자 전원의 이름과 휴대폰을 복호화한다. 일부만 채운 `Gathering`을 만들지 않는다.
-
-## 분담금 상태
-
-- 참여자가 결제자에게 낼 몫은 분담금(share)이라 부른다. 결제(payment)는 정산 건을 가리킨다. 상태 enum은 `ShareStatus`, 컬럼은 `settlement_share.status`다.
-- 상태는 미입금, 보냄, 확인 완료 세 가지다. 분담금은 미입금으로 시작하고, 0원 분담금은 확인 완료로 시작한다.
-- 참여자가 개인 링크에서 "보냈어요"를 누르면 그 결제자에게 낼 미입금 분담금이 모두 보냄이 된다. 참여자가 직접 취소하는 기능은 두지 않는다.
-- 결제자는 필요할 때만 정정한다. 확인 완료로 바꾸거나(직접 받음 포함, `confirm`), 미입금으로 되돌린다(`unpaid`). 확인 완료도 미입금으로 되돌릴 수 있다.
-- 0원 분담금은 결제자가 상태를 바꿀 수 없고, 보낸 분담금으로 보지 않는다. 0원을 잘못 지정했으면 정산 건을 수정한다.
-- 상태 변경 규칙은 `Settlement`가 판단한다. `SettlementShare`의 상태 변경 메서드는 `public`이고, 상태가 바뀐 새 분담금을 돌려준다. `Settlement`가 그 분담금으로 목록을 갈아 끼운다.
-- 같은 상태로 바꾸라는 요청을 다시 보내면 바꾸지 않고 성공으로 돌려준다. 이미 모두 보낸 결제자의 "보냈어요", 이미 확인 완료인 분담금의 확인 완료, 이미 미입금인 분담금의 되돌리기, 이미 취소한 정산 건의 취소가 해당한다. 이때 상태를 바꾼 시각, 취소 시각, 버전은 그대로 두고 정산 건을 저장하지 않는다.
-- 바꿀 수 없는 상태 변경은 0원 분담금과 취소한 정산 건의 변경으로 나눠 각각 다른 예외(409)로 알린다. `SHARE_ALREADY_SENT`와 `SHARE_ALREADY_CONFIRMED`는 `SettlementShare.sent`의 방어 분기로만 남고 API로는 나오지 않는다.
-- 분담금은 상태를 바꾼 시각(`settlement_share.status_changed_at`)을 갖는다.
-- 상태를 바꾸는 API는 바뀐 정산 건이나 결제자 묶음을 돌려준다.
-
-## 개인 링크 화면
-
-- 개인 링크는 취소하지 않은 정산 건의 본인 분담금을 상태와 함께 모두 보여 주고, 미입금이 남은 결제자를 앞에 둔다.
-- 계산 근거는 총액, 결제자를 포함한 인원, 본인 금액의 지정 여부, 본인 금액, 정산 건의 차수(id, 번호), 그 차수의 참여자 이름이다. 참여자 이름은 그 차수의 취소하지 않은 정산 건 인원의 합집합이다. 다른 참여자의 분담액, 남은 금액, 지정 금액의 합, 휴대폰은 보여 주지 않는다.
-- 결제자의 수금 화면(`GET /settlements`)은 결제자로 지정된 취소하지 않은 정산 건을 참여자별로 묶는다. 참여자의 이름, 전체 휴대폰, 정산 건별 차수와 금액과 상태, 합계(참여자별, 전체), `deletesAt`을 담고 0원 분담금의 참여자도 담는다. 결제자로 지정된 정산 건이 없으면 빈 목록이다.
 
 ## 개인정보 암호화와 토큰
 

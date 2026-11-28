@@ -24,6 +24,7 @@ description: Load when a design discussion among multiple viable alternatives co
 | DB 스키마, 마이그레이션, 프로파일 설정, 카탈로그 적재 | `architecture/persistence.md` | `persistence.md` |
 | 추천 점수, 후보 선정, Harmonize 규칙표, 추천 성능 | `architecture/pairing.md` | `pairing.md` |
 | 정산 모델, 개인정보 처리, 정산 API | `architecture/gathering.md` | `gathering.md` |
+| 분담금 상태, 개인 링크 화면, 수금 화면 | `architecture/gathering-share.md` | `gathering.md` |
 | 모임 페어링, 익명 피드백 | `architecture/gathering-pairing.md` | `gathering.md` |
 | 참여자 상한, 모임장의 참여자 관리와 직접 참여 | `architecture/gathering-participant.md` | `gathering.md` |
 | 기록 기간 연장 | `architecture/gathering-recording-period.md` | `gathering.md` |
