@@ -18,9 +18,11 @@ import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.helper.GatheringHelper;
 import com.symphonia.gathering.helper.SettlementHelper;
 import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest;
+import com.symphonia.gathering.presentation.dto.request.SeenShareRequest;
 import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -169,7 +171,7 @@ class ShareControllerTest extends IntegrationTest {
                         settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
 
                 // when & then
-                performMarkSent(new MarkSharesSentRequest(payer.getId()))
+                performMarkSent(request(payer.getId(), seenShare(dinner)))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.payerParticipantId").value(payer.getId()))
                         .andExpect(jsonPath("$.data.unpaidAmount").value(0))
@@ -187,7 +189,7 @@ class ShareControllerTest extends IntegrationTest {
             @DisplayName("payerParticipantId 필드 검증 실패와 함께 400을 반환한다")
             void shouldReturnBadRequest() throws Exception {
                 // when & then
-                performMarkSent(new MarkSharesSentRequest(null))
+                performMarkSent(request(null, new SeenShareRequest(1L, 3_333L)))
                         .andExpect(status().isBadRequest())
                         .andExpect(
                                 jsonPath("$.data.code")
@@ -198,24 +200,71 @@ class ShareControllerTest extends IntegrationTest {
         }
 
         @Nested
-        @DisplayName("그 결제자에게 낼 분담금이 없는 경우")
-        class WhenSharesNotFound {
+        @DisplayName("본 분담금 목록이 비어 있는 경우")
+        class WhenSharesEmpty {
 
             @Test
-            @DisplayName("SETTLEMENT_SHARE_NOT_FOUND 코드와 함께 404를 반환한다")
-            void shouldReturnNotFound() throws Exception {
-                // given
-                settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
-
+            @DisplayName("shares 필드 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
                 // when & then
-                performMarkSent(new MarkSharesSentRequest(park.getId()))
-                        .andExpect(status().isNotFound())
+                performMarkSent(request(payer.getId()))
+                        .andExpect(status().isBadRequest())
                         .andExpect(
                                 jsonPath("$.data.code")
-                                        .value(
-                                                GatheringErrorCode.SETTLEMENT_SHARE_NOT_FOUND
-                                                        .getCode()));
+                                        .value(CommonErrorCode.METHOD_ARGUMENT_NOT_VALID.getCode()))
+                        .andExpect(jsonPath("$.data.violations[0].field").value("shares"));
             }
+        }
+
+        @Nested
+        @DisplayName("같은 정산 건을 두 번 담은 경우")
+        class WhenSettlementDuplicated {
+
+            @Test
+            @DisplayName("중복 검증 실패와 함께 400을 반환한다")
+            void shouldReturnBadRequest() throws Exception {
+                // given
+                SeenShareRequest seenShare = new SeenShareRequest(1L, 3_333L);
+
+                // when & then
+                performMarkSent(request(payer.getId(), seenShare, seenShare))
+                        .andExpect(status().isBadRequest())
+                        .andExpect(
+                                jsonPath("$.data.violations[0].field")
+                                        .value("settlementsDistinct"));
+            }
+        }
+
+        @Nested
+        @DisplayName("본 금액이 지금의 분담금과 다른 경우")
+        class WhenSeenAmountDiffers {
+
+            @Test
+            @DisplayName("UNPAID_SHARE_CONFLICT 코드와 함께 409를 반환한다")
+            void shouldReturnConflict() throws Exception {
+                // given
+                Settlement dinner =
+                        settlementHelper.record(SettlementFixture.DINNER, gathering, payer);
+
+                // when & then
+                performMarkSent(
+                                request(
+                                        payer.getId(),
+                                        new SeenShareRequest(dinner.getId(), 3_000L)))
+                        .andExpect(status().isConflict())
+                        .andExpect(
+                                jsonPath("$.data.code")
+                                        .value(GatheringErrorCode.UNPAID_SHARE_CONFLICT.getCode()));
+            }
+        }
+
+        private MarkSharesSentRequest request(Long payerParticipantId, SeenShareRequest... shares) {
+            return new MarkSharesSentRequest(payerParticipantId, List.of(shares));
+        }
+
+        private SeenShareRequest seenShare(Settlement settlement) {
+            return new SeenShareRequest(
+                    settlement.getId(), settlement.getShareOf(lee.getId()).getAmount());
         }
 
         private ResultActions performMarkSent(MarkSharesSentRequest request) throws Exception {

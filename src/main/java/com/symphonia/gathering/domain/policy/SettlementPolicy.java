@@ -6,11 +6,12 @@ import com.symphonia.gathering.domain.exception.InvalidSettlementParticipantsExc
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.SentShareRequiredException;
 import com.symphonia.gathering.domain.exception.SettlementRecordingClosedException;
-import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
+import com.symphonia.gathering.domain.exception.UnpaidShareConflictException;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,13 +39,17 @@ public enum SettlementPolicy {
         }
     }
 
-    public static void validateSharesFound(boolean found) {
-        if (!found) {
-            throw new SettlementShareNotFoundException();
-        }
+    public static void validateSeenShares(
+            List<Settlement> settlements, Long participantId, Map<Long, Long> seenAmounts) {
+        Optional.of(settlements)
+                .filter(current -> containsSeenShares(current, participantId, seenAmounts))
+                .filter(
+                        current ->
+                                containsAllUnpaidShares(
+                                        current, participantId, seenAmounts.keySet()))
+                .orElseThrow(UnpaidShareConflictException::new);
     }
 
-    // 차수의 참여자는 그 차수에 속한 취소하지 않은 정산 건 인원의 합집합이다. 정산 건이 없거나 모두 취소한 차수는 키가 없다.
     public static Map<Long, Set<Long>> getParticipantIdsByRoundId(List<Settlement> settlements) {
         return settlements.stream()
                 .filter(settlement -> !settlement.isCancelled())
@@ -56,7 +61,6 @@ public enum SettlementPolicy {
                                         Collectors.toCollection(HashSet::new))));
     }
 
-    // 정산에서 돈이 오간 참여자만 페어링 피드백을 낼 수 있다. 결제자로 지정된 정산 건과 분담금이 있는 정산 건을 함께 본다.
     public static boolean isPairingFeedbackSubmittable(
             Long participantId,
             List<Settlement> payerSettlements,
@@ -75,5 +79,27 @@ public enum SettlementPolicy {
         if (!payerParticipantId.equals(participantId)) {
             throw new NotSettlementPayerException();
         }
+    }
+
+    // 본 정산 건이 모두 지금도 있고 본인 분담금이 본 금액과 같은지다.
+    private static boolean containsSeenShares(
+            List<Settlement> settlements, Long participantId, Map<Long, Long> seenAmounts) {
+        Map<Long, Long> currentAmounts =
+                settlements.stream()
+                        .collect(
+                                Collectors.toMap(
+                                        Settlement::getId,
+                                        settlement ->
+                                                settlement.getShareOf(participantId).getAmount()));
+
+        return currentAmounts.entrySet().containsAll(seenAmounts.entrySet());
+    }
+
+    // 지금 미입금인 분담금의 정산 건이 모두 본 정산 건에 있는지다.
+    private static boolean containsAllUnpaidShares(
+            List<Settlement> settlements, Long participantId, Set<Long> seenSettlementIds) {
+        return settlements.stream()
+                .filter(settlement -> settlement.hasUnpaidShareOf(participantId))
+                .allMatch(settlement -> seenSettlementIds.contains(settlement.getId()));
     }
 }

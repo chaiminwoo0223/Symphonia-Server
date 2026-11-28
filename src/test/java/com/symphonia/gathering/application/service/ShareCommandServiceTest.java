@@ -26,6 +26,7 @@ import com.symphonia.gathering.domain.exception.LinkTokenNotFoundException;
 import com.symphonia.gathering.domain.exception.NotSettlementPayerException;
 import com.symphonia.gathering.domain.exception.SettlementAlreadyCancelledException;
 import com.symphonia.gathering.domain.exception.SettlementShareNotFoundException;
+import com.symphonia.gathering.domain.exception.UnpaidShareConflictException;
 import com.symphonia.gathering.domain.exception.ZeroShareStatusUnchangeableException;
 import com.symphonia.gathering.domain.repository.GatheringRepository;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -94,7 +95,7 @@ class ShareCommandServiceTest extends UnitTest {
             void shouldThrowLinkTokenNotFoundException() {
                 // given
                 givenLinkTokenNotFound();
-                MarkSharesSentCommand command = command();
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_333L));
 
                 // when & then
                 assertThatThrownBy(() -> shareCommandService.markSent(command))
@@ -109,19 +110,75 @@ class ShareCommandServiceTest extends UnitTest {
         class WhenSharesNotFound {
 
             @Test
-            @DisplayName("예외를 던지고 정산 건을 저장하지 않는다")
-            void shouldThrowSettlementShareNotFoundException() {
+            @DisplayName("본 분담금이 남아 있지 않으므로 예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowUnpaidShareConflictException() {
                 // given
                 givenParticipant(LEE_ID);
                 givenSharedSettlements();
-                MarkSharesSentCommand command = command();
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_333L));
 
                 // when & then
                 assertThatThrownBy(() -> shareCommandService.markSent(command))
-                        .isInstanceOf(SettlementShareNotFoundException.class);
+                        .isInstanceOf(UnpaidShareConflictException.class);
                 thenSettlementNotSaved();
                 then(gatheringRepository).shouldHaveNoInteractions();
                 then(eventPublisher).shouldHaveNoInteractions();
+            }
+        }
+
+        @Nested
+        @DisplayName("본 분담금이 지금의 분담금과 다른 경우")
+        class WhenSeenSharesChanged {
+
+            @Test
+            @DisplayName("보지 못한 미입금 분담금이 있으면 예외를 던지고 어떤 정산 건도 저장하지 않는다")
+            void shouldThrowUnpaidShareConflictExceptionWhenUnseenUnpaidShareExists() {
+                // given
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(dinner(SETTLEMENT_ID), dinner(SECOND_SETTLEMENT_ID));
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_333L));
+
+                // when & then
+                assertThatThrownBy(() -> shareCommandService.markSent(command))
+                        .isInstanceOf(UnpaidShareConflictException.class);
+                thenSettlementNotSaved();
+                then(eventPublisher).shouldHaveNoInteractions();
+            }
+
+            @Test
+            @DisplayName("본 금액이 지금 금액과 다르면 예외를 던지고 정산 건을 저장하지 않는다")
+            void shouldThrowUnpaidShareConflictExceptionWhenSeenAmountDiffers() {
+                // given
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(dinner(SETTLEMENT_ID));
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_000L));
+
+                // when & then
+                assertThatThrownBy(() -> shareCommandService.markSent(command))
+                        .isInstanceOf(UnpaidShareConflictException.class);
+                thenSettlementNotSaved();
+                then(eventPublisher).shouldHaveNoInteractions();
+            }
+
+            @Test
+            @DisplayName("본 정산 건이 취소돼 없으면 남은 미입금 분담금을 모두 봤어도 예외를 던진다")
+            void shouldThrowUnpaidShareConflictExceptionWhenSeenSettlementMissing() {
+                // given
+                givenParticipant(LEE_ID);
+                givenSharedSettlements(dinner(SETTLEMENT_ID));
+                MarkSharesSentCommand command =
+                        command(Map.of(SETTLEMENT_ID, 3_333L, SECOND_SETTLEMENT_ID, 3_333L));
+
+                // when & then
+                assertThatThrownBy(() -> shareCommandService.markSent(command))
+                        .isInstanceOf(UnpaidShareConflictException.class);
+                thenSettlementNotSaved();
+                then(eventPublisher).shouldHaveNoInteractions();
+            }
+
+            private Settlement dinner(Long settlementId) {
+                return SettlementFixture.DINNER.createWithId(
+                        settlementId, GATHERING_ID, ROUND_ID, PAYER_ID, PARTICIPANT_IDS);
             }
         }
 
@@ -145,9 +202,11 @@ class ShareCommandServiceTest extends UnitTest {
                                 List.of(PAYER_ID, LEE_ID)));
                 givenGathering();
                 givenSaveReturnsSettlement();
+                MarkSharesSentCommand command =
+                        command(Map.of(SETTLEMENT_ID, 3_333L, THIRD_SETTLEMENT_ID, 10_000L));
 
                 // when
-                PayerSharesResult result = shareCommandService.markSent(command());
+                PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
                 then(settlementRepository)
@@ -205,9 +264,10 @@ class ShareCommandServiceTest extends UnitTest {
                 givenGatheringSettlements(otherSettlement, mySettlement);
                 givenGathering();
                 givenSaveReturnsSettlement();
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 5_000L));
 
                 // when
-                PayerSharesResult result = shareCommandService.markSent(command());
+                PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
                 assertThat(result.shares())
@@ -236,9 +296,10 @@ class ShareCommandServiceTest extends UnitTest {
                 givenGatheringSettlements();
                 givenGathering();
                 givenSaveReturnsSettlement();
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 5_000L));
 
                 // when
-                PayerSharesResult result = shareCommandService.markSent(command());
+                PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
                 assertThat(result.shares())
@@ -273,9 +334,10 @@ class ShareCommandServiceTest extends UnitTest {
                 givenGatheringSettlements(cancelledSettlement, mySettlement);
                 givenGathering();
                 givenSaveReturnsSettlement();
+                MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 5_000L));
 
                 // when
-                PayerSharesResult result = shareCommandService.markSent(command());
+                PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
                 assertThat(result.shares())
@@ -325,9 +387,15 @@ class ShareCommandServiceTest extends UnitTest {
                                 PARTICIPANT_IDS));
                 givenGathering();
                 givenSaveReturnsSettlement();
+                MarkSharesSentCommand command =
+                        command(
+                                Map.of(
+                                        SETTLEMENT_ID, 3_333L,
+                                        SECOND_SETTLEMENT_ID, 6_666L,
+                                        THIRD_SETTLEMENT_ID, 3_333L));
 
                 // when
-                PayerSharesResult result = shareCommandService.markSent(command());
+                PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
                 ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
@@ -343,7 +411,7 @@ class ShareCommandServiceTest extends UnitTest {
             }
 
             @Test
-            @DisplayName("미입금 분담금이 없으면 아무것도 저장하지 않고 예외 없이 반환한다")
+            @DisplayName("본 분담금이 모두 보냄이나 확인 완료면 아무것도 저장하지 않고 예외 없이 반환한다")
             void shouldReturnWithoutSavingWhenUnpaidSharesNotExist() {
                 // given
                 givenParticipant(LEE_ID);
@@ -363,9 +431,11 @@ class ShareCommandServiceTest extends UnitTest {
                                 PARTICIPANT_IDS,
                                 ShareStatus.CONFIRMED));
                 givenGathering();
+                MarkSharesSentCommand command =
+                        command(Map.of(SETTLEMENT_ID, 3_333L, SECOND_SETTLEMENT_ID, 6_666L));
 
                 // when
-                PayerSharesResult result = shareCommandService.markSent(command());
+                PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
                 thenSettlementNotSaved();
@@ -378,8 +448,8 @@ class ShareCommandServiceTest extends UnitTest {
             }
         }
 
-        private MarkSharesSentCommand command() {
-            return new MarkSharesSentCommand(LINK_TOKEN, PAYER_ID);
+        private MarkSharesSentCommand command(Map<Long, Long> seenAmounts) {
+            return new MarkSharesSentCommand(LINK_TOKEN, PAYER_ID, seenAmounts);
         }
 
         // 모임의 정산 건에는 LEE가 분담금을 내지 않는 정산 건과 취소한 정산 건도 들어 있을 수 있다.

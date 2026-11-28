@@ -17,6 +17,7 @@ import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.entity.SettlementShare;
 import com.symphonia.gathering.domain.exception.SettlementConflictException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
+import com.symphonia.gathering.domain.exception.UnpaidShareConflictException;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
 import com.symphonia.gathering.domain.vo.PhoneNumber;
 import com.symphonia.gathering.domain.vo.ShareStatus;
@@ -35,6 +36,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -124,6 +126,49 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
     }
 
     @Nested
+    @DisplayName("markSent 메서드는")
+    class MarkSent {
+
+        @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @DisplayName("같은 정산 건의 참여자들이 동시에 눌러도 모두 성공하고 분담금이 모두 보냄이 된다")
+        void shouldMarkAllSharesSentWhenMarkedConcurrently() {
+            // given
+            Settlement recorded =
+                    transactionTemplate.execute(
+                            _ ->
+                                    settlementHelper.record(
+                                            SettlementFixture.DINNER, gathering, payer));
+            List<Runnable> marks =
+                    Stream.of(sender, participantOf(ParticipantFixture.PARK))
+                            .map(
+                                    participant ->
+                                            transactionTemplate.execute(
+                                                    _ ->
+                                                            gatheringHelper.issueLinkToken(
+                                                                    participant)))
+                            .<Runnable>map(
+                                    linkToken ->
+                                            () ->
+                                                    markSharesSentUseCase.markSent(
+                                                            new MarkSharesSentCommand(
+                                                                    linkToken,
+                                                                    payer.getId(),
+                                                                    seenAmounts(recorded))))
+                            .toList();
+
+            // when
+            List<Throwable> failures = runConcurrently(marks.toArray(Runnable[]::new));
+
+            // then
+            assertThat(failures).isEmpty();
+            assertThat(sentShareParticipantIds(findSettlement(recorded.getId())))
+                    .containsExactlyInAnyOrder(
+                            sender.getId(), participantOf(ParticipantFixture.PARK).getId());
+        }
+    }
+
+    @Nested
     @DisplayName("update와 markSent 메서드는")
     class UpdateAndMarkSent {
 
@@ -140,6 +185,8 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
             String linkToken =
                     transactionTemplate.execute(_ -> gatheringHelper.issueLinkToken(sender));
 
+            Map<Long, Long> seenAmounts = seenAmounts(recorded);
+
             AtomicBoolean updated = new AtomicBoolean();
             AtomicBoolean marked = new AtomicBoolean();
 
@@ -154,21 +201,23 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
                             },
                             () -> {
                                 markSharesSentUseCase.markSent(
-                                        new MarkSharesSentCommand(linkToken, payer.getId()));
+                                        new MarkSharesSentCommand(
+                                                linkToken, payer.getId(), seenAmounts));
                                 marked.set(true);
                             });
 
             // then
-            // 겹치면 늦은 요청이 보낸 분담금이 있다는 거절이나 버전 충돌로 실패할 수 있고, 수정이 먼저 끝난 뒤 시작한 보냈어요는 둘 다 성공한다.
-            // 어느 요청이 이겼는지와 관계없이 최종 상태는 성공한 요청의 결과와 정확히 일치해야 한다.
+            // 늦은 수정은 보낸 분담금이 있다는 거절이나 버전 충돌로 실패하고, 늦은 보냈어요는 본 금액이 달라 거절된다.
+            // 어느 요청이 이겼는지와 관계없이 하나만 성공하고, 최종 상태는 성공한 요청의 결과와 정확히 일치해야 한다.
             assertThat(failures)
                     .allSatisfy(
                             failure ->
                                     assertThat(failure)
                                             .isInstanceOfAny(
                                                     SettlementSharesSentException.class,
-                                                    SettlementConflictException.class));
-            assertThat(updated.get() || marked.get()).isTrue();
+                                                    SettlementConflictException.class,
+                                                    UnpaidShareConflictException.class));
+            assertThat(updated.get() ^ marked.get()).isTrue();
             Settlement reloaded = findSettlement(recorded.getId());
             SettlementFixture expected =
                     updated.get() ? SettlementFixture.SECOND_ROUND : SettlementFixture.DINNER;
@@ -181,6 +230,11 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
 
     private Participant participantOf(ParticipantFixture fixture) {
         return gathering.getParticipant(new PhoneNumber(fixture.getPhoneNumber()));
+    }
+
+    // 보내는 참여자들의 분담액은 모두 같다.
+    private Map<Long, Long> seenAmounts(Settlement settlement) {
+        return Map.of(settlement.getId(), settlement.getShareOf(sender.getId()).getAmount());
     }
 
     private RecordSettlementCommand recordCommand(UUID clientRequestId) {

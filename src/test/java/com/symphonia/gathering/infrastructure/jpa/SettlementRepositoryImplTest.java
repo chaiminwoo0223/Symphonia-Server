@@ -22,12 +22,15 @@ import com.symphonia.gathering.fixture.SettlementFixture;
 import com.symphonia.gathering.infrastructure.crypto.GatheringMasterKey;
 import com.symphonia.gathering.infrastructure.crypto.config.GatheringCryptoConfig;
 import jakarta.persistence.EntityManager;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -781,6 +784,70 @@ class SettlementRepositoryImplTest extends RepositoryTest {
 
             // then
             assertThat(result).isEmpty();
+        }
+
+        @Nested
+        @DisplayName("잠금을 기다리는 사이 정산 건 수정으로 참여자가 인원에서 빠진 경우")
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        class WhenParticipantRemovedWhileWaiting {
+
+            @AfterEach
+            void tearDown() {
+                deleteGatheringRows();
+            }
+
+            @Test
+            @DisplayName("그 정산 건은 담지 않는다")
+            void shouldExcludeSettlement() {
+                // given
+                Long settlementId =
+                        transactionTemplate.execute(
+                                _ -> recordDinner(kimId, List.of(kimId, leeId, parkId)).getId());
+                CountDownLatch updated = new CountDownLatch(1);
+                CompletableFuture<Void> update =
+                        CompletableFuture.runAsync(
+                                () ->
+                                        transactionTemplate.executeWithoutResult(
+                                                _ -> {
+                                                    removeLee(settlementId);
+                                                    updated.countDown();
+                                                    awaitLockWaiter();
+                                                }));
+                await(updated);
+
+                // when
+                List<Settlement> result =
+                        transactionTemplate.execute(
+                                _ ->
+                                        settlementRepository
+                                                .findAllByShareParticipantIdAndPayerForUpdate(
+                                                        leeId, kimId));
+
+                // then
+                update.join();
+                assertThat(result).isEmpty();
+            }
+
+            private void removeLee(Long settlementId) {
+                Settlement settlement = settlementRepository.findById(settlementId).orElseThrow();
+                settlement.update(
+                        roundId,
+                        SettlementFixture.DINNER.createSplitMethod(kimId, List.of(kimId, parkId)),
+                        LocalDateTime.now());
+                settlementRepository.save(settlement);
+            }
+
+            // 조회가 잠금을 기다리기 시작한 뒤에 수정을 커밋해야, 커밋 전의 인원으로 판정하는 경우가 만들어진다.
+            private void awaitLockWaiter() {
+                Awaitility.await()
+                        .atMost(Duration.ofSeconds(5))
+                        .until(
+                                () ->
+                                        jdbcTemplate.queryForObject(
+                                                        "SELECT COUNT(*) FROM pg_locks WHERE NOT granted",
+                                                        Long.class)
+                                                > 0);
+            }
         }
 
         // 두 트랜잭션이 실제로 동시에 커밋해야 하므로 테스트 트랜잭션 없이 실행하고, 커밋된 행은 테스트가 끝나면 지운다.
