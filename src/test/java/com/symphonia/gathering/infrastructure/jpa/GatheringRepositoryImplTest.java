@@ -1211,6 +1211,40 @@ class GatheringRepositoryImplTest extends RepositoryTest {
         }
     }
 
+    @Nested
+    @DisplayName("findByParticipantIdForUpdate 메서드는")
+    class FindByParticipantIdForUpdate {
+
+        @Test
+        @DisplayName("존재하는 참여자 ID면 그 참여자가 속한 모임을 반환한다")
+        void shouldReturnGatheringWhenParticipantExists() {
+            // given
+            Gathering saved =
+                    gatheringRepository.save(
+                            GatheringFixture.FRIDAY_DINNER.createWithParticipants(
+                                    List.of(ParticipantFixture.KIM.create())));
+            Long participantId = saved.getParticipants().getFirst().getId();
+            clearPersistenceContext();
+
+            // when
+            Optional<Gathering> result =
+                    gatheringRepository.findByParticipantIdForUpdate(participantId);
+
+            // then
+            assertThat(result).map(Gathering::getId).contains(saved.getId());
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 참여자 ID면 빈 Optional을 반환한다")
+        void shouldReturnEmptyWhenParticipantNotExists() {
+            // when
+            Optional<Gathering> result = gatheringRepository.findByParticipantIdForUpdate(-1L);
+
+            // then
+            assertThat(result).isEmpty();
+        }
+    }
+
     // 1차 캐시를 비워 다음 조회가 DB의 암호문을 다시 읽고 복호화하게 한다.
     private void clearPersistenceContext() {
         entityManager.flush();

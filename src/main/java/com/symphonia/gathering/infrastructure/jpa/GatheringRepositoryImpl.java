@@ -123,6 +123,13 @@ public class GatheringRepositoryImpl implements GatheringRepository {
     }
 
     @Override
+    public Optional<Gathering> findByParticipantIdForUpdate(Long participantId) {
+        return participantJpaRepository
+                .findById(participantId)
+                .flatMap(participant -> findByIdForUpdate(participant.getGatheringId()));
+    }
+
+    @Override
     public Optional<Long> findHostMemberIdByIdForUpdate(Long gatheringId) {
         return gatheringJpaRepository
                 .findByIdForUpdate(gatheringId)
