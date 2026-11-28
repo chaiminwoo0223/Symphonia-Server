@@ -102,6 +102,8 @@ set -a; source .env; set +a
 
 ### 4. 테스트
 
+Testcontainers가 PostgreSQL과 Redis 컨테이너를 띄우므로 Docker가 실행 중이어야 하며, `.env`는 필요하지 않습니다.
+
 ```bash
 ./gradlew test
 ```
