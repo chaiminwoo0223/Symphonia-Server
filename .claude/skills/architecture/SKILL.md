@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, 크로스 도메인 부수효과와 도메인 이벤트, 전환 지표(events.md), DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), gathering 모임 관리(gathering-management.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
+description: Load when designing layer structure. UseCase/Service/Api/Controller 분리, 계층별 타입 어휘, DTO↔Command 변환, 응답 포맷, 크로스 도메인 참조, 프로젝트 구조, 트랜잭션 경계, 크로스 도메인 부수효과와 도메인 이벤트, 전환 지표(events.md), DDD 핵심 원칙, 인증 규칙, 영속성(PostgreSQL/pgvector, Flyway, 인덱스·제약, 프로파일 설정, 카탈로그 적재, persistence.md), pairing 추천 점수 규칙(pairing.md), gathering 정산 규칙(gathering.md), gathering 분담금 상태와 개인 링크 화면(gathering-share.md), gathering 모임 페어링과 익명 피드백 규칙(gathering-pairing.md), gathering 참여자 관리와 모임장 참여(gathering-participant.md), 기록 기간 연장(gathering-recording-period.md), gathering 모임 관리(gathering-management.md), place 맛집 조회 규칙(place.md), 메시지 큐 도입 조건.
 ---
 
 > **Language**: All user-facing responses for this task MUST be written in Korean. (Code, identifiers, logs, and other technical artifacts are excluded.)
@@ -105,6 +105,7 @@ infrastructure ──→  application  ──→  domain   (infrastructure는 do
 | [`persistence.md`](persistence.md) | 엔티티와 `*JpaEntity` 매핑, `db/migration`, `application*.yaml`, 적재 러너나 적재 규칙표를 바꿀 때. 맛 값 규칙표와 `Drink`, `DrinkStyle` 분리도 여기 있다 |
 | [`pairing.md`](pairing.md) | `Pairing.recommend`의 점수 규칙, 후보 선정, 추천 성능, 피드백 집계를 바꿀 때. Harmonize 규칙표와 `drink.harmonizes` 컬럼, 안주 무게감 보정 규칙표도 여기 있다 |
 | [`gathering.md`](gathering.md) | `gathering`의 모델, 정산 흐름, 개인정보 암호화와 파기, API 경로를 바꿀 때 |
+| [`gathering-share.md`](gathering-share.md) | 분담금 상태 변경, "보냈어요", 개인 링크 화면과 수금 화면을 바꿀 때 |
 | [`gathering-pairing.md`](gathering-pairing.md) | 모임 페어링과 참여자의 익명 피드백을 바꿀 때. `pairing_feedback.member_id`처럼 `gathering` 때문에 바뀌는 `pairing` 규칙도 여기 있다 |
 | [`gathering-participant.md`](gathering-participant.md) | 참여자 본인 확인, 상한, 모임장의 참여자 관리, 직접 참여, 탈퇴 변경 시 |
 | [`gathering-recording-period.md`](gathering-recording-period.md) | 기록 기간의 시작 시각과 연장을 바꿀 때 |
