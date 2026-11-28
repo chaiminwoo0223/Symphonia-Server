@@ -115,6 +115,25 @@ class MemberRepositoryImplTest extends RepositoryTest {
         }
 
         @Nested
+        @DisplayName("프로필 이미지 URL이 255자를 넘는 경우")
+        class WhenProfileImageExceeds255Characters {
+
+            @Test
+            @DisplayName("URL을 자르지 않고 저장한다")
+            void shouldPersistWholeProfileImage() {
+                // given
+                String profileImage = "https://image.symphonia.com/profile/" + "a".repeat(2000);
+                Member member = MemberFixture.GOOGLE.createWithProfileImage(profileImage);
+
+                // when
+                Member saved = memberRepository.save(member);
+
+                // then
+                assertThat(saved.getProfileImage()).isEqualTo(profileImage);
+            }
+        }
+
+        @Nested
         @DisplayName("같은 소셜 계정이 이미 저장되어 있는 경우")
         class WhenSocialLoginDuplicated {
 

@@ -34,14 +34,18 @@ public enum MemberFixture {
     }
 
     public Member createWithSocialId(String socialId) {
-        return build(socialId, nickname);
+        return build(socialId, nickname, profileImage);
     }
 
     public Member createWithNickname(String nickname) {
-        return build(socialId, nickname);
+        return build(socialId, nickname, profileImage);
     }
 
-    private Member build(String socialId, String nickname) {
+    public Member createWithProfileImage(String profileImage) {
+        return build(socialId, nickname, profileImage);
+    }
+
+    private Member build(String socialId, String nickname, String profileImage) {
         return Member.builder()
                 .socialId(socialId)
                 .nickname(nickname)
