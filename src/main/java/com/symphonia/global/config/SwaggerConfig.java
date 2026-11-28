@@ -14,10 +14,10 @@ import org.springframework.http.HttpHeaders;
 @Profile("!prod")
 @Configuration
 public class SwaggerConfig {
-    private static final String SERVER_NAME = "Symphonia";
+    private static final String SERVER_NAME = "마리아주";
     private static final String GITHUB_URL = "https://github.com/chaiminwoo0223/Symphonia-Server";
-    private static final String API_TITLE = "Symphonia 서버 API 문서";
-    private static final String API_DESCRIPTION = "Symphonia 서버 API 문서입니다.";
+    private static final String API_TITLE = "마리아주 서버 API 문서";
+    private static final String API_DESCRIPTION = "마리아주 서버 API 문서입니다.";
     private static final String BEARER_AUTH = "bearerAuth";
     private static final String BEARER = "bearer";
     private static final String JWT = "JWT";
