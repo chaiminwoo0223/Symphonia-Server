@@ -30,6 +30,9 @@ services:
     ports:
       # management 포트는 VM 안에서만 접근한다. 앱 포트는 게시하지 않고 Caddy를 거친다.
       - '127.0.0.1:8081:8081'
+    volumes:
+      # DB_URL의 sslrootcert가 읽는 Cloud SQL 서버 인증서다.
+      - ./certs:/app/certs:ro
     mem_limit: 768m
     restart: unless-stopped
     # 앱이 진행 중인 요청을 최대 30초 기다리므로 Docker의 기본 종료 대기 10초보다 길게 둔다.
@@ -80,7 +83,7 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
-  # 카탈로그 적재는 배포와 분리해 수동으로 실행한다: docker compose run --rm import-catalog
+  # 카탈로그 적재는 배포와 분리해 수동으로 실행한다. 명령은 `docker compose run --rm import-catalog`이다.
   import-catalog:
     profiles: [import]
     image: ${APP_IMAGE:?}
@@ -93,6 +96,7 @@ services:
       DB_POOL_SIZE: 3
     volumes:
       - ${IMPORT_DATA_DIR:-./import-data}:/app/scripts/import/data:ro
+      - ./certs:/app/certs:ro
     mem_limit: 768m
     depends_on:
       redis:
