@@ -148,16 +148,6 @@ public class SettlementRepositoryImpl implements SettlementRepository {
         }
     }
 
-    // 앞서 읽은 엔티티가 영속성 컨텍스트에 남아 있으면 조회해도 옛 값이므로, 잠근 뒤의 값으로 다시 읽는다.
-    // 분담금은 저장할 때마다 새 행으로 넣으므로 다시 조회하면 최신 값이다.
-    private SettlementJpaEntity reload(Long settlementId) {
-        SettlementJpaEntity settlementEntity =
-                settlementJpaRepository.findById(settlementId).orElseThrow();
-        entityManager.refresh(settlementEntity);
-
-        return settlementEntity;
-    }
-
     private Settlement saveShares(SettlementJpaEntity savedSettlement, Settlement settlement) {
         Long settlementId = savedSettlement.getId();
         List<SettlementShareJpaEntity> savedShares =
@@ -200,5 +190,15 @@ public class SettlementRepositoryImpl implements SettlementRepository {
                                                 .map(SettlementShareJpaEntity::toDomain)
                                                 .toList()))
                 .toList();
+    }
+
+    // 앞서 읽은 엔티티가 영속성 컨텍스트에 남아 있으면 조회해도 옛 값이므로, 잠근 뒤의 값으로 다시 읽는다.
+    // 분담금은 저장할 때마다 새 행으로 넣으므로 다시 조회하면 최신 값이다.
+    private SettlementJpaEntity reload(Long settlementId) {
+        SettlementJpaEntity settlementEntity =
+                settlementJpaRepository.findById(settlementId).orElseThrow();
+        entityManager.refresh(settlementEntity);
+
+        return settlementEntity;
     }
 }

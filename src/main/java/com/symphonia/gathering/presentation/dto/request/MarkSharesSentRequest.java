@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +18,7 @@ public record MarkSharesSentRequest(
                 @Schema(
                         description =
                                 "화면에서 본 그 결제자의 분담금. 분담금 조회 응답의 settlementId와 amount를 담는다. 미입금 분담금이 빠졌거나 정산 건이나 금액이 지금과 다르면 409(UNPAID_SHARE_CONFLICT)")
-                List<@Valid @NotNull SeenShareRequest> shares) {
+                List<@Valid @NotNull SeenShare> shares) {
     @AssertTrue(message = "같은 정산 건을 두 번 담을 수 없습니다.")
     @Schema(hidden = true)
     public boolean isSettlementsDistinct() {
@@ -25,10 +26,7 @@ public record MarkSharesSentRequest(
             return true;
         }
         List<Long> settlementIds =
-                shares.stream()
-                        .filter(Objects::nonNull)
-                        .map(SeenShareRequest::settlementId)
-                        .toList();
+                shares.stream().filter(Objects::nonNull).map(SeenShare::settlementId).toList();
 
         return settlementIds.stream().distinct().count() == settlementIds.size();
     }
@@ -37,9 +35,12 @@ public record MarkSharesSentRequest(
         return new MarkSharesSentCommand(linkToken, payerParticipantId, toSeenAmountMap());
     }
 
+    public record SeenShare(
+            @NotNull @Schema(description = "분담금이 속한 정산 건 ID") Long settlementId,
+            @NotNull @PositiveOrZero @Schema(description = "화면에서 본 분담금 (원)") Long amount) {}
+
     private Map<Long, Long> toSeenAmountMap() {
         return shares.stream()
-                .collect(
-                        Collectors.toMap(SeenShareRequest::settlementId, SeenShareRequest::amount));
+                .collect(Collectors.toMap(SeenShare::settlementId, SeenShare::amount));
     }
 }

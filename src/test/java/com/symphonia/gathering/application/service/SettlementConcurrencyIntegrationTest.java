@@ -132,7 +132,7 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
         @Test
         @Transactional(propagation = Propagation.NOT_SUPPORTED)
         @DisplayName("같은 정산 건의 참여자들이 동시에 눌러도 모두 성공하고 분담금이 모두 보냄이 된다")
-        void shouldMarkAllSharesSentWhenMarkedConcurrently() {
+        void shouldMarkSharesSentWhenMarkedConcurrently() {
             // given
             Settlement recorded =
                     transactionTemplate.execute(
