@@ -35,22 +35,24 @@ public class ShareCommandService
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
-    // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
-    // 수정이나 취소가 먼저 끝났으면 잠근 뒤 읽은 분담금이 요청과 달라 거절한다. 늦게 온 수정이나 취소는 버전 충돌로 실패한다.
+    // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다.
+    // 모임 행을 먼저 잠가 정산 건 기록, 수정, 취소와 차례로 처리한다. 정산 건만 잠그면 잠금을 기다리는 사이 기록된 정산 건이 대조에서 빠진다.
+    // 먼저 끝난 기록, 수정, 취소는 잠근 뒤 읽은 분담금에 반영돼, 요청과 어긋나면 거절한다.
+    // 확인 완료와 되돌리기는 모임을 잠그지 않으므로 정산 건도 잠그고 읽는다.
     // 이미 보냄이나 확인 완료인 분담금은 건너뛰어, 모두 보냈으면 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
-    // 차수의 참여자 이름은 잠그지 않고 읽는다. 이름만 보여 주고 상태는 바꾸지 않아 다른 정산 건의 변경과 겹쳐도 충돌하지 않는다.
+    // 차수의 참여자 이름에 쓰는 정산 건은 잠그지 않고 읽는다. 이름만 보여 주고 상태는 바꾸지 않아 다른 정산 건의 변경과 겹쳐도 충돌하지 않는다.
     @Override
     public PayerSharesResult markSent(MarkSharesSentCommand command) {
         Long participantId = findParticipantId(command.linkToken());
+        Gathering gathering =
+                gatheringRepository
+                        .findByParticipantIdForUpdate(participantId)
+                        .orElseThrow(GatheringNotFoundException::new);
         List<Settlement> settlements =
                 settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(
                         participantId, command.payerParticipantId());
         SettlementPolicy.validateSeenShares(settlements, participantId, command.seenAmounts());
 
-        Gathering gathering =
-                gatheringRepository
-                        .findByParticipantId(participantId)
-                        .orElseThrow(GatheringNotFoundException::new);
         List<Settlement> gatheringSettlements =
                 settlementRepository.findAllByGatheringId(gathering.getId());
         LocalDateTime now = LocalDateTime.now(clock);

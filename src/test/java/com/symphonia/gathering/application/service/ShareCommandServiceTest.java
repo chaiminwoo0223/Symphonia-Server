@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -46,6 +47,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -114,6 +116,7 @@ class ShareCommandServiceTest extends UnitTest {
             void shouldThrowUnpaidShareConflictException() {
                 // given
                 givenParticipant(LEE_ID);
+                givenGathering();
                 givenSharedSettlements();
                 MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_333L));
 
@@ -121,7 +124,6 @@ class ShareCommandServiceTest extends UnitTest {
                 assertThatThrownBy(() -> shareCommandService.markSent(command))
                         .isInstanceOf(UnpaidShareConflictException.class);
                 thenSettlementNotSaved();
-                then(gatheringRepository).shouldHaveNoInteractions();
                 then(eventPublisher).shouldHaveNoInteractions();
             }
         }
@@ -135,6 +137,7 @@ class ShareCommandServiceTest extends UnitTest {
             void shouldThrowUnpaidShareConflictExceptionWhenUnseenUnpaidShareExists() {
                 // given
                 givenParticipant(LEE_ID);
+                givenGathering();
                 givenSharedSettlements(dinner(SETTLEMENT_ID), dinner(SECOND_SETTLEMENT_ID));
                 MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_333L));
 
@@ -150,6 +153,7 @@ class ShareCommandServiceTest extends UnitTest {
             void shouldThrowUnpaidShareConflictExceptionWhenSeenAmountDiffers() {
                 // given
                 givenParticipant(LEE_ID);
+                givenGathering();
                 givenSharedSettlements(dinner(SETTLEMENT_ID));
                 MarkSharesSentCommand command = command(Map.of(SETTLEMENT_ID, 3_000L));
 
@@ -165,6 +169,7 @@ class ShareCommandServiceTest extends UnitTest {
             void shouldThrowUnpaidShareConflictExceptionWhenSeenSettlementMissing() {
                 // given
                 givenParticipant(LEE_ID);
+                givenGathering();
                 givenSharedSettlements(dinner(SETTLEMENT_ID));
                 MarkSharesSentCommand command =
                         command(Map.of(SETTLEMENT_ID, 3_333L, SECOND_SETTLEMENT_ID, 3_333L));
@@ -187,7 +192,7 @@ class ShareCommandServiceTest extends UnitTest {
         class WhenSharesUnpaid {
 
             @Test
-            @DisplayName("요청한 참여자와 결제자로 정산 건을 잠가 읽고, 정산 건마다 분담금을 보냄으로 바꿔 저장해 반환한다")
+            @DisplayName("모임을 잠근 뒤 요청한 참여자와 결제자의 정산 건을 잠가 읽고, 정산 건마다 분담금을 보냄으로 바꿔 저장해 반환한다")
             void shouldSaveSentShareForEachSettlementOfPayer() {
                 // given
                 givenParticipant(LEE_ID);
@@ -209,8 +214,10 @@ class ShareCommandServiceTest extends UnitTest {
                 PayerSharesResult result = shareCommandService.markSent(command);
 
                 // then
+                InOrder lockOrder = inOrder(gatheringRepository, settlementRepository);
+                then(gatheringRepository).should(lockOrder).findByParticipantIdForUpdate(LEE_ID);
                 then(settlementRepository)
-                        .should()
+                        .should(lockOrder)
                         .findAllByShareParticipantIdAndPayerForUpdate(LEE_ID, PAYER_ID);
                 ArgumentCaptor<Settlement> captor = ArgumentCaptor.forClass(Settlement.class);
                 then(settlementRepository).should(times(2)).save(captor.capture());
@@ -501,7 +508,7 @@ class ShareCommandServiceTest extends UnitTest {
         }
 
         private void givenGathering() {
-            given(gatheringRepository.findByParticipantId(LEE_ID))
+            given(gatheringRepository.findByParticipantIdForUpdate(LEE_ID))
                     .willReturn(Optional.of(gathering()));
         }
     }

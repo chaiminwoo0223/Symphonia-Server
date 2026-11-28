@@ -7,6 +7,7 @@ import com.symphonia.IntegrationTest;
 import com.symphonia.gathering.application.dto.command.MarkSharesSentCommand;
 import com.symphonia.gathering.application.dto.command.RecordSettlementCommand;
 import com.symphonia.gathering.application.dto.command.UpdateSettlementCommand;
+import com.symphonia.gathering.application.dto.result.PayerSharesResult;
 import com.symphonia.gathering.application.dto.result.SettlementResult;
 import com.symphonia.gathering.application.usecase.MarkSharesSentUseCase;
 import com.symphonia.gathering.application.usecase.RecordSettlementUseCase;
@@ -15,7 +16,6 @@ import com.symphonia.gathering.domain.entity.Gathering;
 import com.symphonia.gathering.domain.entity.Participant;
 import com.symphonia.gathering.domain.entity.Settlement;
 import com.symphonia.gathering.domain.entity.SettlementShare;
-import com.symphonia.gathering.domain.exception.SettlementConflictException;
 import com.symphonia.gathering.domain.exception.SettlementSharesSentException;
 import com.symphonia.gathering.domain.exception.UnpaidShareConflictException;
 import com.symphonia.gathering.domain.repository.SettlementRepository;
@@ -30,19 +30,23 @@ import com.symphonia.member.domain.entity.Member;
 import com.symphonia.member.domain.repository.MemberRepository;
 import com.symphonia.member.fixture.MemberFixture;
 import com.symphonia.member.helper.MemberHelper;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -63,6 +67,7 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
     @Autowired private MemberHelper memberHelper;
     @Autowired private MemberRepository memberRepository;
     @Autowired private TransactionTemplate transactionTemplate;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private Member host;
     private Gathering gathering;
@@ -207,7 +212,7 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
                             });
 
             // then
-            // 늦은 수정은 보낸 분담금이 있다는 거절이나 버전 충돌로 실패하고, 늦은 보냈어요는 본 금액이 달라 거절된다.
+            // 두 요청은 모임 행 잠금으로 차례로 처리된다. 늦은 수정은 보낸 분담금이 있어, 늦은 보냈어요는 본 금액이 달라 거절된다.
             // 어느 요청이 이겼는지와 관계없이 하나만 성공하고, 최종 상태는 성공한 요청의 결과와 정확히 일치해야 한다.
             assertThat(failures)
                     .allSatisfy(
@@ -215,7 +220,6 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
                                     assertThat(failure)
                                             .isInstanceOfAny(
                                                     SettlementSharesSentException.class,
-                                                    SettlementConflictException.class,
                                                     UnpaidShareConflictException.class));
             assertThat(updated.get() ^ marked.get()).isTrue();
             Settlement reloaded = findSettlement(recorded.getId());
@@ -225,6 +229,63 @@ class SettlementConcurrencyIntegrationTest extends IntegrationTest {
             assertThat(shareAmounts(reloaded)).isEqualTo(expectedShareAmounts(expected));
             assertThat(sentShareParticipantIds(reloaded))
                     .isEqualTo(marked.get() ? List.of(sender.getId()) : List.of());
+        }
+    }
+
+    @Nested
+    @DisplayName("record와 markSent 메서드는")
+    class RecordAndMarkSent {
+
+        @Test
+        @Transactional(propagation = Propagation.NOT_SUPPORTED)
+        @DisplayName("기록이 커밋되기 전에 누른 보냈어요는 기록을 기다렸다가 새 분담금까지 대조해 거절한다")
+        void shouldThrowUnpaidShareConflictExceptionWhenSettlementRecordedWhileMarking() {
+            // given
+            Settlement recorded =
+                    transactionTemplate.execute(
+                            _ ->
+                                    settlementHelper.record(
+                                            SettlementFixture.DINNER, gathering, payer));
+            String linkToken =
+                    transactionTemplate.execute(_ -> gatheringHelper.issueLinkToken(sender));
+            MarkSharesSentCommand command =
+                    new MarkSharesSentCommand(linkToken, payer.getId(), seenAmounts(recorded));
+
+            // when
+            CompletableFuture<PayerSharesResult> mark = markSentBeforeRecordCommits(command);
+
+            // then
+            assertThat(mark)
+                    .failsWithin(Duration.ofSeconds(5))
+                    .withThrowableThat()
+                    .withCauseInstanceOf(UnpaidShareConflictException.class);
+            assertThat(settlementsOfGathering())
+                    .hasSize(2)
+                    .allSatisfy(
+                            settlement ->
+                                    assertThat(sentShareParticipantIds(settlement)).isEmpty());
+        }
+
+        // 기록을 커밋하지 않은 채 "보냈어요"를 시작하고, 잠금을 기다리거나 끝난 뒤에 커밋한다.
+        private CompletableFuture<PayerSharesResult> markSentBeforeRecordCommits(
+                MarkSharesSentCommand command) {
+            return transactionTemplate.execute(
+                    _ -> {
+                        recordSettlementUseCase.record(recordCommand(UUID.randomUUID()));
+                        CompletableFuture<PayerSharesResult> mark =
+                                CompletableFuture.supplyAsync(
+                                        () -> markSharesSentUseCase.markSent(command));
+                        Awaitility.await()
+                                .atMost(Duration.ofSeconds(5))
+                                .until(() -> mark.isDone() || hasLockWaiter());
+                        return mark;
+                    });
+        }
+
+        private boolean hasLockWaiter() {
+            return jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM pg_locks WHERE NOT granted", Long.class)
+                    > 0;
         }
     }
 
