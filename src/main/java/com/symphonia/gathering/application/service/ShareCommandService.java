@@ -36,7 +36,7 @@ public class ShareCommandService
     private final Clock clock;
 
     // 그 결제자에게 낼 미입금 분담금을 정산 건마다 보냄으로 바꾼다. 정산 건을 잠그고 읽으므로 다른 참여자의 "보냈어요"와는 충돌하지 않는다.
-    // 취소나 수정과 겹치면 잠금 없이 읽은 늦은 쪽이 버전 충돌로 실패하고, 먼저 취소된 정산 건은 잠금 조회에서 빠진다.
+    // 수정이나 취소가 먼저 끝났으면 잠근 뒤 읽은 분담금이 요청과 달라 거절한다. 늦게 온 수정이나 취소는 버전 충돌로 실패한다.
     // 이미 보냄이나 확인 완료인 분담금은 건너뛰어, 모두 보냈으면 그대로 돌려준다. 송금 앱을 다녀와 다시 누르는 경우를 실패로 보지 않기 위해서다.
     // 차수의 참여자 이름은 잠그지 않고 읽는다. 이름만 보여 주고 상태는 바꾸지 않아 다른 정산 건의 변경과 겹쳐도 충돌하지 않는다.
     @Override
@@ -45,7 +45,7 @@ public class ShareCommandService
         List<Settlement> settlements =
                 settlementRepository.findAllByShareParticipantIdAndPayerForUpdate(
                         participantId, command.payerParticipantId());
-        SettlementPolicy.validateSharesFound(!settlements.isEmpty());
+        SettlementPolicy.validateSeenShares(settlements, participantId, command.seenAmounts());
 
         Gathering gathering =
                 gatheringRepository

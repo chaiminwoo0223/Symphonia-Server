@@ -24,6 +24,7 @@ import com.symphonia.gathering.presentation.dto.request.JoinGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.MarkSharesSentRequest;
 import com.symphonia.gathering.presentation.dto.request.OpenGatheringRequest;
 import com.symphonia.gathering.presentation.dto.request.RecordSettlementRequest;
+import com.symphonia.gathering.presentation.dto.request.SeenShareRequest;
 import com.symphonia.gathering.presentation.dto.request.SubmitParticipantPairingFeedbackRequest;
 import com.symphonia.gathering.presentation.scheduler.GatheringPurgeScheduler;
 import com.symphonia.member.domain.entity.Member;
@@ -134,6 +135,15 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                                                     roundId))),
                     201);
             String kimLinkToken = kim.at("/linkToken").asString();
+            JsonNode seen =
+                    json(
+                                    get("/api/v1/shares")
+                                            .header(GatheringHeaders.LINK_TOKEN, kimLinkToken),
+                                    200)
+                            .at("/payers/0/shares/0");
+            SeenShareRequest seenShare =
+                    new SeenShareRequest(
+                            seen.at("/settlementId").asLong(), seen.at("/amount").asLong());
             JsonNode shares =
                     json(
                             post("/api/v1/shares/sent")
@@ -142,7 +152,8 @@ class GatheringJourneyIntegrationTest extends IntegrationTest {
                                     .content(
                                             objectMapper.writeValueAsString(
                                                     new MarkSharesSentRequest(
-                                                            lee.at("/id").asLong()))),
+                                                            lee.at("/id").asLong(),
+                                                            List.of(seenShare)))),
                             200);
             assertThat(shares.at("/shares/0/status").asString()).isEqualTo("SENT");
             assertThat(shares.at("/hasUnpaidShares").asBoolean()).isFalse();

@@ -57,19 +57,23 @@ public interface SettlementJpaRepository extends JpaRepository<SettlementJpaEnti
     List<SettlementJpaEntity> findAllByShareParticipantId(
             @Param("participantId") Long participantId);
 
-    // 잠그는 순서가 요청마다 같도록 id 순으로 읽는다. 순서가 다르면 두 요청이 서로를 기다릴 수 있다.
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    // 잠그는 순서가 요청마다 같도록 id 순으로 잠근다. 순서가 다르면 두 요청이 서로를 기다릴 수 있다.
+    // 엔티티로 받으면 같은 트랜잭션이 앞서 읽은 옛 버전과 어긋나 조회가 실패하므로 id만 받는다.
+    // FOR NO KEY UPDATE는 Hibernate가 PostgreSQL에서 PESSIMISTIC_WRITE에 쓰는 잠금이다.
     @Query(
-            """
-            SELECT settlement FROM SettlementJpaEntity settlement
-            WHERE settlement.cancelledAt IS NULL
-              AND settlement.payerParticipantId = :payerParticipantId
-              AND settlement.id IN (
-                  SELECT share.settlementId FROM SettlementShareJpaEntity share
-                  WHERE share.participantId = :participantId)
-            ORDER BY settlement.id
-            """)
-    List<SettlementJpaEntity> findAllByShareParticipantIdAndPayerForUpdate(
+            value =
+                    """
+                    SELECT id FROM settlement
+                    WHERE cancelled_at IS NULL
+                      AND payer_participant_id = :payerParticipantId
+                      AND id IN (
+                          SELECT settlement_id FROM settlement_share
+                          WHERE participant_id = :participantId)
+                    ORDER BY id
+                    FOR NO KEY UPDATE
+                    """,
+            nativeQuery = true)
+    List<Long> lockIdsByShareParticipantIdAndPayer(
             @Param("participantId") Long participantId,
             @Param("payerParticipantId") Long payerParticipantId);
 

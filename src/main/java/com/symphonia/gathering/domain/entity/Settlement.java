@@ -128,6 +128,10 @@ public class Settlement {
         return shares.stream().anyMatch(share -> share.isOwnedBy(participantId) && share.isSent());
     }
 
+    public boolean hasShareOf(Long participantId) {
+        return shares.stream().anyMatch(share -> share.isOwnedBy(participantId));
+    }
+
     public boolean hasUnpaidShareOf(Long participantId) {
         return getShareOf(participantId).isUnpaid();
     }
